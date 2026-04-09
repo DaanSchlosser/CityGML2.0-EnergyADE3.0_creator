@@ -7,7 +7,7 @@ IntBuildingInstallation, Room, all thematic surfaces, and openings.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 from .base import BaseBuilder
 from .namespaces import NS_BLDG, NS_CORE, NS_GML, NS_NRG3
@@ -17,7 +17,7 @@ from .types import CodeValue, MeasureValue, ScaleValue
 # Thematic surfaces
 # ===================================================================
 
-_BOUNDARY_SURFACE_ORDER: Tuple[Tuple[str, str], ...] = (
+_BOUNDARY_SURFACE_ORDER: tuple[tuple[str, str], ...] = (
     (NS_GML, "description"),
     (NS_GML, "name"),
     (NS_CORE, "creationDate"),
@@ -44,7 +44,7 @@ _BOUNDARY_SURFACE_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_NRG3, "bdgBdrySurfSkyViewFactor"),
 )
 
-_BOUNDARY_SURFACE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
+_BOUNDARY_SURFACE_FIELD_MAP: dict[str, tuple[str, str]] = {
     "gml_description": (NS_GML, "description"),
     "gml_name": (NS_GML, "name"),
     "creation_date": (NS_CORE, "creationDate"),
@@ -79,27 +79,27 @@ class _BoundarySurface(BaseBuilder):
     ELEMENT_ORDER: ClassVar = _BOUNDARY_SURFACE_ORDER
     FIELD_MAP: ClassVar = _BOUNDARY_SURFACE_FIELD_MAP
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    nrg3_identifier: Optional[CodeValue] = None
-    nrg3_metadata: Optional[Any] = None  # Metadata builder
-    lod2_multi_surface: Optional[Any] = None  # raw lxml or builder
-    lod3_multi_surface: Optional[Any] = None
-    lod4_multi_surface: Optional[Any] = None
-    openings: List[Any] = field(default_factory=list)
-    bdg_bdry_surf_additional_thermal_bridge_u_value: Optional[MeasureValue] = None
-    bdg_bdry_surf_is_shared: Optional[bool] = None
-    bdg_bdry_surf_thickness: Optional[MeasureValue] = None
-    bdg_bdry_surf_total_surface_area: Optional[MeasureValue] = None
-    bdg_bdry_surf_opaque_surface_area: Optional[MeasureValue] = None
-    bdg_bdry_surf_heat_capacity: Optional[MeasureValue] = None
-    bdg_bdry_surf_azimuth: Optional[MeasureValue] = None
-    bdg_bdry_surf_inclination: Optional[MeasureValue] = None
-    bdg_bdry_surf_ground_view_factor: Optional[ScaleValue] = None
-    bdg_bdry_surf_sky_view_factor: Optional[ScaleValue] = None
-    layered_construction: Optional[Any] = None
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    nrg3_identifier: CodeValue | None = None
+    nrg3_metadata: Any | None = None  # Metadata builder
+    lod2_multi_surface: Any | None = None  # raw lxml or builder
+    lod3_multi_surface: Any | None = None
+    lod4_multi_surface: Any | None = None
+    openings: list[Any] = field(default_factory=list)
+    bdg_bdry_surf_additional_thermal_bridge_u_value: MeasureValue | None = None
+    bdg_bdry_surf_is_shared: bool | None = None
+    bdg_bdry_surf_thickness: MeasureValue | None = None
+    bdg_bdry_surf_total_surface_area: MeasureValue | None = None
+    bdg_bdry_surf_opaque_surface_area: MeasureValue | None = None
+    bdg_bdry_surf_heat_capacity: MeasureValue | None = None
+    bdg_bdry_surf_azimuth: MeasureValue | None = None
+    bdg_bdry_surf_inclination: MeasureValue | None = None
+    bdg_bdry_surf_ground_view_factor: ScaleValue | None = None
+    bdg_bdry_surf_sky_view_factor: ScaleValue | None = None
+    layered_construction: Any | None = None
 
 
 @dataclass
@@ -146,7 +146,7 @@ class OuterFloorSurface(_BoundarySurface):
 # Openings
 # ===================================================================
 
-_OPENING_ORDER: Tuple[Tuple[str, str], ...] = (
+_OPENING_ORDER: tuple[tuple[str, str], ...] = (
     (NS_GML, "description"),
     (NS_GML, "name"),
     (NS_CORE, "creationDate"),
@@ -164,7 +164,7 @@ _OPENING_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_NRG3, "bdgOpnSkyViewFactor"),
 )
 
-_OPENING_FIELD_MAP: Dict[str, Tuple[str, str]] = {
+_OPENING_FIELD_MAP: dict[str, tuple[str, str]] = {
     "gml_description": (NS_GML, "description"),
     "gml_name": (NS_GML, "name"),
     "creation_date": (NS_CORE, "creationDate"),
@@ -189,20 +189,20 @@ class _Opening(BaseBuilder):
     ELEMENT_ORDER: ClassVar = _OPENING_ORDER
     FIELD_MAP: ClassVar = _OPENING_FIELD_MAP
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    nrg3_identifier: Optional[CodeValue] = None
-    nrg3_metadata: Optional[Any] = None
-    lod3_multi_surface: Optional[Any] = None
-    lod4_multi_surface: Optional[Any] = None
-    bdg_opn_area: Optional[MeasureValue] = None
-    bdg_opn_inclination: Optional[MeasureValue] = None
-    bdg_opn_azimuth: Optional[MeasureValue] = None
-    bdg_opn_ground_view_factor: Optional[ScaleValue] = None
-    bdg_opn_sky_view_factor: Optional[ScaleValue] = None
-    layered_construction: Optional[Any] = None
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    nrg3_identifier: CodeValue | None = None
+    nrg3_metadata: Any | None = None
+    lod3_multi_surface: Any | None = None
+    lod4_multi_surface: Any | None = None
+    bdg_opn_area: MeasureValue | None = None
+    bdg_opn_inclination: MeasureValue | None = None
+    bdg_opn_azimuth: MeasureValue | None = None
+    bdg_opn_ground_view_factor: ScaleValue | None = None
+    bdg_opn_sky_view_factor: ScaleValue | None = None
+    layered_construction: Any | None = None
 
 
 @dataclass
@@ -256,27 +256,27 @@ class Room(BaseBuilder):
         "room_installations": (NS_BLDG, "roomInstallation"),
     }
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    nrg3_identifier: Optional[CodeValue] = None
-    nrg3_metadata: Optional[Any] = None
-    bldg_class: Optional[CodeValue] = None
-    bldg_function: Optional[CodeValue] = None
-    bldg_usage: Optional[CodeValue] = None
-    lod4_solid: Optional[Any] = None
-    lod4_multi_surface: Optional[Any] = None
-    bounded_by_surfaces: List[_BoundarySurface] = field(default_factory=list)
-    interior_furniture: List[Any] = field(default_factory=list)
-    room_installations: List[Any] = field(default_factory=list)
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    nrg3_identifier: CodeValue | None = None
+    nrg3_metadata: Any | None = None
+    bldg_class: CodeValue | None = None
+    bldg_function: CodeValue | None = None
+    bldg_usage: CodeValue | None = None
+    lod4_solid: Any | None = None
+    lod4_multi_surface: Any | None = None
+    bounded_by_surfaces: list[_BoundarySurface] = field(default_factory=list)
+    interior_furniture: list[Any] = field(default_factory=list)
+    room_installations: list[Any] = field(default_factory=list)
 
 
 # ===================================================================
 # BuildingInstallation / IntBuildingInstallation
 # ===================================================================
 
-_INSTALLATION_ORDER: Tuple[Tuple[str, str], ...] = (
+_INSTALLATION_ORDER: tuple[tuple[str, str], ...] = (
     (NS_GML, "description"),
     (NS_GML, "name"),
     (NS_CORE, "creationDate"),
@@ -295,7 +295,7 @@ _INSTALLATION_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_BLDG, "boundedBy"),
 )
 
-_INSTALLATION_FIELD_MAP: Dict[str, Tuple[str, str]] = {
+_INSTALLATION_FIELD_MAP: dict[str, tuple[str, str]] = {
     "gml_description": (NS_GML, "description"),
     "gml_name": (NS_GML, "name"),
     "creation_date": (NS_CORE, "creationDate"),
@@ -321,22 +321,22 @@ class BuildingInstallation(BaseBuilder):
     ELEMENT_ORDER: ClassVar = _INSTALLATION_ORDER
     FIELD_MAP: ClassVar = _INSTALLATION_FIELD_MAP
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    nrg3_identifier: Optional[CodeValue] = None
-    nrg3_metadata: Optional[Any] = None
-    bldg_class: Optional[CodeValue] = None
-    bldg_function: Optional[CodeValue] = None
-    bldg_usage: Optional[CodeValue] = None
-    lod2_geometry: Optional[Any] = None
-    lod3_geometry: Optional[Any] = None
-    lod4_geometry: Optional[Any] = None
-    lod2_implicit_representation: Optional[Any] = None
-    lod3_implicit_representation: Optional[Any] = None
-    lod4_implicit_representation: Optional[Any] = None
-    bounded_by_surfaces: List[_BoundarySurface] = field(default_factory=list)
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    nrg3_identifier: CodeValue | None = None
+    nrg3_metadata: Any | None = None
+    bldg_class: CodeValue | None = None
+    bldg_function: CodeValue | None = None
+    bldg_usage: CodeValue | None = None
+    lod2_geometry: Any | None = None
+    lod3_geometry: Any | None = None
+    lod4_geometry: Any | None = None
+    lod2_implicit_representation: Any | None = None
+    lod3_implicit_representation: Any | None = None
+    lod4_implicit_representation: Any | None = None
+    bounded_by_surfaces: list[_BoundarySurface] = field(default_factory=list)
 
 
 @dataclass
@@ -369,17 +369,17 @@ class IntBuildingInstallation(BaseBuilder):
         "lod4_implicit_representation": (NS_BLDG, "lod4ImplicitRepresentation"),
     }
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    nrg3_identifier: Optional[CodeValue] = None
-    nrg3_metadata: Optional[Any] = None
-    bldg_class: Optional[CodeValue] = None
-    bldg_function: Optional[CodeValue] = None
-    bldg_usage: Optional[CodeValue] = None
-    lod4_geometry: Optional[Any] = None
-    lod4_implicit_representation: Optional[Any] = None
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    nrg3_identifier: CodeValue | None = None
+    nrg3_metadata: Any | None = None
+    bldg_class: CodeValue | None = None
+    bldg_function: CodeValue | None = None
+    bldg_usage: CodeValue | None = None
+    lod4_geometry: Any | None = None
+    lod4_implicit_representation: Any | None = None
 
 
 # ===================================================================
@@ -392,7 +392,7 @@ class IntBuildingInstallation(BaseBuilder):
 #   -> bldg:AbstractBuildingType    (+ADE Building hooks)
 #   -> bldg:BuildingType
 
-_BUILDING_ELEMENT_ORDER: Tuple[Tuple[str, str], ...] = (
+_BUILDING_ELEMENT_ORDER: tuple[tuple[str, str], ...] = (
     # -- gml:AbstractFeatureType --
     (NS_GML, "description"),
     (NS_GML, "name"),
@@ -469,7 +469,7 @@ _BUILDING_ELEMENT_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_BLDG, "address"),
 )
 
-_BUILDING_FIELD_MAP: Dict[str, Tuple[str, str]] = {
+_BUILDING_FIELD_MAP: dict[str, tuple[str, str]] = {
     # gml
     "gml_description": (NS_GML, "description"),
     "gml_name": (NS_GML, "name"),
@@ -555,84 +555,80 @@ class Building(BaseBuilder):
     FIELD_MAP: ClassVar = _BUILDING_FIELD_MAP
 
     # -- gml --
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
+    gml_description: str | None = None
+    gml_name: str | None = None
     # -- core --
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    external_references: List[Any] = field(default_factory=list)
+    creation_date: str | None = None
+    termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
     # -- Energy ADE CityObject extensions --
-    devices: List[Any] = field(default_factory=list)
-    nrg3_identifier: Optional[CodeValue] = None
-    nrg3_indicators: List[Any] = field(default_factory=list)
-    nrg3_interventions: List[Any] = field(default_factory=list)
-    nrg3_layered_construction: Optional[Any] = None
-    nrg3_metadata: Optional[Any] = None
-    nrg3_related_to: List[Any] = field(default_factory=list)
-    nrg3_resources: List[Any] = field(default_factory=list)
-    nrg3_sensor_data: List[Any] = field(default_factory=list)
-    nrg3_status: Optional[CodeValue] = None
-    nrg3_utility_network_connections: List[Any] = field(default_factory=list)
-    nrg3_valid_from: Optional[str] = None
-    nrg3_valid_to: Optional[str] = None
-    nrg3_reference_point: Optional[Any] = None
+    devices: list[Any] = field(default_factory=list)
+    nrg3_identifier: CodeValue | None = None
+    nrg3_indicators: list[Any] = field(default_factory=list)
+    nrg3_interventions: list[Any] = field(default_factory=list)
+    nrg3_layered_construction: Any | None = None
+    nrg3_metadata: Any | None = None
+    nrg3_related_to: list[Any] = field(default_factory=list)
+    nrg3_resources: list[Any] = field(default_factory=list)
+    nrg3_sensor_data: list[Any] = field(default_factory=list)
+    nrg3_status: CodeValue | None = None
+    nrg3_utility_network_connections: list[Any] = field(default_factory=list)
+    nrg3_valid_from: str | None = None
+    nrg3_valid_to: str | None = None
+    nrg3_reference_point: Any | None = None
     # -- bldg:AbstractBuildingType --
-    bldg_class: Optional[CodeValue] = None
-    bldg_function: Optional[CodeValue] = None
-    bldg_usage: Optional[CodeValue] = None
-    year_of_construction: Optional[int] = None
-    year_of_demolition: Optional[int] = None
-    roof_type: Optional[CodeValue] = None
-    measured_height: Optional[MeasureValue] = None
-    storeys_above_ground: Optional[int] = None
-    storeys_below_ground: Optional[int] = None
-    storey_heights_above_ground: Optional[str] = None
-    storey_heights_below_ground: Optional[str] = None
+    bldg_class: CodeValue | None = None
+    bldg_function: CodeValue | None = None
+    bldg_usage: CodeValue | None = None
+    year_of_construction: int | None = None
+    year_of_demolition: int | None = None
+    roof_type: CodeValue | None = None
+    measured_height: MeasureValue | None = None
+    storeys_above_ground: int | None = None
+    storeys_below_ground: int | None = None
+    storey_heights_above_ground: str | None = None
+    storey_heights_below_ground: str | None = None
     # Geometry (raw lxml elements or builders)
-    lod0_foot_print: Optional[Any] = None
-    lod0_roof_edge: Optional[Any] = None
-    lod1_solid: Optional[Any] = None
-    lod1_multi_surface: Optional[Any] = None
-    lod1_terrain_intersection: Optional[Any] = None
-    lod2_solid: Optional[Any] = None
-    lod2_multi_surface: Optional[Any] = None
-    lod2_multi_curve: Optional[Any] = None
-    lod2_terrain_intersection: Optional[Any] = None
-    lod3_solid: Optional[Any] = None
-    lod3_multi_surface: Optional[Any] = None
-    lod3_multi_curve: Optional[Any] = None
-    lod3_terrain_intersection: Optional[Any] = None
-    lod4_solid: Optional[Any] = None
-    lod4_multi_surface: Optional[Any] = None
-    lod4_multi_curve: Optional[Any] = None
-    lod4_terrain_intersection: Optional[Any] = None
+    lod0_foot_print: Any | None = None
+    lod0_roof_edge: Any | None = None
+    lod1_solid: Any | None = None
+    lod1_multi_surface: Any | None = None
+    lod1_terrain_intersection: Any | None = None
+    lod2_solid: Any | None = None
+    lod2_multi_surface: Any | None = None
+    lod2_multi_curve: Any | None = None
+    lod2_terrain_intersection: Any | None = None
+    lod3_solid: Any | None = None
+    lod3_multi_surface: Any | None = None
+    lod3_multi_curve: Any | None = None
+    lod3_terrain_intersection: Any | None = None
+    lod4_solid: Any | None = None
+    lod4_multi_surface: Any | None = None
+    lod4_multi_curve: Any | None = None
+    lod4_terrain_intersection: Any | None = None
     # Sub-features
-    bounded_by_surfaces: List[_BoundarySurface] = field(default_factory=list)
-    outer_building_installations: List[BuildingInstallation] = field(
-        default_factory=list
-    )
-    interior_building_installations: List[IntBuildingInstallation] = field(
-        default_factory=list
-    )
-    interior_rooms: List[Room] = field(default_factory=list)
-    building_parts: List[Any] = field(default_factory=list)  # BuildingPart
-    addresses: List[Any] = field(default_factory=list)  # Address
+    bounded_by_surfaces: list[_BoundarySurface] = field(default_factory=list)
+    outer_building_installations: list[BuildingInstallation] = field(default_factory=list)
+    interior_building_installations: list[IntBuildingInstallation] = field(default_factory=list)
+    interior_rooms: list[Room] = field(default_factory=list)
+    building_parts: list[Any] = field(default_factory=list)  # BuildingPart
+    addresses: list[Any] = field(default_factory=list)  # Address
     # -- Energy ADE Building extensions --
-    bdg_heights: List[Any] = field(default_factory=list)
-    bdg_areas: List[Any] = field(default_factory=list)
-    bdg_volumes: List[Any] = field(default_factory=list)
-    bdg_owner_name: Optional[str] = None
-    bdg_ownership_type: Optional[CodeValue] = None
-    bdg_number_of_building_units: Optional[int] = None
-    bdg_attic_thermal_status: Optional[str] = None
-    bdg_basement_thermal_status: Optional[str] = None
-    bdg_construction_weight: Optional[CodeValue] = None
-    bdg_is_protected: Optional[bool] = None
-    bdg_type: Optional[CodeValue] = None
-    occupied_by: List[Any] = field(default_factory=list)
-    building_units: List[Any] = field(default_factory=list)
-    zones: List[Any] = field(default_factory=list)
-    energy_performance_certificates: List[Any] = field(default_factory=list)
+    bdg_heights: list[Any] = field(default_factory=list)
+    bdg_areas: list[Any] = field(default_factory=list)
+    bdg_volumes: list[Any] = field(default_factory=list)
+    bdg_owner_name: str | None = None
+    bdg_ownership_type: CodeValue | None = None
+    bdg_number_of_building_units: int | None = None
+    bdg_attic_thermal_status: str | None = None
+    bdg_basement_thermal_status: str | None = None
+    bdg_construction_weight: CodeValue | None = None
+    bdg_is_protected: bool | None = None
+    bdg_type: CodeValue | None = None
+    occupied_by: list[Any] = field(default_factory=list)
+    building_units: list[Any] = field(default_factory=list)
+    zones: list[Any] = field(default_factory=list)
+    energy_performance_certificates: list[Any] = field(default_factory=list)
 
 
 @dataclass

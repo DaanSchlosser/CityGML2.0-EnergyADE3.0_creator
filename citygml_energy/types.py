@@ -1,6 +1,6 @@
 """Small reusable value types that map to XSD simple/complex types."""
+
 from dataclasses import dataclass
-from typing import Optional, Union
 
 
 @dataclass
@@ -13,8 +13,9 @@ class CodeValue:
         CodeValue("1000", code_space="http://.../_class.xml")
         CodeValue("unknown")           # no codeSpace emitted
     """
+
     value: str
-    code_space: Optional[str] = None
+    code_space: str | None = None
 
 
 @dataclass
@@ -31,7 +32,8 @@ class MeasureValue:
         MeasureValue(9720, "W")
         MeasureValue("823.30", "m3")
     """
-    value: Union[int, float, str]
+
+    value: int | float | str
     uom: str
 
     @property
@@ -53,7 +55,8 @@ class ScaleValue:
 
         ScaleValue(0.3, "unit interval")
     """
-    value: Union[int, float, str] = 0.0
+
+    value: int | float | str = 0.0
     uom: str = "unit interval"
 
     @property

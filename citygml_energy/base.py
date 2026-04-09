@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, Optional, Tuple
+from typing import Any, ClassVar
 
 from lxml import etree
 
@@ -28,23 +28,23 @@ class BaseBuilder:
     """
 
     # Subclasses override these
-    ELEMENT_TAG: ClassVar[Tuple[str, str]] = ("", "")
-    ELEMENT_ORDER: ClassVar[Tuple[Tuple[str, str], ...]] = ()
-    FIELD_MAP: ClassVar[Dict[str, Tuple[str, str]]] = {}
+    ELEMENT_TAG: ClassVar[tuple[str, str]] = ("", "")
+    ELEMENT_ORDER: ClassVar[tuple[tuple[str, str], ...]] = ()
+    FIELD_MAP: ClassVar[dict[str, tuple[str, str]]] = {}
 
-    gml_id: Optional[str] = None
+    gml_id: str | None = None
 
     # ------------------------------------------------------------------
     # Internal: reverse lookup (ns, local) -> field name
     # ------------------------------------------------------------------
     @classmethod
-    def _reverse_map(cls) -> Dict[Tuple[str, str], str]:
+    def _reverse_map(cls) -> dict[tuple[str, str], str]:
         return {v: k for k, v in cls.FIELD_MAP.items()}
 
     # ------------------------------------------------------------------
     # Serialization
     # ------------------------------------------------------------------
-    def to_xml(self, parent: Optional[etree._Element] = None) -> etree._Element:
+    def to_xml(self, parent: etree._Element | None = None) -> etree._Element:
         """Serialize this builder to an lxml Element.
 
         If *parent* is provided the element is appended as a sub-element of

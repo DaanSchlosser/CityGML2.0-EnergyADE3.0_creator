@@ -343,9 +343,7 @@ def test_constant_value_schedule_from_dict():
 def test_factory_pv_attached_to_building():
     factory = FeatureFactory()
     factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add(
-        "nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"}
-    )
+    factory.add("nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"})
     model = factory.build()
     # Should have exactly one member (the building)
     assert len(model.city_object_members) == 1
@@ -390,9 +388,7 @@ def test_factory_no_parent_id_is_top_level():
 def test_factory_multiple_devices():
     factory = FeatureFactory()
     factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add(
-        "nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"}
-    )
+    factory.add("nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"})
     factory.add("nrg3_HeatPump", {"gml_id": "hp_1", "gml_parent_id": "bldg_1"})
     factory.add("nrg3_EVChargingStation", {"gml_id": "ev_1", "gml_parent_id": "bldg_1"})
     model = factory.build()
@@ -406,9 +402,7 @@ def test_factory_output_is_well_formed_xml():
 
     factory = FeatureFactory()
     factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add(
-        "nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"}
-    )
+    factory.add("nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"})
     generated = factory.build().to_string()
     etree.fromstring(generated.encode("utf-8"))
 

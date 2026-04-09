@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from .core import CityModel
 from .factory import FeatureFactory, list_feature_types
@@ -128,9 +129,7 @@ def validate_feature_collection(
 
     geometry_sources = data.get("geometry_sources", [])
     if not isinstance(geometry_sources, list):
-        raise InputFileError(
-            f"{source}: geometry_sources must be an array when provided"
-        )
+        raise InputFileError(f"{source}: geometry_sources must be an array when provided")
 
     for index, geometry_source in enumerate(geometry_sources):
         _validate_geometry_source(
@@ -202,13 +201,9 @@ def _validate_feature(
 
     attributes = feature.get("attributes")
     if not isinstance(attributes, dict):
-        raise InputFileError(
-            f"{source}: features[{index}].attributes must be an object"
-        )
+        raise InputFileError(f"{source}: features[{index}].attributes must be an object")
 
-    unexpected_attribute_keys = sorted(
-        set(attributes) - get_allowed_attribute_names(feature_type)
-    )
+    unexpected_attribute_keys = sorted(set(attributes) - get_allowed_attribute_names(feature_type))
     if unexpected_attribute_keys:
         raise InputFileError(
             f"{source}: features[{index}].attributes contains unsupported key(s) for "
@@ -228,9 +223,7 @@ def _validate_feature(
 
     for key, value in attributes.items():
         if not isinstance(key, str):
-            raise InputFileError(
-                f"{source}: features[{index}].attributes keys must be strings"
-            )
+            raise InputFileError(f"{source}: features[{index}].attributes keys must be strings")
         if not isinstance(value, _ALLOWED_SCALAR_TYPES):
             raise InputFileError(
                 f"{source}: features[{index}].attributes.{key} must be a scalar JSON value"
@@ -256,19 +249,14 @@ def _validate_geometry_source(
         )
 
     source_type = geometry_source.get("type")
-    if (
-        not isinstance(source_type, str)
-        or source_type not in _ALLOWED_GEOMETRY_SOURCE_TYPES
-    ):
+    if not isinstance(source_type, str) or source_type not in _ALLOWED_GEOMETRY_SOURCE_TYPES:
         raise InputFileError(
             f"{source}: geometry_sources[{index}].type must be one of: {', '.join(sorted(_ALLOWED_GEOMETRY_SOURCE_TYPES))}"
         )
 
     path_value = geometry_source.get("path")
     if not isinstance(path_value, str) or not path_value.strip():
-        raise InputFileError(
-            f"{source}: geometry_sources[{index}].path must be a non-empty string"
-        )
+        raise InputFileError(f"{source}: geometry_sources[{index}].path must be a non-empty string")
 
     target_building_id = geometry_source.get("target_building_id")
     if not isinstance(target_building_id, str) or not target_building_id.strip():
@@ -318,9 +306,7 @@ def _normalize_geometry_source_paths(data: dict[str, Any], base_path: Path) -> N
     for geometry_source in geometry_sources:
         path_value = geometry_source.get("path")
         if isinstance(path_value, str) and path_value.strip():
-            geometry_source["path"] = str(
-                _resolve_geometry_source_path(path_value, base_path)
-            )
+            geometry_source["path"] = str(_resolve_geometry_source_path(path_value, base_path))
 
 
 def _resolve_geometry_source_path(path_value: str, base_path: Path) -> Path:

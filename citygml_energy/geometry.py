@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 import lxml.etree as etree
 
@@ -69,7 +70,7 @@ class _GeometryPolygon:
 @dataclass(frozen=True)
 class _ParsedGeometryFeature:
     object_name: str
-    parent_name: Optional[str]
+    parent_name: str | None
     kind: str
     element_cls: type[Any] | None
     polygons: list[_GeometryPolygon]
@@ -81,18 +82,14 @@ class _StepEntity:
     args: list[str]
 
 
-def apply_geometry_sources(
-    model: CityModel, geometry_sources: Iterable[dict[str, Any]]
-) -> None:
+def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str, Any]]) -> None:
     """Apply all configured geometry sources to *model* in place."""
     all_coordinates: list[Coord3D] = []
 
     for source in geometry_sources:
         source_type = source.get("type")
         target_pv_id = (
-            str(source["target_pv_id"])
-            if source.get("target_pv_id") is not None
-            else None
+            str(source["target_pv_id"]) if source.get("target_pv_id") is not None else None
         )
 
         if source_type == _STEP_GEOMETRY_SOURCE_TYPE:
@@ -185,7 +182,7 @@ def _attach_geometry_features(
                     f"Geometry source {source_path} contains duplicate surface name {feature.object_name!r}"
                 )
 
-            multi_surface, polygon_ids = _build_multi_surface(
+            multi_surface, _polygon_ids = _build_multi_surface(
                 f"{feature.object_name}_lod3",
                 feature.polygons,
             )
@@ -277,9 +274,7 @@ def _parse_step_file(path: Path) -> list[_ParsedGeometryFeature]:
         if entity.entity_type != "SHELL_BASED_SURFACE_MODEL":
             continue
 
-        object_name, parent_name = _split_object_name(
-            _unquote_step_string(entity.args[0])
-        )
+        object_name, parent_name = _split_object_name(_unquote_step_string(entity.args[0]))
         shell_refs = _parse_step_ref_list(entity.args[1])
         polygons: list[_GeometryPolygon] = []
 
@@ -341,9 +336,7 @@ def _build_step_geometry_feature(
                 polygons=polygons,
             )
 
-    raise ValueError(
-        f"STEP geometry {path} contains unsupported shell name {object_name!r}"
-    )
+    raise ValueError(f"STEP geometry {path} contains unsupported shell name {object_name!r}")
 
 
 def _parse_step_face(
@@ -386,9 +379,7 @@ def _parse_step_face(
         )
 
     if exterior is None:
-        raise ValueError(
-            f"STEP geometry {path} face #{face_ref} is missing an outer loop"
-        )
+        raise ValueError(f"STEP geometry {path} face #{face_ref} is missing an outer loop")
 
     return _GeometryPolygon(exterior=exterior, interiors=interiors)
 
@@ -450,9 +441,7 @@ def _parse_step_loop(
         ring.append(end_point)
 
     if not ring:
-        raise ValueError(
-            f"STEP geometry {path} contains an empty edge loop #{loop_ref}"
-        )
+        raise ValueError(f"STEP geometry {path} contains an empty edge loop #{loop_ref}")
 
     if not _points_close(ring[0], ring[-1]):
         ring.append(ring[0])
@@ -614,15 +603,11 @@ def _get_step_vertex_coordinates(
     )
     coordinate_values = point_entity.args[1].strip()
     if not coordinate_values.startswith("(") or not coordinate_values.endswith(")"):
-        raise ValueError(
-            f"STEP geometry {path} point #{vertex_ref} has invalid coordinates"
-        )
+        raise ValueError(f"STEP geometry {path} point #{vertex_ref} has invalid coordinates")
 
     parts = [part.strip() for part in coordinate_values[1:-1].split(",")]
     if len(parts) != 3:
-        raise ValueError(
-            f"STEP geometry {path} point #{vertex_ref} does not contain 3 coordinates"
-        )
+        raise ValueError(f"STEP geometry {path} point #{vertex_ref} does not contain 3 coordinates")
 
     return (float(parts[0]), float(parts[1]), float(parts[2]))
 
@@ -688,14 +673,12 @@ def _format_ring(ring: list[Coord3D]) -> str:
     if not _points_close(coordinates[0], coordinates[-1]):
         coordinates.append(coordinates[0])
 
-    return " ".join(
-        _format_coordinate(value) for coordinate in coordinates for value in coordinate
-    )
+    return " ".join(_format_coordinate(value) for coordinate in coordinates for value in coordinate)
 
 
 def _points_close(first: Coord3D, second: Coord3D, tolerance: float = 1e-9) -> bool:
     return all(
-        abs(a_value - b_value) <= tolerance for a_value, b_value in zip(first, second)
+        abs(a_value - b_value) <= tolerance for a_value, b_value in zip(first, second, strict=True)
     )
 
 
@@ -713,9 +696,7 @@ def _require_feature(model: CityModel, gml_id: str, expected_type: type[Any]) ->
         match = _find_feature(member, gml_id)
         if match is not None:
             if not isinstance(match, expected_type):
-                raise ValueError(
-                    f"Feature {gml_id!r} exists but is not a {expected_type.__name__}"
-                )
+                raise ValueError(f"Feature {gml_id!r} exists but is not a {expected_type.__name__}")
             return match
 
     raise ValueError(f"Feature {gml_id!r} was not found in the generated city model")

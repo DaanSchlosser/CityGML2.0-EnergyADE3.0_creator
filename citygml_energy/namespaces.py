@@ -80,15 +80,13 @@ CS_BUILDING_CLASS = (
     "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"
 )
 CS_BUILDING_FUNCTION = (
-    "http://www.sig3d.org/codelists/standard/building/2.0/"
-    "_AbstractBuilding_function.xml"
+    "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml"
 )
 CS_BUILDING_USAGE = (
     "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml"
 )
 CS_BUILDING_ROOFTYPE = (
-    "https://www.sig3d.org/codelists/standard/building/2.0/"
-    "_AbstractBuilding_roofType.xml"
+    "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml"
 )
 
 # Energy ADE 3.0 codespace base

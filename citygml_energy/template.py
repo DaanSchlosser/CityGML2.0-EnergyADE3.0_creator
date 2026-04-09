@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Union
 
 from lxml import etree
 
@@ -11,7 +10,7 @@ from .core import CityModel, Envelope
 from .namespaces import NS_NRG3, qn
 from .xml_support import RawXmlElement
 
-PathLike = Union[str, Path]
+PathLike = str | Path
 
 _REMOVE_NRG3_CHILDREN = {
     "connectionStatus",
@@ -59,7 +58,7 @@ def load_city_model_template(path: PathLike) -> CityModel:
 def find_city_object_by_gml_id(
     model: CityModel,
     gml_id: str,
-) -> Optional[RawXmlElement]:
+) -> RawXmlElement | None:
     """Return a top-level city object member by its ``gml:id`` if present."""
     for member in model.city_object_members:
         raw_member = _as_raw_member(member)
@@ -83,7 +82,7 @@ def normalize_city_model_for_beta8(model: CityModel) -> CityModel:
     return model
 
 
-def _as_raw_member(member: object) -> Optional[RawXmlElement]:
+def _as_raw_member(member: object) -> RawXmlElement | None:
     if isinstance(member, RawXmlElement):
         return member
     if isinstance(member, etree._Element):
@@ -91,14 +90,14 @@ def _as_raw_member(member: object) -> Optional[RawXmlElement]:
     return None
 
 
-def _first_element_child(parent: etree._Element) -> Optional[etree._Element]:
+def _first_element_child(parent: etree._Element) -> etree._Element | None:
     for child in parent:
         if isinstance(child.tag, str):
             return child
     return None
 
 
-def _parse_envelope(bounded_by: Optional[etree._Element]) -> Optional[Envelope]:
+def _parse_envelope(bounded_by: etree._Element | None) -> Envelope | None:
     if bounded_by is None:
         return None
 
@@ -114,7 +113,7 @@ def _parse_envelope(bounded_by: Optional[etree._Element]) -> Optional[Envelope]:
     )
 
 
-def _text(element: Optional[etree._Element]) -> Optional[str]:
+def _text(element: etree._Element | None) -> str | None:
     if element is None:
         return None
     return element.text
