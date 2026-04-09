@@ -1,13 +1,10 @@
 """Tests for the JSON-driven RenoDAT example."""
 
-import os
-import sys
 from copy import deepcopy
+from pathlib import Path
 
-import lxml.etree as etree
 import pytest
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from lxml import etree
 
 from citygml_energy import (
     Building,
@@ -262,7 +259,7 @@ def test_renodat_input_rejects_missing_geometry_source_file():
     with pytest.raises(InputFileError, match="does not exist"):
         build_city_model_from_feature_collection(
             invalid_data,
-            base_path=os.path.dirname(INPUT),
+            base_path=Path(INPUT).parent,
         )
 
 

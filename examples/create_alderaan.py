@@ -14,13 +14,12 @@ requested.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
 from lxml import etree
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from citygml_energy import (
     CityModel,

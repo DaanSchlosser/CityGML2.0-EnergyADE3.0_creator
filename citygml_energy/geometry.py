@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import lxml.etree as etree
+from lxml import etree
 
 from .building import Building, Door, GroundSurface, RoofSurface, WallSurface, Window
 from .core import CityModel, Envelope
@@ -285,8 +285,10 @@ def _parse_step_file(path: Path) -> list[_ParsedGeometryFeature]:
                 expected_type="OPEN_SHELL",
                 source_path=path,
             )
-            for face_ref in _parse_step_ref_list(shell_entity.args[1]):
-                polygons.append(_parse_step_face(path, entities, face_ref))
+            polygons.extend(
+                _parse_step_face(path, entities, face_ref)
+                for face_ref in _parse_step_ref_list(shell_entity.args[1])
+            )
 
         features.append(
             _build_step_geometry_feature(

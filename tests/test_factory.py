@@ -1,11 +1,7 @@
 """Tests for the FME-style flat-attribute factory (citygml_energy/factory.py)."""
 
-import os
-import sys
-
 import pytest
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from lxml import etree
 
 from citygml_energy import (
     CS_BUILDING_CLASS,
@@ -18,6 +14,7 @@ from citygml_energy import (
     Building,
     FeatureFactory,
     PhotovoltaicCollector,
+    WallSurface,
     building_from_dict,
     building_unit_from_dict,
     constant_value_schedule_from_dict,
@@ -29,8 +26,6 @@ from citygml_energy import (
     occupants_from_dict,
     pv_collector_from_dict,
 )
-
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ---------------------------------------------------------------------------
 # Helpers: reusable attribute dicts
@@ -353,8 +348,6 @@ def test_factory_pv_attached_to_building():
 
 
 def test_factory_surface_attached_to_building():
-    from citygml_energy import WallSurface
-
     factory = FeatureFactory()
     factory.add("bldg_Building", {"gml_id": "bldg_1"})
     factory.add("bldg_WallSurface", {"gml_id": "wall_1", "gml_parent_id": "bldg_1"})
@@ -398,8 +391,6 @@ def test_factory_multiple_devices():
 
 def test_factory_output_is_well_formed_xml():
     """FeatureFactory produces well-formed XML for assembled models."""
-    from lxml import etree
-
     factory = FeatureFactory()
     factory.add("bldg_Building", {"gml_id": "bldg_1"})
     factory.add("nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"})

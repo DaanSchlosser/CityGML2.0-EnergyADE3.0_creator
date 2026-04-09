@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import Any
 
 from lxml import etree
 
@@ -52,7 +53,7 @@ class RawXmlElement:
             raise KeyError(f"Child element {prefix}:{local} not found")
         child.text = text
 
-    def xpath(self, expression: str, **kwargs):
+    def xpath(self, expression: str, **kwargs: Any) -> Any:
         return self.element.xpath(expression, **kwargs)
 
 

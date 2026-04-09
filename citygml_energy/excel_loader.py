@@ -36,6 +36,7 @@ from typing import Any
 
 from openpyxl import load_workbook
 
+from .core import CityModel
 from .input_loader import InputFileError, build_city_model_from_feature_collection
 
 PathLike = str | Path
@@ -64,7 +65,7 @@ def load_excel_feature_collection(path: PathLike) -> dict[str, Any]:
         wb.close()
 
 
-def load_city_model_from_excel(path: PathLike):
+def load_city_model_from_excel(path: PathLike) -> CityModel:
     """Load, validate, and build a CityModel from an Excel workbook."""
     input_path = Path(path)
     data = load_excel_feature_collection(input_path)

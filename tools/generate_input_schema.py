@@ -55,18 +55,17 @@ def main() -> None:
 
 
 def _build_feature_item_schema() -> dict:
-    conditions = []
-    for feature_type in list_supported_feature_types():
-        conditions.append(
-            {
-                "if": {"properties": {"feature_type": {"const": feature_type}}},
-                "then": {
-                    "properties": {
-                        "attributes": _build_attributes_schema(FEATURE_INPUT_FIELDS[feature_type])
-                    }
-                },
-            }
-        )
+    conditions = [
+        {
+            "if": {"properties": {"feature_type": {"const": feature_type}}},
+            "then": {
+                "properties": {
+                    "attributes": _build_attributes_schema(FEATURE_INPUT_FIELDS[feature_type])
+                }
+            },
+        }
+        for feature_type in list_supported_feature_types()
+    ]
 
     return {
         "type": "object",
