@@ -123,8 +123,5 @@ class BaseBuilder:
 
 
 def _format_number(v: float) -> str:
-    """Format a numeric value, preserving trailing decimals like 823.30."""
-    if isinstance(v, int):
-        return str(v)
-    # Python's float repr already handles most cases correctly
+    """Format a float value; Python's repr already preserves trailing decimals."""
     return str(v)
