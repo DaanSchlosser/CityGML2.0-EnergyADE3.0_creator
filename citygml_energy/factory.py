@@ -45,6 +45,8 @@ Quick usage
 
 from __future__ import annotations
 
+import dataclasses
+from collections.abc import Callable
 from typing import Any, ClassVar
 
 from .building import (
@@ -109,7 +111,7 @@ def _bool(v: Any) -> bool | None:
     return str(v).strip().lower() in ("true", "1", "yes")
 
 
-def _code(attrs: dict, key: str, cs_key: str | None = None) -> CodeValue | None:
+def _code(attrs: dict[str, Any], key: str, cs_key: str | None = None) -> CodeValue | None:
     val = _str(attrs.get(key))
     if val is None:
         return None
@@ -118,7 +120,7 @@ def _code(attrs: dict, key: str, cs_key: str | None = None) -> CodeValue | None:
     return CodeValue(val, cs)
 
 
-def _measure(attrs: dict, key: str, uom_key: str | None = None) -> MeasureValue | None:
+def _measure(attrs: dict[str, Any], key: str, uom_key: str | None = None) -> MeasureValue | None:
     val = _str(attrs.get(key))
     if val is None:
         return None
@@ -127,7 +129,7 @@ def _measure(attrs: dict, key: str, uom_key: str | None = None) -> MeasureValue 
     return MeasureValue(val, uom)
 
 
-def _scale(attrs: dict, key: str) -> ScaleValue | None:
+def _scale(attrs: dict[str, Any], key: str) -> ScaleValue | None:
     val = _str(attrs.get(key))
     if val is None:
         return None
@@ -139,7 +141,7 @@ def _scale(attrs: dict, key: str) -> ScaleValue | None:
 # ---------------------------------------------------------------------------
 
 
-def _make_metadata(attrs: dict, prefix: str = "nrg3_metadata") -> Metadata | None:
+def _make_metadata(attrs: dict[str, Any], prefix: str = "nrg3_metadata") -> Metadata | None:
     """Build a Metadata from flat attrs with a given prefix."""
     found = any(
         _str(attrs.get(f"{prefix}_{k}")) is not None
@@ -162,10 +164,13 @@ def _make_metadata(attrs: dict, prefix: str = "nrg3_metadata") -> Metadata | Non
     )
 
 
-def _make_qualified_volume(attrs: dict, prefix: str = "nrg3_bdgVolume") -> QualifiedVolume | None:
+def _make_qualified[Q: (QualifiedVolume, QualifiedArea, QualifiedHeight)](
+    cls: type[Q], attrs: dict[str, Any], prefix: str
+) -> Q | None:
+    """Generic constructor for QualifiedVolume / QualifiedArea / QualifiedHeight."""
     if _str(attrs.get(f"{prefix}_value")) is None:
         return None
-    return QualifiedVolume(
+    return cls(
         description=_str(attrs.get(f"{prefix}_description")),
         source=_str(attrs.get(f"{prefix}_source")),
         value=_measure(attrs, f"{prefix}_value", f"{prefix}_uom"),
@@ -173,29 +178,19 @@ def _make_qualified_volume(attrs: dict, prefix: str = "nrg3_bdgVolume") -> Quali
     )
 
 
-def _make_qualified_area(attrs: dict, prefix: str = "nrg3_bdgArea") -> QualifiedArea | None:
-    if _str(attrs.get(f"{prefix}_value")) is None:
-        return None
-    return QualifiedArea(
-        description=_str(attrs.get(f"{prefix}_description")),
-        source=_str(attrs.get(f"{prefix}_source")),
-        value=_measure(attrs, f"{prefix}_value", f"{prefix}_uom"),
-        type=_code(attrs, f"{prefix}_type", f"{prefix}_type_codeSpace"),
-    )
+def _make_qualified_volume(attrs: dict[str, Any], prefix: str = "nrg3_bdgVolume") -> QualifiedVolume | None:
+    return _make_qualified(QualifiedVolume, attrs, prefix)
 
 
-def _make_qualified_height(attrs: dict, prefix: str = "nrg3_bdgHeight") -> QualifiedHeight | None:
-    if _str(attrs.get(f"{prefix}_value")) is None:
-        return None
-    return QualifiedHeight(
-        description=_str(attrs.get(f"{prefix}_description")),
-        source=_str(attrs.get(f"{prefix}_source")),
-        value=_measure(attrs, f"{prefix}_value", f"{prefix}_uom"),
-        type=_code(attrs, f"{prefix}_type", f"{prefix}_type_codeSpace"),
-    )
+def _make_qualified_area(attrs: dict[str, Any], prefix: str = "nrg3_bdgArea") -> QualifiedArea | None:
+    return _make_qualified(QualifiedArea, attrs, prefix)
 
 
-def building_from_dict(attrs: dict) -> Building:
+def _make_qualified_height(attrs: dict[str, Any], prefix: str = "nrg3_bdgHeight") -> QualifiedHeight | None:
+    return _make_qualified(QualifiedHeight, attrs, prefix)
+
+
+def building_from_dict(attrs: dict[str, Any]) -> Building:
     """Create a :class:`Building` from a flat attribute dictionary.
 
     Attribute reference
@@ -316,12 +311,12 @@ def building_from_dict(attrs: dict) -> Building:
     )
 
 
-def building_part_from_dict(attrs: dict) -> BuildingPart:
-    building = building_from_dict(attrs)
-    return BuildingPart(**building.__dict__)
+def building_part_from_dict(attrs: dict[str, Any]) -> BuildingPart:
+    b = building_from_dict(attrs)
+    return BuildingPart(**{f.name: getattr(b, f.name) for f in dataclasses.fields(b)})
 
 
-def pv_collector_from_dict(attrs: dict) -> PhotovoltaicCollector:
+def pv_collector_from_dict(attrs: dict[str, Any]) -> PhotovoltaicCollector:
     """Create a :class:`PhotovoltaicCollector` from flat attributes.
 
     Attribute reference
@@ -414,7 +409,7 @@ def pv_collector_from_dict(attrs: dict) -> PhotovoltaicCollector:
     )
 
 
-def heat_pump_from_dict(attrs: dict) -> HeatPump:
+def heat_pump_from_dict(attrs: dict[str, Any]) -> HeatPump:
     """Create a :class:`HeatPump` from flat attributes.
 
     Attribute reference
@@ -453,7 +448,7 @@ def heat_pump_from_dict(attrs: dict) -> HeatPump:
     )
 
 
-def ev_charging_station_from_dict(attrs: dict) -> EVChargingStation:
+def ev_charging_station_from_dict(attrs: dict[str, Any]) -> EVChargingStation:
     """Create an :class:`EVChargingStation` from flat attributes.
 
     Attribute reference
@@ -494,7 +489,7 @@ def ev_charging_station_from_dict(attrs: dict) -> EVChargingStation:
     )
 
 
-def occupants_from_dict(attrs: dict) -> Occupants:
+def occupants_from_dict(attrs: dict[str, Any]) -> Occupants:
     """Create :class:`Occupants` from flat attributes.
 
     Attribute reference
@@ -538,7 +533,7 @@ def occupants_from_dict(attrs: dict) -> Occupants:
     )
 
 
-def epc_from_dict(attrs: dict) -> EnergyPerformanceCertificate:
+def epc_from_dict(attrs: dict[str, Any]) -> EnergyPerformanceCertificate:
     """Create an :class:`EnergyPerformanceCertificate` from flat attributes.
 
     Attribute reference
@@ -572,7 +567,7 @@ def epc_from_dict(attrs: dict) -> EnergyPerformanceCertificate:
     )
 
 
-def energy_from_dict(attrs: dict) -> Energy:
+def energy_from_dict(attrs: dict[str, Any]) -> Energy:
     """Create an :class:`Energy` resource from flat attributes.
 
     Attribute reference
@@ -632,7 +627,7 @@ def energy_from_dict(attrs: dict) -> Energy:
     )
 
 
-def building_unit_from_dict(attrs: dict) -> BuildingUnit:
+def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
     """Create a :class:`BuildingUnit` from flat attributes.
 
     Attribute reference
@@ -675,7 +670,7 @@ def building_unit_from_dict(attrs: dict) -> BuildingUnit:
     )
 
 
-def constant_value_schedule_from_dict(attrs: dict) -> ConstantValueSchedule:
+def constant_value_schedule_from_dict(attrs: dict[str, Any]) -> ConstantValueSchedule:
     """Create a :class:`ConstantValueSchedule` from flat attributes.
 
     Attribute reference
@@ -709,7 +704,7 @@ def constant_value_schedule_from_dict(attrs: dict) -> ConstantValueSchedule:
     )
 
 
-def address_from_dict(attrs: dict) -> Address:
+def address_from_dict(attrs: dict[str, Any]) -> Address:
     """Create a :class:`Address` from flat attributes.
 
     Attribute reference
@@ -734,7 +729,7 @@ def address_from_dict(attrs: dict) -> Address:
     )
 
 
-def composite_schedule_from_dict(attrs: dict) -> CompositeSchedule:
+def composite_schedule_from_dict(attrs: dict[str, Any]) -> CompositeSchedule:
     """Create a :class:`CompositeSchedule` from flat attributes.
 
     Attribute reference
@@ -774,8 +769,11 @@ def composite_schedule_from_dict(attrs: dict) -> CompositeSchedule:
     )
 
 
-def room_from_dict(attrs: dict) -> Room:
-    return Room(
+def _room_like_from_dict[RL: (Room, BuildingInstallation, IntBuildingInstallation)](
+    cls: type[RL], attrs: dict[str, Any]
+) -> RL:
+    """Generic constructor for Room, BuildingInstallation, IntBuildingInstallation."""
+    return cls(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
@@ -789,37 +787,19 @@ def room_from_dict(attrs: dict) -> Room:
     )
 
 
-def building_installation_from_dict(attrs: dict) -> BuildingInstallation:
-    return BuildingInstallation(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("core_creationDate")),
-        termination_date=_str(attrs.get("core_terminationDate")),
-        nrg3_identifier=_code(attrs, "nrg3_identifier"),
-        nrg3_metadata=_make_metadata(attrs),
-        bldg_class=_code(attrs, "bldg_class"),
-        bldg_function=_code(attrs, "bldg_function"),
-        bldg_usage=_code(attrs, "bldg_usage"),
-    )
+def room_from_dict(attrs: dict[str, Any]) -> Room:
+    return _room_like_from_dict(Room, attrs)
 
 
-def int_building_installation_from_dict(attrs: dict) -> IntBuildingInstallation:
-    return IntBuildingInstallation(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("core_creationDate")),
-        termination_date=_str(attrs.get("core_terminationDate")),
-        nrg3_identifier=_code(attrs, "nrg3_identifier"),
-        nrg3_metadata=_make_metadata(attrs),
-        bldg_class=_code(attrs, "bldg_class"),
-        bldg_function=_code(attrs, "bldg_function"),
-        bldg_usage=_code(attrs, "bldg_usage"),
-    )
+def building_installation_from_dict(attrs: dict[str, Any]) -> BuildingInstallation:
+    return _room_like_from_dict(BuildingInstallation, attrs)
 
 
-def _surface_from_dict(cls, attrs: dict):
+def int_building_installation_from_dict(attrs: dict[str, Any]) -> IntBuildingInstallation:
+    return _room_like_from_dict(IntBuildingInstallation, attrs)
+
+
+def _surface_from_dict(cls: type, attrs: dict[str, Any]) -> Any:
     """Generic boundary surface constructor."""
     return cls(
         gml_id=_str(attrs.get("gml_id")),
@@ -844,7 +824,7 @@ def _surface_from_dict(cls, attrs: dict):
     )
 
 
-def _opening_from_dict(cls, attrs: dict):
+def _opening_from_dict(cls: type, attrs: dict[str, Any]) -> Any:
     """Generic opening (Door / Window) constructor."""
     return cls(
         gml_id=_str(attrs.get("gml_id")),
@@ -899,14 +879,14 @@ _SURFACE_ATTR_DOC = """
 # Dispatch registry: FME writer name → (class, from_dict_function)
 # ---------------------------------------------------------------------------
 
-_REGISTRY: dict[str, Any] = {}
+_REGISTRY: dict[str, Callable[[dict[str, Any]], Any]] = {}
 
 
-def _is_stub(fn: Any) -> bool:
+def _is_stub(fn: Callable[[dict[str, Any]], Any]) -> bool:
     return bool(getattr(fn, "_is_stub", False))
 
 
-def _reg(fme_name: str, fn):
+def _reg(fme_name: str, fn: Callable[[dict[str, Any]], Any]) -> None:
     _REGISTRY[fme_name] = fn
 
 
@@ -948,7 +928,7 @@ _reg("core_Address", address_from_dict)
 def _stub(feature_type: str):
     """Return a stub callable that raises NotImplementedError for *feature_type*."""
 
-    def _fn(attrs: dict) -> None:
+    def _fn(attrs: dict[str, Any]) -> None:
         raise NotImplementedError(
             f"'{feature_type}' is not yet implemented.\n"
             f"Steps to implement:\n"
@@ -1056,7 +1036,7 @@ _reg("nrg3_ZoneWallSurface", _stub("nrg3_ZoneWallSurface"))
 _reg("nrg3_ZoneWindow", _stub("nrg3_ZoneWindow"))
 
 
-def create_feature(feature_type: str, attrs: dict) -> Any:
+def create_feature(feature_type: str, attrs: dict[str, Any]) -> Any:
     """Create a builder object from an FME-style feature type name and attributes.
 
     Parameters
@@ -1172,10 +1152,9 @@ class FeatureFactory:
     ) -> None:
         self._description = description
         self._name = name
-        # Ordered list of (feature_type, attrs, built_object)
-        self._rows: list[tuple] = []
+        self._rows: list[tuple[str, str | None, Any]] = []
 
-    def add(self, feature_type: str, attrs: dict) -> FeatureFactory:
+    def add(self, feature_type: str, attrs: dict[str, Any]) -> FeatureFactory:
         """Queue a feature row for assembly."""
         obj = create_feature(feature_type, attrs)
         parent_id = _str(attrs.get("gml_parent_id"))
