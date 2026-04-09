@@ -1,9 +1,21 @@
 """Structural comparison of generated GML against a reference file."""
+
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from pathlib import Path
+from typing import Dict, List, Optional, Union
 
 from lxml import etree
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SCHEMA_PATH = (
+    REPO_ROOT / "Energy_ADE-3.0beta8" / "xsd" / "Energy_ADE_3.0_beta8.xsd"
+)
+SCHEMA_OVERRIDES = {
+    "http://docs.oasis-open.org/election/external/xAL.xsd": (
+        REPO_ROOT / "Energy_ADE-3.0beta8" / "xsd" / "external" / "xAL.xsd"
+    ),
+}
 
 
 def compare_with_reference(
@@ -16,13 +28,71 @@ def compare_with_reference(
     - ``match`` (bool): True if structurally equivalent.
     - ``differences`` (list[str]): human-readable difference descriptions.
     """
-    gen_tree = etree.fromstring(generated_xml.encode("utf-8"))
+    parser = etree.XMLParser(remove_blank_text=True, remove_comments=True)
+    gen_tree = etree.fromstring(generated_xml.encode("utf-8"), parser=parser)
     with open(reference_path, "r", encoding="utf-8") as f:
-        ref_tree = etree.fromstring(f.read().encode("utf-8"))
+        ref_tree = etree.fromstring(f.read().encode("utf-8"), parser=parser)
 
     diffs: List[str] = []
     _compare_elements(gen_tree, ref_tree, "/", diffs)
     return {"match": len(diffs) == 0, "differences": diffs}
+
+
+def validate_xml_against_energy_ade_schema(
+    xml_text: str,
+    schema_path: Optional[Union[str, Path]] = None,
+) -> Dict[str, object]:
+    """Validate an XML string against the bundled Energy ADE schema."""
+    schema = _load_schema(schema_path)
+    parser = etree.XMLParser(remove_blank_text=True)
+    document = etree.ElementTree(
+        etree.fromstring(xml_text.encode("utf-8"), parser=parser)
+    )
+    is_valid = schema.validate(document)
+    errors = [
+        {
+            "line": entry.line,
+            "message": entry.message,
+            "filename": entry.filename,
+        }
+        for entry in schema.error_log
+    ]
+    return {"valid": is_valid, "errors": errors}
+
+
+def validate_file_against_energy_ade_schema(
+    xml_path: Union[str, Path],
+    schema_path: Optional[Union[str, Path]] = None,
+) -> Dict[str, object]:
+    """Validate an XML file against the bundled Energy ADE schema."""
+    schema = _load_schema(schema_path)
+    parser = etree.XMLParser(remove_blank_text=True)
+    document = etree.parse(str(xml_path), parser=parser)
+    is_valid = schema.validate(document)
+    errors = [
+        {
+            "line": entry.line,
+            "message": entry.message,
+            "filename": entry.filename,
+        }
+        for entry in schema.error_log
+    ]
+    return {"valid": is_valid, "errors": errors}
+
+
+class _SchemaResolver(etree.Resolver):
+    def resolve(self, url, pubid, context):
+        local_path = SCHEMA_OVERRIDES.get(url)
+        if local_path is not None:
+            return self.resolve_filename(str(local_path), context)
+        return None
+
+
+def _load_schema(schema_path: Optional[Union[str, Path]] = None) -> etree.XMLSchema:
+    parser = etree.XMLParser(remove_blank_text=True, no_network=False)
+    parser.resolvers.add(_SchemaResolver())
+    schema_doc = etree.parse(str(schema_path or DEFAULT_SCHEMA_PATH), parser=parser)
+    return etree.XMLSchema(schema_doc)
 
 
 def _compare_elements(
@@ -32,9 +102,14 @@ def _compare_elements(
     diffs: List[str],
 ) -> None:
     """Recursively compare two element trees."""
+    if not isinstance(gen.tag, str) or not isinstance(ref.tag, str):
+        return
+
     # Tag
     if gen.tag != ref.tag:
-        diffs.append(f"{path}: tag mismatch: generated={gen.tag} vs reference={ref.tag}")
+        diffs.append(
+            f"{path}: tag mismatch: generated={gen.tag} vs reference={ref.tag}"
+        )
         return  # no point comparing children if the tag differs
 
     current_path = f"{path}{_short_tag(gen.tag)}/"
@@ -56,13 +131,12 @@ def _compare_elements(
     ref_text = (ref.text or "").strip()
     if gen_text != ref_text:
         diffs.append(
-            f"{current_path}text: "
-            f"generated={gen_text!r} vs reference={ref_text!r}"
+            f"{current_path}text: generated={gen_text!r} vs reference={ref_text!r}"
         )
 
     # Children count
-    gen_children = list(gen)
-    ref_children = list(ref)
+    gen_children = [child for child in gen if isinstance(child.tag, str)]
+    ref_children = [child for child in ref if isinstance(child.tag, str)]
     if len(gen_children) != len(ref_children):
         diffs.append(
             f"{current_path}: child count mismatch: "
@@ -82,6 +156,8 @@ def _short_tag(tag: str) -> str:
     """Shorten ``{uri}local`` to ``prefix:local`` for readability."""
     from .namespaces import _URI_TO_PREFIX
 
+    if not isinstance(tag, str):
+        return str(tag)
     if tag.startswith("{"):
         uri, local = tag[1:].split("}", 1)
         prefix = _URI_TO_PREFIX.get(uri, uri)

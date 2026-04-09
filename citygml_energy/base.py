@@ -1,13 +1,15 @@
 """Abstract base builder with XSD-ordered serialization to lxml Elements."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, ClassVar, Dict, Optional, Tuple
 
 from lxml import etree
 
 from .namespaces import NS_GML, NSMAP
 from .types import CodeValue, MeasureValue, ScaleValue
+from .xml_support import RawXmlElement, append_xml_content
 
 
 @dataclass
@@ -88,10 +90,8 @@ class BaseBuilder:
         """Emit a single child element under *parent*."""
         child_tag = f"{{{ns}}}{local}"
 
-        if isinstance(value, BaseBuilder):
-            # Wrapper approach: <nrg3:device><nrg3:PV .../></nrg3:device>
-            wrapper = etree.SubElement(parent, child_tag)
-            value.to_xml(wrapper)
+        if isinstance(value, (BaseBuilder, RawXmlElement, etree._Element)):
+            append_xml_content(parent, child_tag, value)
 
         elif isinstance(value, (MeasureValue, ScaleValue)):
             child = etree.SubElement(parent, child_tag)

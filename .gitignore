@@ -1,3 +1,6 @@
 /tests/__pycache__
 /citygml_energy/__pycache__
 /examples/__pycache__
+/.pytest_cache/
+/.venv/
+/generated/

@@ -1,4 +1,5 @@
 """Tests for the FME-style flat-attribute factory (citygml_energy/factory.py)."""
+
 import os
 import sys
 
@@ -7,20 +8,6 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from citygml_energy import (
-    Building,
-    FeatureFactory,
-    PhotovoltaicCollector,
-    compare_with_reference,
-    create_feature,
-    list_feature_types,
-    building_from_dict,
-    pv_collector_from_dict,
-    heat_pump_from_dict,
-    ev_charging_station_from_dict,
-    occupants_from_dict,
-    epc_from_dict,
-    building_unit_from_dict,
-    constant_value_schedule_from_dict,
     CS_BUILDING_CLASS,
     CS_BUILDING_FUNCTION,
     CS_BUILDING_ROOFTYPE,
@@ -28,71 +15,84 @@ from citygml_energy import (
     CS_NRG3_BUILDING_TYPE,
     CS_NRG3_OWNERSHIP_TYPE,
     CS_NRG3_VOLUME_TYPE,
+    Building,
+    FeatureFactory,
+    PhotovoltaicCollector,
+    building_from_dict,
+    building_unit_from_dict,
+    constant_value_schedule_from_dict,
+    create_feature,
+    epc_from_dict,
+    ev_charging_station_from_dict,
+    heat_pump_from_dict,
+    list_feature_types,
+    occupants_from_dict,
+    pv_collector_from_dict,
 )
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REFERENCE = os.path.join(REPO_ROOT, "RenoDAT_GML_V1.gml")
 
 # ---------------------------------------------------------------------------
 # Helpers: reusable attribute dicts
 # ---------------------------------------------------------------------------
 
 _BUILDING_ATTRS = {
-    "gml_id":                           "id_building_1",
-    "gml_name":                         "Han solo's house",
-    "core_creationDate":                "2026-04-04",
-    "nrg3_identifier":                  "0503100000032914",
-    "nrg3_identifier_codeSpace":        "https://bagviewer.kadaster.nl/?objectId=0503100000032914",
-    "nrg3_metadata_author":             "Daan Schlosser",
-    "nrg3_metadata_acquisitionMethod":  "measurement",
-    "nrg3_metadata_owner":              "Han Solo",
-    "bldg_class":                       "1000",
-    "bldg_class_codeSpace":             CS_BUILDING_CLASS,
-    "bldg_function":                    "1000",
-    "bldg_function_codeSpace":          CS_BUILDING_FUNCTION,
-    "bldg_usage":                       "1000",
-    "bldg_usage_codeSpace":             CS_BUILDING_USAGE,
-    "bldg_yearOfConstruction":          "2020",
-    "bldg_roofType":                    "1030",
-    "bldg_roofType_codeSpace":          CS_BUILDING_ROOFTYPE,
-    "bldg_storeysAboveGround":          "3",
-    "bldg_storeysBelowGround":          "0",
-    "nrg3_bdgIsProtected":              "false",
-    "nrg3_bdgNumberOfBuildingUnits":    "1",
-    "nrg3_bdgOwnerName":                "Han Solo",
-    "nrg3_bdgOwnershipType":            "occupantPrivateOwner",
-    "nrg3_bdgOwnershipType_codeSpace":  CS_NRG3_OWNERSHIP_TYPE,
-    "nrg3_bdgType":                     "singleFamilyHouse",
-    "nrg3_bdgType_codeSpace":           CS_NRG3_BUILDING_TYPE,
-    "nrg3_bdgVolume_description":       "Building's gross volume of 3D model",
-    "nrg3_bdgVolume_source":            "3D model",
-    "nrg3_bdgVolume_value":             "823.30",
-    "nrg3_bdgVolume_uom":               "m3",
-    "nrg3_bdgVolume_type":              "grossVolume",
-    "nrg3_bdgVolume_type_codeSpace":    CS_NRG3_VOLUME_TYPE,
+    "gml_id": "id_building_1",
+    "gml_name": "Han solo's house",
+    "core_creationDate": "2026-04-04",
+    "nrg3_identifier": "0503100000032914",
+    "nrg3_identifier_codeSpace": "https://bagviewer.kadaster.nl/?objectId=0503100000032914",
+    "nrg3_metadata_author": "Daan Schlosser",
+    "nrg3_metadata_acquisitionMethod": "measurement",
+    "nrg3_metadata_owner": "Han Solo",
+    "bldg_class": "1000",
+    "bldg_class_codeSpace": CS_BUILDING_CLASS,
+    "bldg_function": "1000",
+    "bldg_function_codeSpace": CS_BUILDING_FUNCTION,
+    "bldg_usage": "1000",
+    "bldg_usage_codeSpace": CS_BUILDING_USAGE,
+    "bldg_yearOfConstruction": "2020",
+    "bldg_roofType": "1030",
+    "bldg_roofType_codeSpace": CS_BUILDING_ROOFTYPE,
+    "bldg_storeysAboveGround": "3",
+    "bldg_storeysBelowGround": "0",
+    "nrg3_bdgIsProtected": "false",
+    "nrg3_bdgNumberOfBuildingUnits": "1",
+    "nrg3_bdgOwnerName": "Han Solo",
+    "nrg3_bdgOwnershipType": "occupantPrivateOwner",
+    "nrg3_bdgOwnershipType_codeSpace": CS_NRG3_OWNERSHIP_TYPE,
+    "nrg3_bdgType": "singleFamilyHouse",
+    "nrg3_bdgType_codeSpace": CS_NRG3_BUILDING_TYPE,
+    "nrg3_bdgVolume_description": "Building's gross volume of 3D model",
+    "nrg3_bdgVolume_source": "3D model",
+    "nrg3_bdgVolume_value": "823.30",
+    "nrg3_bdgVolume_uom": "m3",
+    "nrg3_bdgVolume_type": "grossVolume",
+    "nrg3_bdgVolume_type_codeSpace": CS_NRG3_VOLUME_TYPE,
 }
 
 _PV_ATTRS = {
-    "gml_id":                   "pv_panel_1",
-    "gml_parent_id":            "id_building_1",
-    "gml_name":                 "PV collector (36x270 Wp)",
-    "core_creationDate":        "2026-04-04",
-    "nrg3_model":               "PV-16-270 PW",
-    "nrg3_yearOfInstallation":  "2020",
-    "nrg3_numberOfDevices":     "36",
-    "nrg3_installedPower":      "9720",
-    "nrg3_installedPower_uom":  "W",
-    "nrg3_azimuth":             "235.65",
-    "nrg3_azimuth_uom":         "deg",
-    "nrg3_inclination":         "44.51",
-    "nrg3_inclination_uom":     "deg",
-    "nrg3_cellType":            "unknown",
+    "gml_id": "pv_panel_1",
+    "gml_parent_id": "id_building_1",
+    "gml_name": "PV collector (36x270 Wp)",
+    "core_creationDate": "2026-04-04",
+    "nrg3_model": "PV-16-270 PW",
+    "nrg3_yearOfInstallation": "2020",
+    "nrg3_numberOfDevices": "36",
+    "nrg3_installedPower": "9720",
+    "nrg3_installedPower_uom": "W",
+    "nrg3_azimuth": "235.65",
+    "nrg3_azimuth_uom": "deg",
+    "nrg3_inclination": "44.51",
+    "nrg3_inclination_uom": "deg",
+    "nrg3_cellType": "unknown",
 }
 
 
 # ---------------------------------------------------------------------------
 # list_feature_types
 # ---------------------------------------------------------------------------
+
 
 def test_list_feature_types_contains_expected():
     types = list_feature_types()
@@ -116,9 +116,15 @@ def test_list_feature_types_is_sorted():
     assert types == sorted(types)
 
 
+def test_list_feature_types_excludes_unimplemented_by_default():
+    types = list_feature_types()
+    assert "nrg3_Zone" not in types
+
+
 # ---------------------------------------------------------------------------
 # create_feature dispatch
 # ---------------------------------------------------------------------------
+
 
 def test_create_feature_building():
     obj = create_feature("bldg_Building", {"gml_id": "b1"})
@@ -140,6 +146,7 @@ def test_create_feature_unknown_raises():
 # ---------------------------------------------------------------------------
 # building_from_dict
 # ---------------------------------------------------------------------------
+
 
 def test_building_from_dict_basic_fields():
     b = building_from_dict(_BUILDING_ATTRS)
@@ -196,6 +203,7 @@ def test_building_from_dict_empty():
 # pv_collector_from_dict
 # ---------------------------------------------------------------------------
 
+
 def test_pv_from_dict_fields():
     pv = pv_collector_from_dict(_PV_ATTRS)
     assert pv.gml_id == "pv_panel_1"
@@ -214,16 +222,19 @@ def test_pv_from_dict_fields():
 # heat_pump_from_dict
 # ---------------------------------------------------------------------------
 
+
 def test_heat_pump_from_dict():
-    hp = heat_pump_from_dict({
-        "gml_id": "hp_1",
-        "nrg3_model": "Daikin X",
-        "nrg3_installedPower": "5000",
-        "nrg3_installedPower_uom": "W",
-        "nrg3_heatSource": "airSource",
-        "nrg3_copSourceTemperature": "7",
-        "nrg3_copSourceTemperature_uom": "degC",
-    })
+    hp = heat_pump_from_dict(
+        {
+            "gml_id": "hp_1",
+            "nrg3_model": "Daikin X",
+            "nrg3_installedPower": "5000",
+            "nrg3_installedPower_uom": "W",
+            "nrg3_heatSource": "airSource",
+            "nrg3_copSourceTemperature": "7",
+            "nrg3_copSourceTemperature_uom": "degC",
+        }
+    )
     assert hp.gml_id == "hp_1"
     assert hp.model == "Daikin X"
     assert hp.heat_source.value == "airSource"
@@ -234,13 +245,16 @@ def test_heat_pump_from_dict():
 # ev_charging_station_from_dict
 # ---------------------------------------------------------------------------
 
+
 def test_ev_from_dict():
-    ev = ev_charging_station_from_dict({
-        "gml_id": "ev_1",
-        "nrg3_evType": "normalCharger",
-        "nrg3_chargingSpeedLevel": "slow",
-        "nrg3_hasLoadManagement": "true",
-    })
+    ev = ev_charging_station_from_dict(
+        {
+            "gml_id": "ev_1",
+            "nrg3_evType": "normalCharger",
+            "nrg3_chargingSpeedLevel": "slow",
+            "nrg3_hasLoadManagement": "true",
+        }
+    )
     assert ev.gml_id == "ev_1"
     assert ev.ev_type.value == "normalCharger"
     assert ev.has_load_management is True
@@ -250,12 +264,15 @@ def test_ev_from_dict():
 # occupants_from_dict
 # ---------------------------------------------------------------------------
 
+
 def test_occupants_from_dict():
-    occ = occupants_from_dict({
-        "gml_id": "occ_1",
-        "nrg3_occupantType": "residents",
-        "nrg3_numberOfOccupants": "4",
-    })
+    occ = occupants_from_dict(
+        {
+            "gml_id": "occ_1",
+            "nrg3_occupantType": "residents",
+            "nrg3_numberOfOccupants": "4",
+        }
+    )
     assert occ.gml_id == "occ_1"
     assert occ.occupant_type.value == "residents"
     assert occ.number_of_occupants == 4
@@ -265,13 +282,16 @@ def test_occupants_from_dict():
 # epc_from_dict
 # ---------------------------------------------------------------------------
 
+
 def test_epc_from_dict():
-    epc = epc_from_dict({
-        "gml_id": "epc_1",
-        "nrg3_epcLabel": "A",
-        "nrg3_epcValue": "50",
-        "nrg3_epcValue_uom": "kWh/(m^2*a)",
-    })
+    epc = epc_from_dict(
+        {
+            "gml_id": "epc_1",
+            "nrg3_epcLabel": "A",
+            "nrg3_epcValue": "50",
+            "nrg3_epcValue_uom": "kWh/(m^2*a)",
+        }
+    )
     assert epc.label == "A"
     assert epc.value.text == "50"
     assert epc.value.uom == "kWh/(m^2*a)"
@@ -281,13 +301,16 @@ def test_epc_from_dict():
 # building_unit_from_dict
 # ---------------------------------------------------------------------------
 
+
 def test_building_unit_from_dict():
-    bu = building_unit_from_dict({
-        "gml_id": "bu_1",
-        "nrg3_buType": "apartment",
-        "nrg3_numberOfRooms": "3",
-        "nrg3_ownerName": "Jane Doe",
-    })
+    bu = building_unit_from_dict(
+        {
+            "gml_id": "bu_1",
+            "nrg3_buType": "apartment",
+            "nrg3_numberOfRooms": "3",
+            "nrg3_ownerName": "Jane Doe",
+        }
+    )
     assert bu.gml_id == "bu_1"
     assert bu.bu_type.value == "apartment"
     assert bu.number_of_rooms == 3
@@ -298,12 +321,15 @@ def test_building_unit_from_dict():
 # constant_value_schedule_from_dict
 # ---------------------------------------------------------------------------
 
+
 def test_constant_value_schedule_from_dict():
-    sched = constant_value_schedule_from_dict({
-        "gml_id": "sched_1",
-        "nrg3_scheduleValue": "1.0",
-        "nrg3_scheduleValue_uom": "unit interval",
-    })
+    sched = constant_value_schedule_from_dict(
+        {
+            "gml_id": "sched_1",
+            "nrg3_scheduleValue": "1.0",
+            "nrg3_scheduleValue_uom": "unit interval",
+        }
+    )
     assert sched.gml_id == "sched_1"
     assert sched.value.text == "1.0"
     assert sched.value.uom == "unit interval"
@@ -313,10 +339,13 @@ def test_constant_value_schedule_from_dict():
 # FeatureFactory: parent-child assembly
 # ---------------------------------------------------------------------------
 
+
 def test_factory_pv_attached_to_building():
     factory = FeatureFactory()
     factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add("nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"})
+    factory.add(
+        "nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"}
+    )
     model = factory.build()
     # Should have exactly one member (the building)
     assert len(model.city_object_members) == 1
@@ -327,6 +356,7 @@ def test_factory_pv_attached_to_building():
 
 def test_factory_surface_attached_to_building():
     from citygml_energy import WallSurface
+
     factory = FeatureFactory()
     factory.add("bldg_Building", {"gml_id": "bldg_1"})
     factory.add("bldg_WallSurface", {"gml_id": "wall_1", "gml_parent_id": "bldg_1"})
@@ -338,10 +368,13 @@ def test_factory_surface_attached_to_building():
 
 def test_factory_missing_parent_raises():
     factory = FeatureFactory()
-    factory.add("nrg3_PhotovoltaicCollector", {
-        "gml_id": "pv_1",
-        "gml_parent_id": "nonexistent_building",
-    })
+    factory.add(
+        "nrg3_PhotovoltaicCollector",
+        {
+            "gml_id": "pv_1",
+            "gml_parent_id": "nonexistent_building",
+        },
+    )
     with pytest.raises(ValueError, match="gml_parent_id"):
         factory.build()
 
@@ -357,7 +390,9 @@ def test_factory_no_parent_id_is_top_level():
 def test_factory_multiple_devices():
     factory = FeatureFactory()
     factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add("nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"})
+    factory.add(
+        "nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"}
+    )
     factory.add("nrg3_HeatPump", {"gml_id": "hp_1", "gml_parent_id": "bldg_1"})
     factory.add("nrg3_EVChargingStation", {"gml_id": "ev_1", "gml_parent_id": "bldg_1"})
     model = factory.build()
@@ -366,29 +401,23 @@ def test_factory_multiple_devices():
 
 
 # ---------------------------------------------------------------------------
-# Golden-file test: factory output matches reference
+# RenoDAT JSON factory entry point
 # ---------------------------------------------------------------------------
 
-def test_factory_matches_reference():
-    """FeatureFactory-generated GML structurally matches the reference file."""
+
+def test_factory_matches_json_renodat_output():
+    """The factory entry point stays identical to the JSON RenoDAT example."""
     sys.path.insert(0, os.path.join(REPO_ROOT, "examples"))
+    from create_renodat import create_renodat
     from create_renodat_factory import create_renodat_via_factory
 
-    model = create_renodat_via_factory()
-    generated = model.to_string()
-    result = compare_with_reference(generated, REFERENCE)
-    if not result["match"]:
-        for d in result["differences"]:
-            print(f"  DIFF: {d}")
-    assert result["match"], (
-        f"Found {len(result['differences'])} difference(s):\n"
-        + "\n".join(f"  - {d}" for d in result["differences"])
-    )
+    assert create_renodat_via_factory().to_string() == create_renodat().to_string()
 
 
 def test_factory_output_is_well_formed_xml():
     """FeatureFactory produces well-formed XML."""
     from lxml import etree
+
     sys.path.insert(0, os.path.join(REPO_ROOT, "examples"))
     from create_renodat_factory import create_renodat_via_factory
 
@@ -398,5 +427,5 @@ def test_factory_output_is_well_formed_xml():
 
 
 if __name__ == "__main__":
-    test_factory_matches_reference()
+    test_factory_matches_json_renodat_output()
     print("All factory tests passed!")

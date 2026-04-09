@@ -1,0 +1,74 @@
+{
+  "$schema": "../schemas/citygml_energy_input.schema.json",
+  "schema_version": 1,
+  "city_model": {
+    "description": "This is a description",
+    "name": "RenoDAT City"
+  },
+  "geometry_sources": [
+    {
+      "type": "obj-renodat-lod3",
+      "path": "../Owner-Occupier1_LOD3.0_OBJ.obj",
+      "target_building_id": "id_building_1",
+      "target_pv_id": "pv_panel_1"
+    }
+  ],
+  "features": [
+    {
+      "feature_type": "bldg_Building",
+      "attributes": {
+        "gml_id": "id_building_1",
+        "gml_name": "Han solo's house",
+        "core_creationDate": "2026-04-04",
+        "nrg3_identifier": "0503100000032914",
+        "nrg3_identifier_codeSpace": "https://bagviewer.kadaster.nl/?objectId=0503100000032914",
+        "nrg3_metadata_author": "Daan Schlosser",
+        "nrg3_metadata_acquisitionMethod": "measurement",
+        "nrg3_metadata_owner": "Han Solo",
+        "bldg_class": "1000",
+        "bldg_class_codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml",
+        "bldg_function": "1000",
+        "bldg_function_codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml",
+        "bldg_usage": "1000",
+        "bldg_usage_codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml",
+        "bldg_yearOfConstruction": 2020,
+        "bldg_roofType": "1030",
+        "bldg_roofType_codeSpace": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml",
+        "bldg_storeysAboveGround": 3,
+        "bldg_storeysBelowGround": 0,
+        "nrg3_bdgIsProtected": false,
+        "nrg3_bdgNumberOfBuildingUnits": 1,
+        "nrg3_bdgOwnerName": "Han Solo",
+        "nrg3_bdgOwnershipType": "occupantPrivateOwner",
+        "nrg3_bdgOwnershipType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml",
+        "nrg3_bdgType": "singleFamilyHouse",
+        "nrg3_bdgType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingTypeValue.xml",
+        "nrg3_bdgVolume_description": "Building's gross volume of 3D model",
+        "nrg3_bdgVolume_source": "3D model",
+        "nrg3_bdgVolume_value": "823.30",
+        "nrg3_bdgVolume_uom": "m3",
+        "nrg3_bdgVolume_type": "grossVolume",
+        "nrg3_bdgVolume_type_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/VolumeTypeValue.xml"
+      }
+    },
+    {
+      "feature_type": "nrg3_PhotovoltaicCollector",
+      "attributes": {
+        "gml_id": "pv_panel_1",
+        "gml_parent_id": "id_building_1",
+        "gml_name": "PV collector (36x270 Wp)",
+        "core_creationDate": "2026-04-04",
+        "nrg3_model": "PV-16-270 PW",
+        "nrg3_yearOfInstallation": 2020,
+        "nrg3_numberOfDevices": 36,
+        "nrg3_installedPower": 9720,
+        "nrg3_installedPower_uom": "W",
+        "nrg3_azimuth": "235.65",
+        "nrg3_azimuth_uom": "deg",
+        "nrg3_inclination": "44.51",
+        "nrg3_inclination_uom": "deg",
+        "nrg3_cellType": "unknown"
+      }
+    }
+  ]
+}

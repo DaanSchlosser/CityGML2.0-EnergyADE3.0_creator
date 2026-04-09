@@ -1,17 +1,20 @@
 """CityModel root element and Address."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, List, Optional
 
 from lxml import etree
 
-from .namespaces import NS_CORE, NS_GML, NS_XAL, NSMAP, qn
+from .namespaces import NS_GML, NS_XAL, NSMAP, qn
+from .xml_support import append_xml_content
 
 
 @dataclass
 class Envelope:
     """``gml:Envelope`` with SRS and corner coordinates."""
+
     srs_name: str
     srs_dimension: int = 3
     lower_corner: str = ""
@@ -32,6 +35,7 @@ class Envelope:
 @dataclass
 class Address:
     """``core:Address`` containing ``xAL:AddressDetails``."""
+
     country: Optional[str] = None
     locality: Optional[str] = None
     thoroughfare: Optional[str] = None
@@ -57,20 +61,14 @@ class Address:
                 if self.thoroughfare:
                     th = etree.SubElement(loc, f"{{{NS_XAL}}}Thoroughfare")
                     th.set("Type", "Street")
-                    tn = etree.SubElement(
-                        th, f"{{{NS_XAL}}}ThoroughfareName"
-                    )
+                    tn = etree.SubElement(th, f"{{{NS_XAL}}}ThoroughfareName")
                     tn.text = self.thoroughfare
                     if self.thoroughfare_number:
-                        tnum = etree.SubElement(
-                            th, f"{{{NS_XAL}}}ThoroughfareNumber"
-                        )
+                        tnum = etree.SubElement(th, f"{{{NS_XAL}}}ThoroughfareNumber")
                         tnum.text = self.thoroughfare_number
                 if self.postal_code:
                     pc = etree.SubElement(loc, f"{{{NS_XAL}}}PostalCode")
-                    pcn = etree.SubElement(
-                        pc, f"{{{NS_XAL}}}PostalCodeNumber"
-                    )
+                    pcn = etree.SubElement(pc, f"{{{NS_XAL}}}PostalCodeNumber")
                     pcn.text = self.postal_code
         return addr
 
@@ -78,14 +76,21 @@ class Address:
 @dataclass
 class CityModel:
     """Top-level ``core:CityModel`` container."""
+
     gml_description: Optional[str] = None
     gml_name: Optional[str] = None
     envelope: Optional[Envelope] = None
     city_object_members: List[Any] = field(default_factory=list)
+    appearance_members: List[Any] = field(default_factory=list)
 
     def add(self, city_object: Any) -> "CityModel":
         """Add a city object (Building, etc.) as a cityObjectMember."""
         self.city_object_members.append(city_object)
+        return self
+
+    def add_appearance(self, appearance: Any) -> "CityModel":
+        """Add an appearance object as an ``app:appearanceMember``."""
+        self.appearance_members.append(appearance)
         return self
 
     def to_xml(self) -> etree._Element:
@@ -103,8 +108,10 @@ class CityModel:
             self.envelope.to_xml(root)
 
         for member in self.city_object_members:
-            wrapper = etree.SubElement(root, qn("core", "cityObjectMember"))
-            member.to_xml(wrapper)
+            append_xml_content(root, qn("core", "cityObjectMember"), member)
+
+        for appearance in self.appearance_members:
+            append_xml_content(root, qn("app", "appearanceMember"), appearance)
 
         return root
 

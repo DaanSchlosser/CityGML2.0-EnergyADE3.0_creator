@@ -1,110 +1,90 @@
-"""Recreate the RenoDAT_GML_V1.gml file using the citygml_energy API.
+"""Build RenoDAT output from a data-only JSON feature input file."""
 
-This script demonstrates the full API for creating a CityGML 2.0 file
-with Energy ADE 3.0 extensions.
-"""
+from __future__ import annotations
+
+import argparse
 import os
 import sys
+from pathlib import Path
 
-# Allow running from repo root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from citygml_energy import (
-    Building,
-    CodeValue,
-    GMLDocument,
-    MeasureValue,
-    Metadata,
-    PhotovoltaicCollector,
-    QualifiedVolume,
-    CS_BUILDING_CLASS,
-    CS_BUILDING_FUNCTION,
-    CS_BUILDING_ROOFTYPE,
-    CS_BUILDING_USAGE,
-    CS_NRG3_BUILDING_TYPE,
-    CS_NRG3_OWNERSHIP_TYPE,
-    CS_NRG3_VOLUME_TYPE,
+    CityModel,
+    load_city_model_from_feature_collection,
+    validate_file_against_energy_ade_schema,
 )
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+INPUT = REPO_ROOT / "inputs" / "renodat_input.json"
+OUTPUT = REPO_ROOT / "generated" / "renodat.gml"
 
-def create_renodat() -> GMLDocument:
-    """Build the RenoDAT example city model."""
-    doc = GMLDocument(
-        description="This is a description",
-        name="RenoDAT City",
-    )
 
-    # --- PV collector ---
-    pv = PhotovoltaicCollector(
-        gml_id="pv_panel_1",
-        gml_name="PV collector (36x270 Wp)",
-        creation_date="2026-04-04",
-        model="PV-16-270 PW",
-        year_of_installation=2020,
-        number_of_devices=36,
-        installed_power=MeasureValue(9720, "W"),
-        azimuth=MeasureValue(235.65, "deg"),
-        inclination=MeasureValue(44.51, "deg"),
-        cell_type=CodeValue("unknown"),
-    )
+def create_renodat(input_path: Path | str = INPUT) -> CityModel:
+    """Build the RenoDAT example CityModel from JSON input only."""
+    return load_city_model_from_feature_collection(input_path)
 
-    # --- Building ---
-    building = Building(
-        gml_id="id_building_1",
-        gml_name="Han solo's house",
-        creation_date="2026-04-04",
-        # Energy ADE CityObject extensions
-        devices=[pv],
-        nrg3_identifier=CodeValue(
-            "0503100000032914",
-            code_space="https://bagviewer.kadaster.nl/?objectId=0503100000032914",
-        ),
-        nrg3_metadata=Metadata(
-            author="Daan Schlosser",
-            acquisition_method="measurement",
-            owner="Han Solo",
-        ),
-        # CityGML building properties
-        bldg_class=CodeValue("1000", CS_BUILDING_CLASS),
-        bldg_function=CodeValue("1000", CS_BUILDING_FUNCTION),
-        bldg_usage=CodeValue("1000", CS_BUILDING_USAGE),
-        year_of_construction=2020,
-        roof_type=CodeValue("1030", CS_BUILDING_ROOFTYPE),
-        storeys_above_ground=3,
-        storeys_below_ground=0,
-        # Energy ADE building extensions
-        bdg_is_protected=False,
-        bdg_number_of_building_units=1,
-        bdg_owner_name="Han Solo",
-        bdg_ownership_type=CodeValue(
-            "occupantPrivateOwner", CS_NRG3_OWNERSHIP_TYPE
-        ),
-        bdg_type=CodeValue("singleFamilyHouse", CS_NRG3_BUILDING_TYPE),
-        bdg_volumes=[
-            QualifiedVolume(
-                description="Building's gross volume of 3D model",
-                source="3D model",
-                value=MeasureValue("823.30", "m3"),
-                type=CodeValue("grossVolume", CS_NRG3_VOLUME_TYPE),
+
+def write_renodat_file(
+    input_path: Path | str = INPUT,
+    output_path: Path | str = OUTPUT,
+    *,
+    validate_against_schema: bool = True,
+) -> tuple[CityModel, dict[str, object] | None]:
+    """Build RenoDAT from JSON input, write it, and optionally validate it."""
+    model = create_renodat(input_path=input_path)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    model.write(str(output_path))
+
+    validation = None
+    if validate_against_schema:
+        validation = validate_file_against_energy_ade_schema(output_path)
+        if not validation["valid"]:
+            messages = "\n".join(
+                f"line {entry['line']}: {entry['message']}"
+                for entry in validation["errors"][:20]
             )
-        ],
-    )
+            raise ValueError(f"Generated file is not schema-valid:\n{messages}")
 
-    doc.add_building(building)
-    return doc
+    return model, validation
+
+
+def _build_argument_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=INPUT,
+        help="JSON feature input file to convert into CityGML.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=OUTPUT,
+        help="Destination path for the generated GML file.",
+    )
+    parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="Skip schema validation after writing the output file.",
+    )
+    return parser
 
 
 if __name__ == "__main__":
-    doc = create_renodat()
-    out_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "output_renodat.gml",
-    )
-    doc.write(out_path)
-    print(f"Written to {out_path}")
+    parser = _build_argument_parser()
+    args = parser.parse_args()
 
-    # Quick preview
-    print("\n--- Generated GML (first 60 lines) ---")
-    text = doc.to_string()
-    for i, line in enumerate(text.split("\n")[:60], 1):
-        print(f"  {line}")
+    model, validation = write_renodat_file(
+        input_path=args.input,
+        output_path=args.output,
+        validate_against_schema=not args.no_validate,
+    )
+
+    print(f"Written to {args.output}")
+    print(f"Top-level city objects: {len(model.city_object_members)}")
+    if validation is None:
+        print("Schema validation skipped")
+    else:
+        print("Schema validation: OK")

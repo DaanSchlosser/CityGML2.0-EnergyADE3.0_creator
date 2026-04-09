@@ -42,34 +42,49 @@ Quick usage
     })
     city_model = factory.build()
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
 from .building import (
-    Building, BuildingInstallation, BuildingPart,
-    CeilingSurface, ClosureSurface, Door, FloorSurface,
-    GroundSurface, IntBuildingInstallation, OuterCeilingSurface,
-    OuterFloorSurface, RoofSurface, Room, WallSurface, Window,
+    Building,
+    BuildingInstallation,
+    BuildingPart,
+    CeilingSurface,
+    ClosureSurface,
+    Door,
+    FloorSurface,
+    GroundSurface,
+    IntBuildingInstallation,
+    OuterCeilingSurface,
+    OuterFloorSurface,
+    RoofSurface,
+    Room,
+    WallSurface,
+    Window,
 )
 from .core import Address, CityModel
 from .energy_ade import (
-    BuildingUnit, CompositeSchedule, ConstantValueSchedule, DeviceOperation,
-    EnergyPerformanceCertificate, EVChargingStation, HeatPump, Metadata,
-    Occupants, PhotovoltaicCollector, QualifiedArea, QualifiedHeight,
-    QualifiedVolume, ScheduleComponent,
-)
-from .namespaces import (
-    CS_BUILDING_CLASS, CS_BUILDING_FUNCTION, CS_BUILDING_ROOFTYPE,
-    CS_BUILDING_USAGE, CS_NRG3_BUILDING_TYPE, CS_NRG3_OWNERSHIP_TYPE,
-    CS_NRG3_VOLUME_TYPE, CS_NRG3_AREA_TYPE, CS_NRG3_HEIGHT_TYPE,
+    BuildingUnit,
+    CompositeSchedule,
+    ConstantValueSchedule,
+    EnergyPerformanceCertificate,
+    EVChargingStation,
+    HeatPump,
+    Metadata,
+    Occupants,
+    PhotovoltaicCollector,
+    QualifiedArea,
+    QualifiedHeight,
+    QualifiedVolume,
 )
 from .types import CodeValue, MeasureValue, ScaleValue
-
 
 # ---------------------------------------------------------------------------
 # Low-level helpers
 # ---------------------------------------------------------------------------
+
 
 def _str(v: Any) -> Optional[str]:
     return str(v).strip() if v is not None and str(v).strip() != "" else None
@@ -102,7 +117,9 @@ def _code(attrs: Dict, key: str, cs_key: Optional[str] = None) -> Optional[CodeV
     return CodeValue(val, cs)
 
 
-def _measure(attrs: Dict, key: str, uom_key: Optional[str] = None) -> Optional[MeasureValue]:
+def _measure(
+    attrs: Dict, key: str, uom_key: Optional[str] = None
+) -> Optional[MeasureValue]:
     val = _str(attrs.get(key))
     if val is None:
         return None
@@ -122,11 +139,19 @@ def _scale(attrs: Dict, key: str) -> Optional[ScaleValue]:
 # Per-class constructors
 # ---------------------------------------------------------------------------
 
+
 def _make_metadata(attrs: Dict, prefix: str = "nrg3_metadata") -> Optional[Metadata]:
     """Build a Metadata from flat attrs with a given prefix."""
-    found = any(_str(attrs.get(f"{prefix}_{k}")) is not None
-                for k in ("author", "acquisitionMethod", "owner",
-                          "qualityDescription", "source"))
+    found = any(
+        _str(attrs.get(f"{prefix}_{k}")) is not None
+        for k in (
+            "author",
+            "acquisitionMethod",
+            "owner",
+            "qualityDescription",
+            "source",
+        )
+    )
     if not found:
         return None
     return Metadata(
@@ -138,7 +163,9 @@ def _make_metadata(attrs: Dict, prefix: str = "nrg3_metadata") -> Optional[Metad
     )
 
 
-def _make_qualified_volume(attrs: Dict, prefix: str = "nrg3_bdgVolume") -> Optional[QualifiedVolume]:
+def _make_qualified_volume(
+    attrs: Dict, prefix: str = "nrg3_bdgVolume"
+) -> Optional[QualifiedVolume]:
     if _str(attrs.get(f"{prefix}_value")) is None:
         return None
     return QualifiedVolume(
@@ -149,7 +176,9 @@ def _make_qualified_volume(attrs: Dict, prefix: str = "nrg3_bdgVolume") -> Optio
     )
 
 
-def _make_qualified_area(attrs: Dict, prefix: str = "nrg3_bdgArea") -> Optional[QualifiedArea]:
+def _make_qualified_area(
+    attrs: Dict, prefix: str = "nrg3_bdgArea"
+) -> Optional[QualifiedArea]:
     if _str(attrs.get(f"{prefix}_value")) is None:
         return None
     return QualifiedArea(
@@ -160,7 +189,9 @@ def _make_qualified_area(attrs: Dict, prefix: str = "nrg3_bdgArea") -> Optional[
     )
 
 
-def _make_qualified_height(attrs: Dict, prefix: str = "nrg3_bdgHeight") -> Optional[QualifiedHeight]:
+def _make_qualified_height(
+    attrs: Dict, prefix: str = "nrg3_bdgHeight"
+) -> Optional[QualifiedHeight]:
     if _str(attrs.get(f"{prefix}_value")) is None:
         return None
     return QualifiedHeight(
@@ -262,6 +293,9 @@ def building_from_dict(attrs: Dict) -> Building:
         # Energy ADE CityObject extensions
         nrg3_identifier=_code(attrs, "nrg3_identifier"),
         nrg3_metadata=_make_metadata(attrs),
+        nrg3_status=_code(attrs, "nrg3_status"),
+        nrg3_valid_from=_str(attrs.get("nrg3_validFrom")),
+        nrg3_valid_to=_str(attrs.get("nrg3_validTo")),
         # bldg properties
         bldg_class=_code(attrs, "bldg_class"),
         bldg_function=_code(attrs, "bldg_function"),
@@ -272,6 +306,8 @@ def building_from_dict(attrs: Dict) -> Building:
         measured_height=_measure(attrs, "bldg_measuredHeight"),
         storeys_above_ground=_int(attrs.get("bldg_storeysAboveGround")),
         storeys_below_ground=_int(attrs.get("bldg_storeysBelowGround")),
+        storey_heights_above_ground=_str(attrs.get("bldg_storeyHeightsAboveGround")),
+        storey_heights_below_ground=_str(attrs.get("bldg_storeyHeightsBelowGround")),
         # Energy ADE building extensions
         bdg_is_protected=_bool(attrs.get("nrg3_bdgIsProtected")),
         bdg_number_of_building_units=_int(attrs.get("nrg3_bdgNumberOfBuildingUnits")),
@@ -285,6 +321,11 @@ def building_from_dict(attrs: Dict) -> Building:
         bdg_areas=[area] if area else [],
         bdg_heights=[height] if height else [],
     )
+
+
+def building_part_from_dict(attrs: Dict) -> BuildingPart:
+    building = building_from_dict(attrs)
+    return BuildingPart(**building.__dict__)
 
 
 def pv_collector_from_dict(attrs: Dict) -> PhotovoltaicCollector:
@@ -355,6 +396,7 @@ def pv_collector_from_dict(attrs: Dict) -> PhotovoltaicCollector:
         gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
         creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
         nrg3_identifier=_code(attrs, "nrg3_identifier"),
         valid_from=_str(attrs.get("nrg3_validFrom")),
         valid_to=_str(attrs.get("nrg3_validTo")),
@@ -366,9 +408,15 @@ def pv_collector_from_dict(attrs: Dict) -> PhotovoltaicCollector:
         nominal_efficiency=_measure(attrs, "nrg3_nominalEfficiency"),
         efficiency_indicator=_str(attrs.get("nrg3_efficiencyIndicator")),
         heat_dissipation=_measure(attrs, "nrg3_heatDissipation"),
-        heat_dissipation_convective_fraction=_scale(attrs, "nrg3_heatDissipationConvectiveFraction"),
-        heat_dissipation_latent_fraction=_scale(attrs, "nrg3_heatDissipationLatentFraction"),
-        heat_dissipation_radiant_fraction=_scale(attrs, "nrg3_heatDissipationRadiantFraction"),
+        heat_dissipation_convective_fraction=_scale(
+            attrs, "nrg3_heatDissipationConvectiveFraction"
+        ),
+        heat_dissipation_latent_fraction=_scale(
+            attrs, "nrg3_heatDissipationLatentFraction"
+        ),
+        heat_dissipation_radiant_fraction=_scale(
+            attrs, "nrg3_heatDissipationRadiantFraction"
+        ),
         module_area=_measure(attrs, "nrg3_moduleArea"),
         aperture_area=_measure(attrs, "nrg3_apertureArea"),
         azimuth=_measure(attrs, "nrg3_azimuth"),
@@ -398,6 +446,7 @@ def heat_pump_from_dict(attrs: Dict) -> HeatPump:
         gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
         creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
         nrg3_identifier=_code(attrs, "nrg3_identifier"),
         valid_from=_str(attrs.get("nrg3_validFrom")),
         valid_to=_str(attrs.get("nrg3_validTo")),
@@ -439,6 +488,7 @@ def ev_charging_station_from_dict(attrs: Dict) -> EVChargingStation:
         gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
         creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
         nrg3_identifier=_code(attrs, "nrg3_identifier"),
         valid_from=_str(attrs.get("nrg3_validFrom")),
         valid_to=_str(attrs.get("nrg3_validTo")),
@@ -476,16 +526,30 @@ def occupants_from_dict(attrs: Dict) -> Occupants:
     """
     return Occupants(
         gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
+        creation_date=_str(attrs.get("nrg3_creationDate")),
+        termination_date=_str(attrs.get("nrg3_terminationDate")),
+        occ_metadata=_make_metadata(attrs),
+        identifier=_code(attrs, "nrg3_identifier"),
+        valid_from=_str(attrs.get("nrg3_validFrom")),
+        valid_to=_str(attrs.get("nrg3_validTo")),
+        status=_code(attrs, "nrg3_status"),
         occupant_type=_code(attrs, "nrg3_occupantType"),
         number_of_occupants=_int(attrs.get("nrg3_numberOfOccupants")),
         average_diet_type=_code(attrs, "nrg3_averageDietType"),
         average_income_level=_code(attrs, "nrg3_averageIncomeLevel"),
         average_instruction_level=_code(attrs, "nrg3_averageInstructionLevel"),
         heat_dissipation=_measure(attrs, "nrg3_heatDissipation"),
-        heat_dissipation_convective_fraction=_scale(attrs, "nrg3_heatDissipationConvectiveFraction"),
-        heat_dissipation_latent_fraction=_scale(attrs, "nrg3_heatDissipationLatentFraction"),
-        heat_dissipation_radiant_fraction=_scale(attrs, "nrg3_heatDissipationRadiantFraction"),
+        heat_dissipation_convective_fraction=_scale(
+            attrs, "nrg3_heatDissipationConvectiveFraction"
+        ),
+        heat_dissipation_latent_fraction=_scale(
+            attrs, "nrg3_heatDissipationLatentFraction"
+        ),
+        heat_dissipation_radiant_fraction=_scale(
+            attrs, "nrg3_heatDissipationRadiantFraction"
+        ),
     )
 
 
@@ -507,6 +571,15 @@ def epc_from_dict(attrs: Dict) -> EnergyPerformanceCertificate:
     """
     return EnergyPerformanceCertificate(
         gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
+        gml_name=_str(attrs.get("gml_name")),
+        creation_date=_str(attrs.get("nrg3_creationDate")),
+        termination_date=_str(attrs.get("nrg3_terminationDate")),
+        epc_metadata=_make_metadata(attrs),
+        identifier=_code(attrs, "nrg3_identifier"),
+        valid_from=_str(attrs.get("nrg3_validFrom")),
+        valid_to=_str(attrs.get("nrg3_validTo")),
+        status=_code(attrs, "nrg3_status"),
         epc_type=_code(attrs, "nrg3_epcType"),
         label=_str(attrs.get("nrg3_epcLabel")),
         value=_measure(attrs, "nrg3_epcValue"),
@@ -536,8 +609,18 @@ def building_unit_from_dict(attrs: Dict) -> BuildingUnit:
     """
     return BuildingUnit(
         gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
         creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
+        identifier=_code(attrs, "nrg3_identifier"),
+        nrg3_metadata=_make_metadata(attrs),
+        areas=[_make_qualified_area(attrs, prefix="nrg3_area")]
+        if _make_qualified_area(attrs, prefix="nrg3_area")
+        else [],
+        volumes=[_make_qualified_volume(attrs, prefix="nrg3_volume")]
+        if _make_qualified_volume(attrs, prefix="nrg3_volume")
+        else [],
         bu_type=_code(attrs, "nrg3_buType"),
         floor_number_from=_float(attrs.get("nrg3_floorNumberFrom")),
         floor_number_to=_float(attrs.get("nrg3_floorNumberTo")),
@@ -563,8 +646,20 @@ def constant_value_schedule_from_dict(attrs: Dict) -> ConstantValueSchedule:
     """
     return ConstantValueSchedule(
         gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
+        creation_date=_str(attrs.get("nrg3_creationDate")),
+        termination_date=_str(attrs.get("nrg3_terminationDate")),
+        schedule_metadata=_make_metadata(attrs),
+        identifier=_code(attrs, "nrg3_identifier"),
+        valid_from=_str(attrs.get("nrg3_validFrom")),
+        valid_to=_str(attrs.get("nrg3_validTo")),
+        status=_code(attrs, "nrg3_status"),
         schedule_type=_code(attrs, "nrg3_scheduleType"),
+        start_time=_str(attrs.get("nrg3_startTime")),
+        start_day=_int(attrs.get("nrg3_startDay")),
+        start_month=_int(attrs.get("nrg3_startMonth")),
+        start_year=_int(attrs.get("nrg3_startYear")),
         value=_measure(attrs, "nrg3_scheduleValue"),
     )
 
@@ -617,13 +712,65 @@ def composite_schedule_from_dict(attrs: Dict) -> "CompositeSchedule":
     """
     return CompositeSchedule(
         gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("core_creationDate")),
+        creation_date=_str(attrs.get("nrg3_creationDate")),
+        termination_date=_str(attrs.get("nrg3_terminationDate")),
+        schedule_metadata=_make_metadata(attrs),
+        identifier=_code(attrs, "nrg3_identifier"),
+        valid_from=_str(attrs.get("nrg3_validFrom")),
+        valid_to=_str(attrs.get("nrg3_validTo")),
+        status=_code(attrs, "nrg3_status"),
         schedule_type=_code(attrs, "nrg3_scheduleType"),
         start_time=_str(attrs.get("nrg3_startTime")),
         start_day=_int(attrs.get("nrg3_startDay")),
         start_month=_int(attrs.get("nrg3_startMonth")),
         start_year=_int(attrs.get("nrg3_startYear")),
+    )
+
+
+def room_from_dict(attrs: Dict) -> Room:
+    return Room(
+        gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
+        gml_name=_str(attrs.get("gml_name")),
+        creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
+        nrg3_identifier=_code(attrs, "nrg3_identifier"),
+        nrg3_metadata=_make_metadata(attrs),
+        bldg_class=_code(attrs, "bldg_class"),
+        bldg_function=_code(attrs, "bldg_function"),
+        bldg_usage=_code(attrs, "bldg_usage"),
+    )
+
+
+def building_installation_from_dict(attrs: Dict) -> BuildingInstallation:
+    return BuildingInstallation(
+        gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
+        gml_name=_str(attrs.get("gml_name")),
+        creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
+        nrg3_identifier=_code(attrs, "nrg3_identifier"),
+        nrg3_metadata=_make_metadata(attrs),
+        bldg_class=_code(attrs, "bldg_class"),
+        bldg_function=_code(attrs, "bldg_function"),
+        bldg_usage=_code(attrs, "bldg_usage"),
+    )
+
+
+def int_building_installation_from_dict(attrs: Dict) -> IntBuildingInstallation:
+    return IntBuildingInstallation(
+        gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
+        gml_name=_str(attrs.get("gml_name")),
+        creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
+        nrg3_identifier=_code(attrs, "nrg3_identifier"),
+        nrg3_metadata=_make_metadata(attrs),
+        bldg_class=_code(attrs, "bldg_class"),
+        bldg_function=_code(attrs, "bldg_function"),
+        bldg_usage=_code(attrs, "bldg_usage"),
     )
 
 
@@ -634,17 +781,26 @@ def _surface_from_dict(cls, attrs: Dict):
         gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
         creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
+        nrg3_identifier=_code(attrs, "nrg3_identifier"),
+        nrg3_metadata=_make_metadata(attrs),
         bdg_bdry_surf_azimuth=_measure(attrs, "nrg3_bdgBdrySurfAzimuth"),
         bdg_bdry_surf_inclination=_measure(attrs, "nrg3_bdgBdrySurfInclination"),
-        bdg_bdry_surf_total_surface_area=_measure(attrs, "nrg3_bdgBdrySurfTotalSurfaceArea"),
-        bdg_bdry_surf_opaque_surface_area=_measure(attrs, "nrg3_bdgBdrySurfOpaqueSurfaceArea"),
+        bdg_bdry_surf_total_surface_area=_measure(
+            attrs, "nrg3_bdgBdrySurfTotalSurfaceArea"
+        ),
+        bdg_bdry_surf_opaque_surface_area=_measure(
+            attrs, "nrg3_bdgBdrySurfOpaqueSurfaceArea"
+        ),
         bdg_bdry_surf_heat_capacity=_measure(attrs, "nrg3_bdgBdrySurfHeatCapacity"),
         bdg_bdry_surf_thickness=_measure(attrs, "nrg3_bdgBdrySurfThickness"),
         bdg_bdry_surf_is_shared=_bool(attrs.get("nrg3_bdgBdrySurfIsShared")),
         bdg_bdry_surf_additional_thermal_bridge_u_value=_measure(
             attrs, "nrg3_bdgBdrySurfAdditionalThermalBridgeUValue"
         ),
-        bdg_bdry_surf_ground_view_factor=_scale(attrs, "nrg3_bdgBdrySurfGroundViewFactor"),
+        bdg_bdry_surf_ground_view_factor=_scale(
+            attrs, "nrg3_bdgBdrySurfGroundViewFactor"
+        ),
         bdg_bdry_surf_sky_view_factor=_scale(attrs, "nrg3_bdgBdrySurfSkyViewFactor"),
     )
 
@@ -656,6 +812,9 @@ def _opening_from_dict(cls, attrs: Dict):
         gml_description=_str(attrs.get("gml_description")),
         gml_name=_str(attrs.get("gml_name")),
         creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
+        nrg3_identifier=_code(attrs, "nrg3_identifier"),
+        nrg3_metadata=_make_metadata(attrs),
         bdg_opn_area=_measure(attrs, "nrg3_bdgOpnArea"),
         bdg_opn_azimuth=_measure(attrs, "nrg3_bdgOpnAzimuth"),
         bdg_opn_inclination=_measure(attrs, "nrg3_bdgOpnInclination"),
@@ -704,55 +863,38 @@ _SURFACE_ATTR_DOC = """
 _REGISTRY: Dict[str, Any] = {}
 
 
+def _is_stub(fn: Any) -> bool:
+    return bool(getattr(fn, "_is_stub", False))
+
+
 def _reg(fme_name: str, fn):
     _REGISTRY[fme_name] = fn
 
 
-_reg("bldg_Building",                  building_from_dict)
-_reg("bldg_BuildingPart",              lambda a: _surface_from_dict(BuildingPart, a))
-_reg("bldg_WallSurface",               lambda a: _surface_from_dict(WallSurface, a))
-_reg("bldg_RoofSurface",               lambda a: _surface_from_dict(RoofSurface, a))
-_reg("bldg_GroundSurface",             lambda a: _surface_from_dict(GroundSurface, a))
-_reg("bldg_CeilingSurface",            lambda a: _surface_from_dict(CeilingSurface, a))
-_reg("bldg_ClosureSurface",            lambda a: _surface_from_dict(ClosureSurface, a))
-_reg("bldg_FloorSurface",              lambda a: _surface_from_dict(FloorSurface, a))
-_reg("bldg_OuterCeilingSurface",       lambda a: _surface_from_dict(OuterCeilingSurface, a))
-_reg("bldg_OuterFloorSurface",         lambda a: _surface_from_dict(OuterFloorSurface, a))
-_reg("bldg_Door",                      lambda a: _opening_from_dict(Door, a))
-_reg("bldg_Window",                    lambda a: _opening_from_dict(Window, a))
-_reg("bldg_Room",                      lambda a: Room(
-    gml_id=_str(a.get("gml_id")),
-    gml_name=_str(a.get("gml_name")),
-    creation_date=_str(a.get("core_creationDate")),
-    bldg_class=_code(a, "bldg_class"),
-    bldg_function=_code(a, "bldg_function"),
-    bldg_usage=_code(a, "bldg_usage"),
-))
-_reg("bldg_BuildingInstallation",      lambda a: BuildingInstallation(
-    gml_id=_str(a.get("gml_id")),
-    gml_name=_str(a.get("gml_name")),
-    creation_date=_str(a.get("core_creationDate")),
-    bldg_class=_code(a, "bldg_class"),
-    bldg_function=_code(a, "bldg_function"),
-    bldg_usage=_code(a, "bldg_usage"),
-))
-_reg("bldg_IntBuildingInstallation",   lambda a: IntBuildingInstallation(
-    gml_id=_str(a.get("gml_id")),
-    gml_name=_str(a.get("gml_name")),
-    creation_date=_str(a.get("core_creationDate")),
-    bldg_class=_code(a, "bldg_class"),
-    bldg_function=_code(a, "bldg_function"),
-    bldg_usage=_code(a, "bldg_usage"),
-))
-_reg("nrg3_PhotovoltaicCollector",     pv_collector_from_dict)
-_reg("nrg3_HeatPump",                  heat_pump_from_dict)
-_reg("nrg3_EVChargingStation",         ev_charging_station_from_dict)
-_reg("nrg3_Occupants",                 occupants_from_dict)
+_reg("bldg_Building", building_from_dict)
+_reg("bldg_BuildingPart", building_part_from_dict)
+_reg("bldg_WallSurface", lambda a: _surface_from_dict(WallSurface, a))
+_reg("bldg_RoofSurface", lambda a: _surface_from_dict(RoofSurface, a))
+_reg("bldg_GroundSurface", lambda a: _surface_from_dict(GroundSurface, a))
+_reg("bldg_CeilingSurface", lambda a: _surface_from_dict(CeilingSurface, a))
+_reg("bldg_ClosureSurface", lambda a: _surface_from_dict(ClosureSurface, a))
+_reg("bldg_FloorSurface", lambda a: _surface_from_dict(FloorSurface, a))
+_reg("bldg_OuterCeilingSurface", lambda a: _surface_from_dict(OuterCeilingSurface, a))
+_reg("bldg_OuterFloorSurface", lambda a: _surface_from_dict(OuterFloorSurface, a))
+_reg("bldg_Door", lambda a: _opening_from_dict(Door, a))
+_reg("bldg_Window", lambda a: _opening_from_dict(Window, a))
+_reg("bldg_Room", room_from_dict)
+_reg("bldg_BuildingInstallation", building_installation_from_dict)
+_reg("bldg_IntBuildingInstallation", int_building_installation_from_dict)
+_reg("nrg3_PhotovoltaicCollector", pv_collector_from_dict)
+_reg("nrg3_HeatPump", heat_pump_from_dict)
+_reg("nrg3_EVChargingStation", ev_charging_station_from_dict)
+_reg("nrg3_Occupants", occupants_from_dict)
 _reg("nrg3_EnergyPerformanceCertificate", epc_from_dict)
-_reg("nrg3_BuildingUnit",              building_unit_from_dict)
-_reg("nrg3_ConstantValueSchedule",     constant_value_schedule_from_dict)
-_reg("nrg3_CompositeSchedule",         composite_schedule_from_dict)
-_reg("core_Address",                   address_from_dict)
+_reg("nrg3_BuildingUnit", building_unit_from_dict)
+_reg("nrg3_ConstantValueSchedule", constant_value_schedule_from_dict)
+_reg("nrg3_CompositeSchedule", composite_schedule_from_dict)
+_reg("core_Address", address_from_dict)
 
 
 # ---------------------------------------------------------------------------
@@ -763,8 +905,10 @@ _reg("core_Address",                   address_from_dict)
 # with the attribute mapping, and replace the stub registration below.
 # ---------------------------------------------------------------------------
 
+
 def _stub(feature_type: str):
     """Return a stub callable that raises NotImplementedError for *feature_type*."""
+
     def _fn(attrs: Dict) -> None:
         raise NotImplementedError(
             f"'{feature_type}' is not yet implemented.\n"
@@ -773,90 +917,108 @@ def _stub(feature_type: str):
             f"  2. Write a {feature_type}_from_dict(attrs) function in factory.py\n"
             f"  3. Replace the stub _reg() call with the real function."
         )
+
     _fn.__name__ = feature_type + "_stub"
+    _fn._is_stub = True
     return _fn
 
 
 # --- CityGML standard modules (Blank rows) ---
-_reg("frn_CityFurniture",              _stub("frn_CityFurniture"))
-_reg("gen_GenericCityObject",          _stub("gen_GenericCityObject"))
-_reg("grp_CityObjectGroup",            _stub("grp_CityObjectGroup"))
-_reg("luse_LandUse",                   _stub("luse_LandUse"))
+_reg("frn_CityFurniture", _stub("frn_CityFurniture"))
+_reg("gen_GenericCityObject", _stub("gen_GenericCityObject"))
+_reg("grp_CityObjectGroup", _stub("grp_CityObjectGroup"))
+_reg("luse_LandUse", _stub("luse_LandUse"))
 
 # --- Energy ADE: resources / materials (Blank rows) ---
-_reg("nrg3_ConstructionMaterial",      _stub("nrg3_ConstructionMaterial"))
-_reg("nrg3_LayeredConstruction",       _stub("nrg3_LayeredConstruction"))
-_reg("nrg3_LayeredConstructionLibrary",_stub("nrg3_LayeredConstructionLibrary"))
-_reg("nrg3_MaterialLibrary",           _stub("nrg3_MaterialLibrary"))
-_reg("nrg3_ReverseLayeredConstruction",_stub("nrg3_ReverseLayeredConstruction"))
-_reg("nrg3_SolidMaterial",             _stub("nrg3_SolidMaterial"))
+_reg("nrg3_ConstructionMaterial", _stub("nrg3_ConstructionMaterial"))
+_reg("nrg3_LayeredConstruction", _stub("nrg3_LayeredConstruction"))
+_reg("nrg3_LayeredConstructionLibrary", _stub("nrg3_LayeredConstructionLibrary"))
+_reg("nrg3_MaterialLibrary", _stub("nrg3_MaterialLibrary"))
+_reg("nrg3_ReverseLayeredConstruction", _stub("nrg3_ReverseLayeredConstruction"))
+_reg("nrg3_SolidMaterial", _stub("nrg3_SolidMaterial"))
 
 # --- Energy ADE: energy carriers / commodities (Blank rows) ---
-_reg("nrg3_Energy",                    _stub("nrg3_Energy"))
-_reg("nrg3_Liquid",                    _stub("nrg3_Liquid"))
-_reg("nrg3_OtherResource",             _stub("nrg3_OtherResource"))
-_reg("nrg3_Waste",                     _stub("nrg3_Waste"))
-_reg("nrg3_Water",                     _stub("nrg3_Water"))
+_reg("nrg3_Energy", _stub("nrg3_Energy"))
+_reg("nrg3_Liquid", _stub("nrg3_Liquid"))
+_reg("nrg3_OtherResource", _stub("nrg3_OtherResource"))
+_reg("nrg3_Waste", _stub("nrg3_Waste"))
+_reg("nrg3_Water", _stub("nrg3_Water"))
 
 # --- Energy ADE: devices (Blank rows) ---
-_reg("nrg3_Boiler",                    _stub("nrg3_Boiler"))
-_reg("nrg3_DeviceOperation",           _stub("nrg3_DeviceOperation"))
-_reg("nrg3_ElectricalStorageDevice",   _stub("nrg3_ElectricalStorageDevice"))
-_reg("nrg3_GenericDevice",             _stub("nrg3_GenericDevice"))
-_reg("nrg3_GenericElectricalDevice",   _stub("nrg3_GenericElectricalDevice"))
-_reg("nrg3_GenericStorageDevice",      _stub("nrg3_GenericStorageDevice"))
-_reg("nrg3_LightingDevice",            _stub("nrg3_LightingDevice"))
-_reg("nrg3_MovableShadingDevice",      _stub("nrg3_MovableShadingDevice"))
-_reg("nrg3_SolarThermalCollector",     _stub("nrg3_SolarThermalCollector"))
-_reg("nrg3_ThermalStorageDevice",      _stub("nrg3_ThermalStorageDevice"))
+_reg("nrg3_Boiler", _stub("nrg3_Boiler"))
+_reg("nrg3_DeviceOperation", _stub("nrg3_DeviceOperation"))
+_reg("nrg3_ElectricalStorageDevice", _stub("nrg3_ElectricalStorageDevice"))
+_reg("nrg3_GenericDevice", _stub("nrg3_GenericDevice"))
+_reg("nrg3_GenericElectricalDevice", _stub("nrg3_GenericElectricalDevice"))
+_reg("nrg3_GenericStorageDevice", _stub("nrg3_GenericStorageDevice"))
+_reg("nrg3_LightingDevice", _stub("nrg3_LightingDevice"))
+_reg("nrg3_MovableShadingDevice", _stub("nrg3_MovableShadingDevice"))
+_reg("nrg3_SolarThermalCollector", _stub("nrg3_SolarThermalCollector"))
+_reg("nrg3_ThermalStorageDevice", _stub("nrg3_ThermalStorageDevice"))
 
 # --- Energy ADE: energy networks / distribution (Blank rows) ---
-_reg("nrg3_PowerDistribution",         _stub("nrg3_PowerDistribution"))
-_reg("nrg3_ThermalDistribution",       _stub("nrg3_ThermalDistribution"))
-_reg("nrg3_UtilityNetworkConnection",  _stub("nrg3_UtilityNetworkConnection"))
+_reg("nrg3_PowerDistribution", _stub("nrg3_PowerDistribution"))
+_reg("nrg3_ThermalDistribution", _stub("nrg3_ThermalDistribution"))
+_reg("nrg3_UtilityNetworkConnection", _stub("nrg3_UtilityNetworkConnection"))
 
 # --- Energy ADE: schedules (Blank rows) ---
-_reg("nrg3_DualValueSchedule",         _stub("nrg3_DualValueSchedule"))
-_reg("nrg3_IrregularTimeSeries",       _stub("nrg3_IrregularTimeSeries"))
-_reg("nrg3_IrregularTimeSeriesFile",   _stub("nrg3_IrregularTimeSeriesFile"))
-_reg("nrg3_MonthlyTimeSeries",         _stub("nrg3_MonthlyTimeSeries"))
-_reg("nrg3_MonthlyTimeSeriesFile",     _stub("nrg3_MonthlyTimeSeriesFile"))
-_reg("nrg3_RegularTimeSeries",         _stub("nrg3_RegularTimeSeries"))
-_reg("nrg3_RegularTimeSeriesFile",     _stub("nrg3_RegularTimeSeriesFile"))
-_reg("nrg3_ScheduleComponent",         _stub("nrg3_ScheduleComponent"))
-_reg("nrg3_ScheduleLibrary",           _stub("nrg3_ScheduleLibrary"))
-_reg("nrg3_TimeSeriesSchedule",        _stub("nrg3_TimeSeriesSchedule"))
-_reg("nrg3_TypicalValuesIrregularTimeSeries",     _stub("nrg3_TypicalValuesIrregularTimeSeries"))
-_reg("nrg3_TypicalValuesIrregularTimeSeriesFile", _stub("nrg3_TypicalValuesIrregularTimeSeriesFile"))
-_reg("nrg3_TypicalValuesMonthlyTimeSeries",       _stub("nrg3_TypicalValuesMonthlyTimeSeries"))
-_reg("nrg3_TypicalValuesMonthlyTimeSeriesFile",   _stub("nrg3_TypicalValuesMonthlyTimeSeriesFile"))
-_reg("nrg3_TypicalValuesRegularTimeSeries",       _stub("nrg3_TypicalValuesRegularTimeSeries"))
-_reg("nrg3_TypicalValuesRegularTimeSeriesFile",   _stub("nrg3_TypicalValuesRegularTimeSeriesFile"))
+_reg("nrg3_DualValueSchedule", _stub("nrg3_DualValueSchedule"))
+_reg("nrg3_IrregularTimeSeries", _stub("nrg3_IrregularTimeSeries"))
+_reg("nrg3_IrregularTimeSeriesFile", _stub("nrg3_IrregularTimeSeriesFile"))
+_reg("nrg3_MonthlyTimeSeries", _stub("nrg3_MonthlyTimeSeries"))
+_reg("nrg3_MonthlyTimeSeriesFile", _stub("nrg3_MonthlyTimeSeriesFile"))
+_reg("nrg3_RegularTimeSeries", _stub("nrg3_RegularTimeSeries"))
+_reg("nrg3_RegularTimeSeriesFile", _stub("nrg3_RegularTimeSeriesFile"))
+_reg("nrg3_ScheduleComponent", _stub("nrg3_ScheduleComponent"))
+_reg("nrg3_ScheduleLibrary", _stub("nrg3_ScheduleLibrary"))
+_reg("nrg3_TimeSeriesSchedule", _stub("nrg3_TimeSeriesSchedule"))
+_reg(
+    "nrg3_TypicalValuesIrregularTimeSeries",
+    _stub("nrg3_TypicalValuesIrregularTimeSeries"),
+)
+_reg(
+    "nrg3_TypicalValuesIrregularTimeSeriesFile",
+    _stub("nrg3_TypicalValuesIrregularTimeSeriesFile"),
+)
+_reg(
+    "nrg3_TypicalValuesMonthlyTimeSeries", _stub("nrg3_TypicalValuesMonthlyTimeSeries")
+)
+_reg(
+    "nrg3_TypicalValuesMonthlyTimeSeriesFile",
+    _stub("nrg3_TypicalValuesMonthlyTimeSeriesFile"),
+)
+_reg(
+    "nrg3_TypicalValuesRegularTimeSeries", _stub("nrg3_TypicalValuesRegularTimeSeries")
+)
+_reg(
+    "nrg3_TypicalValuesRegularTimeSeriesFile",
+    _stub("nrg3_TypicalValuesRegularTimeSeriesFile"),
+)
 
 # --- Energy ADE: sensors (Blank rows) ---
-_reg("nrg3_SensorConnection",          _stub("nrg3_SensorConnection"))
-_reg("nrg3_SensorData",                _stub("nrg3_SensorData"))
-_reg("nrg3_WeatherData",               _stub("nrg3_WeatherData"))
-_reg("nrg3_WeatherStation",            _stub("nrg3_WeatherStation"))
+_reg("nrg3_SensorConnection", _stub("nrg3_SensorConnection"))
+_reg("nrg3_SensorData", _stub("nrg3_SensorData"))
+_reg("nrg3_WeatherData", _stub("nrg3_WeatherData"))
+_reg("nrg3_WeatherStation", _stub("nrg3_WeatherStation"))
 
 # --- Energy ADE: urban / zone objects (Blank rows) ---
-_reg("nrg3_Intervention",              _stub("nrg3_Intervention"))
-_reg("nrg3_UrbanFunctionArea",         _stub("nrg3_UrbanFunctionArea"))
-_reg("nrg3_UrbanSpace",                _stub("nrg3_UrbanSpace"))
-_reg("nrg3_Zone",                      _stub("nrg3_Zone"))
-_reg("nrg3_ZonePart",                  _stub("nrg3_ZonePart"))
+_reg("nrg3_Intervention", _stub("nrg3_Intervention"))
+_reg("nrg3_UrbanFunctionArea", _stub("nrg3_UrbanFunctionArea"))
+_reg("nrg3_UrbanSpace", _stub("nrg3_UrbanSpace"))
+_reg("nrg3_Zone", _stub("nrg3_Zone"))
+_reg("nrg3_ZonePart", _stub("nrg3_ZonePart"))
 
 # --- Energy ADE: zone surfaces (Blank rows) ---
-_reg("nrg3_ZoneAtticFloorSurface",         _stub("nrg3_ZoneAtticFloorSurface"))
-_reg("nrg3_ZoneClosureSurface",            _stub("nrg3_ZoneClosureSurface"))
-_reg("nrg3_ZoneDoor",                      _stub("nrg3_ZoneDoor"))
-_reg("nrg3_ZoneGroundSurface",             _stub("nrg3_ZoneGroundSurface"))
-_reg("nrg3_ZoneIntermediateFloorSurface",  _stub("nrg3_ZoneIntermediateFloorSurface"))
-_reg("nrg3_ZoneOuterCeilingSurface",       _stub("nrg3_ZoneOuterCeilingSurface"))
-_reg("nrg3_ZoneOuterFloorSurface",         _stub("nrg3_ZoneOuterFloorSurface"))
-_reg("nrg3_ZoneRoofSurface",               _stub("nrg3_ZoneRoofSurface"))
-_reg("nrg3_ZoneWallSurface",               _stub("nrg3_ZoneWallSurface"))
-_reg("nrg3_ZoneWindow",                    _stub("nrg3_ZoneWindow"))
+_reg("nrg3_ZoneAtticFloorSurface", _stub("nrg3_ZoneAtticFloorSurface"))
+_reg("nrg3_ZoneClosureSurface", _stub("nrg3_ZoneClosureSurface"))
+_reg("nrg3_ZoneDoor", _stub("nrg3_ZoneDoor"))
+_reg("nrg3_ZoneGroundSurface", _stub("nrg3_ZoneGroundSurface"))
+_reg("nrg3_ZoneIntermediateFloorSurface", _stub("nrg3_ZoneIntermediateFloorSurface"))
+_reg("nrg3_ZoneOuterCeilingSurface", _stub("nrg3_ZoneOuterCeilingSurface"))
+_reg("nrg3_ZoneOuterFloorSurface", _stub("nrg3_ZoneOuterFloorSurface"))
+_reg("nrg3_ZoneRoofSurface", _stub("nrg3_ZoneRoofSurface"))
+_reg("nrg3_ZoneWallSurface", _stub("nrg3_ZoneWallSurface"))
+_reg("nrg3_ZoneWindow", _stub("nrg3_ZoneWindow"))
 
 
 def create_feature(feature_type: str, attrs: Dict) -> Any:
@@ -883,20 +1045,27 @@ def create_feature(feature_type: str, attrs: Dict) -> Any:
     if fn is None:
         registered = sorted(_REGISTRY.keys())
         raise ValueError(
-            f"Unknown feature type {feature_type!r}. "
-            f"Registered types: {registered}"
+            f"Unknown feature type {feature_type!r}. Registered types: {registered}"
         )
     return fn(attrs)
 
 
-def list_feature_types() -> List[str]:
-    """Return all registered FME-style feature type names."""
-    return sorted(_REGISTRY.keys())
+def list_feature_types(*, include_unimplemented: bool = False) -> List[str]:
+    """Return registered FME-style feature types.
+
+    By default this returns only feature types that can currently be created
+    from input data. Set ``include_unimplemented=True`` to include stubbed
+    feature types that are registered for future work.
+    """
+    if include_unimplemented:
+        return sorted(_REGISTRY.keys())
+    return sorted(name for name, fn in _REGISTRY.items() if not _is_stub(fn))
 
 
 # ---------------------------------------------------------------------------
 # FeatureFactory: batch builder with parent-child relationship management
 # ---------------------------------------------------------------------------
+
 
 class FeatureFactory:
     """Stateful batch builder that assembles a city model from flat feature rows.
@@ -950,9 +1119,14 @@ class FeatureFactory:
 
     # Feature types that are boundary surfaces attached to a building
     _SURFACE_TYPES = {
-        "bldg_WallSurface", "bldg_RoofSurface", "bldg_GroundSurface",
-        "bldg_CeilingSurface", "bldg_ClosureSurface", "bldg_FloorSurface",
-        "bldg_OuterCeilingSurface", "bldg_OuterFloorSurface",
+        "bldg_WallSurface",
+        "bldg_RoofSurface",
+        "bldg_GroundSurface",
+        "bldg_CeilingSurface",
+        "bldg_ClosureSurface",
+        "bldg_FloorSurface",
+        "bldg_OuterCeilingSurface",
+        "bldg_OuterFloorSurface",
     }
 
     # Feature types that are openings attached to a surface
@@ -1012,7 +1186,9 @@ class FeatureFactory:
         return model
 
     # ------------------------------------------------------------------
-    def _attach(self, child_type: str, child: Any, parent_type: str, parent: Any) -> None:
+    def _attach(
+        self, child_type: str, child: Any, parent_type: str, parent: Any
+    ) -> None:
         """Attach a child feature to its parent."""
         if child_type in self._DEVICE_TYPES:
             parent.devices.append(child)
