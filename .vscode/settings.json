@@ -1,0 +1,39 @@
+{
+  // ── Python ───────────────────────────────────────────────────────────
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+
+  // ── Ruff (linting + formatting) ─────────────────────────────────────
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+
+  // ── Pylance ──────────────────────────────────────────────────────────
+  "python.languageServer": "Pylance",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingTypeStubs": "none"
+  },
+
+  // ── Files ────────────────────────────────────────────────────────────
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    ".venv": true,
+    "KITModelViewer_V7.5_Build-3636": true
+  },
+
+  // ── JSON schema for input files ──────────────────────────────────────
+  "json.schemas": [
+    {
+      "fileMatch": ["inputs/*.json"],
+      "url": "./schemas/citygml_energy_input.schema.json"
+    }
+  ]
+}
