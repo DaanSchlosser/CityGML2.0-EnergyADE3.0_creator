@@ -8,7 +8,7 @@
   "geometry_sources": [
     {
       "type": "step-renodat-lod3",
-      "path": "../Owner-Occupier1_LOD3.0_STEP.stp",
+      "path": "Owner-Occupier1_LOD3.0_STEP.stp",
       "target_building_id": "id_building_1",
       "target_pv_id": "pv_panel_1"
     }
@@ -67,7 +67,81 @@
         "nrg3_azimuth_uom": "deg",
         "nrg3_inclination": "44.51",
         "nrg3_inclination_uom": "deg",
-        "nrg3_cellType": "unknown"
+        "nrg3_cellType": "unknown",
+        "nrg3_cellType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/CellTypeValue.xml"
+      }
+    },
+    {
+      "feature_type": "nrg3_Occupants",
+      "attributes": {
+        "gml_id": "id_occupants_1",
+        "gml_parent_id": "id_building_1",
+        "gml_description": "Residents of Han Solo's house",
+        "gml_name": "Occupants 1",
+        "nrg3_creationDate": "2026-04-04",
+        "nrg3_occupantType": "residents",
+        "nrg3_occupantType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/OccupantsTypeValue.xml",
+        "nrg3_numberOfOccupants": 6,
+        "nrg3_averageDietType": "omnivorous",
+        "nrg3_averageDietType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/DietTypeValue.xml",
+        "nrg3_heatDissipation": "80",
+        "nrg3_heatDissipation_uom": "W",
+        "nrg3_heatDissipationConvectiveFraction": "0.3",
+        "nrg3_heatDissipationLatentFraction": "0.2",
+        "nrg3_heatDissipationRadiantFraction": "0.5"
+      }
+    },
+    {
+      "feature_type": "nrg3_EVChargingStation",
+      "attributes": {
+        "gml_id": "id_ev_charging_station_1",
+        "gml_parent_id": "id_building_1",
+        "gml_description": "AC Level 2 charger, 11 kW rated. Dedicated to Golf GTE 2015 (8.7 kWh gross / 7.5 kWh net); car-side limit 3.6 kW. ~150 charges/year.",
+        "gml_name": "EV Charging Station 1",
+        "core_creationDate": "2026-04-04",
+        "nrg3_identifier": "ev_charger_1",
+        "nrg3_identifier_codeSpace": "urn:local:ev-charger",
+        "nrg3_yearOfInstallation": 2022,
+        "nrg3_numberOfDevices": 1,
+        "nrg3_installedPower": 11000,
+        "nrg3_installedPower_uom": "W",
+        "nrg3_evType": "AC",
+        "nrg3_evType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EVChargingStationTypeValue.xml",
+        "nrg3_chargingSpeedLevel": "Level 2",
+        "nrg3_chargingSpeedLevel_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EVChargingSpeedLevelValue.xml",
+        "nrg3_connectorType": "AC - Mennekes (Type2)",
+        "nrg3_connectorType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EVChargingConnectorTypeValue.xml",
+        "nrg3_hasLoadManagement": true,
+        "nrg3_access": "private",
+        "nrg3_access_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EVChargingAccessValue.xml"
+      }
+    },
+    {
+      "feature_type": "nrg3_Energy",
+      "attributes": {
+        "gml_id": "id_ev_energy_1",
+        "gml_parent_id": "id_ev_charging_station_1",
+        "gml_description": "Annual electricity consumption for EV charging (Golf GTE 2015, ~150 charges/year x 7.5 kWh net)",
+        "gml_name": "EV charging energy demand",
+        "nrg3_creationDate": "2026-04-10",
+        "nrg3_operationType": "demands",
+        "nrg3_operationType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/ResourceOperationTypeValue.xml",
+        "nrg3_referencePeriod": "year",
+        "nrg3_referencePeriod_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/ReferencePeriodValue.xml",
+        "nrg3_amount": "1.125",
+        "nrg3_amount_uom": "MWh/a",
+        "nrg3_year": 2025,
+        "nrg3_isAmountNormalized": false,
+        "nrg3_energyType": "finalEnergy",
+        "nrg3_energyType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EnergyTypeValue.xml",
+        "nrg3_endUse": "mobility",
+        "nrg3_endUse_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EnergyEndUseValue.xml",
+        "nrg3_energyCarrier": "electricity",
+        "nrg3_energyCarrier_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EnergyCarrierValue.xml",
+        "nrg3_maximumLoad": "3.6",
+        "nrg3_maximumLoad_uom": "kW",
+        "nrg3_energySource": "powerGrid",
+        "nrg3_energySource_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EnergySourceValue.xml"
       }
     }
   ]
