@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from lxml import etree
@@ -137,6 +138,6 @@ class CityModel:
             result.append("\t" * n_tabs + stripped)
         return "\n".join(result)
 
-    def write(self, filepath: str, **kwargs: Any) -> None:
-        with open(filepath, "w", encoding="utf-8") as f:
+    def write(self, filepath: str | Path, **kwargs: Any) -> None:
+        with Path(filepath).open("w", encoding="utf-8") as f:
             f.write(self.to_string(**kwargs))

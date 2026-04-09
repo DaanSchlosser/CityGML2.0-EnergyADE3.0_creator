@@ -126,6 +126,5 @@ def _format_number(v: float) -> str:
     """Format a numeric value, preserving trailing decimals like 823.30."""
     if isinstance(v, int):
         return str(v)
-    s = str(v)
     # Python's float repr already handles most cases correctly
-    return s
+    return str(v)
