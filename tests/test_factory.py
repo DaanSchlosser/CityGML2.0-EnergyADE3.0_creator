@@ -400,32 +400,19 @@ def test_factory_multiple_devices():
     assert len(bldg.devices) == 3
 
 
-# ---------------------------------------------------------------------------
-# RenoDAT JSON factory entry point
-# ---------------------------------------------------------------------------
-
-
-def test_factory_matches_json_renodat_output():
-    """The factory entry point stays identical to the JSON RenoDAT example."""
-    sys.path.insert(0, os.path.join(REPO_ROOT, "examples"))
-    from create_renodat import create_renodat
-    from create_renodat_factory import create_renodat_via_factory
-
-    assert create_renodat_via_factory().to_string() == create_renodat().to_string()
-
-
 def test_factory_output_is_well_formed_xml():
-    """FeatureFactory produces well-formed XML."""
+    """FeatureFactory produces well-formed XML for assembled models."""
     from lxml import etree
 
-    sys.path.insert(0, os.path.join(REPO_ROOT, "examples"))
-    from create_renodat_factory import create_renodat_via_factory
-
-    model = create_renodat_via_factory()
-    generated = model.to_string()
+    factory = FeatureFactory()
+    factory.add("bldg_Building", {"gml_id": "bldg_1"})
+    factory.add(
+        "nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"}
+    )
+    generated = factory.build().to_string()
     etree.fromstring(generated.encode("utf-8"))
 
 
 if __name__ == "__main__":
-    test_factory_matches_json_renodat_output()
+    test_factory_output_is_well_formed_xml()
     print("All factory tests passed!")

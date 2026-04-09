@@ -68,6 +68,14 @@ from .factory import (
     pv_collector_from_dict,
 )
 
+# Canonical generation workflow
+from .generation import (
+    DEFAULT_INPUT_PATH,
+    DEFAULT_OUTPUT_PATH,
+    generate_city_model,
+    generate_gml_file,
+)
+
 # Input loader
 from .input_loader import (
     InputFileError,
@@ -125,6 +133,10 @@ __all__ = [
     "Envelope",
     "GMLDocument",
     "RawXmlElement",
+    "DEFAULT_INPUT_PATH",
+    "DEFAULT_OUTPUT_PATH",
+    "generate_city_model",
+    "generate_gml_file",
     # Input loader
     "InputFileError",
     "build_city_model_from_feature_collection",

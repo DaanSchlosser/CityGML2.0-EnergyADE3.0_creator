@@ -13,17 +13,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from citygml_energy import (
     InputFileError,
     build_city_model_from_feature_collection,
+    generate_city_model,
     load_feature_collection,
     validate_xml_against_energy_ade_schema,
 )
-
-# Import the example builder
-from examples.create_renodat import INPUT, create_renodat
+from examples.create_renodat import INPUT
 
 
 def test_renodat_imports_obj_geometry():
     """The RenoDAT example imports LOD3 surfaces, openings, and PV geometry."""
-    model = create_renodat()
+    model = generate_city_model(INPUT)
 
     assert len(model.city_object_members) == 1
 
@@ -58,15 +57,15 @@ def test_renodat_imports_obj_geometry():
 
 def test_generated_is_well_formed_xml():
     """The generated GML is well-formed XML."""
-    doc = create_renodat()
+    doc = generate_city_model(INPUT)
     generated = doc.to_string()
     # This will raise if not well-formed
     etree.fromstring(generated.encode("utf-8"))
 
 
 def test_renodat_is_schema_valid():
-    """The typed from-scratch example is valid against the beta8 schema."""
-    doc = create_renodat()
+    """The canonical RenoDAT JSON workflow is valid against the beta8 schema."""
+    doc = generate_city_model(INPUT)
     result = cast(
         dict[str, Any], validate_xml_against_energy_ade_schema(doc.to_string())
     )

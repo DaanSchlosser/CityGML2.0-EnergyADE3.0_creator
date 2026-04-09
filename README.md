@@ -1,23 +1,18 @@
 # CityGML 2.0 + Energy ADE 3.0 Creator
 
-This repository gives you three practical ways to generate CityGML 2.0 files
-with Energy ADE 3.0 content:
+This repository now has one supported generation workflow for user data:
 
-1. A data-only JSON input workflow for collecting RenoDAT-style feature data.
-2. A typed Python API for building valid files from scratch.
-3. A template-backed Alderaan workflow for regenerating and customizing the
-   large reference dataset.
+1. Edit the FME-style JSON input in `inputs/renodat_input.json`.
+2. Run `python examples/create_renodat.py`.
+3. Get a schema-valid GML file in `generated/renodat.gml`.
 
-The important distinction is this:
+That single path is the canonical workflow. It supports the curated flat-field
+input catalog, parent-child linking with `gml_parent_id`, and optional OBJ
+geometry import through `geometry_sources`.
 
-- `examples/create_renodat.py` reads only `inputs/renodat_input.json` and turns
-  that collected data into a schema-valid CityGML + Energy ADE file.
-- `examples/create_renodat_typed.py` shows the same RenoDAT subset built
-  directly with the typed Python API.
-- `examples/create_alderaan.py` starts from the checked-in Alderaan reference,
-  preserves XML classes that are not yet wrapped by the typed API, and can emit
-  either an exact structural reproduction or a beta8-normalized, schema-valid
-  variant.
+The Alderaan tooling remains in the repository as reference-fixture maintenance
+code for the checked-in sample dataset. It is not the primary workflow for
+generating your own GML files.
 
 ## Requirements
 
@@ -48,56 +43,13 @@ python examples/create_renodat.py
 The default input lives at `inputs/renodat_input.json`, and the default output
 path is `generated/renodat.gml`.
 
-Create the same RenoDAT example via the typed API:
+If you need to maintain the Alderaan reference dataset, keep using
+`examples/create_alderaan.py`. Treat that as reference tooling, not as a
+parallel authoring workflow.
 
-```powershell
-python examples/create_renodat_typed.py
-```
+## Canonical Workflow
 
-Rebuild the Alderaan file as a beta8-valid output:
-
-```powershell
-python examples/create_alderaan.py --output generated/alderaan.gml
-```
-
-Rebuild the Alderaan file as an exact reference reproduction:
-
-```powershell
-python examples/create_alderaan.py --exact-reference --output generated/alderaan_exact.gml
-```
-
-Notes:
-
-- Exact-reference mode reproduces the checked-in Alderaan structure.
-- Exact-reference mode intentionally skips schema validation so the canonical
-  repository template can be preserved verbatim.
-- Default Alderaan mode applies a deterministic normalization pass for the
-  bundled beta8 schema and validates the written output against
-  `Energy_ADE-3.0beta8/xsd/Energy_ADE_3.0_beta8.xsd`.
-
-## Which workflow should you use?
-
-Use `examples/create_renodat.py` if:
-
-- you want your collected data to live outside Python code
-- you want to add or remove buildings by editing a single input file
-- you want the tool to generate output from that input file only
-
-Use `examples/create_renodat_typed.py` if:
-
-- you want to start from an empty document
-- you only need a subset of the full data model
-- you want the cleanest starting point for your own building
-
-Use `examples/create_alderaan.py` if:
-
-- you want to keep the Alderaan structure as a rich template
-- you want an output that stays close to the reference dataset
-- you need XML content that is not yet covered by the typed builders
-
-## RenoDAT Input Workflow
-
-The primary RenoDAT path is now data-only.
+The primary and only supported authoring path is data-only.
 
 - Edit `inputs/renodat_input.json`.
 - Keep one feature record per object you have data for.
@@ -160,49 +112,6 @@ Input shape:
 This format is intentionally close to the existing FME-style factory model, but
 the collected data is now stored in JSON instead of being duplicated across
 Python scripts.
-
-## Minimal Typed Workflow
-
-You do not need to populate every Energy ADE property to create a valid file.
-The typed `create_renodat_typed()` example already proves that a smaller subset
-can be schema-valid.
-
-Core pattern:
-
-```python
-from citygml_energy import (
-    Building,
-    CodeValue,
-    GMLDocument,
-    MeasureValue,
-    Metadata,
-    PhotovoltaicCollector,
-)
-
-doc = GMLDocument(description="My city", name="Example City")
-
-pv = PhotovoltaicCollector(
-    gml_id="pv_1",
-    gml_name="PV collector",
-    creation_date="2026-04-09",
-    installed_power=MeasureValue(5000, "W"),
-)
-
-building = Building(
-    gml_id="building_1",
-    gml_name="My building",
-    creation_date="2026-04-09",
-    devices=[pv],
-    nrg3_metadata=Metadata(author="Your name"),
-    bldg_class=CodeValue("1000"),
-)
-
-doc.add_building(building)
-doc.write("generated/my_building.gml")
-```
-
-Start with the minimum your downstream consumer needs, then add fields only
-when they carry real meaning for your use case.
 
 ## Alderaan workflow
 
@@ -294,7 +203,7 @@ What is verified today:
 
 - Alderaan exact-reference generation structurally matches the checked-in file.
 - Alderaan default generation is valid against the bundled beta8 schema.
-- The typed RenoDAT example is schema-valid.
+- The canonical RenoDAT JSON workflow is schema-valid.
 - The generated XML is well-formed and editable from Python.
 
 ## Practical advice for extending inputs
@@ -303,18 +212,12 @@ What is verified today:
   time without touching the generator code.
 - Use one building row per building and add more rows later as your data
   collection expands.
-- Prefer the typed API when the class you need already exists. It gives you a
-  clearer, more maintainable starting point.
 - Prefer the Alderaan template workflow when you need complex ADE structures that
   are not yet represented by Python dataclasses.
 - Add tests each time you introduce a new input mapping. The existing tests are
   good patterns to copy.
 
-## Current examples
+## Current entry points
 
-- `examples/create_renodat.py`: JSON-input-driven RenoDAT workflow.
-- `examples/create_renodat_typed.py`: typed, from-scratch example.
-- `examples/create_renodat_factory.py`: backward-compatible factory entry point
-  using the same JSON input file.
-- `examples/create_alderaan.py`: template-backed Alderaan reproduction and
-  customization path.
+- `examples/create_renodat.py`: the canonical JSON-input-driven generation path.
+- `examples/create_alderaan.py`: reference-fixture tooling for the Alderaan sample dataset.

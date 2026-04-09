@@ -1,4 +1,4 @@
-"""Build RenoDAT output from a data-only JSON feature input file."""
+"""Canonical RenoDAT GML generation entry point."""
 
 from __future__ import annotations
 
@@ -10,19 +10,20 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from citygml_energy import (
+    DEFAULT_INPUT_PATH,
+    DEFAULT_OUTPUT_PATH,
     CityModel,
-    load_city_model_from_feature_collection,
-    validate_file_against_energy_ade_schema,
+    generate_city_model,
+    generate_gml_file,
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-INPUT = REPO_ROOT / "inputs" / "renodat_input.json"
-OUTPUT = REPO_ROOT / "generated" / "renodat.gml"
+INPUT = DEFAULT_INPUT_PATH
+OUTPUT = DEFAULT_OUTPUT_PATH
 
 
 def create_renodat(input_path: Path | str = INPUT) -> CityModel:
-    """Build the RenoDAT example CityModel from JSON input only."""
-    return load_city_model_from_feature_collection(input_path)
+    """Backward-compatible wrapper for the canonical generation API."""
+    return generate_city_model(input_path=input_path)
 
 
 def write_renodat_file(
@@ -31,23 +32,12 @@ def write_renodat_file(
     *,
     validate_against_schema: bool = True,
 ) -> tuple[CityModel, dict[str, object] | None]:
-    """Build RenoDAT from JSON input, write it, and optionally validate it."""
-    model = create_renodat(input_path=input_path)
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    model.write(str(output_path))
-
-    validation = None
-    if validate_against_schema:
-        validation = validate_file_against_energy_ade_schema(output_path)
-        if not validation["valid"]:
-            messages = "\n".join(
-                f"line {entry['line']}: {entry['message']}"
-                for entry in validation["errors"][:20]
-            )
-            raise ValueError(f"Generated file is not schema-valid:\n{messages}")
-
-    return model, validation
+    """Backward-compatible wrapper for the canonical generation API."""
+    return generate_gml_file(
+        input_path=input_path,
+        output_path=output_path,
+        validate_against_schema=validate_against_schema,
+    )
 
 
 def _build_argument_parser() -> argparse.ArgumentParser:
@@ -56,7 +46,7 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         "--input",
         type=Path,
         default=INPUT,
-        help="JSON feature input file to convert into CityGML.",
+        help="Canonical JSON feature input file to convert into CityGML.",
     )
     parser.add_argument(
         "--output",
