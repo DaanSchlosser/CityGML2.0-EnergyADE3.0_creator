@@ -10,7 +10,9 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from citygml_energy import (
+    Building,
     InputFileError,
+    PhotovoltaicCollector,
     build_city_model_from_feature_collection,
     generate_city_model,
     load_feature_collection,
@@ -25,7 +27,10 @@ def test_renodat_imports_step_brep_geometry():
     assert len(model.city_object_members) == 1
 
     building = model.city_object_members[0]
+    assert isinstance(building, Building)
     assert len(building.bounded_by_surfaces) == 11
+    assert len(building.devices) == 2
+    assert len(building.occupied_by) == 1
 
     wall_surfaces = {
         surface.gml_id: surface
@@ -54,10 +59,29 @@ def test_renodat_imports_step_brep_geometry():
     assert len(wall_polygons) == 1
     assert len(wall_polygons[0].findall("./{http://www.opengis.net/gml}interior")) == 6
 
-    assert len(building.devices) == 1
     pv_collector = building.devices[0]
+    assert isinstance(pv_collector, PhotovoltaicCollector)
     pv_geometry = pv_collector.lod3_multi_surface.element
     assert len(pv_geometry.findall("./{http://www.opengis.net/gml}surfaceMember")) == 36
+
+
+def test_renodat_serializes_pv_as_nested_building_device():
+    model = generate_city_model(INPUT)
+    generated = model.to_string()
+    root = etree.fromstring(generated.encode("utf-8"))
+    ns = {
+        "core": "http://www.opengis.net/citygml/2.0",
+        "bldg": "http://www.opengis.net/citygml/building/2.0",
+        "nrg3": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+    }
+
+    assert len(root.findall("./core:cityObjectMember/bldg:Building", ns)) == 1
+    assert len(root.findall("./core:cityObjectMember/nrg3:PhotovoltaicCollector", ns)) == 0
+    assert len(root.findall(".//bldg:Building/nrg3:device", ns)) == 2
+    assert len(root.findall(".//bldg:Building/nrg3:device/nrg3:PhotovoltaicCollector", ns)) == 1
+    assert len(root.findall(".//bldg:Building/nrg3:device/nrg3:EVChargingStation", ns)) == 1
+    assert len(root.findall(".//bldg:Building/nrg3:occupiedBy", ns)) == 1
+    assert len(root.findall(".//bldg:Building/nrg3:occupiedBy/nrg3:Occupants", ns)) == 1
 
 
 def test_pv_collector_has_installed_on_relation():
@@ -132,9 +156,7 @@ def test_no_scientific_notation_in_coordinates():
     for pos_list in root.findall(".//gml:posList", ns):
         text = pos_list.text or ""
         for token in text.split():
-            assert "e" not in token.lower(), (
-                f"Scientific notation found in coordinates: {token}"
-            )
+            assert "e" not in token.lower(), f"Scientific notation found in coordinates: {token}"
 
 
 def test_renodat_input_supports_multiple_buildings():
@@ -152,8 +174,11 @@ def test_renodat_input_supports_multiple_buildings():
 
     model = build_city_model_from_feature_collection(extended_data)
 
+    buildings = [member for member in model.city_object_members if isinstance(member, Building)]
+
     assert len(model.city_object_members) == 2
-    assert len(model.city_object_members[0].bounded_by_surfaces) == 11
+    assert len(buildings) == 2
+    assert len(buildings[0].bounded_by_surfaces) == 11
 
 
 def test_renodat_input_rejects_unknown_feature_type():

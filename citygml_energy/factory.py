@@ -45,7 +45,7 @@ Quick usage
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar
 
 from .building import (
     Building,
@@ -69,6 +69,7 @@ from .energy_ade import (
     BuildingUnit,
     CompositeSchedule,
     ConstantValueSchedule,
+    Energy,
     EnergyPerformanceCertificate,
     EVChargingStation,
     HeatPump,
@@ -86,21 +87,21 @@ from .types import CodeValue, MeasureValue, ScaleValue
 # ---------------------------------------------------------------------------
 
 
-def _str(v: Any) -> Optional[str]:
+def _str(v: Any) -> str | None:
     return str(v).strip() if v is not None and str(v).strip() != "" else None
 
 
-def _int(v: Any) -> Optional[int]:
+def _int(v: Any) -> int | None:
     s = _str(v)
     return int(s) if s is not None else None
 
 
-def _float(v: Any) -> Optional[float]:
+def _float(v: Any) -> float | None:
     s = _str(v)
     return float(s) if s is not None else None
 
 
-def _bool(v: Any) -> Optional[bool]:
+def _bool(v: Any) -> bool | None:
     if v is None:
         return None
     if isinstance(v, bool):
@@ -108,7 +109,7 @@ def _bool(v: Any) -> Optional[bool]:
     return str(v).strip().lower() in ("true", "1", "yes")
 
 
-def _code(attrs: Dict, key: str, cs_key: Optional[str] = None) -> Optional[CodeValue]:
+def _code(attrs: dict, key: str, cs_key: str | None = None) -> CodeValue | None:
     val = _str(attrs.get(key))
     if val is None:
         return None
@@ -117,9 +118,7 @@ def _code(attrs: Dict, key: str, cs_key: Optional[str] = None) -> Optional[CodeV
     return CodeValue(val, cs)
 
 
-def _measure(
-    attrs: Dict, key: str, uom_key: Optional[str] = None
-) -> Optional[MeasureValue]:
+def _measure(attrs: dict, key: str, uom_key: str | None = None) -> MeasureValue | None:
     val = _str(attrs.get(key))
     if val is None:
         return None
@@ -128,7 +127,7 @@ def _measure(
     return MeasureValue(val, uom)
 
 
-def _scale(attrs: Dict, key: str) -> Optional[ScaleValue]:
+def _scale(attrs: dict, key: str) -> ScaleValue | None:
     val = _str(attrs.get(key))
     if val is None:
         return None
@@ -140,7 +139,7 @@ def _scale(attrs: Dict, key: str) -> Optional[ScaleValue]:
 # ---------------------------------------------------------------------------
 
 
-def _make_metadata(attrs: Dict, prefix: str = "nrg3_metadata") -> Optional[Metadata]:
+def _make_metadata(attrs: dict, prefix: str = "nrg3_metadata") -> Metadata | None:
     """Build a Metadata from flat attrs with a given prefix."""
     found = any(
         _str(attrs.get(f"{prefix}_{k}")) is not None
@@ -163,9 +162,7 @@ def _make_metadata(attrs: Dict, prefix: str = "nrg3_metadata") -> Optional[Metad
     )
 
 
-def _make_qualified_volume(
-    attrs: Dict, prefix: str = "nrg3_bdgVolume"
-) -> Optional[QualifiedVolume]:
+def _make_qualified_volume(attrs: dict, prefix: str = "nrg3_bdgVolume") -> QualifiedVolume | None:
     if _str(attrs.get(f"{prefix}_value")) is None:
         return None
     return QualifiedVolume(
@@ -176,9 +173,7 @@ def _make_qualified_volume(
     )
 
 
-def _make_qualified_area(
-    attrs: Dict, prefix: str = "nrg3_bdgArea"
-) -> Optional[QualifiedArea]:
+def _make_qualified_area(attrs: dict, prefix: str = "nrg3_bdgArea") -> QualifiedArea | None:
     if _str(attrs.get(f"{prefix}_value")) is None:
         return None
     return QualifiedArea(
@@ -189,9 +184,7 @@ def _make_qualified_area(
     )
 
 
-def _make_qualified_height(
-    attrs: Dict, prefix: str = "nrg3_bdgHeight"
-) -> Optional[QualifiedHeight]:
+def _make_qualified_height(attrs: dict, prefix: str = "nrg3_bdgHeight") -> QualifiedHeight | None:
     if _str(attrs.get(f"{prefix}_value")) is None:
         return None
     return QualifiedHeight(
@@ -202,7 +195,7 @@ def _make_qualified_height(
     )
 
 
-def building_from_dict(attrs: Dict) -> Building:
+def building_from_dict(attrs: dict) -> Building:
     """Create a :class:`Building` from a flat attribute dictionary.
 
     Attribute reference
@@ -323,12 +316,12 @@ def building_from_dict(attrs: Dict) -> Building:
     )
 
 
-def building_part_from_dict(attrs: Dict) -> BuildingPart:
+def building_part_from_dict(attrs: dict) -> BuildingPart:
     building = building_from_dict(attrs)
     return BuildingPart(**building.__dict__)
 
 
-def pv_collector_from_dict(attrs: Dict) -> PhotovoltaicCollector:
+def pv_collector_from_dict(attrs: dict) -> PhotovoltaicCollector:
     """Create a :class:`PhotovoltaicCollector` from flat attributes.
 
     Attribute reference
@@ -411,12 +404,8 @@ def pv_collector_from_dict(attrs: Dict) -> PhotovoltaicCollector:
         heat_dissipation_convective_fraction=_scale(
             attrs, "nrg3_heatDissipationConvectiveFraction"
         ),
-        heat_dissipation_latent_fraction=_scale(
-            attrs, "nrg3_heatDissipationLatentFraction"
-        ),
-        heat_dissipation_radiant_fraction=_scale(
-            attrs, "nrg3_heatDissipationRadiantFraction"
-        ),
+        heat_dissipation_latent_fraction=_scale(attrs, "nrg3_heatDissipationLatentFraction"),
+        heat_dissipation_radiant_fraction=_scale(attrs, "nrg3_heatDissipationRadiantFraction"),
         module_area=_measure(attrs, "nrg3_moduleArea"),
         aperture_area=_measure(attrs, "nrg3_apertureArea"),
         azimuth=_measure(attrs, "nrg3_azimuth"),
@@ -425,7 +414,7 @@ def pv_collector_from_dict(attrs: Dict) -> PhotovoltaicCollector:
     )
 
 
-def heat_pump_from_dict(attrs: Dict) -> HeatPump:
+def heat_pump_from_dict(attrs: dict) -> HeatPump:
     """Create a :class:`HeatPump` from flat attributes.
 
     Attribute reference
@@ -464,7 +453,7 @@ def heat_pump_from_dict(attrs: Dict) -> HeatPump:
     )
 
 
-def ev_charging_station_from_dict(attrs: Dict) -> EVChargingStation:
+def ev_charging_station_from_dict(attrs: dict) -> EVChargingStation:
     """Create an :class:`EVChargingStation` from flat attributes.
 
     Attribute reference
@@ -505,7 +494,7 @@ def ev_charging_station_from_dict(attrs: Dict) -> EVChargingStation:
     )
 
 
-def occupants_from_dict(attrs: Dict) -> Occupants:
+def occupants_from_dict(attrs: dict) -> Occupants:
     """Create :class:`Occupants` from flat attributes.
 
     Attribute reference
@@ -544,16 +533,12 @@ def occupants_from_dict(attrs: Dict) -> Occupants:
         heat_dissipation_convective_fraction=_scale(
             attrs, "nrg3_heatDissipationConvectiveFraction"
         ),
-        heat_dissipation_latent_fraction=_scale(
-            attrs, "nrg3_heatDissipationLatentFraction"
-        ),
-        heat_dissipation_radiant_fraction=_scale(
-            attrs, "nrg3_heatDissipationRadiantFraction"
-        ),
+        heat_dissipation_latent_fraction=_scale(attrs, "nrg3_heatDissipationLatentFraction"),
+        heat_dissipation_radiant_fraction=_scale(attrs, "nrg3_heatDissipationRadiantFraction"),
     )
 
 
-def epc_from_dict(attrs: Dict) -> EnergyPerformanceCertificate:
+def epc_from_dict(attrs: dict) -> EnergyPerformanceCertificate:
     """Create an :class:`EnergyPerformanceCertificate` from flat attributes.
 
     Attribute reference
@@ -587,7 +572,67 @@ def epc_from_dict(attrs: Dict) -> EnergyPerformanceCertificate:
     )
 
 
-def building_unit_from_dict(attrs: Dict) -> BuildingUnit:
+def energy_from_dict(attrs: dict) -> Energy:
+    """Create an :class:`Energy` resource from flat attributes.
+
+    Attribute reference
+    -------------------
+    ============================================  ==========================
+    ``gml_id``                                    Feature ID
+    ``gml_parent_id``                             Parent gml:id (Building or Device)
+    ``nrg3_operationType``                        Code value (``demands`` / ``produces``)
+    ``nrg3_operationType_codeSpace``
+    ``nrg3_referencePeriod``                       Code value (``year``, ``month``, …)
+    ``nrg3_referencePeriod_codeSpace``
+    ``nrg3_amount``                               Numeric (e.g. ``1.125``)
+    ``nrg3_amount_uom``                           e.g. ``MWh/a``
+    ``nrg3_year``                                 Integer reference year
+    ``nrg3_isAmountNormalized``                   ``true`` / ``false``
+    ``nrg3_energyType``                           Code value (``finalEnergy``, ``primary``)
+    ``nrg3_energyType_codeSpace``
+    ``nrg3_endUse``                               Code value (``mobility``, …)
+    ``nrg3_endUse_codeSpace``
+    ``nrg3_energyCarrier``                        Code value (``electricity``, …)
+    ``nrg3_energyCarrier_codeSpace``
+    ``nrg3_maximumLoad``                          Numeric (peak power draw)
+    ``nrg3_maximumLoad_uom``                      e.g. ``kW``
+    ``nrg3_energySource``                         Code value (``powerGrid``, …)
+    ``nrg3_energySource_codeSpace``
+    ============================================  ==========================
+    """
+    return Energy(
+        gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
+        gml_name=_str(attrs.get("gml_name")),
+        creation_date=_str(attrs.get("nrg3_creationDate")),
+        termination_date=_str(attrs.get("nrg3_terminationDate")),
+        energy_metadata=_make_metadata(attrs),
+        identifier=_code(attrs, "nrg3_identifier"),
+        valid_from=_str(attrs.get("nrg3_validFrom")),
+        valid_to=_str(attrs.get("nrg3_validTo")),
+        status=_code(attrs, "nrg3_status"),
+        operation_type=_code(attrs, "nrg3_operationType"),
+        reference_period=_code(attrs, "nrg3_referencePeriod"),
+        amount=_measure(attrs, "nrg3_amount"),
+        year=_int(attrs.get("nrg3_year")),
+        is_amount_normalized=_bool(attrs.get("nrg3_isAmountNormalized")),
+        normalization_value=_measure(attrs, "nrg3_normalizationValue"),
+        normalization_parameter=_str(attrs.get("nrg3_normalizationParameter")),
+        expense=_measure(attrs, "nrg3_expense"),
+        revenue=_measure(attrs, "nrg3_revenue"),
+        co2_equivalent=_measure(attrs, "nrg3_co2Equivalent"),
+        energy_type=_code(attrs, "nrg3_energyType"),
+        end_use=_code(attrs, "nrg3_endUse"),
+        energy_carrier=_code(attrs, "nrg3_energyCarrier"),
+        maximum_load=_measure(attrs, "nrg3_maximumLoad"),
+        maximum_load_time=_str(attrs.get("nrg3_maximumLoadTime")),
+        maximum_load_day=_int(attrs.get("nrg3_maximumLoadDay")),
+        maximum_load_month=_int(attrs.get("nrg3_maximumLoadMonth")),
+        energy_source=_code(attrs, "nrg3_energySource"),
+    )
+
+
+def building_unit_from_dict(attrs: dict) -> BuildingUnit:
     """Create a :class:`BuildingUnit` from flat attributes.
 
     Attribute reference
@@ -630,7 +675,7 @@ def building_unit_from_dict(attrs: Dict) -> BuildingUnit:
     )
 
 
-def constant_value_schedule_from_dict(attrs: Dict) -> ConstantValueSchedule:
+def constant_value_schedule_from_dict(attrs: dict) -> ConstantValueSchedule:
     """Create a :class:`ConstantValueSchedule` from flat attributes.
 
     Attribute reference
@@ -664,7 +709,7 @@ def constant_value_schedule_from_dict(attrs: Dict) -> ConstantValueSchedule:
     )
 
 
-def address_from_dict(attrs: Dict) -> "Address":
+def address_from_dict(attrs: dict) -> Address:
     """Create a :class:`Address` from flat attributes.
 
     Attribute reference
@@ -689,7 +734,7 @@ def address_from_dict(attrs: Dict) -> "Address":
     )
 
 
-def composite_schedule_from_dict(attrs: Dict) -> "CompositeSchedule":
+def composite_schedule_from_dict(attrs: dict) -> CompositeSchedule:
     """Create a :class:`CompositeSchedule` from flat attributes.
 
     Attribute reference
@@ -729,7 +774,7 @@ def composite_schedule_from_dict(attrs: Dict) -> "CompositeSchedule":
     )
 
 
-def room_from_dict(attrs: Dict) -> Room:
+def room_from_dict(attrs: dict) -> Room:
     return Room(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
@@ -744,7 +789,7 @@ def room_from_dict(attrs: Dict) -> Room:
     )
 
 
-def building_installation_from_dict(attrs: Dict) -> BuildingInstallation:
+def building_installation_from_dict(attrs: dict) -> BuildingInstallation:
     return BuildingInstallation(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
@@ -759,7 +804,7 @@ def building_installation_from_dict(attrs: Dict) -> BuildingInstallation:
     )
 
 
-def int_building_installation_from_dict(attrs: Dict) -> IntBuildingInstallation:
+def int_building_installation_from_dict(attrs: dict) -> IntBuildingInstallation:
     return IntBuildingInstallation(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
@@ -774,7 +819,7 @@ def int_building_installation_from_dict(attrs: Dict) -> IntBuildingInstallation:
     )
 
 
-def _surface_from_dict(cls, attrs: Dict):
+def _surface_from_dict(cls, attrs: dict):
     """Generic boundary surface constructor."""
     return cls(
         gml_id=_str(attrs.get("gml_id")),
@@ -786,26 +831,20 @@ def _surface_from_dict(cls, attrs: Dict):
         nrg3_metadata=_make_metadata(attrs),
         bdg_bdry_surf_azimuth=_measure(attrs, "nrg3_bdgBdrySurfAzimuth"),
         bdg_bdry_surf_inclination=_measure(attrs, "nrg3_bdgBdrySurfInclination"),
-        bdg_bdry_surf_total_surface_area=_measure(
-            attrs, "nrg3_bdgBdrySurfTotalSurfaceArea"
-        ),
-        bdg_bdry_surf_opaque_surface_area=_measure(
-            attrs, "nrg3_bdgBdrySurfOpaqueSurfaceArea"
-        ),
+        bdg_bdry_surf_total_surface_area=_measure(attrs, "nrg3_bdgBdrySurfTotalSurfaceArea"),
+        bdg_bdry_surf_opaque_surface_area=_measure(attrs, "nrg3_bdgBdrySurfOpaqueSurfaceArea"),
         bdg_bdry_surf_heat_capacity=_measure(attrs, "nrg3_bdgBdrySurfHeatCapacity"),
         bdg_bdry_surf_thickness=_measure(attrs, "nrg3_bdgBdrySurfThickness"),
         bdg_bdry_surf_is_shared=_bool(attrs.get("nrg3_bdgBdrySurfIsShared")),
         bdg_bdry_surf_additional_thermal_bridge_u_value=_measure(
             attrs, "nrg3_bdgBdrySurfAdditionalThermalBridgeUValue"
         ),
-        bdg_bdry_surf_ground_view_factor=_scale(
-            attrs, "nrg3_bdgBdrySurfGroundViewFactor"
-        ),
+        bdg_bdry_surf_ground_view_factor=_scale(attrs, "nrg3_bdgBdrySurfGroundViewFactor"),
         bdg_bdry_surf_sky_view_factor=_scale(attrs, "nrg3_bdgBdrySurfSkyViewFactor"),
     )
 
 
-def _opening_from_dict(cls, attrs: Dict):
+def _opening_from_dict(cls, attrs: dict):
     """Generic opening (Door / Window) constructor."""
     return cls(
         gml_id=_str(attrs.get("gml_id")),
@@ -853,14 +892,14 @@ _SURFACE_ATTR_DOC = """
     ``nrg3_bdgBdrySurfAdditionalThermalBridgeUValue``
     ``nrg3_bdgBdrySurfAdditionalThermalBridgeUValue_uom``
     ==============================================  ====================
-"""  # noqa: E501
+"""
 
 
 # ---------------------------------------------------------------------------
 # Dispatch registry: FME writer name → (class, from_dict_function)
 # ---------------------------------------------------------------------------
 
-_REGISTRY: Dict[str, Any] = {}
+_REGISTRY: dict[str, Any] = {}
 
 
 def _is_stub(fn: Any) -> bool:
@@ -909,7 +948,7 @@ _reg("core_Address", address_from_dict)
 def _stub(feature_type: str):
     """Return a stub callable that raises NotImplementedError for *feature_type*."""
 
-    def _fn(attrs: Dict) -> None:
+    def _fn(attrs: dict) -> None:
         raise NotImplementedError(
             f"'{feature_type}' is not yet implemented.\n"
             f"Steps to implement:\n"
@@ -938,7 +977,7 @@ _reg("nrg3_ReverseLayeredConstruction", _stub("nrg3_ReverseLayeredConstruction")
 _reg("nrg3_SolidMaterial", _stub("nrg3_SolidMaterial"))
 
 # --- Energy ADE: energy carriers / commodities (Blank rows) ---
-_reg("nrg3_Energy", _stub("nrg3_Energy"))
+_reg("nrg3_Energy", energy_from_dict)
 _reg("nrg3_Liquid", _stub("nrg3_Liquid"))
 _reg("nrg3_OtherResource", _stub("nrg3_OtherResource"))
 _reg("nrg3_Waste", _stub("nrg3_Waste"))
@@ -980,16 +1019,12 @@ _reg(
     "nrg3_TypicalValuesIrregularTimeSeriesFile",
     _stub("nrg3_TypicalValuesIrregularTimeSeriesFile"),
 )
-_reg(
-    "nrg3_TypicalValuesMonthlyTimeSeries", _stub("nrg3_TypicalValuesMonthlyTimeSeries")
-)
+_reg("nrg3_TypicalValuesMonthlyTimeSeries", _stub("nrg3_TypicalValuesMonthlyTimeSeries"))
 _reg(
     "nrg3_TypicalValuesMonthlyTimeSeriesFile",
     _stub("nrg3_TypicalValuesMonthlyTimeSeriesFile"),
 )
-_reg(
-    "nrg3_TypicalValuesRegularTimeSeries", _stub("nrg3_TypicalValuesRegularTimeSeries")
-)
+_reg("nrg3_TypicalValuesRegularTimeSeries", _stub("nrg3_TypicalValuesRegularTimeSeries"))
 _reg(
     "nrg3_TypicalValuesRegularTimeSeriesFile",
     _stub("nrg3_TypicalValuesRegularTimeSeriesFile"),
@@ -1021,7 +1056,7 @@ _reg("nrg3_ZoneWallSurface", _stub("nrg3_ZoneWallSurface"))
 _reg("nrg3_ZoneWindow", _stub("nrg3_ZoneWindow"))
 
 
-def create_feature(feature_type: str, attrs: Dict) -> Any:
+def create_feature(feature_type: str, attrs: dict) -> Any:
     """Create a builder object from an FME-style feature type name and attributes.
 
     Parameters
@@ -1044,13 +1079,11 @@ def create_feature(feature_type: str, attrs: Dict) -> Any:
     fn = _REGISTRY.get(feature_type)
     if fn is None:
         registered = sorted(_REGISTRY.keys())
-        raise ValueError(
-            f"Unknown feature type {feature_type!r}. Registered types: {registered}"
-        )
+        raise ValueError(f"Unknown feature type {feature_type!r}. Registered types: {registered}")
     return fn(attrs)
 
 
-def list_feature_types(*, include_unimplemented: bool = False) -> List[str]:
+def list_feature_types(*, include_unimplemented: bool = False) -> list[str]:
     """Return registered FME-style feature types.
 
     By default this returns only feature types that can currently be created
@@ -1111,14 +1144,14 @@ class FeatureFactory:
     """
 
     # Feature types that are "devices" attached to a building
-    _DEVICE_TYPES = {
+    _DEVICE_TYPES: ClassVar[set[str]] = {
         "nrg3_PhotovoltaicCollector",
         "nrg3_HeatPump",
         "nrg3_EVChargingStation",
     }
 
     # Feature types that are boundary surfaces attached to a building
-    _SURFACE_TYPES = {
+    _SURFACE_TYPES: ClassVar[set[str]] = {
         "bldg_WallSurface",
         "bldg_RoofSurface",
         "bldg_GroundSurface",
@@ -1130,19 +1163,19 @@ class FeatureFactory:
     }
 
     # Feature types that are openings attached to a surface
-    _OPENING_TYPES = {"bldg_Door", "bldg_Window"}
+    _OPENING_TYPES: ClassVar[set[str]] = {"bldg_Door", "bldg_Window"}
 
     def __init__(
         self,
-        description: Optional[str] = None,
-        name: Optional[str] = None,
+        description: str | None = None,
+        name: str | None = None,
     ) -> None:
         self._description = description
         self._name = name
         # Ordered list of (feature_type, attrs, built_object)
-        self._rows: List[tuple] = []
+        self._rows: list[tuple] = []
 
-    def add(self, feature_type: str, attrs: Dict) -> "FeatureFactory":
+    def add(self, feature_type: str, attrs: dict) -> FeatureFactory:
         """Queue a feature row for assembly."""
         obj = create_feature(feature_type, attrs)
         parent_id = _str(attrs.get("gml_parent_id"))
@@ -1156,8 +1189,8 @@ class FeatureFactory:
         Top-level features (no ``gml_parent_id``) become ``cityObjectMember``s.
         """
         # Index by gml_id for quick lookup
-        id_index: Dict[str, Any] = {}
-        for ftype, parent_id, obj in self._rows:
+        id_index: dict[str, Any] = {}
+        for ftype, _parent_id, obj in self._rows:
             if obj.gml_id:
                 id_index[obj.gml_id] = (ftype, obj)
 
@@ -1168,8 +1201,7 @@ class FeatureFactory:
             parent_entry = id_index.get(parent_id)
             if parent_entry is None:
                 raise ValueError(
-                    f"gml_parent_id {parent_id!r} not found "
-                    f"(referenced by {obj.gml_id!r})"
+                    f"gml_parent_id {parent_id!r} not found (referenced by {obj.gml_id!r})"
                 )
             parent_ftype, parent_obj = parent_entry
             self._attach(ftype, obj, parent_ftype, parent_obj)
@@ -1179,16 +1211,14 @@ class FeatureFactory:
             gml_description=self._description,
             gml_name=self._name,
         )
-        for ftype, parent_id, obj in self._rows:
+        for _ftype, parent_id, obj in self._rows:
             if parent_id is None:
                 model.add(obj)
 
         return model
 
     # ------------------------------------------------------------------
-    def _attach(
-        self, child_type: str, child: Any, parent_type: str, parent: Any
-    ) -> None:
+    def _attach(self, child_type: str, child: Any, parent_type: str, parent: Any) -> None:
         """Attach a child feature to its parent."""
         if child_type in self._DEVICE_TYPES:
             parent.devices.append(child)
@@ -1221,7 +1251,8 @@ class FeatureFactory:
         elif child_type == "nrg3_Occupants":
             parent.occupied_by.append(child)
 
+        elif child_type == "nrg3_Energy":
+            parent.nrg3_resources.append(child)
+
         else:
-            raise ValueError(
-                f"Don't know how to attach {child_type!r} to {parent_type!r}"
-            )
+            raise ValueError(f"Don't know how to attach {child_type!r} to {parent_type!r}")

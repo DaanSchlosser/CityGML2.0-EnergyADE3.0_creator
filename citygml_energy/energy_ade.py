@@ -7,7 +7,7 @@ belong to the Energy ADE namespace.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 from lxml import etree
 
@@ -38,10 +38,10 @@ class CityObjectRelation(BaseBuilder):
         "relation_type": (NS_NRG3, "relationType"),
     }
 
-    relation_type: Optional[CodeValue] = None
-    related_to_href: Optional[str] = None
+    relation_type: CodeValue | None = None
+    related_to_href: str | None = None
 
-    def to_xml(self, parent: Optional[etree._Element] = None) -> etree._Element:
+    def to_xml(self, parent: etree._Element | None = None) -> etree._Element:
         elem = super().to_xml(parent)
         if self.related_to_href is not None:
             inner = etree.SubElement(elem, f"{{{NS_NRG3}}}relatedTo")
@@ -72,10 +72,10 @@ class QualifiedVolume(BaseBuilder):
         "type": (NS_NRG3, "type"),
     }
 
-    description: Optional[str] = None
-    source: Optional[str] = None
-    value: Optional[MeasureValue] = None
-    type: Optional[CodeValue] = None
+    description: str | None = None
+    source: str | None = None
+    value: MeasureValue | None = None
+    type: CodeValue | None = None
 
 
 @dataclass
@@ -96,10 +96,10 @@ class QualifiedArea(BaseBuilder):
         "type": (NS_NRG3, "type"),
     }
 
-    description: Optional[str] = None
-    source: Optional[str] = None
-    value: Optional[MeasureValue] = None
-    type: Optional[CodeValue] = None
+    description: str | None = None
+    source: str | None = None
+    value: MeasureValue | None = None
+    type: CodeValue | None = None
 
 
 @dataclass
@@ -120,10 +120,10 @@ class QualifiedHeight(BaseBuilder):
         "type": (NS_NRG3, "type"),
     }
 
-    description: Optional[str] = None
-    source: Optional[str] = None
-    value: Optional[MeasureValue] = None
-    type: Optional[CodeValue] = None
+    description: str | None = None
+    source: str | None = None
+    value: MeasureValue | None = None
+    type: CodeValue | None = None
 
 
 # ===================================================================
@@ -151,11 +151,11 @@ class Metadata(BaseBuilder):
         "source": (NS_NRG3, "source"),
     }
 
-    author: Optional[str] = None
-    acquisition_method: Optional[str] = None
-    owner: Optional[str] = None
-    quality_description: Optional[str] = None
-    source: Optional[str] = None
+    author: str | None = None
+    acquisition_method: str | None = None
+    owner: str | None = None
+    quality_description: str | None = None
+    source: str | None = None
 
 
 # ===================================================================
@@ -201,20 +201,20 @@ class DeviceOperation(BaseBuilder):
         "schedule": (NS_NRG3, "schedule"),
     }
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    external_references: List[Any] = field(default_factory=list)
-    metadata: Optional[Any] = None
-    identifier: Optional[CodeValue] = None
-    valid_from: Optional[str] = None
-    valid_to: Optional[str] = None
-    status: Optional[CodeValue] = None
-    related_to: List[Any] = field(default_factory=list)
-    type: Optional[CodeValue] = None
-    yearly_global_efficiency: Optional[float] = None
-    schedule: Optional[Any] = None  # AbstractSchedule or xlink ref
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    metadata: Any | None = None
+    identifier: CodeValue | None = None
+    valid_from: str | None = None
+    valid_to: str | None = None
+    status: CodeValue | None = None
+    related_to: list[Any] = field(default_factory=list)
+    type: CodeValue | None = None
+    yearly_global_efficiency: float | None = None
+    schedule: Any | None = None  # AbstractSchedule or xlink ref
 
 
 # ===================================================================
@@ -222,7 +222,7 @@ class DeviceOperation(BaseBuilder):
 # ===================================================================
 
 # Element order for CityObject extensions + AbstractDevice fields
-_DEVICE_BASE_ORDER: Tuple[Tuple[str, str], ...] = (
+_DEVICE_BASE_ORDER: tuple[tuple[str, str], ...] = (
     (NS_GML, "description"),
     (NS_GML, "name"),
     (NS_CORE, "creationDate"),
@@ -232,10 +232,8 @@ _DEVICE_BASE_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_NRG3, "relatedTo"),
     (NS_NRG3, "validFrom"),
     (NS_NRG3, "validTo"),
-    (
-        NS_NRG3,
-        "referencePoint",
-    ),  # declared last in _GenericApplicationPropertyOfCityObject
+    (NS_NRG3, "referencePoint"),
+    (NS_NRG3, "resource"),
     # AbstractDevice fields
     (NS_NRG3, "model"),
     (NS_NRG3, "yearOfInstallation"),
@@ -251,7 +249,7 @@ _DEVICE_BASE_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_NRG3, "deviceOperation"),
 )
 
-_DEVICE_BASE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
+_DEVICE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
     "gml_description": (NS_GML, "description"),
     "gml_name": (NS_GML, "name"),
     "creation_date": (NS_CORE, "creationDate"),
@@ -261,6 +259,7 @@ _DEVICE_BASE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
     "valid_from": (NS_NRG3, "validFrom"),
     "valid_to": (NS_NRG3, "validTo"),
     "reference_point": (NS_NRG3, "referencePoint"),
+    "nrg3_resources": (NS_NRG3, "resource"),
     "model": (NS_NRG3, "model"),
     "year_of_installation": (NS_NRG3, "yearOfInstallation"),
     "year_of_manufacture": (NS_NRG3, "yearOfManufacture"),
@@ -283,34 +282,35 @@ _DEVICE_BASE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
 class _AbstractDevice(BaseBuilder):
     """Base for all device types (not instantiated directly)."""
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    nrg3_identifier: Optional[CodeValue] = None
-    reference_point: Optional[Any] = None
-    nrg3_related_to: List[Any] = field(default_factory=list)
-    valid_from: Optional[str] = None
-    valid_to: Optional[str] = None
-    model: Optional[str] = None
-    year_of_installation: Optional[int] = None
-    year_of_manufacture: Optional[int] = None
-    number_of_devices: Optional[int] = None
-    installed_power: Optional[MeasureValue] = None
-    nominal_efficiency: Optional[MeasureValue] = None
-    efficiency_indicator: Optional[str] = None
-    heat_dissipation: Optional[MeasureValue] = None
-    heat_dissipation_convective_fraction: Optional[ScaleValue] = None
-    heat_dissipation_latent_fraction: Optional[ScaleValue] = None
-    heat_dissipation_radiant_fraction: Optional[ScaleValue] = None
-    device_operations: List[DeviceOperation] = field(default_factory=list)
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    nrg3_identifier: CodeValue | None = None
+    reference_point: Any | None = None
+    nrg3_related_to: list[Any] = field(default_factory=list)
+    nrg3_resources: list[Any] = field(default_factory=list)
+    valid_from: str | None = None
+    valid_to: str | None = None
+    model: str | None = None
+    year_of_installation: int | None = None
+    year_of_manufacture: int | None = None
+    number_of_devices: int | None = None
+    installed_power: MeasureValue | None = None
+    nominal_efficiency: MeasureValue | None = None
+    efficiency_indicator: str | None = None
+    heat_dissipation: MeasureValue | None = None
+    heat_dissipation_convective_fraction: ScaleValue | None = None
+    heat_dissipation_latent_fraction: ScaleValue | None = None
+    heat_dissipation_radiant_fraction: ScaleValue | None = None
+    device_operations: list[DeviceOperation] = field(default_factory=list)
 
 
 # ===================================================================
 # Solar collector base + PV
 # ===================================================================
 
-_SOLAR_EXTRA_ORDER: Tuple[Tuple[str, str], ...] = (
+_SOLAR_EXTRA_ORDER: tuple[tuple[str, str], ...] = (
     (NS_NRG3, "moduleArea"),
     (NS_NRG3, "apertureArea"),
     (NS_NRG3, "azimuth"),
@@ -319,7 +319,7 @@ _SOLAR_EXTRA_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_NRG3, "lod3MultiSurface"),
 )
 
-_SOLAR_EXTRA_FIELD_MAP: Dict[str, Tuple[str, str]] = {
+_SOLAR_EXTRA_FIELD_MAP: dict[str, tuple[str, str]] = {
     "module_area": (NS_NRG3, "moduleArea"),
     "aperture_area": (NS_NRG3, "apertureArea"),
     "azimuth": (NS_NRG3, "azimuth"),
@@ -346,14 +346,14 @@ class PhotovoltaicCollector(_AbstractDevice):
     }
 
     # Solar collector fields
-    module_area: Optional[MeasureValue] = None
-    aperture_area: Optional[MeasureValue] = None
-    azimuth: Optional[MeasureValue] = None
-    inclination: Optional[MeasureValue] = None
-    lod2_multi_surface: Optional[Any] = None
-    lod3_multi_surface: Optional[Any] = None
+    module_area: MeasureValue | None = None
+    aperture_area: MeasureValue | None = None
+    azimuth: MeasureValue | None = None
+    inclination: MeasureValue | None = None
+    lod2_multi_surface: Any | None = None
+    lod3_multi_surface: Any | None = None
     # PV-specific
-    cell_type: Optional[CodeValue] = None
+    cell_type: CodeValue | None = None
 
 
 # ===================================================================
@@ -379,9 +379,9 @@ class HeatPump(_AbstractDevice):
         "cop_operation_temperature": (NS_NRG3, "copOperationTemperature"),
     }
 
-    heat_source: Optional[CodeValue] = None
-    cop_source_temperature: Optional[MeasureValue] = None
-    cop_operation_temperature: Optional[MeasureValue] = None
+    heat_source: CodeValue | None = None
+    cop_source_temperature: MeasureValue | None = None
+    cop_operation_temperature: MeasureValue | None = None
 
 
 # ===================================================================
@@ -411,11 +411,11 @@ class EVChargingStation(_AbstractDevice):
         "access": (NS_NRG3, "access"),
     }
 
-    ev_type: Optional[CodeValue] = None
-    charging_speed_level: Optional[CodeValue] = None
-    connector_type: Optional[CodeValue] = None
-    has_load_management: Optional[bool] = None
-    access: Optional[CodeValue] = None
+    ev_type: CodeValue | None = None
+    charging_speed_level: CodeValue | None = None
+    connector_type: CodeValue | None = None
+    has_load_management: bool | None = None
+    access: CodeValue | None = None
 
 
 # ===================================================================
@@ -423,7 +423,7 @@ class EVChargingStation(_AbstractDevice):
 # ===================================================================
 
 # Shared schedule base order (AbstractScheduleType extends AbstractFeatureWithLifeSpanType)
-_SCHEDULE_BASE_ORDER: Tuple[Tuple[str, str], ...] = (
+_SCHEDULE_BASE_ORDER: tuple[tuple[str, str], ...] = (
     (NS_GML, "description"),
     (NS_GML, "name"),
     (NS_NRG3, "creationDate"),
@@ -443,7 +443,7 @@ _SCHEDULE_BASE_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_NRG3, "temporalExtent"),
 )
 
-_SCHEDULE_BASE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
+_SCHEDULE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
     "gml_description": (NS_GML, "description"),
     "gml_name": (NS_GML, "name"),
     "creation_date": (NS_NRG3, "creationDate"),
@@ -468,23 +468,23 @@ _SCHEDULE_BASE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
 class _AbstractSchedule(BaseBuilder):
     """Shared fields for all schedule types."""
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    external_references: List[Any] = field(default_factory=list)
-    schedule_metadata: Optional[Any] = None  # Metadata builder
-    identifier: Optional[CodeValue] = None
-    valid_from: Optional[str] = None
-    valid_to: Optional[str] = None
-    status: Optional[CodeValue] = None
-    related_to: List[Any] = field(default_factory=list)
-    schedule_type: Optional[CodeValue] = None
-    start_time: Optional[str] = None
-    start_day: Optional[int] = None
-    start_month: Optional[int] = None
-    start_year: Optional[int] = None
-    temporal_extent: Optional[Any] = None
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    schedule_metadata: Any | None = None  # Metadata builder
+    identifier: CodeValue | None = None
+    valid_from: str | None = None
+    valid_to: str | None = None
+    status: CodeValue | None = None
+    related_to: list[Any] = field(default_factory=list)
+    schedule_type: CodeValue | None = None
+    start_time: str | None = None
+    start_day: int | None = None
+    start_month: int | None = None
+    start_year: int | None = None
+    temporal_extent: Any | None = None
 
 
 @dataclass
@@ -501,7 +501,7 @@ class ConstantValueSchedule(_AbstractSchedule):
         "value": (NS_NRG3, "value"),
     }
 
-    value: Optional[MeasureValue] = None
+    value: MeasureValue | None = None
 
 
 @dataclass
@@ -544,21 +544,21 @@ class ScheduleComponent(BaseBuilder):
         "schedule_member": (NS_NRG3, "scheduleComponentMember"),
     }
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    external_references: List[Any] = field(default_factory=list)
-    component_metadata: Optional[Any] = None
-    identifier: Optional[CodeValue] = None
-    valid_from: Optional[str] = None
-    valid_to: Optional[str] = None
-    status: Optional[CodeValue] = None
-    related_to: List[Any] = field(default_factory=list)
-    component_type: Optional[CodeValue] = None
-    repetitions: Optional[int] = None
-    additional_gap: Optional[Any] = None
-    schedule_member: Optional[Any] = None  # AbstractSchedule
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    component_metadata: Any | None = None
+    identifier: CodeValue | None = None
+    valid_from: str | None = None
+    valid_to: str | None = None
+    status: CodeValue | None = None
+    related_to: list[Any] = field(default_factory=list)
+    component_type: CodeValue | None = None
+    repetitions: int | None = None
+    additional_gap: Any | None = None
+    schedule_member: Any | None = None  # AbstractSchedule
 
 
 @dataclass
@@ -575,7 +575,7 @@ class CompositeSchedule(_AbstractSchedule):
         "schedule_components": (NS_NRG3, "scheduleComponent"),
     }
 
-    schedule_components: List[ScheduleComponent] = field(default_factory=list)
+    schedule_components: list[ScheduleComponent] = field(default_factory=list)
 
 
 # ===================================================================
@@ -641,27 +641,27 @@ class Occupants(BaseBuilder):
         "occupancy_schedule": (NS_NRG3, "occupancySchedule"),
     }
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    external_references: List[Any] = field(default_factory=list)
-    occ_metadata: Optional[Any] = None
-    identifier: Optional[CodeValue] = None
-    valid_from: Optional[str] = None
-    valid_to: Optional[str] = None
-    status: Optional[CodeValue] = None
-    related_to: List[Any] = field(default_factory=list)
-    occupant_type: Optional[CodeValue] = None
-    number_of_occupants: Optional[int] = None
-    average_diet_type: Optional[CodeValue] = None
-    average_income_level: Optional[CodeValue] = None
-    average_instruction_level: Optional[CodeValue] = None
-    heat_dissipation: Optional[MeasureValue] = None
-    heat_dissipation_convective_fraction: Optional[ScaleValue] = None
-    heat_dissipation_latent_fraction: Optional[ScaleValue] = None
-    heat_dissipation_radiant_fraction: Optional[ScaleValue] = None
-    occupancy_schedule: Optional[Any] = None
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    occ_metadata: Any | None = None
+    identifier: CodeValue | None = None
+    valid_from: str | None = None
+    valid_to: str | None = None
+    status: CodeValue | None = None
+    related_to: list[Any] = field(default_factory=list)
+    occupant_type: CodeValue | None = None
+    number_of_occupants: int | None = None
+    average_diet_type: CodeValue | None = None
+    average_income_level: CodeValue | None = None
+    average_instruction_level: CodeValue | None = None
+    heat_dissipation: MeasureValue | None = None
+    heat_dissipation_convective_fraction: ScaleValue | None = None
+    heat_dissipation_latent_fraction: ScaleValue | None = None
+    heat_dissipation_radiant_fraction: ScaleValue | None = None
+    occupancy_schedule: Any | None = None
 
 
 # ===================================================================
@@ -709,21 +709,134 @@ class EnergyPerformanceCertificate(BaseBuilder):
         "certification_method": (NS_NRG3, "certificationMethod"),
     }
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    external_references: List[Any] = field(default_factory=list)
-    epc_metadata: Optional[Any] = None
-    identifier: Optional[CodeValue] = None
-    valid_from: Optional[str] = None
-    valid_to: Optional[str] = None
-    status: Optional[CodeValue] = None
-    related_to: List[Any] = field(default_factory=list)
-    epc_type: Optional[CodeValue] = None
-    label: Optional[str] = None
-    value: Optional[MeasureValue] = None
-    certification_method: Optional[str] = None
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    epc_metadata: Any | None = None
+    identifier: CodeValue | None = None
+    valid_from: str | None = None
+    valid_to: str | None = None
+    status: CodeValue | None = None
+    related_to: list[Any] = field(default_factory=list)
+    epc_type: CodeValue | None = None
+    label: str | None = None
+    value: MeasureValue | None = None
+    certification_method: str | None = None
+
+
+# ===================================================================
+# Energy (resource)
+# ===================================================================
+
+
+@dataclass
+class Energy(BaseBuilder):
+    """``nrg3:Energy`` -- energy resource (consumption or production).
+
+    Inherits from ``AbstractResourceType`` which extends
+    ``AbstractFeatureWithLifeSpanType``.  Used to model annual energy
+    demand/supply for a building or device (e.g. EV charging consumption).
+    """
+
+    ELEMENT_TAG: ClassVar = (NS_NRG3, "Energy")
+    ELEMENT_ORDER: ClassVar = (
+        (NS_GML, "description"),
+        (NS_GML, "name"),
+        (NS_NRG3, "creationDate"),
+        (NS_NRG3, "terminationDate"),
+        (NS_NRG3, "externalReference"),
+        (NS_NRG3, "metadata"),
+        (NS_NRG3, "identifier"),
+        (NS_NRG3, "validFrom"),
+        (NS_NRG3, "validTo"),
+        (NS_NRG3, "status"),
+        (NS_NRG3, "relatedTo"),
+        # AbstractResource fields
+        (NS_NRG3, "operationType"),
+        (NS_NRG3, "referencePeriod"),
+        (NS_NRG3, "amount"),
+        (NS_NRG3, "year"),
+        (NS_NRG3, "isAmountNormalized"),
+        (NS_NRG3, "normalizationValue"),
+        (NS_NRG3, "normalizationParameter"),
+        (NS_NRG3, "expense"),
+        (NS_NRG3, "revenue"),
+        (NS_NRG3, "co2Equivalent"),
+        # Energy-specific fields
+        (NS_NRG3, "type"),
+        (NS_NRG3, "endUse"),
+        (NS_NRG3, "energyCarrier"),
+        (NS_NRG3, "maximumLoad"),
+        (NS_NRG3, "maximumLoadTime"),
+        (NS_NRG3, "maximumLoadDay"),
+        (NS_NRG3, "maximumLoadMonth"),
+        (NS_NRG3, "source"),
+    )
+    FIELD_MAP: ClassVar = {
+        "gml_description": (NS_GML, "description"),
+        "gml_name": (NS_GML, "name"),
+        "creation_date": (NS_NRG3, "creationDate"),
+        "termination_date": (NS_NRG3, "terminationDate"),
+        "external_references": (NS_NRG3, "externalReference"),
+        "energy_metadata": (NS_NRG3, "metadata"),
+        "identifier": (NS_NRG3, "identifier"),
+        "valid_from": (NS_NRG3, "validFrom"),
+        "valid_to": (NS_NRG3, "validTo"),
+        "status": (NS_NRG3, "status"),
+        "related_to": (NS_NRG3, "relatedTo"),
+        "operation_type": (NS_NRG3, "operationType"),
+        "reference_period": (NS_NRG3, "referencePeriod"),
+        "amount": (NS_NRG3, "amount"),
+        "year": (NS_NRG3, "year"),
+        "is_amount_normalized": (NS_NRG3, "isAmountNormalized"),
+        "normalization_value": (NS_NRG3, "normalizationValue"),
+        "normalization_parameter": (NS_NRG3, "normalizationParameter"),
+        "expense": (NS_NRG3, "expense"),
+        "revenue": (NS_NRG3, "revenue"),
+        "co2_equivalent": (NS_NRG3, "co2Equivalent"),
+        "energy_type": (NS_NRG3, "type"),
+        "end_use": (NS_NRG3, "endUse"),
+        "energy_carrier": (NS_NRG3, "energyCarrier"),
+        "maximum_load": (NS_NRG3, "maximumLoad"),
+        "maximum_load_time": (NS_NRG3, "maximumLoadTime"),
+        "maximum_load_day": (NS_NRG3, "maximumLoadDay"),
+        "maximum_load_month": (NS_NRG3, "maximumLoadMonth"),
+        "energy_source": (NS_NRG3, "source"),
+    }
+
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    energy_metadata: Any | None = None
+    identifier: CodeValue | None = None
+    valid_from: str | None = None
+    valid_to: str | None = None
+    status: CodeValue | None = None
+    related_to: list[Any] = field(default_factory=list)
+    # AbstractResource
+    operation_type: CodeValue | None = None
+    reference_period: CodeValue | None = None
+    amount: MeasureValue | None = None
+    year: int | None = None
+    is_amount_normalized: bool | None = None
+    normalization_value: MeasureValue | None = None
+    normalization_parameter: str | None = None
+    expense: MeasureValue | None = None
+    revenue: MeasureValue | None = None
+    co2_equivalent: MeasureValue | None = None
+    # Energy-specific
+    energy_type: CodeValue | None = None
+    end_use: CodeValue | None = None
+    energy_carrier: CodeValue | None = None
+    maximum_load: MeasureValue | None = None
+    maximum_load_time: str | None = None
+    maximum_load_day: int | None = None
+    maximum_load_month: int | None = None
+    energy_source: CodeValue | None = None
 
 
 # ===================================================================
@@ -778,22 +891,22 @@ class BuildingUnit(BaseBuilder):
         "energy_performance_certificates": (NS_NRG3, "energyPerformanceCertificate"),
     }
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    creation_date: Optional[str] = None
-    termination_date: Optional[str] = None
-    identifier: Optional[CodeValue] = None
-    nrg3_metadata: Optional[Metadata] = None
-    areas: List[QualifiedArea] = field(default_factory=list)
-    volumes: List[QualifiedVolume] = field(default_factory=list)
-    occupied_by: List[Occupants] = field(default_factory=list)
-    bu_type: Optional[CodeValue] = None
-    floor_number_from: Optional[float] = None
-    floor_number_to: Optional[float] = None
-    number_of_rooms: Optional[int] = None
-    owner_name: Optional[str] = None
-    ownership_type: Optional[CodeValue] = None
-    addresses: List[Any] = field(default_factory=list)
-    energy_performance_certificates: List[EnergyPerformanceCertificate] = field(
+    gml_description: str | None = None
+    gml_name: str | None = None
+    creation_date: str | None = None
+    termination_date: str | None = None
+    identifier: CodeValue | None = None
+    nrg3_metadata: Metadata | None = None
+    areas: list[QualifiedArea] = field(default_factory=list)
+    volumes: list[QualifiedVolume] = field(default_factory=list)
+    occupied_by: list[Occupants] = field(default_factory=list)
+    bu_type: CodeValue | None = None
+    floor_number_from: float | None = None
+    floor_number_to: float | None = None
+    number_of_rooms: int | None = None
+    owner_name: str | None = None
+    ownership_type: CodeValue | None = None
+    addresses: list[Any] = field(default_factory=list)
+    energy_performance_certificates: list[EnergyPerformanceCertificate] = field(
         default_factory=list
     )

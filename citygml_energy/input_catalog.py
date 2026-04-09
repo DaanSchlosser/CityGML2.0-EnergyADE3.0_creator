@@ -7,8 +7,9 @@ one or more raw FME aliases. Users may provide either form in JSON input.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -354,6 +355,42 @@ _CONSTANT_SCHEDULE_FIELDS = (
     _field("nrg3_scheduleValue_uom", "nrg3_value_units"),
 )
 
+_ABSTRACT_RESOURCE_FIELDS = (
+    _field("nrg3_operationType", "nrg3_operation_type"),
+    _field("nrg3_operationType_codeSpace", "nrg3_operation_type_codeSpace"),
+    _field("nrg3_referencePeriod", "nrg3_reference_period"),
+    _field("nrg3_referencePeriod_codeSpace", "nrg3_reference_period_codeSpace"),
+    _field("nrg3_amount"),
+    _field("nrg3_amount_uom", "nrg3_amount_units"),
+    _field("nrg3_year"),
+    _field("nrg3_isAmountNormalized", "nrg3_is_amount_normalized"),
+    _field("nrg3_normalizationValue", "nrg3_normalization_value"),
+    _field("nrg3_normalizationValue_uom", "nrg3_normalization_value_units"),
+    _field("nrg3_normalizationParameter", "nrg3_normalization_parameter"),
+    _field("nrg3_expense"),
+    _field("nrg3_expense_uom", "nrg3_expense_units"),
+    _field("nrg3_revenue"),
+    _field("nrg3_revenue_uom", "nrg3_revenue_units"),
+    _field("nrg3_co2Equivalent", "nrg3_co2_equivalent"),
+    _field("nrg3_co2Equivalent_uom", "nrg3_co2_equivalent_units"),
+)
+
+_ENERGY_FIELDS = (
+    _field("nrg3_energyType", "nrg3_type"),
+    _field("nrg3_energyType_codeSpace", "nrg3_type_codeSpace"),
+    _field("nrg3_endUse", "nrg3_end_use"),
+    _field("nrg3_endUse_codeSpace", "nrg3_end_use_codeSpace"),
+    _field("nrg3_energyCarrier", "nrg3_energy_carrier"),
+    _field("nrg3_energyCarrier_codeSpace", "nrg3_energy_carrier_codeSpace"),
+    _field("nrg3_maximumLoad", "nrg3_maximum_load"),
+    _field("nrg3_maximumLoad_uom", "nrg3_maximum_load_units"),
+    _field("nrg3_maximumLoadTime", "nrg3_maximum_load_time"),
+    _field("nrg3_maximumLoadDay", "nrg3_maximum_load_day"),
+    _field("nrg3_maximumLoadMonth", "nrg3_maximum_load_month"),
+    _field("nrg3_energySource", "nrg3_source"),
+    _field("nrg3_energySource_codeSpace", "nrg3_source_codeSpace"),
+)
+
 _COMPOSITE_SCHEDULE_FIELDS = (
     _field("nrg3_scheduleType", "nrg3_type"),
     _field("nrg3_scheduleType_codeSpace", "nrg3_type_codeSpace"),
@@ -364,41 +401,21 @@ _COMPOSITE_SCHEDULE_FIELDS = (
 )
 
 FEATURE_INPUT_FIELDS: dict[str, tuple[InputField, ...]] = {
-    "bldg_Building": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _BUILDING_FIELDS,
-    "bldg_BuildingPart": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _BUILDING_FIELDS,
-    "bldg_WallSurface": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _SURFACE_FIELDS,
-    "bldg_RoofSurface": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _SURFACE_FIELDS,
-    "bldg_GroundSurface": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _SURFACE_FIELDS,
-    "bldg_CeilingSurface": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _SURFACE_FIELDS,
-    "bldg_ClosureSurface": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _SURFACE_FIELDS,
-    "bldg_FloorSurface": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _SURFACE_FIELDS,
+    "bldg_Building": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _BUILDING_FIELDS,
+    "bldg_BuildingPart": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _BUILDING_FIELDS,
+    "bldg_WallSurface": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _SURFACE_FIELDS,
+    "bldg_RoofSurface": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _SURFACE_FIELDS,
+    "bldg_GroundSurface": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _SURFACE_FIELDS,
+    "bldg_CeilingSurface": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _SURFACE_FIELDS,
+    "bldg_ClosureSurface": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _SURFACE_FIELDS,
+    "bldg_FloorSurface": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _SURFACE_FIELDS,
     "bldg_OuterCeilingSurface": _CITY_OBJECT_FIELDS
     + _CITY_OBJECT_METADATA_FIELDS
     + _SURFACE_FIELDS,
-    "bldg_OuterFloorSurface": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _SURFACE_FIELDS,
+    "bldg_OuterFloorSurface": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _SURFACE_FIELDS,
     "bldg_Door": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _OPENING_FIELDS,
     "bldg_Window": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _OPENING_FIELDS,
-    "bldg_Room": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _ROOM_AND_INSTALLATION_FIELDS,
+    "bldg_Room": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _ROOM_AND_INSTALLATION_FIELDS,
     "bldg_BuildingInstallation": _CITY_OBJECT_FIELDS
     + _CITY_OBJECT_METADATA_FIELDS
     + _ROOM_AND_INSTALLATION_FIELDS,
@@ -447,15 +464,15 @@ FEATURE_INPUT_FIELDS: dict[str, tuple[InputField, ...]] = {
         _field("nrg3_access", "nrg3_access"),
         _field("nrg3_access_codeSpace", "nrg3_access_codeSpace"),
     ),
-    "nrg3_Occupants": _NRG_FEATURE_FIELDS
-    + _NRG_FEATURE_METADATA_FIELDS
-    + _OCCUPANTS_FIELDS,
+    "nrg3_Occupants": _NRG_FEATURE_FIELDS + _NRG_FEATURE_METADATA_FIELDS + _OCCUPANTS_FIELDS,
     "nrg3_EnergyPerformanceCertificate": _NRG_FEATURE_FIELDS
     + _NRG_FEATURE_METADATA_FIELDS
     + _EPC_FIELDS,
-    "nrg3_BuildingUnit": _CITY_OBJECT_FIELDS
-    + _CITY_OBJECT_METADATA_FIELDS
-    + _BUILDING_UNIT_FIELDS,
+    "nrg3_Energy": _NRG_FEATURE_FIELDS
+    + _NRG_FEATURE_METADATA_FIELDS
+    + _ABSTRACT_RESOURCE_FIELDS
+    + _ENERGY_FIELDS,
+    "nrg3_BuildingUnit": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _BUILDING_UNIT_FIELDS,
     "nrg3_ConstantValueSchedule": _NRG_FEATURE_FIELDS
     + _NRG_FEATURE_METADATA_FIELDS
     + _CONSTANT_SCHEDULE_FIELDS,
@@ -531,9 +548,7 @@ def _merge_values(canonical: str, existing: Any, new_value: Any) -> Any:
         return existing
     if existing == new_value:
         return existing
-    raise ValueError(
-        f"maps multiple input keys to {canonical!r} with conflicting values"
-    )
+    raise ValueError(f"maps multiple input keys to {canonical!r} with conflicting values")
 
 
 def _is_blank(value: Any) -> bool:
