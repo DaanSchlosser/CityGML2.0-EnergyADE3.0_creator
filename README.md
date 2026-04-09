@@ -3,7 +3,7 @@
 This repository has one supported generation workflow for user data:
 
 1. Edit the FME-style JSON input in `inputs/renodat_input.json`.
-2. Run `python examples/create_renodat.py`.
+2. Run `python examples/create_renodat.py --input inputs/renodat_input.json --output generated/renodat.gml`.
 3. Get a GML file in `generated/renodat.gml`.
 
 That single path is the canonical workflow. It supports the curated flat-field
@@ -37,7 +37,7 @@ If you prefer not to activate the environment on Windows, run commands through
 Create a GML file from the JSON input file:
 
 ```powershell
-python examples/create_renodat.py
+python examples/create_renodat.py --input inputs/renodat_input.json --output generated/renodat.gml
 ```
 
 The default input lives at `inputs/renodat_input.json`, and the default output
@@ -53,8 +53,9 @@ The primary and only supported authoring path is data-only.
 
 - Edit `inputs/renodat_input.json`.
 - Keep one feature record per object you have data for.
-- Use `gml_parent_id` to attach child objects like PV panels to a building.
-- Run `python examples/create_renodat.py`.
+- Use `gml_parent_id` for true child objects that should serialize inside their parent.
+- For RenoDAT PV collectors, use `gml_parent_id` when they should be modeled as building devices, as in the Alderaan beta8 reference file.
+- Run `python examples/create_renodat.py --input inputs/renodat_input.json --output generated/renodat.gml`.
 
 The JSON file already references `schemas/citygml_energy_input.schema.json` via
 `$schema`, so VS Code can validate the structure while you edit it.
@@ -87,7 +88,7 @@ Input shape:
   "geometry_sources": [
     {
       "type": "step-renodat-lod3",
-      "path": "../Owner-Occupier1_LOD3.0_STEP.stp",
+      "path": "Owner-Occupier1_LOD3.0_STEP.stp",
       "target_building_id": "id_building_1",
       "target_pv_id": "pv_panel_1"
     }
@@ -104,7 +105,8 @@ Input shape:
       "feature_type": "nrg3_PhotovoltaicCollector",
       "attributes": {
         "gml_id": "pv_panel_1",
-        "gml_parent_id": "id_building_1"
+        "gml_parent_id": "id_building_1",
+        "gml_name": "PV collector (36x270 Wp)"
       }
     }
   ]
@@ -193,6 +195,61 @@ Run the verification suite:
 ```powershell
 python -m pytest -q
 ```
+
+## XSD Validation
+
+Validate any generated GML file against the CityGML 2.0 and Energy ADE 3.0
+beta8 XSD schemas (fully offline, no network needed):
+
+```powershell
+python tools/validate_xsd.py generated/renodat.gml
+```
+
+The validator uses the local CityGML 2.0 schemas from the KIT ModelViewer
+distribution (`KITModelViewer_V7.5_Build-3636/GMLSchemata/CityGML_2_0/`) and the
+Energy ADE 3.0 beta8 XSD from `Energy_ADE-3.0beta8/xsd/`.
+
+## KIT ModelViewer setup (important)
+
+The KIT FZKViewer / ModelViewer ships with an Energy ADE **2.0** schema
+(`EnergyADE-local.xsd`, namespace `http://www.sig3d.org/citygml/2.0/energy/2.0`).
+GML files that use the Energy ADE **3.0** namespace
+(`http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0`) will not display
+correctly in the viewer unless you replace that schema.
+
+**Symptoms when the wrong XSD is installed**: the viewer shows child element
+names (e.g. "Zone Window 1", "ZoneWallSurface 4") instead of the building name,
+PV panels do not appear, and the building tree structure is garbled.
+
+**Fix**: replace the viewer's Energy ADE XSD with the beta8 version adapted for
+local schema resolution.
+
+1. Copy `Energy_ADE-3.0beta8/xsd/Energy_ADE_3.0_beta8.xsd` to your KIT
+   ModelViewer installation at:
+   ```
+   <KITModelViewer>/GMLSchemata/CityGML_2_0/CityGML/EnergyADE-local.xsd
+   ```
+2. In the copied file, replace the online `<import>` schema locations with local
+   relative paths:
+
+   | Original | Replace with |
+   |---|---|
+   | `http://schemas.opengis.net/gml/3.1.1/base/gml.xsd` | `../3.1.1/base/gml.xsd` |
+   | `http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd` | `cityGMLBase.xsd` |
+   | `http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd` | `appearance.xsd` |
+   | `http://schemas.opengis.net/citygml/bridge/2.0/bridge.xsd` | `bridge.xsd` |
+   | `http://schemas.opengis.net/citygml/building/2.0/building.xsd` | `building.xsd` |
+   | `http://schemas.opengis.net/citygml/cityfurniture/2.0/cityFurniture.xsd` | `cityFurniture.xsd` |
+   | `http://schemas.opengis.net/citygml/cityobjectgroup/2.0/cityObjectGroup.xsd` | `cityObjectGroup.xsd` |
+   | `http://schemas.opengis.net/citygml/generics/2.0/generics.xsd` | `generics.xsd` |
+   | `http://schemas.opengis.net/citygml/landuse/2.0/landUse.xsd` | `landUse.xsd` |
+   | `http://schemas.opengis.net/citygml/relief/2.0/relief.xsd` | `relief.xsd` |
+   | `http://schemas.opengis.net/citygml/transportation/2.0/transportation.xsd` | `transportation.xsd` |
+   | `http://schemas.opengis.net/citygml/tunnel/2.0/tunnel.xsd` | `tunnel.xsd` |
+   | `http://schemas.opengis.net/citygml/vegetation/2.0/vegetation.xsd` | `vegetation.xsd` |
+   | `http://schemas.opengis.net/citygml/waterbody/2.0/waterBody.xsd` | `waterBody.xsd` |
+
+3. Restart the KIT ModelViewer and reload the GML file.
 
 ## Practical advice for extending inputs
 
