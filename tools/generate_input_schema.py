@@ -62,9 +62,7 @@ def _build_feature_item_schema() -> dict:
                 "if": {"properties": {"feature_type": {"const": feature_type}}},
                 "then": {
                     "properties": {
-                        "attributes": _build_attributes_schema(
-                            FEATURE_INPUT_FIELDS[feature_type]
-                        )
+                        "attributes": _build_attributes_schema(FEATURE_INPUT_FIELDS[feature_type])
                     }
                 },
             }
@@ -79,8 +77,7 @@ def _build_feature_item_schema() -> dict:
                 "type": "string",
                 "enum": list_supported_feature_types(),
                 "description": (
-                    "Supported feature types that can currently be created from "
-                    "JSON input."
+                    "Supported feature types that can currently be created from JSON input."
                 ),
             },
             "attributes": {

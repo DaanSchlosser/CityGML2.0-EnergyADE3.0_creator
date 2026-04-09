@@ -56,9 +56,7 @@ def resolve_alderaan_reference_path(path: Path | str | None = None) -> Path:
             return candidate
 
     searched = ", ".join(str(candidate) for candidate in REFERENCE_CANDIDATES)
-    raise FileNotFoundError(
-        f"Could not locate an Alderaan template. Checked: {searched}"
-    )
+    raise FileNotFoundError(f"Could not locate an Alderaan template. Checked: {searched}")
 
 
 REFERENCE = resolve_alderaan_reference_path()

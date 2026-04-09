@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any
 
 from lxml import etree
 
@@ -36,12 +36,12 @@ class Envelope:
 class Address:
     """``core:Address`` containing ``xAL:AddressDetails``."""
 
-    country: Optional[str] = None
-    locality: Optional[str] = None
-    thoroughfare: Optional[str] = None
-    thoroughfare_number: Optional[str] = None
-    postal_code: Optional[str] = None
-    gml_id: Optional[str] = None
+    country: str | None = None
+    locality: str | None = None
+    thoroughfare: str | None = None
+    thoroughfare_number: str | None = None
+    postal_code: str | None = None
+    gml_id: str | None = None
 
     def to_xml(self, parent: etree._Element) -> etree._Element:
         addr = etree.SubElement(parent, qn("core", "Address"))
@@ -77,18 +77,18 @@ class Address:
 class CityModel:
     """Top-level ``core:CityModel`` container."""
 
-    gml_description: Optional[str] = None
-    gml_name: Optional[str] = None
-    envelope: Optional[Envelope] = None
-    city_object_members: List[Any] = field(default_factory=list)
-    appearance_members: List[Any] = field(default_factory=list)
+    gml_description: str | None = None
+    gml_name: str | None = None
+    envelope: Envelope | None = None
+    city_object_members: list[Any] = field(default_factory=list)
+    appearance_members: list[Any] = field(default_factory=list)
 
-    def add(self, city_object: Any) -> "CityModel":
+    def add(self, city_object: Any) -> CityModel:
         """Add a city object (Building, etc.) as a cityObjectMember."""
         self.city_object_members.append(city_object)
         return self
 
-    def add_appearance(self, appearance: Any) -> "CityModel":
+    def add_appearance(self, appearance: Any) -> CityModel:
         """Add an appearance object as an ``app:appearanceMember``."""
         self.appearance_members.append(appearance)
         return self

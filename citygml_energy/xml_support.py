@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Optional
 
 from lxml import etree
 
@@ -18,7 +17,7 @@ class RawXmlElement:
     element: etree._Element
 
     @classmethod
-    def from_element(cls, element: etree._Element) -> "RawXmlElement":
+    def from_element(cls, element: etree._Element) -> RawXmlElement:
         return cls(deepcopy(element))
 
     @classmethod
@@ -27,7 +26,7 @@ class RawXmlElement:
         xml_text: str,
         *,
         remove_blank_text: bool = True,
-    ) -> "RawXmlElement":
+    ) -> RawXmlElement:
         parser = etree.XMLParser(remove_blank_text=remove_blank_text)
         element = etree.fromstring(xml_text.encode("utf-8"), parser=parser)
         return cls(element)
@@ -35,19 +34,19 @@ class RawXmlElement:
     def clone(self) -> etree._Element:
         return deepcopy(self.element)
 
-    def to_xml(self, parent: Optional[etree._Element] = None) -> etree._Element:
+    def to_xml(self, parent: etree._Element | None = None) -> etree._Element:
         element = self.clone()
         if parent is not None:
             parent.append(element)
         return element
 
-    def get_gml_id(self) -> Optional[str]:
+    def get_gml_id(self) -> str | None:
         return self.element.get(f"{{{NS_GML}}}id")
 
-    def find_child(self, prefix: str, local: str) -> Optional[etree._Element]:
+    def find_child(self, prefix: str, local: str) -> etree._Element | None:
         return self.element.find(qn(prefix, local))
 
-    def set_child_text(self, prefix: str, local: str, text: Optional[str]) -> None:
+    def set_child_text(self, prefix: str, local: str, text: str | None) -> None:
         child = self.find_child(prefix, local)
         if child is None:
             raise KeyError(f"Child element {prefix}:{local} not found")
