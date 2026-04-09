@@ -3,6 +3,7 @@
 This module covers all 25 target classes from the Excel specification that
 belong to the Energy ADE namespace.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -11,17 +12,52 @@ from typing import Any, ClassVar, Dict, List, Optional, Tuple
 from lxml import etree
 
 from .base import BaseBuilder
-from .namespaces import NS_BLDG, NS_CORE, NS_GML, NS_NRG3
+from .namespaces import NS_CORE, NS_GML, NS_NRG3, NS_XLINK
 from .types import CodeValue, MeasureValue, ScaleValue
+
+# ===================================================================
+# CityObjectRelation
+# ===================================================================
+
+
+@dataclass
+class CityObjectRelation(BaseBuilder):
+    """``nrg3:CityObjectRelation`` -- relation between city objects.
+
+    The inner ``nrg3:relatedTo`` child carries an ``xlink:href`` pointing
+    to the related object rather than nesting a full element, so we
+    override ``to_xml`` for this special case.
+    """
+
+    ELEMENT_TAG: ClassVar = (NS_NRG3, "CityObjectRelation")
+    ELEMENT_ORDER: ClassVar = (
+        (NS_NRG3, "relationType"),
+        (NS_NRG3, "relatedTo"),
+    )
+    FIELD_MAP: ClassVar = {
+        "relation_type": (NS_NRG3, "relationType"),
+    }
+
+    relation_type: Optional[CodeValue] = None
+    related_to_href: Optional[str] = None
+
+    def to_xml(self, parent: Optional[etree._Element] = None) -> etree._Element:
+        elem = super().to_xml(parent)
+        if self.related_to_href is not None:
+            inner = etree.SubElement(elem, f"{{{NS_NRG3}}}relatedTo")
+            inner.set(f"{{{NS_XLINK}}}href", self.related_to_href)
+        return elem
 
 
 # ===================================================================
 # Data types / qualified attributes
 # ===================================================================
 
+
 @dataclass
 class QualifiedVolume(BaseBuilder):
     """``nrg3:QualifiedVolume`` -- a volume with type qualifier."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "QualifiedVolume")
     ELEMENT_ORDER: ClassVar = (
         (NS_NRG3, "description"),
@@ -45,6 +81,7 @@ class QualifiedVolume(BaseBuilder):
 @dataclass
 class QualifiedArea(BaseBuilder):
     """``nrg3:QualifiedArea`` -- an area with type qualifier."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "QualifiedArea")
     ELEMENT_ORDER: ClassVar = (
         (NS_NRG3, "description"),
@@ -68,6 +105,7 @@ class QualifiedArea(BaseBuilder):
 @dataclass
 class QualifiedHeight(BaseBuilder):
     """``nrg3:QualifiedHeight`` -- a height with type qualifier."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "QualifiedHeight")
     ELEMENT_ORDER: ClassVar = (
         (NS_NRG3, "description"),
@@ -92,9 +130,11 @@ class QualifiedHeight(BaseBuilder):
 # Metadata
 # ===================================================================
 
+
 @dataclass
 class Metadata(BaseBuilder):
     """``nrg3:Metadata`` -- extends gml:MetaDataPropertyType."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "Metadata")
     ELEMENT_ORDER: ClassVar = (
         (NS_NRG3, "author"),
@@ -122,22 +162,24 @@ class Metadata(BaseBuilder):
 # Device Operation
 # ===================================================================
 
+
 @dataclass
 class DeviceOperation(BaseBuilder):
     """``nrg3:DeviceOperation``."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "DeviceOperation")
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),
         (NS_NRG3, "creationDate"),
         (NS_NRG3, "terminationDate"),
-        (NS_NRG3, "externalReference"),   # AbstractADEFeatureType
-        (NS_NRG3, "metadata"),            # AbstractADEFeatureType
-        (NS_NRG3, "identifier"),          # AbstractFeatureWithLifeSpanType
+        (NS_NRG3, "externalReference"),  # AbstractADEFeatureType
+        (NS_NRG3, "metadata"),  # AbstractADEFeatureType
+        (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
         (NS_NRG3, "validFrom"),
         (NS_NRG3, "validTo"),
-        (NS_NRG3, "status"),              # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "relatedTo"),           # AbstractFeatureWithLifeSpanType
+        (NS_NRG3, "status"),  # AbstractFeatureWithLifeSpanType
+        (NS_NRG3, "relatedTo"),  # AbstractFeatureWithLifeSpanType
         (NS_NRG3, "type"),
         (NS_NRG3, "yearlyGlobalEfficiency"),
         (NS_NRG3, "schedule"),
@@ -190,7 +232,10 @@ _DEVICE_BASE_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_NRG3, "relatedTo"),
     (NS_NRG3, "validFrom"),
     (NS_NRG3, "validTo"),
-    (NS_NRG3, "referencePoint"),   # declared last in _GenericApplicationPropertyOfCityObject
+    (
+        NS_NRG3,
+        "referencePoint",
+    ),  # declared last in _GenericApplicationPropertyOfCityObject
     # AbstractDevice fields
     (NS_NRG3, "model"),
     (NS_NRG3, "yearOfInstallation"),
@@ -224,7 +269,10 @@ _DEVICE_BASE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
     "nominal_efficiency": (NS_NRG3, "nominalEfficiency"),
     "efficiency_indicator": (NS_NRG3, "efficiencyIndicator"),
     "heat_dissipation": (NS_NRG3, "heatDissipation"),
-    "heat_dissipation_convective_fraction": (NS_NRG3, "heatDissipationConvectiveFraction"),
+    "heat_dissipation_convective_fraction": (
+        NS_NRG3,
+        "heatDissipationConvectiveFraction",
+    ),
     "heat_dissipation_latent_fraction": (NS_NRG3, "heatDissipationLatentFraction"),
     "heat_dissipation_radiant_fraction": (NS_NRG3, "heatDissipationRadiantFraction"),
     "device_operations": (NS_NRG3, "deviceOperation"),
@@ -234,6 +282,7 @@ _DEVICE_BASE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
 @dataclass
 class _AbstractDevice(BaseBuilder):
     """Base for all device types (not instantiated directly)."""
+
     gml_description: Optional[str] = None
     gml_name: Optional[str] = None
     creation_date: Optional[str] = None
@@ -283,6 +332,7 @@ _SOLAR_EXTRA_FIELD_MAP: Dict[str, Tuple[str, str]] = {
 @dataclass
 class PhotovoltaicCollector(_AbstractDevice):
     """``nrg3:PhotovoltaicCollector`` -- PV panel/array."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "PhotovoltaicCollector")
     ELEMENT_ORDER: ClassVar = (
         *_DEVICE_BASE_ORDER,
@@ -310,9 +360,11 @@ class PhotovoltaicCollector(_AbstractDevice):
 # Heat Pump
 # ===================================================================
 
+
 @dataclass
 class HeatPump(_AbstractDevice):
     """``nrg3:HeatPump``."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "HeatPump")
     ELEMENT_ORDER: ClassVar = (
         *_DEVICE_BASE_ORDER,
@@ -336,9 +388,11 @@ class HeatPump(_AbstractDevice):
 # EV Charging Station
 # ===================================================================
 
+
 @dataclass
 class EVChargingStation(_AbstractDevice):
     """``nrg3:EVChargingStation``."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "EVChargingStation")
     ELEMENT_ORDER: ClassVar = (
         *_DEVICE_BASE_ORDER,
@@ -374,13 +428,13 @@ _SCHEDULE_BASE_ORDER: Tuple[Tuple[str, str], ...] = (
     (NS_GML, "name"),
     (NS_NRG3, "creationDate"),
     (NS_NRG3, "terminationDate"),
-    (NS_NRG3, "externalReference"),   # AbstractADEFeatureType
-    (NS_NRG3, "metadata"),            # AbstractADEFeatureType
-    (NS_NRG3, "identifier"),          # AbstractFeatureWithLifeSpanType
+    (NS_NRG3, "externalReference"),  # AbstractADEFeatureType
+    (NS_NRG3, "metadata"),  # AbstractADEFeatureType
+    (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
     (NS_NRG3, "validFrom"),
     (NS_NRG3, "validTo"),
-    (NS_NRG3, "status"),              # AbstractFeatureWithLifeSpanType
-    (NS_NRG3, "relatedTo"),           # AbstractFeatureWithLifeSpanType
+    (NS_NRG3, "status"),  # AbstractFeatureWithLifeSpanType
+    (NS_NRG3, "relatedTo"),  # AbstractFeatureWithLifeSpanType
     (NS_NRG3, "type"),
     (NS_NRG3, "startTime"),
     (NS_NRG3, "startDay"),
@@ -413,6 +467,7 @@ _SCHEDULE_BASE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
 @dataclass
 class _AbstractSchedule(BaseBuilder):
     """Shared fields for all schedule types."""
+
     gml_description: Optional[str] = None
     gml_name: Optional[str] = None
     creation_date: Optional[str] = None
@@ -435,6 +490,7 @@ class _AbstractSchedule(BaseBuilder):
 @dataclass
 class ConstantValueSchedule(_AbstractSchedule):
     """``nrg3:ConstantValueSchedule``."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "ConstantValueSchedule")
     ELEMENT_ORDER: ClassVar = (
         *_SCHEDULE_BASE_ORDER,
@@ -451,19 +507,20 @@ class ConstantValueSchedule(_AbstractSchedule):
 @dataclass
 class ScheduleComponent(BaseBuilder):
     """``nrg3:ScheduleComponent`` -- part of a CompositeSchedule."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "ScheduleComponent")
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),
-        (NS_NRG3, "creationDate"),        # AbstractADEFeatureType
+        (NS_NRG3, "creationDate"),  # AbstractADEFeatureType
         (NS_NRG3, "terminationDate"),
-        (NS_NRG3, "externalReference"),   # AbstractADEFeatureType (0..*)
-        (NS_NRG3, "metadata"),            # AbstractADEFeatureType
-        (NS_NRG3, "identifier"),          # AbstractFeatureWithLifeSpanType
+        (NS_NRG3, "externalReference"),  # AbstractADEFeatureType (0..*)
+        (NS_NRG3, "metadata"),  # AbstractADEFeatureType
+        (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
         (NS_NRG3, "validFrom"),
         (NS_NRG3, "validTo"),
         (NS_NRG3, "status"),
-        (NS_NRG3, "relatedTo"),           # (0..*)
+        (NS_NRG3, "relatedTo"),  # (0..*)
         (NS_NRG3, "type"),
         (NS_NRG3, "repetitions"),
         (NS_NRG3, "additionalGap"),
@@ -507,6 +564,7 @@ class ScheduleComponent(BaseBuilder):
 @dataclass
 class CompositeSchedule(_AbstractSchedule):
     """``nrg3:CompositeSchedule``."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "CompositeSchedule")
     ELEMENT_ORDER: ClassVar = (
         *_SCHEDULE_BASE_ORDER,
@@ -524,22 +582,24 @@ class CompositeSchedule(_AbstractSchedule):
 # Occupants
 # ===================================================================
 
+
 @dataclass
 class Occupants(BaseBuilder):
     """``nrg3:Occupants``."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "Occupants")
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),
         (NS_NRG3, "creationDate"),
         (NS_NRG3, "terminationDate"),
-        (NS_NRG3, "externalReference"),   # AbstractADEFeatureType
-        (NS_NRG3, "metadata"),            # AbstractADEFeatureType
-        (NS_NRG3, "identifier"),          # AbstractFeatureWithLifeSpanType
+        (NS_NRG3, "externalReference"),  # AbstractADEFeatureType
+        (NS_NRG3, "metadata"),  # AbstractADEFeatureType
+        (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
         (NS_NRG3, "validFrom"),
         (NS_NRG3, "validTo"),
-        (NS_NRG3, "status"),              # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "relatedTo"),           # AbstractFeatureWithLifeSpanType
+        (NS_NRG3, "status"),  # AbstractFeatureWithLifeSpanType
+        (NS_NRG3, "relatedTo"),  # AbstractFeatureWithLifeSpanType
         (NS_NRG3, "type"),
         (NS_NRG3, "numberOfOccupants"),
         (NS_NRG3, "averageDietType"),
@@ -569,9 +629,15 @@ class Occupants(BaseBuilder):
         "average_income_level": (NS_NRG3, "averageIncomeLevel"),
         "average_instruction_level": (NS_NRG3, "averageInstructionLevel"),
         "heat_dissipation": (NS_NRG3, "heatDissipation"),
-        "heat_dissipation_convective_fraction": (NS_NRG3, "heatDissipationConvectiveFraction"),
+        "heat_dissipation_convective_fraction": (
+            NS_NRG3,
+            "heatDissipationConvectiveFraction",
+        ),
         "heat_dissipation_latent_fraction": (NS_NRG3, "heatDissipationLatentFraction"),
-        "heat_dissipation_radiant_fraction": (NS_NRG3, "heatDissipationRadiantFraction"),
+        "heat_dissipation_radiant_fraction": (
+            NS_NRG3,
+            "heatDissipationRadiantFraction",
+        ),
         "occupancy_schedule": (NS_NRG3, "occupancySchedule"),
     }
 
@@ -602,22 +668,24 @@ class Occupants(BaseBuilder):
 # Energy Performance Certificate
 # ===================================================================
 
+
 @dataclass
 class EnergyPerformanceCertificate(BaseBuilder):
     """``nrg3:EnergyPerformanceCertificate``."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "EnergyPerformanceCertificate")
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),
         (NS_NRG3, "creationDate"),
         (NS_NRG3, "terminationDate"),
-        (NS_NRG3, "externalReference"),   # AbstractADEFeatureType (0..*)
-        (NS_NRG3, "metadata"),            # AbstractADEFeatureType
-        (NS_NRG3, "identifier"),          # AbstractFeatureWithLifeSpanType
+        (NS_NRG3, "externalReference"),  # AbstractADEFeatureType (0..*)
+        (NS_NRG3, "metadata"),  # AbstractADEFeatureType
+        (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
         (NS_NRG3, "validFrom"),
         (NS_NRG3, "validTo"),
-        (NS_NRG3, "status"),              # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "relatedTo"),           # AbstractFeatureWithLifeSpanType (0..*)
+        (NS_NRG3, "status"),  # AbstractFeatureWithLifeSpanType
+        (NS_NRG3, "relatedTo"),  # AbstractFeatureWithLifeSpanType (0..*)
         (NS_NRG3, "type"),
         (NS_NRG3, "label"),
         (NS_NRG3, "value"),
@@ -662,9 +730,11 @@ class EnergyPerformanceCertificate(BaseBuilder):
 # Building Unit
 # ===================================================================
 
+
 @dataclass
 class BuildingUnit(BaseBuilder):
     """``nrg3:BuildingUnit``."""
+
     ELEMENT_TAG: ClassVar = (NS_NRG3, "BuildingUnit")
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),

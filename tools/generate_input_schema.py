@@ -128,10 +128,11 @@ def _build_geometry_source_schema() -> dict:
         "additionalProperties": False,
         "properties": {
             "type": {
-                "const": "obj-renodat-lod3",
+                "type": "string",
+                "enum": ["step-renodat-lod3"],
                 "description": (
                     "Import LOD3 wall/roof/ground/opening geometry and optional PV "
-                    "panel geometry from a RenoDAT-style OBJ file."
+                    "panel geometry from a RenoDAT-style STEP file."
                 ),
             },
             "path": {

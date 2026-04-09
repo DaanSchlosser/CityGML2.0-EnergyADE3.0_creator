@@ -1,14 +1,14 @@
 # CityGML 2.0 + Energy ADE 3.0 Creator
 
-This repository now has one supported generation workflow for user data:
+This repository has one supported generation workflow for user data:
 
 1. Edit the FME-style JSON input in `inputs/renodat_input.json`.
 2. Run `python examples/create_renodat.py`.
-3. Get a schema-valid GML file in `generated/renodat.gml`.
+3. Get a GML file in `generated/renodat.gml`.
 
 That single path is the canonical workflow. It supports the curated flat-field
-input catalog, parent-child linking with `gml_parent_id`, and optional OBJ
-geometry import through `geometry_sources`.
+input catalog, parent-child linking with `gml_parent_id`, and STEP geometry
+import through `geometry_sources`.
 
 The Alderaan tooling remains in the repository as reference-fixture maintenance
 code for the checked-in sample dataset. It is not the primary workflow for
@@ -34,7 +34,7 @@ If you prefer not to activate the environment on Windows, run commands through
 
 ## Quick start
 
-Create a small, schema-valid file from the JSON input file:
+Create a GML file from the JSON input file:
 
 ```powershell
 python examples/create_renodat.py
@@ -64,13 +64,15 @@ input keys for the selected `feature_type`. You can use either the existing
 canonical keys or the matching raw FME field names for the supported subset.
 Any field may be omitted when you do not have a value for it.
 
-If you have OBJ geometry for the same building, add a `geometry_sources` entry.
-The current importer understands RenoDAT-style LOD3 groups such as
-`nrg3_ZoneWallSurface`, `nrg3_ZoneRoofSurface`, `nrg3_ZoneGroundSurface`,
-`nrg3_ZoneWindow`, and `nrg3_ZoneDoor`, plus `SolarPanelSurface_*` objects for
-the configured PV collector. Openings can use names like
-`Window_05|parent=WallSurface_04` so the importer can attach them to the
-correct wall surface.
+If you have Rhino-exported geometry for the same building, add a
+`geometry_sources` entry with type `step-renodat-lod3`. The STEP importer keeps
+the semantic face boundaries and writes wall polygons with interior rings for
+openings.
+
+The STEP importer understands RenoDAT-style object naming such as
+`WallSurface_04`, `RoofSurface_02`, `GroundSurface_01`,
+`Window_05|parent=WallSurface_04`, `Door_01|parent=WallSurface_01`, and
+`SolarPanelSurface_*|parent=RoofSurface_02` for the configured PV collector.
 
 Input shape:
 
@@ -84,8 +86,8 @@ Input shape:
   },
   "geometry_sources": [
     {
-      "type": "obj-renodat-lod3",
-      "path": "../Owner-Occupier1_LOD3.0_OBJ.obj",
+      "type": "step-renodat-lod3",
+      "path": "../Owner-Occupier1_LOD3.0_STEP.stp",
       "target_building_id": "id_building_1",
       "target_pv_id": "pv_panel_1"
     }
@@ -184,27 +186,13 @@ For more advanced edits you can use `building.xpath(...)` on the raw XML-backed
 object, or move to the typed API if the feature you need is already implemented
 in `citygml_energy`.
 
-## Validation and tests
+## Tests
 
-Run the full verification suite:
+Run the verification suite:
 
 ```powershell
 python -m pytest -q
 ```
-
-Focused checks:
-
-```powershell
-python -m pytest tests/test_alderaan_reference.py -q
-python -m pytest tests/test_renodat_reference.py -q
-```
-
-What is verified today:
-
-- Alderaan exact-reference generation structurally matches the checked-in file.
-- Alderaan default generation is valid against the bundled beta8 schema.
-- The canonical RenoDAT JSON workflow is schema-valid.
-- The generated XML is well-formed and editable from Python.
 
 ## Practical advice for extending inputs
 

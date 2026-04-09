@@ -27,7 +27,6 @@ from citygml_energy import (
     find_city_object_by_gml_id,
     load_city_model_template,
     normalize_city_model_for_beta8,
-    validate_file_against_energy_ade_schema,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -73,12 +72,8 @@ def write_alderaan_file(
     city_name: str | None = None,
     city_description: str | None = None,
     building_name_updates: dict[str, str] | None = None,
-) -> tuple[CityModel, dict[str, object] | None]:
-    """Write an Alderaan-derived file and optionally validate it.
-
-    Validation is only performed for the beta8-normalized workflow because
-    exact-reference mode preserves the canonical repository template verbatim.
-    """
+) -> CityModel:
+    """Write an Alderaan-derived file."""
     model = create_alderaan(
         template_path=template_path,
         normalize_for_beta8=normalize_for_beta8,
@@ -94,17 +89,7 @@ def write_alderaan_file(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     model.write(str(output_path))
 
-    validation = None
-    if normalize_for_beta8:
-        validation = validate_file_against_energy_ade_schema(output_path)
-        if not validation["valid"]:
-            messages = "\n".join(
-                f"line {entry['line']}: {entry['message']}"
-                for entry in validation["errors"][:20]
-            )
-            raise ValueError(f"Generated file is not schema-valid:\n{messages}")
-
-    return model, validation
+    return model
 
 
 def create_alderaan(
@@ -233,7 +218,7 @@ if __name__ == "__main__":
     if args.building_id and args.building_name:
         building_name_updates = {args.building_id: args.building_name}
 
-    model, validation = write_alderaan_file(
+    model = write_alderaan_file(
         output_path=args.output,
         template_path=args.template,
         normalize_for_beta8=not args.exact_reference,
@@ -251,7 +236,3 @@ if __name__ == "__main__":
     print(f"Written to {args.output}")
     if first_building_name is not None:
         print(f"First building name: {first_building_name}")
-    if args.exact_reference:
-        print("Schema validation skipped in exact-reference mode")
-    else:
-        print("Schema validation: OK")

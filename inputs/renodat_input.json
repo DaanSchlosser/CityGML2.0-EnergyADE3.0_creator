@@ -7,8 +7,8 @@
   },
   "geometry_sources": [
     {
-      "type": "obj-renodat-lod3",
-      "path": "../Owner-Occupier1_LOD3.0_OBJ.obj",
+      "type": "step-renodat-lod3",
+      "path": "../Owner-Occupier1_LOD3.0_STEP.stp",
       "target_building_id": "id_building_1",
       "target_pv_id": "pv_panel_1"
     }

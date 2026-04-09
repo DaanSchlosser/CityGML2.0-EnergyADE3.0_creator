@@ -8,8 +8,8 @@ from typing import Any, Mapping
 
 from .core import CityModel
 from .factory import FeatureFactory, list_feature_types
+from .geometry import apply_geometry_sources
 from .input_catalog import get_allowed_attribute_names, normalize_feature_attributes
-from .obj_geometry import apply_geometry_sources
 
 PathLike = str | Path
 
@@ -27,7 +27,9 @@ _ALLOWED_GEOMETRY_SOURCE_KEYS = {
     "target_building_id",
     "target_pv_id",
 }
-_ALLOWED_GEOMETRY_SOURCE_TYPES = {"obj-renodat-lod3"}
+_ALLOWED_GEOMETRY_SOURCE_TYPES = {
+    "step-renodat-lod3",
+}
 _ALLOWED_SCALAR_TYPES = (str, int, float, bool, type(None))
 
 

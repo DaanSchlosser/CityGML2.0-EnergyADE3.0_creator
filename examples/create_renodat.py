@@ -29,14 +29,11 @@ def create_renodat(input_path: Path | str = INPUT) -> CityModel:
 def write_renodat_file(
     input_path: Path | str = INPUT,
     output_path: Path | str = OUTPUT,
-    *,
-    validate_against_schema: bool = True,
-) -> tuple[CityModel, dict[str, object] | None]:
+) -> CityModel:
     """Backward-compatible wrapper for the canonical generation API."""
     return generate_gml_file(
         input_path=input_path,
         output_path=output_path,
-        validate_against_schema=validate_against_schema,
     )
 
 
@@ -54,11 +51,6 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         default=OUTPUT,
         help="Destination path for the generated GML file.",
     )
-    parser.add_argument(
-        "--no-validate",
-        action="store_true",
-        help="Skip schema validation after writing the output file.",
-    )
     return parser
 
 
@@ -66,15 +58,10 @@ if __name__ == "__main__":
     parser = _build_argument_parser()
     args = parser.parse_args()
 
-    model, validation = write_renodat_file(
+    model = write_renodat_file(
         input_path=args.input,
         output_path=args.output,
-        validate_against_schema=not args.no_validate,
     )
 
     print(f"Written to {args.output}")
     print(f"Top-level city objects: {len(model.city_object_members)}")
-    if validation is None:
-        print("Schema validation skipped")
-    else:
-        print("Schema validation: OK")

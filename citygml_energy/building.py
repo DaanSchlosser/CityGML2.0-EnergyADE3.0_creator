@@ -3,17 +3,15 @@
 Covers: Building, BuildingPart, BuildingInstallation,
 IntBuildingInstallation, Room, all thematic surfaces, and openings.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
-from lxml import etree
-
-from .base import BaseBuilder, _format_number
+from .base import BaseBuilder
 from .namespaces import NS_BLDG, NS_CORE, NS_GML, NS_NRG3
 from .types import CodeValue, MeasureValue, ScaleValue
-
 
 # ===================================================================
 # Thematic surfaces
@@ -57,7 +55,10 @@ _BOUNDARY_SURFACE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
     "lod3_multi_surface": (NS_BLDG, "lod3MultiSurface"),
     "lod4_multi_surface": (NS_BLDG, "lod4MultiSurface"),
     "openings": (NS_BLDG, "opening"),
-    "bdg_bdry_surf_additional_thermal_bridge_u_value": (NS_NRG3, "bdgBdrySurfAdditionalThermalBridgeUValue"),
+    "bdg_bdry_surf_additional_thermal_bridge_u_value": (
+        NS_NRG3,
+        "bdgBdrySurfAdditionalThermalBridgeUValue",
+    ),
     "bdg_bdry_surf_is_shared": (NS_NRG3, "bdgBdrySurfIsShared"),
     "bdg_bdry_surf_thickness": (NS_NRG3, "bdgBdrySurfThickness"),
     "bdg_bdry_surf_total_surface_area": (NS_NRG3, "bdgBdrySurfTotalSurfaceArea"),
@@ -74,6 +75,7 @@ _BOUNDARY_SURFACE_FIELD_MAP: Dict[str, Tuple[str, str]] = {
 @dataclass
 class _BoundarySurface(BaseBuilder):
     """Base for all thematic boundary surfaces."""
+
     ELEMENT_ORDER: ClassVar = _BOUNDARY_SURFACE_ORDER
     FIELD_MAP: ClassVar = _BOUNDARY_SURFACE_FIELD_MAP
 
@@ -183,6 +185,7 @@ _OPENING_FIELD_MAP: Dict[str, Tuple[str, str]] = {
 @dataclass
 class _Opening(BaseBuilder):
     """Base for Door and Window openings."""
+
     ELEMENT_ORDER: ClassVar = _OPENING_ORDER
     FIELD_MAP: ClassVar = _OPENING_FIELD_MAP
 
@@ -215,6 +218,7 @@ class Window(_Opening):
 # ===================================================================
 # Room
 # ===================================================================
+
 
 @dataclass
 class Room(BaseBuilder):
@@ -545,6 +549,7 @@ _BUILDING_FIELD_MAP: Dict[str, Tuple[str, str]] = {
 @dataclass
 class Building(BaseBuilder):
     """CityGML 2.0 ``bldg:Building`` with Energy ADE 3.0 extensions."""
+
     ELEMENT_TAG: ClassVar = (NS_BLDG, "Building")
     ELEMENT_ORDER: ClassVar = _BUILDING_ELEMENT_ORDER
     FIELD_MAP: ClassVar = _BUILDING_FIELD_MAP
@@ -603,8 +608,12 @@ class Building(BaseBuilder):
     lod4_terrain_intersection: Optional[Any] = None
     # Sub-features
     bounded_by_surfaces: List[_BoundarySurface] = field(default_factory=list)
-    outer_building_installations: List[BuildingInstallation] = field(default_factory=list)
-    interior_building_installations: List[IntBuildingInstallation] = field(default_factory=list)
+    outer_building_installations: List[BuildingInstallation] = field(
+        default_factory=list
+    )
+    interior_building_installations: List[IntBuildingInstallation] = field(
+        default_factory=list
+    )
     interior_rooms: List[Room] = field(default_factory=list)
     building_parts: List[Any] = field(default_factory=list)  # BuildingPart
     addresses: List[Any] = field(default_factory=list)  # Address
@@ -629,4 +638,5 @@ class Building(BaseBuilder):
 @dataclass
 class BuildingPart(Building):
     """``bldg:BuildingPart`` -- structurally identical to Building."""
+
     ELEMENT_TAG: ClassVar = (NS_BLDG, "BuildingPart")

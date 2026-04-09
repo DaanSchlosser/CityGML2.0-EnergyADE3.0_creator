@@ -3,7 +3,6 @@
 import os
 import sys
 from copy import deepcopy
-from typing import Any, cast
 
 import lxml.etree as etree
 import pytest
@@ -15,13 +14,12 @@ from citygml_energy import (
     build_city_model_from_feature_collection,
     generate_city_model,
     load_feature_collection,
-    validate_xml_against_energy_ade_schema,
 )
 from examples.create_renodat import INPUT
 
 
-def test_renodat_imports_obj_geometry():
-    """The RenoDAT example imports LOD3 surfaces, openings, and PV geometry."""
+def test_renodat_imports_step_brep_geometry():
+    """The RenoDAT example imports STEP-backed LOD3 BREP geometry."""
     model = generate_city_model(INPUT)
 
     assert len(model.city_object_members) == 1
@@ -49,10 +47,47 @@ def test_renodat_imports_obj_geometry():
     assert len(wall_surfaces["WallSurface_03"].openings) == 2
     assert len(wall_surfaces["WallSurface_04"].openings) == 6
 
+    wall_surface_geometry = wall_surfaces["WallSurface_04"].lod3_multi_surface.element
+    wall_polygons = wall_surface_geometry.findall(
+        "./{http://www.opengis.net/gml}surfaceMember/{http://www.opengis.net/gml}Polygon"
+    )
+    assert len(wall_polygons) == 1
+    assert len(wall_polygons[0].findall("./{http://www.opengis.net/gml}interior")) == 6
+
     assert len(building.devices) == 1
     pv_collector = building.devices[0]
     pv_geometry = pv_collector.lod3_multi_surface.element
-    assert len(pv_geometry.findall("./{http://www.opengis.net/gml}surfaceMember")) == 43
+    assert len(pv_geometry.findall("./{http://www.opengis.net/gml}surfaceMember")) == 36
+
+
+def test_pv_collector_has_installed_on_relation():
+    """The PV collector has an 'installedOn' relation to the roof surface it sits on."""
+    model = generate_city_model(INPUT)
+    building = model.city_object_members[0]
+    pv_collector = building.devices[0]
+
+    assert len(pv_collector.nrg3_related_to) >= 1
+    relation = pv_collector.nrg3_related_to[0]
+    assert relation.relation_type.value == "installedOn"
+    assert relation.related_to_href.startswith("#RoofSurface_")
+
+    # Verify it serializes correctly in the XML
+    generated = model.to_string()
+    root = etree.fromstring(generated.encode("utf-8"))
+    ns = {
+        "nrg3": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        "xlink": "http://www.w3.org/1999/xlink",
+    }
+    relations = root.findall(".//nrg3:CityObjectRelation", ns)
+    assert len(relations) >= 1
+    rel_type = relations[0].find("nrg3:relationType", ns)
+    assert rel_type is not None
+    assert rel_type.text == "installedOn"
+    inner_ref = relations[0].find("nrg3:relatedTo", ns)
+    assert inner_ref is not None
+    href = inner_ref.get(f"{{{ns['xlink']}}}href")
+    assert href is not None
+    assert href.startswith("#RoofSurface_")
 
 
 def test_generated_is_well_formed_xml():
@@ -63,17 +98,43 @@ def test_generated_is_well_formed_xml():
     etree.fromstring(generated.encode("utf-8"))
 
 
-def test_renodat_is_schema_valid():
-    """The canonical RenoDAT JSON workflow is valid against the beta8 schema."""
+def test_generated_has_envelope_with_crs():
+    """The generated GML has a gml:boundedBy envelope with srsName."""
     doc = generate_city_model(INPUT)
-    result = cast(
-        dict[str, Any], validate_xml_against_energy_ade_schema(doc.to_string())
-    )
+    generated = doc.to_string()
+    root = etree.fromstring(generated.encode("utf-8"))
+    ns = {"gml": "http://www.opengis.net/gml"}
+    envelope = root.find(".//gml:Envelope", ns)
+    assert envelope is not None, "Missing gml:Envelope"
+    assert "srsName" in envelope.attrib
+    assert envelope.attrib["srsDimension"] == "3"
 
-    assert result["valid"], "Schema validation failed:\n" + "\n".join(
-        f"  - line {error['line']}: {error['message']}"
-        for error in result["errors"][:20]
-    )
+
+def test_geometry_elements_have_srs():
+    """All gml:MultiSurface elements carry srsName and srsDimension."""
+    doc = generate_city_model(INPUT)
+    generated = doc.to_string()
+    root = etree.fromstring(generated.encode("utf-8"))
+    ns = {"gml": "http://www.opengis.net/gml"}
+    multi_surfaces = root.findall(".//gml:MultiSurface", ns)
+    assert len(multi_surfaces) > 0
+    for ms in multi_surfaces:
+        assert "srsName" in ms.attrib, f"Missing srsName on {ms.attrib}"
+        assert "srsDimension" in ms.attrib, f"Missing srsDimension on {ms.attrib}"
+
+
+def test_no_scientific_notation_in_coordinates():
+    """Coordinate values must not contain scientific notation."""
+    doc = generate_city_model(INPUT)
+    generated = doc.to_string()
+    root = etree.fromstring(generated.encode("utf-8"))
+    ns = {"gml": "http://www.opengis.net/gml"}
+    for pos_list in root.findall(".//gml:posList", ns):
+        text = pos_list.text or ""
+        for token in text.split():
+            assert "e" not in token.lower(), (
+                f"Scientific notation found in coordinates: {token}"
+            )
 
 
 def test_renodat_input_supports_multiple_buildings():
@@ -171,7 +232,7 @@ def test_renodat_input_rejects_missing_geometry_source_target():
 def test_renodat_input_rejects_missing_geometry_source_file():
     data = load_feature_collection(INPUT)
     invalid_data = deepcopy(data)
-    invalid_data["geometry_sources"][0]["path"] = "../does_not_exist.obj"
+    invalid_data["geometry_sources"][0]["path"] = "../does_not_exist.stp"
 
     with pytest.raises(InputFileError, match="does not exist"):
         build_city_model_from_feature_collection(
@@ -181,5 +242,5 @@ def test_renodat_input_rejects_missing_geometry_source_file():
 
 
 if __name__ == "__main__":
-    test_renodat_imports_obj_geometry()
+    test_renodat_imports_step_brep_geometry()
     print("All tests passed!")

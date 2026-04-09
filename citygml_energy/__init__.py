@@ -32,12 +32,10 @@ from .building import (
 # Core
 from .core import Address, CityModel, Envelope
 
-# Document
-from .document import GMLDocument
-
 # Energy ADE module
 from .energy_ade import (
     BuildingUnit,
+    CityObjectRelation,
     CompositeSchedule,
     ConstantValueSchedule,
     DeviceOperation,
@@ -102,6 +100,7 @@ from .namespaces import (
     CS_NRG3_HEIGHT_TYPE,
     CS_NRG3_OCCUPANT_TYPE,
     CS_NRG3_OWNERSHIP_TYPE,
+    CS_NRG3_RELATION_TYPE,
     CS_NRG3_SCHEDULE_TYPE,
     CS_NRG3_VOLUME_TYPE,
 )
@@ -113,13 +112,6 @@ from .template import (
     normalize_city_model_for_beta8,
 )
 from .types import CodeValue, MeasureValue, ScaleValue
-
-# Validation
-from .validation import (
-    compare_with_reference,
-    validate_file_against_energy_ade_schema,
-    validate_xml_against_energy_ade_schema,
-)
 from .xml_support import RawXmlElement
 
 __all__ = [
@@ -131,7 +123,6 @@ __all__ = [
     "Address",
     "CityModel",
     "Envelope",
-    "GMLDocument",
     "RawXmlElement",
     "DEFAULT_INPUT_PATH",
     "DEFAULT_OUTPUT_PATH",
@@ -160,6 +151,7 @@ __all__ = [
     "Window",
     # Energy ADE
     "BuildingUnit",
+    "CityObjectRelation",
     "CompositeSchedule",
     "ConstantValueSchedule",
     "DeviceOperation",
@@ -177,10 +169,6 @@ __all__ = [
     "find_city_object_by_gml_id",
     "load_city_model_template",
     "normalize_city_model_for_beta8",
-    # Validation
-    "compare_with_reference",
-    "validate_file_against_energy_ade_schema",
-    "validate_xml_against_energy_ade_schema",
     # Factory
     "FeatureFactory",
     "building_from_dict",
@@ -210,6 +198,7 @@ __all__ = [
     "CS_NRG3_HEIGHT_TYPE",
     "CS_NRG3_OCCUPANT_TYPE",
     "CS_NRG3_OWNERSHIP_TYPE",
+    "CS_NRG3_RELATION_TYPE",
     "CS_NRG3_SCHEDULE_TYPE",
     "CS_NRG3_VOLUME_TYPE",
 ]

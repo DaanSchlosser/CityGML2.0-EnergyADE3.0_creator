@@ -3,6 +3,7 @@
 All namespace prefixes and URIs match exactly what appears in the reference
 CityGML 2.0 + Energy ADE 3.0 files (Alderaan, RenoDAT).
 """
+
 from collections import OrderedDict
 
 # ---------------------------------------------------------------------------
@@ -36,34 +37,33 @@ NS_XSI = "http://www.w3.org/2001/XMLSchema-instance"
 # Ordered namespace map -- xmlns declarations on the root element.
 # Order matches the reference files exactly (alphabetical by prefix).
 # ---------------------------------------------------------------------------
-NSMAP = OrderedDict([
-    ("app", NS_APP),
-    ("bldg", NS_BLDG),
-    ("brid", NS_BRID),
-    ("core", NS_CORE),
-    ("dem", NS_DEM),
-    ("frn", NS_FRN),
-    ("gen", NS_GEN),
-    ("gml", NS_GML),
-    ("grp", NS_GRP),
-    ("luse", NS_LUSE),
-    ("nrg3", NS_NRG3),
-    ("pbase", NS_PBASE),
-    ("sch", NS_SCH),
-    ("smil20", NS_SMIL20),
-    ("smil20lang", NS_SMIL20LANG),
-    ("tex", NS_TEX),
-    ("tran", NS_TRAN),
-    ("tun", NS_TUN),
-    ("veg", NS_VEG),
-    ("wtr", NS_WTR),
-    ("xAL", NS_XAL),
-    ("xlink", NS_XLINK),
-    ("xsi", NS_XSI),
-])
-
-# Reverse map: URI -> prefix
-_URI_TO_PREFIX = {uri: prefix for prefix, uri in NSMAP.items()}
+NSMAP = OrderedDict(
+    [
+        ("app", NS_APP),
+        ("bldg", NS_BLDG),
+        ("brid", NS_BRID),
+        ("core", NS_CORE),
+        ("dem", NS_DEM),
+        ("frn", NS_FRN),
+        ("gen", NS_GEN),
+        ("gml", NS_GML),
+        ("grp", NS_GRP),
+        ("luse", NS_LUSE),
+        ("nrg3", NS_NRG3),
+        ("pbase", NS_PBASE),
+        ("sch", NS_SCH),
+        ("smil20", NS_SMIL20),
+        ("smil20lang", NS_SMIL20LANG),
+        ("tex", NS_TEX),
+        ("tran", NS_TRAN),
+        ("tun", NS_TUN),
+        ("veg", NS_VEG),
+        ("wtr", NS_WTR),
+        ("xAL", NS_XAL),
+        ("xlink", NS_XLINK),
+        ("xsi", NS_XSI),
+    ]
+)
 
 
 def qn(prefix: str, local: str) -> str:
@@ -77,16 +77,14 @@ def qn(prefix: str, local: str) -> str:
 # ---------------------------------------------------------------------------
 # CityGML 2.0 building codelists
 CS_BUILDING_CLASS = (
-    "http://www.sig3d.org/codelists/standard/building/2.0/"
-    "_AbstractBuilding_class.xml"
+    "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"
 )
 CS_BUILDING_FUNCTION = (
     "http://www.sig3d.org/codelists/standard/building/2.0/"
     "_AbstractBuilding_function.xml"
 )
 CS_BUILDING_USAGE = (
-    "http://www.sig3d.org/codelists/standard/building/2.0/"
-    "_AbstractBuilding_usage.xml"
+    "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml"
 )
 CS_BUILDING_ROOFTYPE = (
     "https://www.sig3d.org/codelists/standard/building/2.0/"
@@ -102,9 +100,7 @@ CS_NRG3_VOLUME_TYPE = f"{_NRG3_CS}/VolumeTypeValue.xml"
 CS_NRG3_AREA_TYPE = f"{_NRG3_CS}/AreaTypeValue.xml"
 CS_NRG3_HEIGHT_TYPE = f"{_NRG3_CS}/HeightTypeValue.xml"
 CS_NRG3_CELL_TYPE = f"{_NRG3_CS}/codelists/CellTypeValue.xml"
-CS_NRG3_DEVICE_OPERATION_TYPE = (
-    f"{_NRG3_CS}/codelists/DeviceOperationTypeValue.xml"
-)
+CS_NRG3_DEVICE_OPERATION_TYPE = f"{_NRG3_CS}/codelists/DeviceOperationTypeValue.xml"
 CS_NRG3_HEAT_SOURCE = f"{_NRG3_CS}/codelists/HeatSourceValue.xml"
 CS_NRG3_EV_TYPE = f"{_NRG3_CS}/codelists/EVChargingStationTypeValue.xml"
 CS_NRG3_CONSTRUCTION_WEIGHT = f"{_NRG3_CS}/ConstructionWeightValue.xml"
@@ -112,6 +108,4 @@ CS_NRG3_OCCUPANT_TYPE = f"{_NRG3_CS}/codelists/OccupantTypeValue.xml"
 CS_NRG3_EPC_TYPE = f"{_NRG3_CS}/codelists/EPCTypeValue.xml"
 CS_NRG3_BU_TYPE = f"{_NRG3_CS}/codelists/BuildingUnitTypeValue.xml"
 CS_NRG3_SCHEDULE_TYPE = f"{_NRG3_CS}/codelists/ScheduleTypeValue.xml"
-CS_NRG3_SCHEDULE_COMPONENT_TYPE = (
-    f"{_NRG3_CS}/codelists/ScheduleComponentTypeValue.xml"
-)
+CS_NRG3_RELATION_TYPE = f"{_NRG3_CS}/codelists/RelationTypeValue.xml"
