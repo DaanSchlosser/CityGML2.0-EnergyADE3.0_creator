@@ -29,7 +29,7 @@ _ALLOWED_GEOMETRY_SOURCE_KEYS = {
     "target_pv_id",
 }
 _ALLOWED_GEOMETRY_SOURCE_TYPES = {
-    "step-renodat-lod3",
+    f"step-renodat-lod{n}" for n in range(5)
 }
 _ALLOWED_SCALAR_TYPES = (str, int, float, bool, type(None))
 
@@ -143,12 +143,14 @@ def validate_feature_collection(
 
 
 def build_city_model_from_feature_collection(
-    data: Mapping[str, Any],
+    data: dict[str, Any],
     *,
     base_path: PathLike | None = None,
 ) -> CityModel:
     """Build a CityModel from validated feature collection data."""
     validate_feature_collection(data, base_path=base_path)
+    if base_path is not None:
+        _normalize_geometry_source_paths(data, Path(base_path))
 
     city_model = data["city_model"]
     factory = FeatureFactory(

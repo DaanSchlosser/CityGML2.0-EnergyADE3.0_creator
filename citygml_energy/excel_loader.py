@@ -31,6 +31,7 @@ Multiple geometry sources are separated by a row whose key is ``---``.
 
 from __future__ import annotations
 
+import datetime
 from pathlib import Path
 from typing import Any
 
@@ -168,7 +169,9 @@ def _column_to_attrs(
         value = row[col_idx] if col_idx < len(row) else None
         if value is None:
             continue
-        if isinstance(value, float) and value == int(value):
+        if isinstance(value, datetime.datetime):
+            value = value.strftime("%Y-%m-%d")
+        elif isinstance(value, float) and value == int(value):
             value = int(value)
         elif isinstance(value, str) and value.strip() == "":
             continue
