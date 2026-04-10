@@ -92,6 +92,7 @@ from .building import (  # noqa: F401
     WallSurface,
     Window,
 )
+from .building import Zone, ZonePart
 from .core import Address, CityModel
 from .energy_ade import (
     BuildingUnit,
@@ -580,6 +581,66 @@ def composite_schedule_from_dict(attrs: dict[str, Any]) -> CompositeSchedule:
     return CompositeSchedule(**_schedule_base_kwargs(attrs))
 
 
+def zone_from_dict(attrs: dict[str, Any]) -> Zone:
+    """Create a :class:`Zone` from flat attributes.
+
+    Supports inline ``nrg3_heatingSetpoint`` / ``nrg3_coolingSetpoint``
+    shorthand: the factory wraps each value in a
+    :class:`ConstantValueSchedule` automatically.
+    """
+    gml_id = _str(attrs.get("gml_id")) or ""
+
+    heating_sched = None
+    if _str(attrs.get("nrg3_heatingSetpoint")) is not None:
+        heating_sched = ConstantValueSchedule(
+            gml_id=f"{gml_id}_heating_schedule" if gml_id else None,
+            value=_measure(attrs, "nrg3_heatingSetpoint"),
+        )
+
+    cooling_sched = None
+    if _str(attrs.get("nrg3_coolingSetpoint")) is not None:
+        cooling_sched = ConstantValueSchedule(
+            gml_id=f"{gml_id}_cooling_schedule" if gml_id else None,
+            value=_measure(attrs, "nrg3_coolingSetpoint"),
+        )
+
+    vol = _make_qualified_volume(attrs, prefix="nrg3_volume")
+    area = _make_qualified_area(attrs, prefix="nrg3_area")
+
+    return Zone(
+        gml_id=_str(attrs.get("gml_id")),
+        gml_description=_str(attrs.get("gml_description")),
+        gml_name=_str(attrs.get("gml_name")),
+        creation_date=_str(attrs.get("core_creationDate")),
+        termination_date=_str(attrs.get("core_terminationDate")),
+        nrg3_identifier=_code(attrs, "nrg3_identifier"),
+        nrg3_metadata=_make_metadata(attrs),
+        nrg3_status=_code(attrs, "nrg3_status"),
+        nrg3_valid_from=_str(attrs.get("nrg3_validFrom")),
+        nrg3_valid_to=_str(attrs.get("nrg3_validTo")),
+        # AbstractCityObjectSpaceType
+        areas=[area] if area else [],
+        volumes=[vol] if vol else [],
+        # AbstractZoneType
+        zone_type=_code(attrs, "nrg3_zoneType"),
+        is_cooled=_bool(attrs.get("nrg3_isCooled")),
+        is_heated=_bool(attrs.get("nrg3_isHeated")),
+        is_mechanically_ventilated=_bool(attrs.get("nrg3_isMechanicallyVentilated")),
+        infiltration_rate=_measure(attrs, "nrg3_infiltrationRate"),
+        coincides_with_lod2_hull=_bool(attrs.get("nrg3_coincidesWithLod2Hull")),
+        coincides_with_lod3_hull=_bool(attrs.get("nrg3_coincidesWithLod3Hull")),
+        heating_schedule=heating_sched,
+        cooling_schedule=cooling_sched,
+    )
+
+
+def zone_part_from_dict(attrs: dict[str, Any]) -> ZonePart:
+    """Create a :class:`ZonePart` -- reuses Zone logic."""
+    z = zone_from_dict(attrs)
+    kwargs = {f.name: getattr(z, f.name) for f in dataclasses.fields(z)}
+    return ZonePart(**kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Dispatch registry
 # ---------------------------------------------------------------------------
@@ -611,6 +672,8 @@ _CUSTOM_FROM_DICT: dict[str, Callable[[dict[str, Any]], Any]] = {
     "nrg3_Energy": energy_from_dict,
     "nrg3_ConstantValueSchedule": constant_value_schedule_from_dict,
     "nrg3_CompositeSchedule": composite_schedule_from_dict,
+    "nrg3_Zone": zone_from_dict,
+    "nrg3_ZonePart": zone_part_from_dict,
 }
 
 
@@ -735,8 +798,8 @@ _reg("nrg3_WeatherStation", _stub("nrg3_WeatherStation"))
 _reg("nrg3_Intervention", _stub("nrg3_Intervention"))
 _reg("nrg3_UrbanFunctionArea", _stub("nrg3_UrbanFunctionArea"))
 _reg("nrg3_UrbanSpace", _stub("nrg3_UrbanSpace"))
-_reg("nrg3_Zone", _stub("nrg3_Zone"))
-_reg("nrg3_ZonePart", _stub("nrg3_ZonePart"))
+# nrg3_Zone: auto-registered via Zone.FEATURE_TYPE + _CUSTOM_FROM_DICT
+# nrg3_ZonePart: auto-registered via ZonePart.FEATURE_TYPE + _CUSTOM_FROM_DICT
 
 # --- Energy ADE: zone surfaces ---
 _reg("nrg3_ZoneAtticFloorSurface", _stub("nrg3_ZoneAtticFloorSurface"))

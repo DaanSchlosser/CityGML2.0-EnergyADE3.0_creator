@@ -113,7 +113,7 @@ def test_list_feature_types_is_sorted():
 
 def test_list_feature_types_excludes_unimplemented_by_default():
     types = list_feature_types()
-    assert "nrg3_Zone" not in types
+    assert "nrg3_WeatherStation" not in types
 
 
 # ---------------------------------------------------------------------------

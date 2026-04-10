@@ -665,3 +665,179 @@ class BuildingPart(Building):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "BuildingPart")
     FEATURE_TYPE: ClassVar = "bldg_BuildingPart"
     PARENT_FIELD: ClassVar = "building_parts"
+
+
+# ===================================================================
+# Zone
+# ===================================================================
+
+_ZONE_ELEMENT_ORDER: tuple[tuple[str, str], ...] = (
+    # -- gml:AbstractFeatureType --
+    (NS_GML, "description"),
+    (NS_GML, "name"),
+    # -- core:AbstractCityObjectType --
+    (NS_CORE, "creationDate"),
+    (NS_CORE, "terminationDate"),
+    (NS_CORE, "externalReference"),
+    # -- Energy ADE CityObject extensions (substitutionGroup) --
+    (NS_NRG3, "identifier"),
+    (NS_NRG3, "metadata"),
+    (NS_NRG3, "relatedTo"),
+    (NS_NRG3, "status"),
+    (NS_NRG3, "validFrom"),
+    (NS_NRG3, "validTo"),
+    (NS_NRG3, "referencePoint"),
+    # -- nrg3:AbstractCityObjectSpaceType --
+    (NS_NRG3, "area"),
+    (NS_NRG3, "volume"),
+    (NS_NRG3, "lod0MultiSurface"),
+    (NS_NRG3, "lod1Solid"),
+    (NS_NRG3, "lod2Solid"),
+    (NS_NRG3, "lod3Solid"),
+    # -- nrg3:AbstractBuildingSpaceType --
+    (NS_NRG3, "occupiedBy"),
+    # -- nrg3:AbstractZoneType --
+    (NS_NRG3, "type"),
+    (NS_NRG3, "isCooled"),
+    (NS_NRG3, "isHeated"),
+    (NS_NRG3, "isMechanicallyVentilated"),
+    (NS_NRG3, "infiltrationRate"),
+    (NS_NRG3, "heatCapacity"),
+    (NS_NRG3, "internalHeatGains"),
+    (NS_NRG3, "internalHeatGainsConvectiveFraction"),
+    (NS_NRG3, "internalHeatGainsLatentFraction"),
+    (NS_NRG3, "internalHeatGainsRadiantFraction"),
+    (NS_NRG3, "numberOfBuildingUnits"),
+    (NS_NRG3, "coincidesWithLod2Hull"),
+    (NS_NRG3, "coincidesWithLod3Hull"),
+    (NS_NRG3, "buildingUnit"),
+    (NS_NRG3, "heatingSchedule"),
+    (NS_NRG3, "coolingSchedule"),
+    (NS_NRG3, "mechanicalVentilationSchedule"),
+    (NS_NRG3, "zoneBoundary"),
+    # -- nrg3:ZoneType --
+    (NS_NRG3, "zonePart"),
+)
+
+_ZONE_FIELD_MAP: dict[str, tuple[str, str]] = {
+    # gml
+    "gml_description": (NS_GML, "description"),
+    "gml_name": (NS_GML, "name"),
+    # core
+    "creation_date": (NS_CORE, "creationDate"),
+    "termination_date": (NS_CORE, "terminationDate"),
+    "external_references": (NS_CORE, "externalReference"),
+    # Energy ADE CityObject extensions
+    "nrg3_identifier": (NS_NRG3, "identifier"),
+    "nrg3_metadata": (NS_NRG3, "metadata"),
+    "nrg3_related_to": (NS_NRG3, "relatedTo"),
+    "nrg3_status": (NS_NRG3, "status"),
+    "nrg3_valid_from": (NS_NRG3, "validFrom"),
+    "nrg3_valid_to": (NS_NRG3, "validTo"),
+    "nrg3_reference_point": (NS_NRG3, "referencePoint"),
+    # AbstractCityObjectSpaceType
+    "areas": (NS_NRG3, "area"),
+    "volumes": (NS_NRG3, "volume"),
+    "lod0_multi_surface": (NS_NRG3, "lod0MultiSurface"),
+    "lod1_solid": (NS_NRG3, "lod1Solid"),
+    "lod2_solid": (NS_NRG3, "lod2Solid"),
+    "lod3_solid": (NS_NRG3, "lod3Solid"),
+    # AbstractBuildingSpaceType
+    "occupied_by": (NS_NRG3, "occupiedBy"),
+    # AbstractZoneType
+    "zone_type": (NS_NRG3, "type"),
+    "is_cooled": (NS_NRG3, "isCooled"),
+    "is_heated": (NS_NRG3, "isHeated"),
+    "is_mechanically_ventilated": (NS_NRG3, "isMechanicallyVentilated"),
+    "infiltration_rate": (NS_NRG3, "infiltrationRate"),
+    "heat_capacity": (NS_NRG3, "heatCapacity"),
+    "internal_heat_gains": (NS_NRG3, "internalHeatGains"),
+    "internal_heat_gains_convective_fraction": (
+        NS_NRG3,
+        "internalHeatGainsConvectiveFraction",
+    ),
+    "internal_heat_gains_latent_fraction": (NS_NRG3, "internalHeatGainsLatentFraction"),
+    "internal_heat_gains_radiant_fraction": (NS_NRG3, "internalHeatGainsRadiantFraction"),
+    "number_of_building_units": (NS_NRG3, "numberOfBuildingUnits"),
+    "coincides_with_lod2_hull": (NS_NRG3, "coincidesWithLod2Hull"),
+    "coincides_with_lod3_hull": (NS_NRG3, "coincidesWithLod3Hull"),
+    "building_units": (NS_NRG3, "buildingUnit"),
+    "heating_schedule": (NS_NRG3, "heatingSchedule"),
+    "cooling_schedule": (NS_NRG3, "coolingSchedule"),
+    "mechanical_ventilation_schedule": (NS_NRG3, "mechanicalVentilationSchedule"),
+    "zone_boundaries": (NS_NRG3, "zoneBoundary"),
+    # ZoneType
+    "zone_parts": (NS_NRG3, "zonePart"),
+}
+
+
+@dataclass
+class Zone(BaseBuilder):
+    """``nrg3:Zone`` -- a thermal zone within a building."""
+
+    ELEMENT_TAG: ClassVar = (NS_NRG3, "Zone")
+    FEATURE_TYPE: ClassVar = "nrg3_Zone"
+    PARENT_FIELD: ClassVar = "zones"
+    ELEMENT_ORDER: ClassVar = _ZONE_ELEMENT_ORDER
+    FIELD_MAP: ClassVar = _ZONE_FIELD_MAP
+
+    # -- gml --
+    gml_description: str | None = None
+    gml_name: str | None = None
+    # -- core --
+    creation_date: str | None = None
+    termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    # -- Energy ADE CityObject extensions --
+    nrg3_identifier: CodeValue | None = None
+    nrg3_metadata: Any | None = None
+    nrg3_related_to: list[Any] = field(default_factory=list)
+    nrg3_status: CodeValue | None = None
+    nrg3_valid_from: str | None = None
+    nrg3_valid_to: str | None = None
+    nrg3_reference_point: Any | None = None
+    # -- AbstractCityObjectSpaceType --
+    areas: list[Any] = field(default_factory=list)
+    volumes: list[Any] = field(default_factory=list)
+    lod0_multi_surface: Any | None = None
+    lod1_solid: Any | None = None
+    lod2_solid: Any | None = None
+    lod3_solid: Any | None = None
+    # -- AbstractBuildingSpaceType --
+    occupied_by: list[Any] = field(default_factory=list)
+    # -- AbstractZoneType --
+    zone_type: CodeValue | None = None
+    is_cooled: bool | None = None
+    is_heated: bool | None = None
+    is_mechanically_ventilated: bool | None = None
+    infiltration_rate: MeasureValue | None = None
+    heat_capacity: MeasureValue | None = None
+    internal_heat_gains: MeasureValue | None = None
+    internal_heat_gains_convective_fraction: ScaleValue | None = None
+    internal_heat_gains_latent_fraction: ScaleValue | None = None
+    internal_heat_gains_radiant_fraction: ScaleValue | None = None
+    number_of_building_units: int | None = None
+    coincides_with_lod2_hull: bool | None = None
+    coincides_with_lod3_hull: bool | None = None
+    building_units: list[Any] = field(default_factory=list)
+    heating_schedule: Any | None = None
+    cooling_schedule: Any | None = None
+    mechanical_ventilation_schedule: Any | None = None
+    zone_boundaries: list[Any] = field(default_factory=list)
+    # -- ZoneType --
+    zone_parts: list[Any] = field(default_factory=list)
+
+
+@dataclass
+class ZonePart(Zone):
+    """``nrg3:ZonePart`` -- a subdivision of a Zone.
+
+    Structurally identical to Zone's AbstractZone fields but without
+    the ``zonePart`` child element.
+    """
+
+    ELEMENT_TAG: ClassVar = (NS_NRG3, "ZonePart")
+    FEATURE_TYPE: ClassVar = "nrg3_ZonePart"
+    PARENT_FIELD: ClassVar = "zone_parts"
+    # ZonePart extends AbstractZoneType directly (no zonePart children).
+    ELEMENT_ORDER: ClassVar = _ZONE_ELEMENT_ORDER[:-1]
