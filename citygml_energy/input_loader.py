@@ -27,9 +27,12 @@ _ALLOWED_GEOMETRY_SOURCE_KEYS = {
     "path",
     "target_building_id",
     "target_pv_id",
+    "target_zone_part_id",
 }
 _ALLOWED_GEOMETRY_SOURCE_TYPES = {
     f"step-renodat-lod{n}" for n in range(5)
+} | {
+    f"step-zonepart-lod{n}" for n in range(4)
 }
 _ALLOWED_SCALAR_TYPES = (str, int, float, bool, type(None))
 
@@ -260,37 +263,57 @@ def _validate_geometry_source(
     if not isinstance(path_value, str) or not path_value.strip():
         raise InputFileError(f"{source}: geometry_sources[{index}].path must be a non-empty string")
 
-    target_building_id = geometry_source.get("target_building_id")
-    if not isinstance(target_building_id, str) or not target_building_id.strip():
-        raise InputFileError(
-            f"{source}: geometry_sources[{index}].target_building_id must be a non-empty string"
-        )
-    if target_building_id not in feature_ids:
-        raise InputFileError(
-            f"{source}: geometry_sources[{index}].target_building_id references missing gml_id {target_building_id!r}"
-        )
-    if feature_types_by_id.get(target_building_id) not in {
-        "bldg_Building",
-        "bldg_BuildingPart",
-    }:
-        raise InputFileError(
-            f"{source}: geometry_sources[{index}].target_building_id must reference a building or building part"
-        )
+    is_zonepart_type = source_type.startswith("step-zonepart-")
 
-    target_pv_id = geometry_source.get("target_pv_id")
-    if target_pv_id is not None:
-        if not isinstance(target_pv_id, str) or not target_pv_id.strip():
+    if is_zonepart_type:
+        target_zone_part_id = geometry_source.get("target_zone_part_id")
+        if not isinstance(target_zone_part_id, str) or not target_zone_part_id.strip():
             raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_pv_id must be a non-empty string when provided"
+                f"{source}: geometry_sources[{index}].target_zone_part_id must be a non-empty string"
             )
-        if target_pv_id not in feature_ids:
+        if target_zone_part_id not in feature_ids:
             raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_pv_id references missing gml_id {target_pv_id!r}"
+                f"{source}: geometry_sources[{index}].target_zone_part_id references missing gml_id {target_zone_part_id!r}"
             )
-        if feature_types_by_id.get(target_pv_id) != "nrg3_PhotovoltaicCollector":
+        if feature_types_by_id.get(target_zone_part_id) not in {
+            "nrg3_Zone",
+            "nrg3_ZonePart",
+        }:
             raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_pv_id must reference an nrg3_PhotovoltaicCollector"
+                f"{source}: geometry_sources[{index}].target_zone_part_id must reference a Zone or ZonePart"
             )
+    else:
+        target_building_id = geometry_source.get("target_building_id")
+        if not isinstance(target_building_id, str) or not target_building_id.strip():
+            raise InputFileError(
+                f"{source}: geometry_sources[{index}].target_building_id must be a non-empty string"
+            )
+        if target_building_id not in feature_ids:
+            raise InputFileError(
+                f"{source}: geometry_sources[{index}].target_building_id references missing gml_id {target_building_id!r}"
+            )
+        if feature_types_by_id.get(target_building_id) not in {
+            "bldg_Building",
+            "bldg_BuildingPart",
+        }:
+            raise InputFileError(
+                f"{source}: geometry_sources[{index}].target_building_id must reference a building or building part"
+            )
+
+        target_pv_id = geometry_source.get("target_pv_id")
+        if target_pv_id is not None:
+            if not isinstance(target_pv_id, str) or not target_pv_id.strip():
+                raise InputFileError(
+                    f"{source}: geometry_sources[{index}].target_pv_id must be a non-empty string when provided"
+                )
+            if target_pv_id not in feature_ids:
+                raise InputFileError(
+                    f"{source}: geometry_sources[{index}].target_pv_id references missing gml_id {target_pv_id!r}"
+                )
+            if feature_types_by_id.get(target_pv_id) != "nrg3_PhotovoltaicCollector":
+                raise InputFileError(
+                    f"{source}: geometry_sources[{index}].target_pv_id must reference an nrg3_PhotovoltaicCollector"
+                )
 
     if base_path is not None:
         resolved_path = _resolve_geometry_source_path(path_value, base_path)

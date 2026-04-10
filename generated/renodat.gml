@@ -19,7 +19,7 @@
 					<nrg3:relatedTo>
 						<nrg3:CityObjectRelation>
 							<nrg3:relationType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/RelationTypeValue.xml">installedOn</nrg3:relationType>
-							<nrg3:relatedTo xlink:href="#RoofSurface_02"/>
+							<nrg3:relatedTo xlink:href="#id_building_1_RoofSurface_2"/>
 						</nrg3:CityObjectRelation>
 					</nrg3:relatedTo>
 					<nrg3:model>PV-16-270 PW</nrg3:model>
@@ -361,10 +361,11 @@
 			</nrg3:device>
 			<nrg3:device>
 				<nrg3:EVChargingStation gml:id="id_ev_charging_station_1">
-					<gml:description>AC Level 2 charger, 11 kW rated. Dedicated to Golf GTE 2015 (8.7 kWh gross / 7.5 kWh net); car-side limit 3.6 kW. ~150 charges/year.</gml:description>
-					<gml:name>EV Charging Station 1</gml:name>
+					<gml:description>EVHUB AC Mode 3 laadpaal, 3.7-22 kW (32A, 1/3-phase), Type 2 connector with 8m cable. IP55, polycarbonate housing (410x280x150 mm), built-in DC detection. Dedicated to Golf GTE 2015 (8.7 kWh gross / 7.5 kWh net); car-side limit 3.6 kW. ~150 charges/year.</gml:description>
+					<gml:name>EVHUB Laadpaal Type 2</gml:name>
 					<core:creationDate>2026-04-04</core:creationDate>
-					<nrg3:identifier codeSpace="urn:local:ev-charger">ev_charger_1</nrg3:identifier>
+					<nrg3:identifier codeSpace="https://www.elektramat.nl/evhub-laadpaal-type-2-32a-3-7-22kw-met-laadkabel-8-meter-zwart-lp-h8t5oiugl5/">LP-H8T5OIUGL5</nrg3:identifier>
+					<nrg3:validFrom>2022-07-18</nrg3:validFrom>
 					<nrg3:resource>
 						<nrg3:Energy gml:id="id_ev_energy_1">
 							<gml:description>Annual electricity consumption for EV charging (Golf GTE 2015, ~150 charges/year x 7.5 kWh net)</gml:description>
@@ -382,9 +383,10 @@
 							<nrg3:source codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml">powerGrid</nrg3:source>
 						</nrg3:Energy>
 					</nrg3:resource>
+					<nrg3:model>LP-H8T5OIUGL5</nrg3:model>
 					<nrg3:yearOfInstallation>2022</nrg3:yearOfInstallation>
 					<nrg3:numberOfDevices>1</nrg3:numberOfDevices>
-					<nrg3:installedPower uom="W">11000</nrg3:installedPower>
+					<nrg3:installedPower uom="W">22000</nrg3:installedPower>
 					<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml">AC</nrg3:type>
 					<nrg3:chargingSpeedLevel codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingSpeedLevelValue.xml">Level 2</nrg3:chargingSpeedLevel>
 					<nrg3:connectorType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingConnectorTypeValue.xml">AC - Mennekes (Type2)</nrg3:connectorType>
@@ -407,13 +409,130 @@
 			<bldg:roofType codeSpace="https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml">1030</bldg:roofType>
 			<bldg:storeysAboveGround>3</bldg:storeysAboveGround>
 			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
-			<bldg:boundedBy>
-				<bldg:WallSurface gml:id="WallSurface_04">
-					<gml:name>WallSurface_04</gml:name>
-					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="WallSurface_04_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+			<bldg:lod0FootPrint>
+				<gml:MultiSurface gml:id="id_building_1_lod0" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+					<gml:surfaceMember>
+						<gml:Polygon gml:id="id_building_1_lod0_poly_1">
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>10.9999990463257 0.999998715414252 0 17.720115794633202 5.75627670000627 0 10.0983883218742 16.524971290884402 0 3.37827252724099 11.7686945908782 0 10.9999990463257 0.999998715414252 0</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+				</gml:MultiSurface>
+			</bldg:lod0FootPrint>
+			<bldg:lod1Solid>
+				<gml:Solid gml:id="id_building_1_lod1" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+					<gml:exterior>
+						<gml:CompositeSurface gml:id="id_building_1_lod1_shell">
 							<gml:surfaceMember>
-								<gml:Polygon gml:id="WallSurface_04_lod3_poly_1">
+								<gml:Polygon gml:id="id_building_1_lod1_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>10.9999990463257 0.999998715414195 -0.49199999999994 3.37827252724099 11.7686945908782 -0.49199999999994 10.0983883218742 16.524971290884402 -0.49199999999994 17.720115794633202 5.75627670000621 -0.49199999999994 10.9999990463257 0.999998715414195 -0.49199999999994</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_lod1_poly_2">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>17.720115794633202 5.75627670000621 -0.49199999999994 17.720115794633202 5.75627670000621 9.14610000001437 10.9999990463257 0.999998715414195 9.14610000001437 10.9999990463257 0.999998715414195 -0.49199999999994 17.720115794633202 5.75627670000621 -0.49199999999994</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_lod1_poly_3">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>10.0983883218742 16.524971290884402 -0.49199999999994 10.0983883218742 16.524971290884402 9.14610000001437 17.720115794633202 5.75627670000621 9.14610000001437 17.720115794633202 5.75627670000621 -0.49199999999994 10.0983883218742 16.524971290884402 -0.49199999999994</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_lod1_poly_4">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>3.37827252724099 11.7686945908782 -0.49199999999994 3.37827252724099 11.7686945908782 9.14610000001437 10.0983883218742 16.524971290884402 9.14610000001437 10.0983883218742 16.524971290884402 -0.49199999999994 3.37827252724099 11.7686945908782 -0.49199999999994</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_lod1_poly_5">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>10.9999990463257 0.999998715414195 -0.49199999999994 10.9999990463257 0.999998715414195 9.14610000001437 3.37827252724099 11.7686945908782 9.14610000001437 3.37827252724099 11.7686945908782 -0.49199999999994 10.9999990463257 0.999998715414195 -0.49199999999994</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_lod1_poly_6">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>10.9999990463257 0.999998715414195 9.14610000001437 17.720115794633202 5.75627670000621 9.14610000001437 10.0983883218742 16.524971290884402 9.14610000001437 3.37827252724099 11.7686945908782 9.14610000001437 10.9999990463257 0.999998715414195 9.14610000001437</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:CompositeSurface>
+					</gml:exterior>
+				</gml:Solid>
+			</bldg:lod1Solid>
+			<bldg:boundedBy>
+				<bldg:GroundSurface gml:id="id_building_1_GroundSurface_1">
+					<bldg:lod2MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_GroundSurface_1_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_GroundSurface_1_lod2_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>10.9999990463257 0.999998715414195 -0.49199999999994 3.37827252724099 11.7686945908782 -0.49199999999994 10.0983883218742 16.524971290884402 -0.49199999999994 17.720115794633202 5.75627670000621 -0.49199999999994 10.9999990463257 0.999998715414195 -0.49199999999994</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</bldg:lod2MultiSurface>
+					<bldg:lod3MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_GroundSurface_1_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_GroundSurface_1_lod3_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>3.37827252724102 11.7686945908781 -0.491999999999924 10.0983883218742 16.524971290884402 -0.491999999999924 17.720115794633202 5.75627670000628 -0.491999999999924 11 1 -0.491999999999924 3.37827252724102 11.7686945908781 -0.491999999999924</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</bldg:lod3MultiSurface>
+				</bldg:GroundSurface>
+			</bldg:boundedBy>
+			<bldg:boundedBy>
+				<bldg:WallSurface gml:id="id_building_1_WallSurface_1">
+					<bldg:lod2MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_1_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_WallSurface_1_lod2_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>10.999999999999901 1.00000000000004 5.05256737011163 3.37827252724097 11.7686945908782 5.05256737011165 3.37827252724099 11.7686945908782 -0.49199999999994 10.9999990463257 0.999998715414195 -0.49199999999994 10.999999999999901 1.00000000000004 5.05256737011163</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</bldg:lod2MultiSurface>
+					<bldg:lod3MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_1_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_WallSurface_1_lod3_poly_1">
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>17.720115794633202 5.75627670000627 0 17.720115794633202 5.7562767000063 5.00664310860734 14.3412802401281 3.36484814249854 9.146100000014361 10.999999999999901 1.00000000000004 5.05256737011163 11 1 0 17.720115794633202 5.75627670000627 0</gml:posList>
@@ -454,84 +573,11 @@
 						</gml:MultiSurface>
 					</bldg:lod3MultiSurface>
 					<bldg:opening>
-						<bldg:Window gml:id="Window_05">
-							<gml:name>Window_05</gml:name>
+						<bldg:Window gml:id="id_building_1_Window_1">
 							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Window_05_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+								<gml:MultiSurface gml:id="id_building_1_Window_1_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember>
-										<gml:Polygon gml:id="Window_05_lod3_poly_1">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>15.777892395753 4.38163422875779 4.05500000000681 16.439048767089901 4.84957893985364 4.0550000000068 16.439048767089901 4.84957893985364 5.3350000000087 15.777892395753 4.38163422875779 5.3350000000087 15.777892395753 4.38163422875779 4.05500000000681</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-								</gml:MultiSurface>
-							</bldg:lod3MultiSurface>
-						</bldg:Window>
-					</bldg:opening>
-					<bldg:opening>
-						<bldg:Window gml:id="Window_04">
-							<gml:name>Window_04</gml:name>
-							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Window_04_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
-									<gml:surfaceMember>
-										<gml:Polygon gml:id="Window_04_lod3_poly_1">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>14.9306074333212 3.78195557584578 4.0550000000068 15.591788291931101 4.24991761822724 4.0550000000068 15.5917882919312 4.24991761822724 5.3350000000087 14.9306074333212 3.78195557584578 5.3350000000087 14.9306074333212 3.78195557584578 4.0550000000068</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-								</gml:MultiSurface>
-							</bldg:lod3MultiSurface>
-						</bldg:Window>
-					</bldg:opening>
-					<bldg:opening>
-						<bldg:Window gml:id="Window_03">
-							<gml:name>Window_03</gml:name>
-							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Window_03_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
-									<gml:surfaceMember>
-										<gml:Polygon gml:id="Window_03_lod3_poly_1">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>13.090796470642101 2.47979569435122 4.0550000000068 13.751952841979 2.94774040544706 4.0550000000068 13.751952841979 2.94774040544706 5.3350000000087 13.090796470642101 2.4797956943512 5.3350000000087 13.090796470642101 2.47979569435122 4.0550000000068</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-								</gml:MultiSurface>
-							</bldg:lod3MultiSurface>
-						</bldg:Window>
-					</bldg:opening>
-					<bldg:opening>
-						<bldg:Window gml:id="Window_02">
-							<gml:name>Window_02</gml:name>
-							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Window_02_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
-									<gml:surfaceMember>
-										<gml:Polygon gml:id="Window_02_lod3_poly_1">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>12.243536949157701 1.88013291358949 4.0550000000068 12.9046933204946 2.34807762468536 4.05500000000679 12.9046933204946 2.34807762468534 5.33500000000869 12.243536949157701 1.88013291358948 5.33500000000869 12.243536949157701 1.88013291358949 4.0550000000068</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-								</gml:MultiSurface>
-							</bldg:lod3MultiSurface>
-						</bldg:Window>
-					</bldg:opening>
-					<bldg:opening>
-						<bldg:Window gml:id="Window_06">
-							<gml:name>Window_06</gml:name>
-							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Window_06_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
-									<gml:surfaceMember>
-										<gml:Polygon gml:id="Window_06_lod3_poly_1">
+										<gml:Polygon gml:id="id_building_1_Window_1_lod3_poly_1">
 											<gml:exterior>
 												<gml:LinearRing>
 													<gml:posList>15.8309469223022 4.4191837310791 1.07500000000238 17.381807546425801 5.51683181883481 1.07500000000238 17.381807546425801 5.51683181883481 2.27500000000416 15.830946922302299 4.4191837310791 2.27500000000416 15.8309469223022 4.4191837310791 1.07500000000238</gml:posList>
@@ -544,12 +590,11 @@
 						</bldg:Window>
 					</bldg:opening>
 					<bldg:opening>
-						<bldg:Window gml:id="Window_01">
-							<gml:name>Window_01</gml:name>
+						<bldg:Window gml:id="id_building_1_Window_2">
 							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Window_01_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+								<gml:MultiSurface gml:id="id_building_1_Window_2_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember>
-										<gml:Polygon gml:id="Window_01_lod3_poly_1">
+										<gml:Polygon gml:id="id_building_1_Window_2_lod3_poly_1">
 											<gml:exterior>
 												<gml:LinearRing>
 													<gml:posList>11.3007772161474 1.21288185952515 1.07500000000237 12.851637840271 2.31052994728087 1.07500000000237 12.851637840271 2.31052994728088 2.27500000000415 11.3007772161474 1.21288185952518 2.27500000000415 11.3007772161474 1.21288185952515 1.07500000000237</gml:posList>
@@ -561,82 +606,103 @@
 							</bldg:lod3MultiSurface>
 						</bldg:Window>
 					</bldg:opening>
+					<bldg:opening>
+						<bldg:Window gml:id="id_building_1_Window_3">
+							<bldg:lod3MultiSurface>
+								<gml:MultiSurface gml:id="id_building_1_Window_3_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+									<gml:surfaceMember>
+										<gml:Polygon gml:id="id_building_1_Window_3_lod3_poly_1">
+											<gml:exterior>
+												<gml:LinearRing>
+													<gml:posList>15.777892395753 4.38163422875779 4.05500000000681 16.439048767089901 4.84957893985364 4.0550000000068 16.439048767089901 4.84957893985364 5.3350000000087 15.777892395753 4.38163422875779 5.3350000000087 15.777892395753 4.38163422875779 4.05500000000681</gml:posList>
+												</gml:LinearRing>
+											</gml:exterior>
+										</gml:Polygon>
+									</gml:surfaceMember>
+								</gml:MultiSurface>
+							</bldg:lod3MultiSurface>
+						</bldg:Window>
+					</bldg:opening>
+					<bldg:opening>
+						<bldg:Window gml:id="id_building_1_Window_4">
+							<bldg:lod3MultiSurface>
+								<gml:MultiSurface gml:id="id_building_1_Window_4_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+									<gml:surfaceMember>
+										<gml:Polygon gml:id="id_building_1_Window_4_lod3_poly_1">
+											<gml:exterior>
+												<gml:LinearRing>
+													<gml:posList>14.9306074333212 3.78195557584578 4.0550000000068 15.591788291931101 4.24991761822724 4.0550000000068 15.5917882919312 4.24991761822724 5.3350000000087 14.9306074333212 3.78195557584578 5.3350000000087 14.9306074333212 3.78195557584578 4.0550000000068</gml:posList>
+												</gml:LinearRing>
+											</gml:exterior>
+										</gml:Polygon>
+									</gml:surfaceMember>
+								</gml:MultiSurface>
+							</bldg:lod3MultiSurface>
+						</bldg:Window>
+					</bldg:opening>
+					<bldg:opening>
+						<bldg:Window gml:id="id_building_1_Window_5">
+							<bldg:lod3MultiSurface>
+								<gml:MultiSurface gml:id="id_building_1_Window_5_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+									<gml:surfaceMember>
+										<gml:Polygon gml:id="id_building_1_Window_5_lod3_poly_1">
+											<gml:exterior>
+												<gml:LinearRing>
+													<gml:posList>13.090796470642101 2.47979569435122 4.0550000000068 13.751952841979 2.94774040544706 4.0550000000068 13.751952841979 2.94774040544706 5.3350000000087 13.090796470642101 2.4797956943512 5.3350000000087 13.090796470642101 2.47979569435122 4.0550000000068</gml:posList>
+												</gml:LinearRing>
+											</gml:exterior>
+										</gml:Polygon>
+									</gml:surfaceMember>
+								</gml:MultiSurface>
+							</bldg:lod3MultiSurface>
+						</bldg:Window>
+					</bldg:opening>
+					<bldg:opening>
+						<bldg:Window gml:id="id_building_1_Window_6">
+							<bldg:lod3MultiSurface>
+								<gml:MultiSurface gml:id="id_building_1_Window_6_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+									<gml:surfaceMember>
+										<gml:Polygon gml:id="id_building_1_Window_6_lod3_poly_1">
+											<gml:exterior>
+												<gml:LinearRing>
+													<gml:posList>12.243536949157701 1.88013291358949 4.0550000000068 12.9046933204946 2.34807762468536 4.05500000000679 12.9046933204946 2.34807762468534 5.33500000000869 12.243536949157701 1.88013291358948 5.33500000000869 12.243536949157701 1.88013291358949 4.0550000000068</gml:posList>
+												</gml:LinearRing>
+											</gml:exterior>
+										</gml:Polygon>
+									</gml:surfaceMember>
+								</gml:MultiSurface>
+							</bldg:lod3MultiSurface>
+						</bldg:Window>
+					</bldg:opening>
 				</bldg:WallSurface>
 			</bldg:boundedBy>
 			<bldg:boundedBy>
-				<bldg:GroundSurface gml:id="GroundSurface_01">
-					<gml:name>GroundSurface_01</gml:name>
-					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="GroundSurface_01_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+				<bldg:WallSurface gml:id="id_building_1_WallSurface_2">
+					<bldg:lod2MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_2_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember>
-								<gml:Polygon gml:id="GroundSurface_01_lod3_poly_1">
+								<gml:Polygon gml:id="id_building_1_WallSurface_2_lod2_poly_1">
 									<gml:exterior>
 										<gml:LinearRing>
-											<gml:posList>3.37827252724102 11.7686945908781 -0.491999999999924 10.0983883218742 16.524971290884402 -0.491999999999924 17.720115794633202 5.75627670000628 -0.491999999999924 11 1 -0.491999999999924 3.37827252724102 11.7686945908781 -0.491999999999924</gml:posList>
+											<gml:posList>10.0983883218743 16.524971290884501 5.00664310860733 10.0983883218742 16.524971290884402 -0.49199999999994 3.37827252724099 11.7686945908782 -0.49199999999994 3.37827252724097 11.7686945908782 5.05256737011165 6.71955276736927 14.1335427333767 9.146100000014391 10.0983883218743 16.524971290884501 5.00664310860733</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
 						</gml:MultiSurface>
-					</bldg:lod3MultiSurface>
-				</bldg:GroundSurface>
-			</bldg:boundedBy>
-			<bldg:boundedBy>
-				<bldg:WallSurface gml:id="WallSurface_06">
-					<gml:name>WallSurface_06</gml:name>
+					</bldg:lod2MultiSurface>
 					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="WallSurface_06_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_2_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember>
-								<gml:Polygon gml:id="WallSurface_06_lod3_poly_1">
+								<gml:Polygon gml:id="id_building_1_WallSurface_2_lod3_poly_1">
 									<gml:exterior>
 										<gml:LinearRing>
-											<gml:posList>10.9999990463257 0.999998715414252 0 10.9999990463257 0.999998715414252 -0.491999999999924 17.7201148409589 5.75627541542054 -0.49199999999994 17.7201148409589 5.75627541542054 0 10.9999990463257 0.999998715414252 0</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
-						</gml:MultiSurface>
-					</bldg:lod3MultiSurface>
-				</bldg:WallSurface>
-			</bldg:boundedBy>
-			<bldg:boundedBy>
-				<bldg:RoofSurface gml:id="RoofSurface_01">
-					<gml:name>RoofSurface_01</gml:name>
-					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="RoofSurface_01_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
-							<gml:surfaceMember>
-								<gml:Polygon gml:id="RoofSurface_01_lod3_poly_1">
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>10.0983883218743 16.524971290884501 5.00664310860733 6.71955276736927 14.1335427333767 9.146100000014391 14.341280240128199 3.36484814249854 9.1461000000144 17.720115794633202 5.75627670000628 5.00664310860734 10.0983883218743 16.524971290884501 5.00664310860733</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
-						</gml:MultiSurface>
-					</bldg:lod3MultiSurface>
-				</bldg:RoofSurface>
-			</bldg:boundedBy>
-			<bldg:boundedBy>
-				<bldg:WallSurface gml:id="WallSurface_03">
-					<gml:name>WallSurface_03</gml:name>
-					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="WallSurface_03_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
-							<gml:surfaceMember>
-								<gml:Polygon gml:id="WallSurface_03_lod3_poly_1">
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>17.720115794633202 5.75627670000627 0 10.0983883218742 16.524971290884402 0 10.0983883218743 16.524971290884402 5.00664310860733 17.720115794633202 5.75627670000627 5.00664310860733 17.720115794633202 5.75627670000627 0</gml:posList>
+											<gml:posList>11 1 0 10.999999999999901 1.00000000000004 5.05256737011163 3.37827252724102 11.7686945908782 5.05256737011165 3.37827252724099 11.7686945908782 0 11 1 0</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
 									<gml:interior>
 										<gml:LinearRing>
-											<gml:posList>15.859018799272199 8.385809862753829 0.015000000000017 15.859018799272199 8.385809862753829 2.41800000000358 15.2327816797316 9.270616660938019 2.41800000000358 15.2327816797316 9.270616660938019 0.015000000000017 15.859018799272199 8.385809862753829 0.015000000000017</gml:posList>
-										</gml:LinearRing>
-									</gml:interior>
-									<gml:interior>
-										<gml:LinearRing>
-											<gml:posList>14.4499852803058 10.376625158668199 0.026000000000027 14.4499852803058 10.376625158668199 2.42420000000359 13.537204238908901 11.666288203992099 2.42420000000359 13.537204238908901 11.666288203992099 0.026000000000027 14.4499852803058 10.376625158668199 0.026000000000027</gml:posList>
+											<gml:posList>6.72986008387031 7.03325594905753 0.07400000000012 6.72986008387031 7.03325594905753 2.39200000000356 7.84483945722218 5.45790805192149 2.39200000000356 7.84483945722218 5.45790805192149 0.07400000000012 6.72986008387031 7.03325594905753 0.07400000000012</gml:posList>
 										</gml:LinearRing>
 									</gml:interior>
 								</gml:Polygon>
@@ -644,15 +710,14 @@
 						</gml:MultiSurface>
 					</bldg:lod3MultiSurface>
 					<bldg:opening>
-						<bldg:Door gml:id="Door_03">
-							<gml:name>Door_03</gml:name>
+						<bldg:Door gml:id="id_building_1_Door_3">
 							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Door_03_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+								<gml:MultiSurface gml:id="id_building_1_Door_3_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember>
-										<gml:Polygon gml:id="Door_03_lod3_poly_1">
+										<gml:Polygon gml:id="id_building_1_Door_3_lod3_poly_1">
 											<gml:exterior>
 												<gml:LinearRing>
-													<gml:posList>14.4499852803058 10.376625158668199 0.026000000000027 13.537204238908901 11.666288203992099 0.026000000000027 13.537204238908901 11.666288203992099 2.42420000000359 14.4499852803058 10.376625158668199 2.42420000000359 14.4499852803058 10.376625158668199 0.026000000000027</gml:posList>
+													<gml:posList>6.72986008387031 7.03325594905753 0.07400000000012 7.84483945722218 5.45790805192149 0.07400000000012 7.84483945722218 5.45790805192149 2.39200000000356 6.72986008387031 7.03325594905753 2.39200000000356 6.72986008387031 7.03325594905753 0.07400000000012</gml:posList>
 												</gml:LinearRing>
 											</gml:exterior>
 										</gml:Polygon>
@@ -661,51 +726,27 @@
 							</bldg:lod3MultiSurface>
 						</bldg:Door>
 					</bldg:opening>
-					<bldg:opening>
-						<bldg:Door gml:id="Door_02">
-							<gml:name>Door_02</gml:name>
-							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Door_02_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
-									<gml:surfaceMember>
-										<gml:Polygon gml:id="Door_02_lod3_poly_1">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>15.859018799272199 8.385809862753829 0.015000000000017 15.2327816797316 9.270616660938019 0.015000000000017 15.2327816797316 9.270616660938019 2.41800000000358 15.859018799272199 8.385809862753829 2.41800000000358 15.859018799272199 8.385809862753829 0.015000000000017</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-								</gml:MultiSurface>
-							</bldg:lod3MultiSurface>
-						</bldg:Door>
-					</bldg:opening>
 				</bldg:WallSurface>
 			</bldg:boundedBy>
 			<bldg:boundedBy>
-				<bldg:WallSurface gml:id="WallSurface_05">
-					<gml:name>WallSurface_05</gml:name>
-					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="WallSurface_05_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+				<bldg:WallSurface gml:id="id_building_1_WallSurface_3">
+					<bldg:lod2MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_3_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember>
-								<gml:Polygon gml:id="WallSurface_05_lod3_poly_1">
+								<gml:Polygon gml:id="id_building_1_WallSurface_3_lod2_poly_1">
 									<gml:exterior>
 										<gml:LinearRing>
-											<gml:posList>17.720115794633202 5.75627670000627 0 17.720115794633202 5.75627670000627 -0.491999999999924 10.0983883218742 16.524971290884402 -0.491999999999924 10.0983883218742 16.524971290884402 0 17.720115794633202 5.75627670000627 0</gml:posList>
+											<gml:posList>10.0983883218743 16.524971290884501 5.00664310860733 17.720115794633202 5.75627670000628 5.00664310860735 17.720115794633202 5.75627670000621 -0.49199999999994 10.0983883218742 16.524971290884402 -0.49199999999994 10.0983883218743 16.524971290884501 5.00664310860733</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
 						</gml:MultiSurface>
-					</bldg:lod3MultiSurface>
-				</bldg:WallSurface>
-			</bldg:boundedBy>
-			<bldg:boundedBy>
-				<bldg:WallSurface gml:id="WallSurface_02">
-					<gml:name>WallSurface_02</gml:name>
+					</bldg:lod2MultiSurface>
 					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="WallSurface_02_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_3_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember>
-								<gml:Polygon gml:id="WallSurface_02_lod3_poly_1">
+								<gml:Polygon gml:id="id_building_1_WallSurface_3_lod3_poly_1">
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>10.0983883218742 16.524971290884402 0 3.37827252724099 11.7686945908782 0 3.37827252724102 11.7686945908782 5.05256737011165 6.71955276736927 14.133542733376601 9.14610000001437 10.0983883218743 16.524971290884402 5.00664310860734 10.0983883218742 16.524971290884402 0</gml:posList>
@@ -736,12 +777,11 @@
 						</gml:MultiSurface>
 					</bldg:lod3MultiSurface>
 					<bldg:opening>
-						<bldg:Window gml:id="Window_08">
-							<gml:name>Window_08</gml:name>
+						<bldg:Window gml:id="id_building_1_Window_7">
 							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Window_08_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+								<gml:MultiSurface gml:id="id_building_1_Window_7_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember>
-										<gml:Polygon gml:id="Window_08_lod3_poly_1">
+										<gml:Polygon gml:id="id_building_1_Window_7_lod3_poly_1">
 											<gml:exterior>
 												<gml:LinearRing>
 													<gml:posList>6.10328902804316 13.6973720458738 3.19200000000553 4.67486476898193 12.686380386098801 3.19200000000553 4.67486476898193 12.686380386098801 5.40500000000881 6.10328902804316 13.6973720458738 5.40500000000881 6.10328902804316 13.6973720458738 3.19200000000553</gml:posList>
@@ -754,12 +794,11 @@
 						</bldg:Window>
 					</bldg:opening>
 					<bldg:opening>
-						<bldg:Window gml:id="Window_07">
-							<gml:name>Window_07</gml:name>
+						<bldg:Window gml:id="id_building_1_Window_8">
 							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Window_07_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+								<gml:MultiSurface gml:id="id_building_1_Window_8_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember>
-										<gml:Polygon gml:id="Window_07_lod3_poly_1">
+										<gml:Polygon gml:id="id_building_1_Window_8_lod3_poly_1">
 											<gml:exterior>
 												<gml:LinearRing>
 													<gml:posList>8.7642387350744 15.580703344955699 3.19200000000553 7.33581447601321 14.5697116851807 3.19200000000553 7.33581447601319 14.5697116851807 5.40500000000881 8.7642387350744 15.580703344955699 5.40500000000881 8.7642387350744 15.580703344955699 3.19200000000553</gml:posList>
@@ -772,12 +811,11 @@
 						</bldg:Window>
 					</bldg:opening>
 					<bldg:opening>
-						<bldg:Door gml:id="Door_04">
-							<gml:name>Door_04</gml:name>
+						<bldg:Door gml:id="id_building_1_Door_4">
 							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Door_04_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+								<gml:MultiSurface gml:id="id_building_1_Door_4_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember>
-										<gml:Polygon gml:id="Door_04_lod3_poly_1">
+										<gml:Polygon gml:id="id_building_1_Door_4_lod3_poly_1">
 											<gml:exterior>
 												<gml:LinearRing>
 													<gml:posList>9.51926956807492 16.1150857734563 0.074000000000903 7.33582105779564 14.5697128078003 0.074000000000903 7.33582105779564 14.5697128078003 2.66500000000476 9.51926956807492 16.1150857734563 2.66500000000476 9.51926956807492 16.1150857734563 0.074000000000903</gml:posList>
@@ -790,12 +828,11 @@
 						</bldg:Door>
 					</bldg:opening>
 					<bldg:opening>
-						<bldg:Door gml:id="Door_05">
-							<gml:name>Door_05</gml:name>
+						<bldg:Door gml:id="id_building_1_Door_5">
 							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Door_05_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+								<gml:MultiSurface gml:id="id_building_1_Door_5_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember>
-										<gml:Polygon gml:id="Door_05_lod3_poly_1">
+										<gml:Polygon gml:id="id_building_1_Door_5_lod3_poly_1">
 											<gml:exterior>
 												<gml:LinearRing>
 													<gml:posList>6.10328972988856 13.6973714855535 0.074000000000903 3.91984121960929 12.1519985198975 0.074000000000903 3.91984121960929 12.1519985198975 2.66500000000476 6.10328972988856 13.6973714855535 2.66500000000476 6.10328972988856 13.6973714855535 0.074000000000903</gml:posList>
@@ -810,48 +847,128 @@
 				</bldg:WallSurface>
 			</bldg:boundedBy>
 			<bldg:boundedBy>
-				<bldg:WallSurface gml:id="WallSurface_08">
-					<gml:name>WallSurface_08</gml:name>
-					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="WallSurface_08_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+				<bldg:WallSurface gml:id="id_building_1_WallSurface_4">
+					<bldg:lod2MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_4_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember>
-								<gml:Polygon gml:id="WallSurface_08_lod3_poly_1">
+								<gml:Polygon gml:id="id_building_1_WallSurface_4_lod2_poly_1">
 									<gml:exterior>
 										<gml:LinearRing>
-											<gml:posList>10.0983883218742 16.524971290884402 0 10.0983883218742 16.524971290884402 -0.491999999999924 3.37827252724099 11.7686945908782 -0.491999999999924 3.37827252724099 11.7686945908782 0 10.0983883218742 16.524971290884402 0</gml:posList>
+											<gml:posList>10.999999999999901 1.00000000000004 5.05256737011163 10.9999990463257 0.999998715414195 -0.49199999999994 17.720115794633202 5.75627670000621 -0.49199999999994 17.720115794633202 5.75627670000628 5.00664310860735 14.341280240128199 3.36484814249854 9.146100000014391 10.999999999999901 1.00000000000004 5.05256737011163</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</bldg:lod2MultiSurface>
+					<bldg:lod3MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_4_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_WallSurface_4_lod3_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>17.720115794633202 5.75627670000627 0 10.0983883218742 16.524971290884402 0 10.0983883218743 16.524971290884402 5.00664310860733 17.720115794633202 5.75627670000627 5.00664310860733 17.720115794633202 5.75627670000627 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+									<gml:interior>
+										<gml:LinearRing>
+											<gml:posList>15.859018799272199 8.385809862753829 0.015000000000017 15.859018799272199 8.385809862753829 2.41800000000358 15.2327816797316 9.270616660938019 2.41800000000358 15.2327816797316 9.270616660938019 0.015000000000017 15.859018799272199 8.385809862753829 0.015000000000017</gml:posList>
+										</gml:LinearRing>
+									</gml:interior>
+									<gml:interior>
+										<gml:LinearRing>
+											<gml:posList>14.4499852803058 10.376625158668199 0.026000000000027 14.4499852803058 10.376625158668199 2.42420000000359 13.537204238908901 11.666288203992099 2.42420000000359 13.537204238908901 11.666288203992099 0.026000000000027 14.4499852803058 10.376625158668199 0.026000000000027</gml:posList>
+										</gml:LinearRing>
+									</gml:interior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</bldg:lod3MultiSurface>
+					<bldg:opening>
+						<bldg:Door gml:id="id_building_1_Door_1">
+							<bldg:lod3MultiSurface>
+								<gml:MultiSurface gml:id="id_building_1_Door_1_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+									<gml:surfaceMember>
+										<gml:Polygon gml:id="id_building_1_Door_1_lod3_poly_1">
+											<gml:exterior>
+												<gml:LinearRing>
+													<gml:posList>14.4499852803058 10.376625158668199 0.026000000000027 13.537204238908901 11.666288203992099 0.026000000000027 13.537204238908901 11.666288203992099 2.42420000000359 14.4499852803058 10.376625158668199 2.42420000000359 14.4499852803058 10.376625158668199 0.026000000000027</gml:posList>
+												</gml:LinearRing>
+											</gml:exterior>
+										</gml:Polygon>
+									</gml:surfaceMember>
+								</gml:MultiSurface>
+							</bldg:lod3MultiSurface>
+						</bldg:Door>
+					</bldg:opening>
+					<bldg:opening>
+						<bldg:Door gml:id="id_building_1_Door_2">
+							<bldg:lod3MultiSurface>
+								<gml:MultiSurface gml:id="id_building_1_Door_2_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+									<gml:surfaceMember>
+										<gml:Polygon gml:id="id_building_1_Door_2_lod3_poly_1">
+											<gml:exterior>
+												<gml:LinearRing>
+													<gml:posList>15.859018799272199 8.385809862753829 0.015000000000017 15.2327816797316 9.270616660938019 0.015000000000017 15.2327816797316 9.270616660938019 2.41800000000358 15.859018799272199 8.385809862753829 2.41800000000358 15.859018799272199 8.385809862753829 0.015000000000017</gml:posList>
+												</gml:LinearRing>
+											</gml:exterior>
+										</gml:Polygon>
+									</gml:surfaceMember>
+								</gml:MultiSurface>
+							</bldg:lod3MultiSurface>
+						</bldg:Door>
+					</bldg:opening>
+				</bldg:WallSurface>
+			</bldg:boundedBy>
+			<bldg:boundedBy>
+				<bldg:RoofSurface gml:id="id_building_1_RoofSurface_1">
+					<bldg:lod2MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_RoofSurface_1_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_RoofSurface_1_lod2_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>10.0983883218743 16.524971290884501 5.00664310860733 6.71955276736927 14.1335427333767 9.146100000014391 14.341280240128199 3.36484814249854 9.146100000014391 17.720115794633202 5.75627670000628 5.00664310860735 10.0983883218743 16.524971290884501 5.00664310860733</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</bldg:lod2MultiSurface>
+					<bldg:lod3MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_RoofSurface_1_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_RoofSurface_1_lod3_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>10.0983883218743 16.524971290884501 5.00664310860733 6.71955276736927 14.1335427333767 9.146100000014391 14.341280240128199 3.36484814249854 9.1461000000144 17.720115794633202 5.75627670000628 5.00664310860734 10.0983883218743 16.524971290884501 5.00664310860733</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
 						</gml:MultiSurface>
 					</bldg:lod3MultiSurface>
-				</bldg:WallSurface>
+				</bldg:RoofSurface>
 			</bldg:boundedBy>
 			<bldg:boundedBy>
-				<bldg:WallSurface gml:id="WallSurface_07">
-					<gml:name>WallSurface_07</gml:name>
-					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="WallSurface_07_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+				<bldg:RoofSurface gml:id="id_building_1_RoofSurface_2">
+					<bldg:lod2MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_RoofSurface_2_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember>
-								<gml:Polygon gml:id="WallSurface_07_lod3_poly_1">
+								<gml:Polygon gml:id="id_building_1_RoofSurface_2_lod2_poly_1">
 									<gml:exterior>
 										<gml:LinearRing>
-											<gml:posList>3.37827252724099 11.7686945908782 0 3.37827252724099 11.7686945908782 -0.49199999999994 11 1 -0.49199999999994 11 1 0 3.37827252724099 11.7686945908782 0</gml:posList>
+											<gml:posList>10.999999999999901 1.00000000000004 5.05256737011163 14.341280240128199 3.36484814249854 9.146100000014391 6.71955276736927 14.1335427333767 9.146100000014391 3.37827252724097 11.7686945908782 5.05256737011165 10.999999999999901 1.00000000000004 5.05256737011163</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
 						</gml:MultiSurface>
-					</bldg:lod3MultiSurface>
-				</bldg:WallSurface>
-			</bldg:boundedBy>
-			<bldg:boundedBy>
-				<bldg:RoofSurface gml:id="RoofSurface_02">
-					<gml:name>RoofSurface_02</gml:name>
+					</bldg:lod2MultiSurface>
 					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="RoofSurface_02_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+						<gml:MultiSurface gml:id="id_building_1_RoofSurface_2_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember>
-								<gml:Polygon gml:id="RoofSurface_02_lod3_poly_1">
+								<gml:Polygon gml:id="id_building_1_RoofSurface_2_lod3_poly_1">
 									<gml:exterior>
 										<gml:LinearRing>
 											<gml:posList>10.999999999999901 1.00000000000004 5.05256737011163 14.3412802401281 3.36484814249854 9.146100000014361 6.71955276736927 14.1335427333767 9.146100000014391 3.37827252724097 11.7686945908782 5.05256737011165 10.999999999999901 1.00000000000004 5.05256737011163</gml:posList>
@@ -864,44 +981,71 @@
 				</bldg:RoofSurface>
 			</bldg:boundedBy>
 			<bldg:boundedBy>
-				<bldg:WallSurface gml:id="WallSurface_01">
-					<gml:name>WallSurface_01</gml:name>
+				<bldg:WallSurface gml:id="id_building_1_WallSurface_5">
 					<bldg:lod3MultiSurface>
-						<gml:MultiSurface gml:id="WallSurface_01_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_5_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember>
-								<gml:Polygon gml:id="WallSurface_01_lod3_poly_1">
+								<gml:Polygon gml:id="id_building_1_WallSurface_5_lod3_poly_1">
 									<gml:exterior>
 										<gml:LinearRing>
-											<gml:posList>11 1 0 10.999999999999901 1.00000000000004 5.05256737011163 3.37827252724102 11.7686945908782 5.05256737011165 3.37827252724099 11.7686945908782 0 11 1 0</gml:posList>
+											<gml:posList>10.9999990463257 0.999998715414252 0 10.9999990463257 0.999998715414252 -0.491999999999924 17.7201148409589 5.75627541542054 -0.49199999999994 17.7201148409589 5.75627541542054 0 10.9999990463257 0.999998715414252 0</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
-									<gml:interior>
-										<gml:LinearRing>
-											<gml:posList>6.72986008387031 7.03325594905753 0.07400000000012 6.72986008387031 7.03325594905753 2.39200000000356 7.84483945722218 5.45790805192149 2.39200000000356 7.84483945722218 5.45790805192149 0.07400000000012 6.72986008387031 7.03325594905753 0.07400000000012</gml:posList>
-										</gml:LinearRing>
-									</gml:interior>
 								</gml:Polygon>
 							</gml:surfaceMember>
 						</gml:MultiSurface>
 					</bldg:lod3MultiSurface>
-					<bldg:opening>
-						<bldg:Door gml:id="Door_01">
-							<gml:name>Door_01</gml:name>
-							<bldg:lod3MultiSurface>
-								<gml:MultiSurface gml:id="Door_01_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
-									<gml:surfaceMember>
-										<gml:Polygon gml:id="Door_01_lod3_poly_1">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>6.72986008387031 7.03325594905753 0.07400000000012 7.84483945722218 5.45790805192149 0.07400000000012 7.84483945722218 5.45790805192149 2.39200000000356 6.72986008387031 7.03325594905753 2.39200000000356 6.72986008387031 7.03325594905753 0.07400000000012</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-								</gml:MultiSurface>
-							</bldg:lod3MultiSurface>
-						</bldg:Door>
-					</bldg:opening>
+				</bldg:WallSurface>
+			</bldg:boundedBy>
+			<bldg:boundedBy>
+				<bldg:WallSurface gml:id="id_building_1_WallSurface_6">
+					<bldg:lod3MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_6_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_WallSurface_6_lod3_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>17.720115794633202 5.75627670000627 0 17.720115794633202 5.75627670000627 -0.491999999999924 10.0983883218742 16.524971290884402 -0.491999999999924 10.0983883218742 16.524971290884402 0 17.720115794633202 5.75627670000627 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</bldg:lod3MultiSurface>
+				</bldg:WallSurface>
+			</bldg:boundedBy>
+			<bldg:boundedBy>
+				<bldg:WallSurface gml:id="id_building_1_WallSurface_7">
+					<bldg:lod3MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_7_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_WallSurface_7_lod3_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>10.0983883218742 16.524971290884402 0 10.0983883218742 16.524971290884402 -0.491999999999924 3.37827252724099 11.7686945908782 -0.491999999999924 3.37827252724099 11.7686945908782 0 10.0983883218742 16.524971290884402 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</bldg:lod3MultiSurface>
+				</bldg:WallSurface>
+			</bldg:boundedBy>
+			<bldg:boundedBy>
+				<bldg:WallSurface gml:id="id_building_1_WallSurface_8">
+					<bldg:lod3MultiSurface>
+						<gml:MultiSurface gml:id="id_building_1_WallSurface_8_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+							<gml:surfaceMember>
+								<gml:Polygon gml:id="id_building_1_WallSurface_8_lod3_poly_1">
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>3.37827252724099 11.7686945908782 0 3.37827252724099 11.7686945908782 -0.49199999999994 11 1 -0.49199999999994 11 1 0 3.37827252724099 11.7686945908782 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</bldg:lod3MultiSurface>
 				</bldg:WallSurface>
 			</bldg:boundedBy>
 			<nrg3:bdgIsProtected>false</nrg3:bdgIsProtected>
@@ -942,6 +1086,202 @@
 						<nrg3:ZonePart gml:id="zone_part_1">
 							<gml:description>Ground floor, heated and cooled year-round at 22 °C</gml:description>
 							<gml:name>Ground floor</gml:name>
+							<nrg3:lod3Solid>
+								<gml:Solid gml:id="zone_part_1_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+									<gml:exterior>
+										<gml:CompositeSurface gml:id="zone_part_1_lod3_shell">
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_1">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>15.8309469223022 4.4191837310791 1.07500000000238 17.381807546425801 5.51683181883481 1.07500000000238 17.381807546425801 5.51683181883481 2.27500000000416 15.830946922302299 4.4191837310791 2.27500000000416 15.8309469223022 4.4191837310791 1.07500000000238</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_2">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>11.3007772161474 1.21288185952515 1.07500000000237 12.851637840271 2.31052994728087 1.07500000000237 12.851637840271 2.31052994728088 2.27500000000415 11.3007772161474 1.21288185952518 2.27500000000415 11.3007772161474 1.21288185952515 1.07500000000237</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_3">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>10.0983883218743 16.524971290884402 3.10800000000006 10.0983883218742 16.524971290884402 0 3.37827252724099 11.7686945908782 0 3.37827252724101 11.7686945908782 3.10800000000007 10.0983883218743 16.524971290884402 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>3.91984121960928 12.151999080217699 0.074000000000903 6.10328972988856 13.6973720458738 0.074000000000903 6.10328972988856 13.6973720458738 2.66500000000476 3.91984121960928 12.151999080217699 2.66500000000476 3.91984121960928 12.151999080217699 0.074000000000903</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>7.33581580484989 14.5697134208796 0.074000000000903 9.51926431512916 16.115086386535602 0.074000000000903 9.51926431512916 16.115086386535602 2.66500000000476 7.33581580484989 14.5697134208796 2.66500000000476 7.33581580484989 14.5697134208796 0.074000000000903</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_4">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>11 1.00000000000003 3.10800000000006 11 1 0 17.720115794633202 5.75627670000627 0 17.720115794633202 5.75627670000629 3.10800000000006 11 1.00000000000003 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>17.381807793117201 5.51683343530514 1.07500000000238 15.8309471689936 4.41918534754943 1.07500000000238 15.8309471689936 4.41918534754943 2.27500000000416 17.381807793117101 5.51683343530514 2.27500000000416 17.381807793117201 5.51683343530514 1.07500000000238</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>12.851637798535799 2.31052826873314 1.07500000000237 11.3007771744122 1.21288018097742 1.07500000000237 11.3007771744122 1.21288018097741 2.27500000000415 12.851637798535799 2.31052826873311 2.27500000000415 12.851637798535799 2.31052826873314 1.07500000000237</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_5">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>17.720115794633202 5.75627670000627 3.10800000000006 17.720115794633202 5.75627670000627 0 10.0983883218742 16.524971290884402 0 10.0983883218743 16.524971290884402 3.10800000000006 17.720115794633202 5.75627670000627 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>15.859018799272199 8.385809862753829 0.015000000000017 15.859018799272199 8.385809862753829 2.41800000000358 15.2327816797316 9.270616660938019 2.41800000000358 15.2327816797316 9.270616660938019 0.015000000000017 15.859018799272199 8.385809862753829 0.015000000000017</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>14.4499852803058 10.376625158668199 0.026000000000027 14.4499852803058 10.376625158668199 2.42420000000359 13.537204238908901 11.666288203992099 2.42420000000359 13.537204238908901 11.666288203992099 0.026000000000027 14.4499852803058 10.376625158668199 0.026000000000027</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_6">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>3.37827252724101 11.7686945908782 3.10800000000006 3.37827252724099 11.7686945908782 0 11 1 0 11 1.00000000000003 3.10800000000006 3.37827252724101 11.7686945908782 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>6.72986008387031 7.03325594905753 0.07400000000012 6.72986008387031 7.03325594905753 2.39200000000356 7.84483945722218 5.45790805192149 2.39200000000356 7.84483945722218 5.45790805192149 0.07400000000012 6.72986008387031 7.03325594905753 0.07400000000012</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_7">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>10.9999990463257 0.999998715414195 3.10800000000006 3.37827252724099 11.7686945908782 3.10800000000006 10.0983883218742 16.524971290884402 3.10800000000006 17.720115794633202 5.75627670000621 3.10800000000006 10.9999990463257 0.999998715414195 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_8">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>10.9999990463257 0.999998715414195 -0.49199999999994 3.37827252724099 11.7686945908782 -0.49199999999994 10.0983883218742 16.524971290884402 -0.49199999999994 17.720115794633202 5.75627670000621 -0.49199999999994 10.9999990463257 0.999998715414195 -0.49199999999994</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_9">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>9.51926956807492 16.1150857734563 0.074000000000903 7.33582105779564 14.5697128078003 0.074000000000903 7.33582105779564 14.5697128078003 2.66500000000476 9.51926956807492 16.1150857734563 2.66500000000476 9.51926956807492 16.1150857734563 0.074000000000903</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_10">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>6.10328972988856 13.6973714855535 0.074000000000903 3.91984121960929 12.1519985198975 0.074000000000903 3.91984121960929 12.1519985198975 2.66500000000476 6.10328972988856 13.6973714855535 2.66500000000476 6.10328972988856 13.6973714855535 0.074000000000903</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_11">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>10.9999990463257 0.999998715414252 0 10.9999990463257 0.999998715414252 -0.491999999999924 17.7201148409589 5.75627541542054 -0.49199999999994 17.7201148409589 5.75627541542054 0 10.9999990463257 0.999998715414252 0</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_12">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>14.4499852803058 10.376625158668199 0.026000000000027 13.537204238908901 11.666288203992099 0.026000000000027 13.537204238908901 11.666288203992099 2.42420000000359 14.4499852803058 10.376625158668199 2.42420000000359 14.4499852803058 10.376625158668199 0.026000000000027</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_13">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>15.859018799272199 8.385809862753829 0.015000000000017 15.2327816797316 9.270616660938019 0.015000000000017 15.2327816797316 9.270616660938019 2.41800000000358 15.859018799272199 8.385809862753829 2.41800000000358 15.859018799272199 8.385809862753829 0.015000000000017</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_14">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>17.720115794633202 5.75627670000627 0 17.720115794633202 5.75627670000627 -0.491999999999924 10.0983883218742 16.524971290884402 -0.491999999999924 10.0983883218742 16.524971290884402 0 17.720115794633202 5.75627670000627 0</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_15">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>10.0983883218742 16.524971290884402 0 10.0983883218742 16.524971290884402 -0.491999999999924 3.37827252724099 11.7686945908782 -0.491999999999924 3.37827252724099 11.7686945908782 0 10.0983883218742 16.524971290884402 0</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_16">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>3.37827252724099 11.7686945908782 0 3.37827252724099 11.7686945908782 -0.49199999999994 11 1 -0.49199999999994 11 1 0 3.37827252724099 11.7686945908782 0</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_1_lod3_poly_17">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>6.72986008387031 7.03325594905753 0.07400000000012 7.84483945722218 5.45790805192149 0.07400000000012 7.84483945722218 5.45790805192149 2.39200000000356 6.72986008387031 7.03325594905753 2.39200000000356 6.72986008387031 7.03325594905753 0.07400000000012</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+										</gml:CompositeSurface>
+									</gml:exterior>
+								</gml:Solid>
+							</nrg3:lod3Solid>
 							<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml">residential</nrg3:type>
 							<nrg3:isCooled>true</nrg3:isCooled>
 							<nrg3:isHeated>true</nrg3:isHeated>
@@ -954,7 +1294,7 @@
 							</nrg3:heatingSchedule>
 							<nrg3:coolingSchedule>
 								<nrg3:ConstantValueSchedule gml:id="zone_part_1_cooling_schedule">
-									<nrg3:value uom="°C">27</nrg3:value>
+									<nrg3:value uom="°C">24</nrg3:value>
 								</nrg3:ConstantValueSchedule>
 							</nrg3:coolingSchedule>
 						</nrg3:ZonePart>
@@ -963,6 +1303,170 @@
 						<nrg3:ZonePart gml:id="zone_part_2">
 							<gml:description>First floor, heated to 18 °C when cold outside</gml:description>
 							<gml:name>First floor</gml:name>
+							<nrg3:lod3Solid>
+								<gml:Solid gml:id="zone_part_2_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+									<gml:exterior>
+										<gml:CompositeSurface gml:id="zone_part_2_lod3_shell">
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_1">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>15.777892395753 4.38163422875779 4.05500000000681 16.439048767089901 4.84957893985364 4.0550000000068 16.439048767089901 4.84957893985364 5.3350000000087 15.777892395753 4.38163422875779 5.3350000000087 15.777892395753 4.38163422875779 4.05500000000681</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_2">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>14.9306074333212 3.78195557584578 4.0550000000068 15.591788291931101 4.24991761822724 4.0550000000068 15.5917882919312 4.24991761822724 5.3350000000087 14.9306074333212 3.78195557584578 5.3350000000087 14.9306074333212 3.78195557584578 4.0550000000068</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_3">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>13.090796470642101 2.47979569435122 4.0550000000068 13.751952841979 2.94774040544706 4.0550000000068 13.751952841979 2.94774040544706 5.3350000000087 13.090796470642101 2.4797956943512 5.3350000000087 13.090796470642101 2.47979569435122 4.0550000000068</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_4">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>12.243536949157701 1.88013291358949 4.0550000000068 12.9046933204946 2.34807762468536 4.05500000000679 12.9046933204946 2.34807762468534 5.33500000000869 12.243536949157701 1.88013291358948 5.33500000000869 12.243536949157701 1.88013291358949 4.0550000000068</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_5">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>6.10328902804316 13.6973720458738 3.19200000000553 4.67486476898193 12.686380386098801 3.19200000000553 4.67486476898193 12.686380386098801 5.40500000000881 6.10328902804316 13.6973720458738 5.40500000000881 6.10328902804316 13.6973720458738 3.19200000000553</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_6">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>8.7642387350744 15.580703344955699 3.19200000000553 7.33581447601321 14.5697116851807 3.19200000000553 7.33581447601319 14.5697116851807 5.40500000000881 8.7642387350744 15.580703344955699 5.40500000000881 8.7642387350744 15.580703344955699 3.19200000000553</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_7">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>9.232054767803231 15.9118089252965 6.06800000000006 16.853782277620599 5.14311428205879 6.06800000000006 11.828830821633 1.58661863192346 6.06800000000006 4.20710309686766 12.355313578860001 6.06800000000006 9.232054767803231 15.9118089252965 6.06800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_8">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>11.8288305696266 1.58661898798186 6.06800000000009 4.20710309686764 12.355313578860001 6.06800000000006 3.37827252724097 11.7686945908782 5.05256737011165 10.999999999999901 1.00000000000004 5.05256737011163 11.8288305696266 1.58661898798186 6.06800000000009</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_9">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>9.2320547678032 15.911808925296601 6.06800000000006 16.8537822405622 5.14311433441841 6.06800000000005 17.720115794633202 5.75627670000628 5.00664310860734 10.0983883218743 16.524971290884501 5.00664310860733 9.2320547678032 15.911808925296601 6.06800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_10">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>10.0983883218743 16.524971290884402 3.10800000000006 3.37827252724101 11.7686945908782 3.10800000000007 3.37827252724102 11.7686945908782 5.05256737011165 4.20710309686769 12.355313578860001 6.06800000000006 9.2320547678032 15.9118089252965 6.06800000000006 10.0983883218743 16.524971290884402 5.00664310860734 10.0983883218743 16.524971290884402 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>4.67486547082734 12.686380386098801 3.19200000000553 6.10328972988856 13.6973720458738 3.19200000000553 6.10328972988856 13.6973720458738 5.40500000000881 4.67486547082734 12.686380386098801 5.40500000000881 4.67486547082734 12.686380386098801 3.19200000000553</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>7.33581580484989 14.5697134208796 3.19200000000553 8.764240063911069 15.580705080654599 3.19200000000553 8.7642400639111 15.580705080654599 5.40500000000881 7.33581580484989 14.5697134208796 5.40500000000881 7.33581580484989 14.5697134208796 3.19200000000553</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_11">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>11 1.00000000000003 3.10800000000006 17.720115794633202 5.75627670000629 3.10800000000006 17.720115794633202 5.7562767000063 5.00664310860734 16.853782240562101 5.14311433441842 6.06800000000006 11.8288305696266 1.58661898798186 6.06800000000009 10.999999999999901 1.00000000000004 5.05256737011163 11 1.00000000000003 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>16.4390477821368 4.84957893985364 4.05500000000681 15.777891410799899 4.38163422875779 4.0550000000068 15.777891410799899 4.38163422875779 5.3350000000087 16.4390477821368 4.84957893985364 5.3350000000087 16.4390477821368 4.84957893985364 4.05500000000681</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>15.5917881359051 4.24991645822709 4.0550000000068 14.9306072772952 3.78195441584563 4.0550000000068 14.930607277295101 3.78195441584563 5.3350000000087 15.591788135905 4.24991645822709 5.3350000000087 15.5917881359051 4.24991645822709 4.0550000000068</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>13.7519532029612 2.94774186915129 4.0550000000068 13.090796831624299 2.47979715805545 4.0550000000068 13.090796831624299 2.47979715805545 5.3350000000087 13.7519532029612 2.94774186915132 5.3350000000087 13.7519532029612 2.94774186915129 4.0550000000068</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+													<gml:interior>
+														<gml:LinearRing>
+															<gml:posList>12.9046935567295 2.34807938752476 4.0550000000068 12.243537185392601 1.8801346764289 4.05500000000679 12.243537185392601 1.88013467642891 5.33500000000869 12.9046935567295 2.34807938752478 5.33500000000869 12.9046935567295 2.34807938752476 4.0550000000068</gml:posList>
+														</gml:LinearRing>
+													</gml:interior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_12">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>17.720115794633202 5.75627670000627 3.10800000000006 10.0983883218743 16.524971290884402 3.10800000000006 10.0983883218743 16.524971290884402 5.00664310860733 17.720115794633202 5.75627670000627 5.00664310860733 17.720115794633202 5.75627670000627 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_13">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>3.37827252724101 11.7686945908782 3.10800000000006 11 1.00000000000003 3.10800000000006 10.999999999999901 1.00000000000004 5.05256737011163 3.37827252724102 11.7686945908782 5.05256737011165 3.37827252724101 11.7686945908782 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_2_lod3_poly_14">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>10.9999990463257 0.999998715414195 3.10800000000006 3.37827252724099 11.7686945908782 3.10800000000006 10.0983883218742 16.524971290884402 3.10800000000006 17.720115794633202 5.75627670000621 3.10800000000006 10.9999990463257 0.999998715414195 3.10800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+										</gml:CompositeSurface>
+									</gml:exterior>
+								</gml:Solid>
+							</nrg3:lod3Solid>
 							<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml">residential</nrg3:type>
 							<nrg3:isCooled>true</nrg3:isCooled>
 							<nrg3:isHeated>true</nrg3:isHeated>
@@ -975,7 +1479,7 @@
 							</nrg3:heatingSchedule>
 							<nrg3:coolingSchedule>
 								<nrg3:ConstantValueSchedule gml:id="zone_part_2_cooling_schedule">
-									<nrg3:value uom="°C">27</nrg3:value>
+									<nrg3:value uom="°C">24</nrg3:value>
 								</nrg3:ConstantValueSchedule>
 							</nrg3:coolingSchedule>
 						</nrg3:ZonePart>
@@ -984,6 +1488,59 @@
 						<nrg3:ZonePart gml:id="zone_part_3">
 							<gml:description>Attic / second floor, not heated or cooled</gml:description>
 							<gml:name>Attic</gml:name>
+							<nrg3:lod3Solid>
+								<gml:Solid gml:id="zone_part_3_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
+									<gml:exterior>
+										<gml:CompositeSurface gml:id="zone_part_3_lod3_shell">
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_3_lod3_poly_1">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>9.232054767803231 15.9118089252965 6.06800000000006 16.853782277620599 5.14311428205879 6.06800000000006 11.828830821633 1.58661863192346 6.06800000000006 4.20710309686766 12.355313578860001 6.06800000000006 9.232054767803231 15.9118089252965 6.06800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_3_lod3_poly_2">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>11.8288305696266 1.58661898798186 6.06800000000009 14.3412802401281 3.36484814249854 9.146100000014361 6.71955276736927 14.1335427333767 9.146100000014391 4.20710309686764 12.355313578860001 6.06800000000006 11.8288305696266 1.58661898798186 6.06800000000009</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_3_lod3_poly_3">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>9.2320547678032 15.911808925296601 6.06800000000006 6.71955276736927 14.1335427333767 9.146100000014391 14.341280240128199 3.36484814249854 9.1461000000144 16.8537822405622 5.14311433441841 6.06800000000005 9.2320547678032 15.911808925296601 6.06800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_3_lod3_poly_4">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>9.2320547678032 15.9118089252965 6.06800000000006 4.20710309686769 12.355313578860001 6.06800000000006 6.71955276736927 14.133542733376601 9.14610000001437 9.2320547678032 15.9118089252965 6.06800000000006</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="zone_part_3_lod3_poly_5">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>11.8288305696266 1.58661898798186 6.06800000000009 16.853782240562101 5.14311433441842 6.06800000000006 14.3412802401281 3.36484814249854 9.146100000014361 11.8288305696266 1.58661898798186 6.06800000000009</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+										</gml:CompositeSurface>
+									</gml:exterior>
+								</gml:Solid>
+							</nrg3:lod3Solid>
 							<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml">residential</nrg3:type>
 							<nrg3:isCooled>false</nrg3:isCooled>
 							<nrg3:isHeated>false</nrg3:isHeated>
