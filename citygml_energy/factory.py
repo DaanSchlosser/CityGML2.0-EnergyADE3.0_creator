@@ -10,6 +10,26 @@ Key ideas
 * Nested sub-objects use an extra segment, e.g. ``nrg3_bdgVolume_value``.
 * ``gml_parent_id`` links a child feature to its parent's ``gml_id``.
 
+Extensibility
+-------------
+To add a new feature type, define a dataclass that inherits from
+:class:`BaseBuilder` with ``FEATURE_TYPE`` and (optionally) ``PARENT_FIELD``::
+
+    @dataclass
+    class SolarThermalCollector(_AbstractDevice):
+        ELEMENT_TAG: ClassVar = (NS_NRG3, "SolarThermalCollector")
+        FEATURE_TYPE: ClassVar = "nrg3_SolarThermalCollector"
+        PARENT_FIELD: ClassVar = "devices"
+        ELEMENT_ORDER: ClassVar = (*_DEVICE_BASE_ORDER, (NS_NRG3, "fluidType"))
+        FIELD_MAP: ClassVar = {**_DEVICE_BASE_FIELD_MAP, "fluid_type": (NS_NRG3, "fluidType")}
+
+        fluid_type: CodeValue | None = None
+
+That's it — ``auto_from_dict`` + auto-registration handle the rest.
+For classes that need custom construction logic (e.g. ``Building`` with
+its ``QualifiedVolume`` lists), define a manual ``from_dict`` function and
+register it in ``_CUSTOM_FROM_DICT``.
+
 Quick usage
 -----------
 ::
@@ -46,10 +66,16 @@ Quick usage
 from __future__ import annotations
 
 import dataclasses
+import types as _types
 from collections.abc import Callable
-from typing import Any, ClassVar
+from typing import Any, ClassVar, get_type_hints
 
-from .building import (
+from .base import BaseBuilder
+
+# These imports are needed even if not directly referenced in this file:
+# importing the modules triggers __init_subclass__ which registers each
+# builder class in BaseBuilder._all_subclasses for auto-registration.
+from .building import (  # noqa: F401
     Building,
     BuildingInstallation,
     BuildingPart,
@@ -82,6 +108,7 @@ from .energy_ade import (
     QualifiedHeight,
     QualifiedVolume,
 )
+from .namespaces import NS_NRG3, NS_PREFIX_MAP
 from .types import CodeValue, MeasureValue, ScaleValue
 
 # ---------------------------------------------------------------------------
@@ -137,7 +164,100 @@ def _scale(attrs: dict[str, Any], key: str) -> ScaleValue | None:
 
 
 # ---------------------------------------------------------------------------
-# Per-class constructors
+# auto_from_dict: generic flat-dict → builder via FIELD_MAP + type hints
+# ---------------------------------------------------------------------------
+
+# Cache resolved type hints per class (avoids repeated evaluation)
+_hints_cache: dict[type, dict[str, Any]] = {}
+
+
+def _flat_key(ns: str, local_name: str) -> str:
+    """Convert ``(namespace_uri, local_name)`` to a flat attribute key.
+
+    Example: ``(NS_NRG3, "cellType")`` → ``"nrg3_cellType"``
+    """
+    prefix = NS_PREFIX_MAP.get(ns, "")
+    return f"{prefix}_{local_name}" if prefix else local_name
+
+
+def _unwrap_optional(tp: Any) -> Any:
+    """Unwrap ``T | None`` to ``T``."""
+    if isinstance(tp, _types.UnionType):
+        args = [a for a in tp.__args__ if a is not type(None)]
+        if len(args) == 1:
+            return args[0]
+    return tp
+
+
+def _get_hints(cls: type) -> dict[str, Any]:
+    """Return resolved type hints for *cls* (cached)."""
+    if cls not in _hints_cache:
+        try:
+            _hints_cache[cls] = get_type_hints(cls)
+        except Exception:
+            _hints_cache[cls] = {}
+    return _hints_cache[cls]
+
+
+def auto_from_dict(cls: type[BaseBuilder], attrs: dict[str, Any]) -> BaseBuilder:
+    """Auto-create a builder instance from flat attributes.
+
+    Uses ``cls.FIELD_MAP`` and type annotations to determine how to
+    convert each flat attribute key to a constructor kwarg.
+
+    Handles: ``str``, ``int``, ``float``, ``bool``, ``CodeValue``,
+    ``MeasureValue``, ``ScaleValue``, and ``Metadata`` fields.
+    Skips: ``list`` fields, ``Any`` typed fields, and nested builders
+    (those are populated by ``FeatureFactory._attach``).
+    """
+    hints = _get_hints(cls)
+    kwargs: dict[str, Any] = {"gml_id": _str(attrs.get("gml_id"))}
+
+    for field_name, (ns, local_name) in cls.FIELD_MAP.items():
+        flat = _flat_key(ns, local_name)
+
+        # Special case: metadata fields → delegate to _make_metadata
+        if (ns, local_name) == (NS_NRG3, "metadata"):
+            kwargs[field_name] = _make_metadata(attrs)
+            continue
+
+        # Resolve type hint
+        hint = hints.get(field_name)
+        if hint is None:
+            continue
+
+        real_type = _unwrap_optional(hint)
+
+        # Skip complex types (lists, Any, nested builders)
+        if real_type is Any:
+            continue
+        origin = getattr(real_type, "__origin__", None)
+        if origin is list:
+            continue
+        if isinstance(real_type, type) and issubclass(real_type, BaseBuilder):
+            continue
+
+        # Dispatch by type
+        if real_type is str:
+            kwargs[field_name] = _str(attrs.get(flat))
+        elif real_type is int:
+            kwargs[field_name] = _int(attrs.get(flat))
+        elif real_type is float:
+            kwargs[field_name] = _float(attrs.get(flat))
+        elif real_type is bool:
+            kwargs[field_name] = _bool(attrs.get(flat))
+        elif real_type is CodeValue:
+            kwargs[field_name] = _code(attrs, flat)
+        elif real_type is MeasureValue:
+            kwargs[field_name] = _measure(attrs, flat)
+        elif real_type is ScaleValue:
+            kwargs[field_name] = _scale(attrs, flat)
+
+    return cls(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Metadata / Qualified helpers (used by custom from_dict functions)
 # ---------------------------------------------------------------------------
 
 
@@ -190,83 +310,16 @@ def _make_qualified_height(attrs: dict[str, Any], prefix: str = "nrg3_bdgHeight"
     return _make_qualified(QualifiedHeight, attrs, prefix)
 
 
+# ---------------------------------------------------------------------------
+# Custom from_dict functions (complex types that need manual logic)
+# ---------------------------------------------------------------------------
+
+
 def building_from_dict(attrs: dict[str, Any]) -> Building:
     """Create a :class:`Building` from a flat attribute dictionary.
 
-    Attribute reference
-    -------------------
-    **GML / Core**
-
-    =================================  ================================
-    Attribute key                      Meaning
-    =================================  ================================
-    ``gml_id``                         Feature ID (gml:id)
-    ``gml_description``                gml:description text
-    ``gml_name``                       gml:name text
-    ``core_creationDate``              ISO date, e.g. ``2026-04-04``
-    ``core_terminationDate``           ISO date
-    =================================  ================================
-
-    **CityGML building properties**
-
-    =================================  ================================
-    ``bldg_class``                     Code value
-    ``bldg_class_codeSpace``           Optional codeSpace URL
-    ``bldg_function``                  Code value
-    ``bldg_function_codeSpace``
-    ``bldg_usage``                     Code value
-    ``bldg_usage_codeSpace``
-    ``bldg_yearOfConstruction``        Integer year
-    ``bldg_yearOfDemolition``          Integer year
-    ``bldg_roofType``                  Code value
-    ``bldg_roofType_codeSpace``
-    ``bldg_measuredHeight``            Numeric value
-    ``bldg_measuredHeight_uom``        Unit of measure (e.g. ``m``)
-    ``bldg_storeysAboveGround``        Integer
-    ``bldg_storeysBelowGround``        Integer
-    =================================  ================================
-
-    **Energy ADE CityObject extensions**
-
-    ==========================================  ========================
-    ``nrg3_identifier``                         Identifier string
-    ``nrg3_identifier_codeSpace``               Optional codeSpace URL
-    ``nrg3_metadata_author``                    Metadata author
-    ``nrg3_metadata_acquisitionMethod``         e.g. ``measurement``
-    ``nrg3_metadata_owner``                     Owner name
-    ``nrg3_metadata_qualityDescription``        Quality description
-    ``nrg3_metadata_source``                    Source description
-    ==========================================  ========================
-
-    **Energy ADE building extensions**
-
-    ==========================================  ========================
-    ``nrg3_bdgIsProtected``                     ``true`` / ``false``
-    ``nrg3_bdgNumberOfBuildingUnits``           Integer
-    ``nrg3_bdgOwnerName``                       String
-    ``nrg3_bdgOwnershipType``                   Code value
-    ``nrg3_bdgOwnershipType_codeSpace``
-    ``nrg3_bdgType``                            Code value
-    ``nrg3_bdgType_codeSpace``
-    ``nrg3_bdgAtticThermalStatus``              Enum value
-    ``nrg3_bdgBasementThermalStatus``           Enum value
-    ``nrg3_bdgConstructionWeight``              Code value
-    ``nrg3_bdgConstructionWeight_codeSpace``
-    ``nrg3_bdgVolume_description``              QualifiedVolume desc
-    ``nrg3_bdgVolume_source``                   QualifiedVolume source
-    ``nrg3_bdgVolume_value``                    Numeric value
-    ``nrg3_bdgVolume_uom``                      Unit (e.g. ``m3``)
-    ``nrg3_bdgVolume_type``                     Code value
-    ``nrg3_bdgVolume_type_codeSpace``
-    ``nrg3_bdgArea_value``                      Numeric value
-    ``nrg3_bdgArea_uom``                        Unit (e.g. ``m2``)
-    ``nrg3_bdgArea_type``                       Code value
-    ``nrg3_bdgArea_type_codeSpace``
-    ``nrg3_bdgHeight_value``                    Numeric value
-    ``nrg3_bdgHeight_uom``                      Unit (e.g. ``m``)
-    ``nrg3_bdgHeight_type``                     Code value
-    ``nrg3_bdgHeight_type_codeSpace``
-    ==========================================  ========================
+    This is a custom constructor because Building has QualifiedVolume/Area/Height
+    lists that require nested sub-object assembly from flat keys.
     """
     vol = _make_qualified_volume(attrs)
     area = _make_qualified_area(attrs)
@@ -312,340 +365,15 @@ def building_from_dict(attrs: dict[str, Any]) -> Building:
 
 
 def building_part_from_dict(attrs: dict[str, Any]) -> BuildingPart:
+    """Create a :class:`BuildingPart` -- reuses Building logic."""
     b = building_from_dict(attrs)
     return BuildingPart(**{f.name: getattr(b, f.name) for f in dataclasses.fields(b)})
-
-
-def pv_collector_from_dict(attrs: dict[str, Any]) -> PhotovoltaicCollector:
-    """Create a :class:`PhotovoltaicCollector` from flat attributes.
-
-    Attribute reference
-    -------------------
-    **GML / Core**
-
-    ===========================  ===================================
-    ``gml_id``                   Feature ID (gml:id)
-    ``gml_parent_id``            Parent Building gml:id (for linking)
-    ``gml_description``          gml:description
-    ``gml_name``                 gml:name
-    ``core_creationDate``        ISO date
-    ===========================  ===================================
-
-    **CityObject ADE extensions (from AbstractFeatureWithLifeSpan)**
-
-    ===========================  ===================================
-    ``nrg3_identifier``          Identifier string
-    ``nrg3_identifier_codeSpace``
-    ``nrg3_validFrom``           DateTime string
-    ``nrg3_validTo``             DateTime string
-    ===========================  ===================================
-
-    **AbstractDevice fields**
-
-    ================================  ===============================
-    ``nrg3_model``                    Model string
-    ``nrg3_yearOfInstallation``       Integer year
-    ``nrg3_yearOfManufacture``        Integer year
-    ``nrg3_numberOfDevices``          Integer count
-    ``nrg3_installedPower``           Numeric value
-    ``nrg3_installedPower_uom``       e.g. ``W`` or ``kWp``
-    ``nrg3_nominalEfficiency``        Numeric value
-    ``nrg3_nominalEfficiency_uom``    e.g. ``unit interval``
-    ``nrg3_efficiencyIndicator``      String
-    ``nrg3_heatDissipation``          Numeric value
-    ``nrg3_heatDissipation_uom``      e.g. ``W/m^2``
-    ``nrg3_heatDissipationConvectiveFraction``
-    ``nrg3_heatDissipationLatentFraction``
-    ``nrg3_heatDissipationRadiantFraction``
-    ================================  ===============================
-
-    **AbstractSolarCollector fields**
-
-    ================================  ===============================
-    ``nrg3_moduleArea``               Numeric value
-    ``nrg3_moduleArea_uom``           e.g. ``m^2``
-    ``nrg3_apertureArea``             Numeric value
-    ``nrg3_apertureArea_uom``         e.g. ``m^2``
-    ``nrg3_azimuth``                  Numeric value
-    ``nrg3_azimuth_uom``              e.g. ``deg`` / ``decimal degrees``
-    ``nrg3_inclination``              Numeric value
-    ``nrg3_inclination_uom``
-    ================================  ===============================
-
-    **PhotovoltaicCollector-specific**
-
-    ================================  ===============================
-    ``nrg3_cellType``                 e.g. ``monocrystalline``
-    ``nrg3_cellType_codeSpace``       Optional codeSpace URL
-    ================================  ===============================
-    """
-    return PhotovoltaicCollector(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("core_creationDate")),
-        termination_date=_str(attrs.get("core_terminationDate")),
-        nrg3_identifier=_code(attrs, "nrg3_identifier"),
-        valid_from=_str(attrs.get("nrg3_validFrom")),
-        valid_to=_str(attrs.get("nrg3_validTo")),
-        model=_str(attrs.get("nrg3_model")),
-        year_of_installation=_int(attrs.get("nrg3_yearOfInstallation")),
-        year_of_manufacture=_int(attrs.get("nrg3_yearOfManufacture")),
-        number_of_devices=_int(attrs.get("nrg3_numberOfDevices")),
-        installed_power=_measure(attrs, "nrg3_installedPower"),
-        nominal_efficiency=_measure(attrs, "nrg3_nominalEfficiency"),
-        efficiency_indicator=_str(attrs.get("nrg3_efficiencyIndicator")),
-        heat_dissipation=_measure(attrs, "nrg3_heatDissipation"),
-        heat_dissipation_convective_fraction=_scale(
-            attrs, "nrg3_heatDissipationConvectiveFraction"
-        ),
-        heat_dissipation_latent_fraction=_scale(attrs, "nrg3_heatDissipationLatentFraction"),
-        heat_dissipation_radiant_fraction=_scale(attrs, "nrg3_heatDissipationRadiantFraction"),
-        module_area=_measure(attrs, "nrg3_moduleArea"),
-        aperture_area=_measure(attrs, "nrg3_apertureArea"),
-        azimuth=_measure(attrs, "nrg3_azimuth"),
-        inclination=_measure(attrs, "nrg3_inclination"),
-        cell_type=_code(attrs, "nrg3_cellType"),
-    )
-
-
-def heat_pump_from_dict(attrs: dict[str, Any]) -> HeatPump:
-    """Create a :class:`HeatPump` from flat attributes.
-
-    Attribute reference
-    -------------------
-    All **AbstractDevice** fields (same as PV, see above) plus:
-
-    =====================================  ============================
-    ``nrg3_heatSource``                    Code value
-    ``nrg3_heatSource_codeSpace``
-    ``nrg3_copSourceTemperature``          Numeric value
-    ``nrg3_copSourceTemperature_uom``      e.g. ``degC``
-    ``nrg3_copOperationTemperature``       Numeric value
-    ``nrg3_copOperationTemperature_uom``
-    =====================================  ============================
-    """
-    return HeatPump(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("core_creationDate")),
-        termination_date=_str(attrs.get("core_terminationDate")),
-        nrg3_identifier=_code(attrs, "nrg3_identifier"),
-        valid_from=_str(attrs.get("nrg3_validFrom")),
-        valid_to=_str(attrs.get("nrg3_validTo")),
-        model=_str(attrs.get("nrg3_model")),
-        year_of_installation=_int(attrs.get("nrg3_yearOfInstallation")),
-        year_of_manufacture=_int(attrs.get("nrg3_yearOfManufacture")),
-        number_of_devices=_int(attrs.get("nrg3_numberOfDevices")),
-        installed_power=_measure(attrs, "nrg3_installedPower"),
-        nominal_efficiency=_measure(attrs, "nrg3_nominalEfficiency"),
-        efficiency_indicator=_str(attrs.get("nrg3_efficiencyIndicator")),
-        heat_dissipation=_measure(attrs, "nrg3_heatDissipation"),
-        heat_source=_code(attrs, "nrg3_heatSource"),
-        cop_source_temperature=_measure(attrs, "nrg3_copSourceTemperature"),
-        cop_operation_temperature=_measure(attrs, "nrg3_copOperationTemperature"),
-    )
-
-
-def ev_charging_station_from_dict(attrs: dict[str, Any]) -> EVChargingStation:
-    """Create an :class:`EVChargingStation` from flat attributes.
-
-    Attribute reference
-    -------------------
-    All **AbstractDevice** fields plus:
-
-    ========================================  ==========================
-    ``nrg3_evType``                           Code value (type of EV charger)
-    ``nrg3_evType_codeSpace``
-    ``nrg3_chargingSpeedLevel``               Code value
-    ``nrg3_chargingSpeedLevel_codeSpace``
-    ``nrg3_connectorType``                    Code value
-    ``nrg3_connectorType_codeSpace``
-    ``nrg3_hasLoadManagement``                ``true`` / ``false``
-    ``nrg3_access``                           Code value
-    ``nrg3_access_codeSpace``
-    ========================================  ==========================
-    """
-    return EVChargingStation(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("core_creationDate")),
-        termination_date=_str(attrs.get("core_terminationDate")),
-        nrg3_identifier=_code(attrs, "nrg3_identifier"),
-        valid_from=_str(attrs.get("nrg3_validFrom")),
-        valid_to=_str(attrs.get("nrg3_validTo")),
-        model=_str(attrs.get("nrg3_model")),
-        year_of_installation=_int(attrs.get("nrg3_yearOfInstallation")),
-        year_of_manufacture=_int(attrs.get("nrg3_yearOfManufacture")),
-        number_of_devices=_int(attrs.get("nrg3_numberOfDevices")),
-        installed_power=_measure(attrs, "nrg3_installedPower"),
-        ev_type=_code(attrs, "nrg3_evType"),
-        charging_speed_level=_code(attrs, "nrg3_chargingSpeedLevel"),
-        connector_type=_code(attrs, "nrg3_connectorType"),
-        has_load_management=_bool(attrs.get("nrg3_hasLoadManagement")),
-        access=_code(attrs, "nrg3_access"),
-    )
-
-
-def occupants_from_dict(attrs: dict[str, Any]) -> Occupants:
-    """Create :class:`Occupants` from flat attributes.
-
-    Attribute reference
-    -------------------
-    ============================================  ======================
-    ``gml_id``                                    Feature ID
-    ``gml_name``                                  gml:name
-    ``nrg3_occupantType``                         Code value
-    ``nrg3_occupantType_codeSpace``
-    ``nrg3_numberOfOccupants``                    Integer
-    ``nrg3_averageDietType``                      Code value
-    ``nrg3_averageDietType_codeSpace``
-    ``nrg3_averageIncomeLevel``                   Code value
-    ``nrg3_averageInstructionLevel``              Code value
-    ``nrg3_heatDissipation``                      Numeric value
-    ``nrg3_heatDissipation_uom``
-    ============================================  ======================
-    """
-    return Occupants(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("nrg3_creationDate")),
-        termination_date=_str(attrs.get("nrg3_terminationDate")),
-        occ_metadata=_make_metadata(attrs),
-        identifier=_code(attrs, "nrg3_identifier"),
-        valid_from=_str(attrs.get("nrg3_validFrom")),
-        valid_to=_str(attrs.get("nrg3_validTo")),
-        status=_code(attrs, "nrg3_status"),
-        occupant_type=_code(attrs, "nrg3_occupantType"),
-        number_of_occupants=_int(attrs.get("nrg3_numberOfOccupants")),
-        average_diet_type=_code(attrs, "nrg3_averageDietType"),
-        average_income_level=_code(attrs, "nrg3_averageIncomeLevel"),
-        average_instruction_level=_code(attrs, "nrg3_averageInstructionLevel"),
-        heat_dissipation=_measure(attrs, "nrg3_heatDissipation"),
-        heat_dissipation_convective_fraction=_scale(
-            attrs, "nrg3_heatDissipationConvectiveFraction"
-        ),
-        heat_dissipation_latent_fraction=_scale(attrs, "nrg3_heatDissipationLatentFraction"),
-        heat_dissipation_radiant_fraction=_scale(attrs, "nrg3_heatDissipationRadiantFraction"),
-    )
-
-
-def epc_from_dict(attrs: dict[str, Any]) -> EnergyPerformanceCertificate:
-    """Create an :class:`EnergyPerformanceCertificate` from flat attributes.
-
-    Attribute reference
-    -------------------
-    ============================================  ======================
-    ``gml_id``                                    Feature ID
-    ``gml_parent_id``                             Parent Building gml:id
-    ``nrg3_epcType``                              Code value
-    ``nrg3_epcType_codeSpace``
-    ``nrg3_epcLabel``                             Label string (e.g. ``A+``)
-    ``nrg3_epcValue``                             Numeric value
-    ``nrg3_epcValue_uom``                         e.g. ``kWh/(m^2*a)``
-    ``nrg3_epcCertificationMethod``               String
-    ============================================  ======================
-    """
-    return EnergyPerformanceCertificate(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("nrg3_creationDate")),
-        termination_date=_str(attrs.get("nrg3_terminationDate")),
-        epc_metadata=_make_metadata(attrs),
-        identifier=_code(attrs, "nrg3_identifier"),
-        valid_from=_str(attrs.get("nrg3_validFrom")),
-        valid_to=_str(attrs.get("nrg3_validTo")),
-        status=_code(attrs, "nrg3_status"),
-        epc_type=_code(attrs, "nrg3_epcType"),
-        label=_str(attrs.get("nrg3_epcLabel")),
-        value=_measure(attrs, "nrg3_epcValue"),
-        certification_method=_str(attrs.get("nrg3_epcCertificationMethod")),
-    )
-
-
-def energy_from_dict(attrs: dict[str, Any]) -> Energy:
-    """Create an :class:`Energy` resource from flat attributes.
-
-    Attribute reference
-    -------------------
-    ============================================  ==========================
-    ``gml_id``                                    Feature ID
-    ``gml_parent_id``                             Parent gml:id (Building or Device)
-    ``nrg3_operationType``                        Code value (``demands`` / ``produces``)
-    ``nrg3_operationType_codeSpace``
-    ``nrg3_referencePeriod``                       Code value (``year``, ``month``, …)
-    ``nrg3_referencePeriod_codeSpace``
-    ``nrg3_amount``                               Numeric (e.g. ``1.125``)
-    ``nrg3_amount_uom``                           e.g. ``MWh/a``
-    ``nrg3_year``                                 Integer reference year
-    ``nrg3_isAmountNormalized``                   ``true`` / ``false``
-    ``nrg3_energyType``                           Code value (``finalEnergy``, ``primary``)
-    ``nrg3_energyType_codeSpace``
-    ``nrg3_endUse``                               Code value (``mobility``, …)
-    ``nrg3_endUse_codeSpace``
-    ``nrg3_energyCarrier``                        Code value (``electricity``, …)
-    ``nrg3_energyCarrier_codeSpace``
-    ``nrg3_maximumLoad``                          Numeric (peak power draw)
-    ``nrg3_maximumLoad_uom``                      e.g. ``kW``
-    ``nrg3_energySource``                         Code value (``powerGrid``, …)
-    ``nrg3_energySource_codeSpace``
-    ============================================  ==========================
-    """
-    return Energy(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("nrg3_creationDate")),
-        termination_date=_str(attrs.get("nrg3_terminationDate")),
-        energy_metadata=_make_metadata(attrs),
-        identifier=_code(attrs, "nrg3_identifier"),
-        valid_from=_str(attrs.get("nrg3_validFrom")),
-        valid_to=_str(attrs.get("nrg3_validTo")),
-        status=_code(attrs, "nrg3_status"),
-        operation_type=_code(attrs, "nrg3_operationType"),
-        reference_period=_code(attrs, "nrg3_referencePeriod"),
-        amount=_measure(attrs, "nrg3_amount"),
-        year=_int(attrs.get("nrg3_year")),
-        is_amount_normalized=_bool(attrs.get("nrg3_isAmountNormalized")),
-        normalization_value=_measure(attrs, "nrg3_normalizationValue"),
-        normalization_parameter=_str(attrs.get("nrg3_normalizationParameter")),
-        expense=_measure(attrs, "nrg3_expense"),
-        revenue=_measure(attrs, "nrg3_revenue"),
-        co2_equivalent=_measure(attrs, "nrg3_co2Equivalent"),
-        energy_type=_code(attrs, "nrg3_energyType"),
-        end_use=_code(attrs, "nrg3_endUse"),
-        energy_carrier=_code(attrs, "nrg3_energyCarrier"),
-        maximum_load=_measure(attrs, "nrg3_maximumLoad"),
-        maximum_load_time=_str(attrs.get("nrg3_maximumLoadTime")),
-        maximum_load_day=_int(attrs.get("nrg3_maximumLoadDay")),
-        maximum_load_month=_int(attrs.get("nrg3_maximumLoadMonth")),
-        energy_source=_code(attrs, "nrg3_energySource"),
-    )
 
 
 def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
     """Create a :class:`BuildingUnit` from flat attributes.
 
-    Attribute reference
-    -------------------
-    ============================================  ======================
-    ``gml_id``                                    Feature ID
-    ``gml_parent_id``                             Parent Building gml:id
-    ``gml_name``                                  gml:name
-    ``core_creationDate``                         ISO date
-    ``nrg3_buType``                               Code value
-    ``nrg3_buType_codeSpace``
-    ``nrg3_floorNumberFrom``                      Float
-    ``nrg3_floorNumberTo``                        Float
-    ``nrg3_numberOfRooms``                        Integer
-    ``nrg3_ownerName``                            String
-    ``nrg3_ownershipType``                        Code value
-    ``nrg3_ownershipType_codeSpace``
-    ============================================  ======================
+    Custom constructor because of QualifiedArea/Volume lists.
     """
     return BuildingUnit(
         gml_id=_str(attrs.get("gml_id")),
@@ -670,54 +398,10 @@ def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
     )
 
 
-def constant_value_schedule_from_dict(attrs: dict[str, Any]) -> ConstantValueSchedule:
-    """Create a :class:`ConstantValueSchedule` from flat attributes.
-
-    Attribute reference
-    -------------------
-    ============================================  ======================
-    ``gml_id``                                    Feature ID
-    ``gml_name``                                  gml:name
-    ``nrg3_scheduleType``                         Code value
-    ``nrg3_scheduleType_codeSpace``
-    ``nrg3_scheduleValue``                        Numeric value
-    ``nrg3_scheduleValue_uom``                    Unit of measure
-    ============================================  ======================
-    """
-    return ConstantValueSchedule(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("nrg3_creationDate")),
-        termination_date=_str(attrs.get("nrg3_terminationDate")),
-        schedule_metadata=_make_metadata(attrs),
-        identifier=_code(attrs, "nrg3_identifier"),
-        valid_from=_str(attrs.get("nrg3_validFrom")),
-        valid_to=_str(attrs.get("nrg3_validTo")),
-        status=_code(attrs, "nrg3_status"),
-        schedule_type=_code(attrs, "nrg3_scheduleType"),
-        start_time=_str(attrs.get("nrg3_startTime")),
-        start_day=_int(attrs.get("nrg3_startDay")),
-        start_month=_int(attrs.get("nrg3_startMonth")),
-        start_year=_int(attrs.get("nrg3_startYear")),
-        value=_measure(attrs, "nrg3_scheduleValue"),
-    )
-
-
 def address_from_dict(attrs: dict[str, Any]) -> Address:
     """Create a :class:`Address` from flat attributes.
 
-    Attribute reference
-    -------------------
-    ============================================  ======================
-    ``gml_id``                                    Feature ID
-    ``gml_parent_id``                             Parent Building gml:id
-    ``xal_country``                               Country name
-    ``xal_locality``                              Town / city name
-    ``xal_thoroughfare``                          Street name
-    ``xal_thoroughfareNumber``                    House number
-    ``xal_postalCode``                            Postal code
-    ============================================  ======================
+    Custom constructor because Address has no FIELD_MAP (xAL structure).
     """
     return Address(
         gml_id=_str(attrs.get("gml_id")),
@@ -729,154 +413,48 @@ def address_from_dict(attrs: dict[str, Any]) -> Address:
     )
 
 
-def composite_schedule_from_dict(attrs: dict[str, Any]) -> CompositeSchedule:
-    """Create a :class:`CompositeSchedule` from flat attributes.
-
-    Attribute reference
-    -------------------
-    ============================================  ======================
-    ``gml_id``                                    Feature ID
-    ``gml_parent_id``                             Parent gml:id
-    ``gml_name``                                  gml:name
-    ``core_creationDate``                         ISO date
-    ``nrg3_scheduleType``                         Code value
-    ``nrg3_scheduleType_codeSpace``
-    ``nrg3_startTime``                            Start time string
-    ``nrg3_startDay``                             Integer
-    ``nrg3_startMonth``                           Integer
-    ``nrg3_startYear``                            Integer
-    ============================================  ======================
-
-    Note: ``scheduleComponent`` children are assembled via ``gml_parent_id``
-    in :class:`FeatureFactory`.
-    """
-    return CompositeSchedule(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("nrg3_creationDate")),
-        termination_date=_str(attrs.get("nrg3_terminationDate")),
-        schedule_metadata=_make_metadata(attrs),
-        identifier=_code(attrs, "nrg3_identifier"),
-        valid_from=_str(attrs.get("nrg3_validFrom")),
-        valid_to=_str(attrs.get("nrg3_validTo")),
-        status=_code(attrs, "nrg3_status"),
-        schedule_type=_code(attrs, "nrg3_scheduleType"),
-        start_time=_str(attrs.get("nrg3_startTime")),
-        start_day=_int(attrs.get("nrg3_startDay")),
-        start_month=_int(attrs.get("nrg3_startMonth")),
-        start_year=_int(attrs.get("nrg3_startYear")),
-    )
+# ---------------------------------------------------------------------------
+# Backward-compatible aliases (tests import these by name)
+# ---------------------------------------------------------------------------
 
 
-def _room_like_from_dict[RL: (Room, BuildingInstallation, IntBuildingInstallation)](
-    cls: type[RL], attrs: dict[str, Any]
-) -> RL:
-    """Generic constructor for Room, BuildingInstallation, IntBuildingInstallation."""
-    return cls(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("core_creationDate")),
-        termination_date=_str(attrs.get("core_terminationDate")),
-        nrg3_identifier=_code(attrs, "nrg3_identifier"),
-        nrg3_metadata=_make_metadata(attrs),
-        bldg_class=_code(attrs, "bldg_class"),
-        bldg_function=_code(attrs, "bldg_function"),
-        bldg_usage=_code(attrs, "bldg_usage"),
-    )
+def pv_collector_from_dict(attrs: dict[str, Any]) -> PhotovoltaicCollector:
+    """Create a :class:`PhotovoltaicCollector` from flat attributes."""
+    return auto_from_dict(PhotovoltaicCollector, attrs)  # type: ignore[return-value]
 
 
-def room_from_dict(attrs: dict[str, Any]) -> Room:
-    return _room_like_from_dict(Room, attrs)
+def heat_pump_from_dict(attrs: dict[str, Any]) -> HeatPump:
+    """Create a :class:`HeatPump` from flat attributes."""
+    return auto_from_dict(HeatPump, attrs)  # type: ignore[return-value]
 
 
-def building_installation_from_dict(attrs: dict[str, Any]) -> BuildingInstallation:
-    return _room_like_from_dict(BuildingInstallation, attrs)
+def ev_charging_station_from_dict(attrs: dict[str, Any]) -> EVChargingStation:
+    """Create an :class:`EVChargingStation` from flat attributes."""
+    return auto_from_dict(EVChargingStation, attrs)  # type: ignore[return-value]
 
 
-def int_building_installation_from_dict(attrs: dict[str, Any]) -> IntBuildingInstallation:
-    return _room_like_from_dict(IntBuildingInstallation, attrs)
+def occupants_from_dict(attrs: dict[str, Any]) -> Occupants:
+    """Create :class:`Occupants` from flat attributes."""
+    return auto_from_dict(Occupants, attrs)  # type: ignore[return-value]
 
 
-def _surface_from_dict(cls: type, attrs: dict[str, Any]) -> Any:
-    """Generic boundary surface constructor."""
-    return cls(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("core_creationDate")),
-        termination_date=_str(attrs.get("core_terminationDate")),
-        nrg3_identifier=_code(attrs, "nrg3_identifier"),
-        nrg3_metadata=_make_metadata(attrs),
-        bdg_bdry_surf_azimuth=_measure(attrs, "nrg3_bdgBdrySurfAzimuth"),
-        bdg_bdry_surf_inclination=_measure(attrs, "nrg3_bdgBdrySurfInclination"),
-        bdg_bdry_surf_total_surface_area=_measure(attrs, "nrg3_bdgBdrySurfTotalSurfaceArea"),
-        bdg_bdry_surf_opaque_surface_area=_measure(attrs, "nrg3_bdgBdrySurfOpaqueSurfaceArea"),
-        bdg_bdry_surf_heat_capacity=_measure(attrs, "nrg3_bdgBdrySurfHeatCapacity"),
-        bdg_bdry_surf_thickness=_measure(attrs, "nrg3_bdgBdrySurfThickness"),
-        bdg_bdry_surf_is_shared=_bool(attrs.get("nrg3_bdgBdrySurfIsShared")),
-        bdg_bdry_surf_additional_thermal_bridge_u_value=_measure(
-            attrs, "nrg3_bdgBdrySurfAdditionalThermalBridgeUValue"
-        ),
-        bdg_bdry_surf_ground_view_factor=_scale(attrs, "nrg3_bdgBdrySurfGroundViewFactor"),
-        bdg_bdry_surf_sky_view_factor=_scale(attrs, "nrg3_bdgBdrySurfSkyViewFactor"),
-    )
+def epc_from_dict(attrs: dict[str, Any]) -> EnergyPerformanceCertificate:
+    """Create an :class:`EnergyPerformanceCertificate` from flat attributes."""
+    return auto_from_dict(EnergyPerformanceCertificate, attrs)  # type: ignore[return-value]
 
 
-def _opening_from_dict(cls: type, attrs: dict[str, Any]) -> Any:
-    """Generic opening (Door / Window) constructor."""
-    return cls(
-        gml_id=_str(attrs.get("gml_id")),
-        gml_description=_str(attrs.get("gml_description")),
-        gml_name=_str(attrs.get("gml_name")),
-        creation_date=_str(attrs.get("core_creationDate")),
-        termination_date=_str(attrs.get("core_terminationDate")),
-        nrg3_identifier=_code(attrs, "nrg3_identifier"),
-        nrg3_metadata=_make_metadata(attrs),
-        bdg_opn_area=_measure(attrs, "nrg3_bdgOpnArea"),
-        bdg_opn_azimuth=_measure(attrs, "nrg3_bdgOpnAzimuth"),
-        bdg_opn_inclination=_measure(attrs, "nrg3_bdgOpnInclination"),
-        bdg_opn_ground_view_factor=_scale(attrs, "nrg3_bdgOpnGroundViewFactor"),
-        bdg_opn_sky_view_factor=_scale(attrs, "nrg3_bdgOpnSkyViewFactor"),
-    )
+def energy_from_dict(attrs: dict[str, Any]) -> Energy:
+    """Create an :class:`Energy` resource from flat attributes."""
+    return auto_from_dict(Energy, attrs)  # type: ignore[return-value]
+
+
+def constant_value_schedule_from_dict(attrs: dict[str, Any]) -> ConstantValueSchedule:
+    """Create a :class:`ConstantValueSchedule` from flat attributes."""
+    return auto_from_dict(ConstantValueSchedule, attrs)  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------
-# Boundary surface attribute reference docstring (shared across surfaces)
-# ---------------------------------------------------------------------------
-_SURFACE_ATTR_DOC = """
-    Attribute reference (shared by all thematic surfaces)
-    -----------------------------------------------------
-    ==============================================  ====================
-    ``gml_id``                                      Feature ID
-    ``gml_parent_id``                               Parent gml:id
-    ``gml_description``                             gml:description
-    ``gml_name``                                    gml:name
-    ``core_creationDate``                           ISO date
-    ``nrg3_bdgBdrySurfAzimuth``                     Numeric value
-    ``nrg3_bdgBdrySurfAzimuth_uom``                 e.g. ``deg``
-    ``nrg3_bdgBdrySurfInclination``                 Numeric value
-    ``nrg3_bdgBdrySurfInclination_uom``
-    ``nrg3_bdgBdrySurfTotalSurfaceArea``            Numeric value
-    ``nrg3_bdgBdrySurfTotalSurfaceArea_uom``        e.g. ``m^2``
-    ``nrg3_bdgBdrySurfOpaqueSurfaceArea``           Numeric value
-    ``nrg3_bdgBdrySurfOpaqueSurfaceArea_uom``
-    ``nrg3_bdgBdrySurfHeatCapacity``                Numeric value
-    ``nrg3_bdgBdrySurfHeatCapacity_uom``
-    ``nrg3_bdgBdrySurfThickness``                   Numeric value
-    ``nrg3_bdgBdrySurfThickness_uom``               e.g. ``m``
-    ``nrg3_bdgBdrySurfIsShared``                    ``true`` / ``false``
-    ``nrg3_bdgBdrySurfGroundViewFactor``            Float 0..1
-    ``nrg3_bdgBdrySurfSkyViewFactor``               Float 0..1
-    ``nrg3_bdgBdrySurfAdditionalThermalBridgeUValue``
-    ``nrg3_bdgBdrySurfAdditionalThermalBridgeUValue_uom``
-    ==============================================  ====================
-"""
-
-
-# ---------------------------------------------------------------------------
-# Dispatch registry: FME writer name → (class, from_dict_function)
+# Dispatch registry
 # ---------------------------------------------------------------------------
 
 _REGISTRY: dict[str, Callable[[dict[str, Any]], Any]] = {}
@@ -890,65 +468,66 @@ def _reg(fme_name: str, fn: Callable[[dict[str, Any]], Any]) -> None:
     _REGISTRY[fme_name] = fn
 
 
-_reg("bldg_Building", building_from_dict)
-_reg("bldg_BuildingPart", building_part_from_dict)
-_reg("bldg_WallSurface", lambda a: _surface_from_dict(WallSurface, a))
-_reg("bldg_RoofSurface", lambda a: _surface_from_dict(RoofSurface, a))
-_reg("bldg_GroundSurface", lambda a: _surface_from_dict(GroundSurface, a))
-_reg("bldg_CeilingSurface", lambda a: _surface_from_dict(CeilingSurface, a))
-_reg("bldg_ClosureSurface", lambda a: _surface_from_dict(ClosureSurface, a))
-_reg("bldg_FloorSurface", lambda a: _surface_from_dict(FloorSurface, a))
-_reg("bldg_OuterCeilingSurface", lambda a: _surface_from_dict(OuterCeilingSurface, a))
-_reg("bldg_OuterFloorSurface", lambda a: _surface_from_dict(OuterFloorSurface, a))
-_reg("bldg_Door", lambda a: _opening_from_dict(Door, a))
-_reg("bldg_Window", lambda a: _opening_from_dict(Window, a))
-_reg("bldg_Room", room_from_dict)
-_reg("bldg_BuildingInstallation", building_installation_from_dict)
-_reg("bldg_IntBuildingInstallation", int_building_installation_from_dict)
-_reg("nrg3_PhotovoltaicCollector", pv_collector_from_dict)
-_reg("nrg3_HeatPump", heat_pump_from_dict)
-_reg("nrg3_EVChargingStation", ev_charging_station_from_dict)
-_reg("nrg3_Occupants", occupants_from_dict)
-_reg("nrg3_EnergyPerformanceCertificate", epc_from_dict)
-_reg("nrg3_BuildingUnit", building_unit_from_dict)
-_reg("nrg3_ConstantValueSchedule", constant_value_schedule_from_dict)
-_reg("nrg3_CompositeSchedule", composite_schedule_from_dict)
-_reg("core_Address", address_from_dict)
+# --- Custom from_dict overrides (complex construction logic) ---
+_CUSTOM_FROM_DICT: dict[str, Callable[[dict[str, Any]], Any]] = {
+    "bldg_Building": building_from_dict,
+    "bldg_BuildingPart": building_part_from_dict,
+    "nrg3_BuildingUnit": building_unit_from_dict,
+    "core_Address": address_from_dict,
+}
+
+
+# --- Auto-register all builder subclasses that declare FEATURE_TYPE ---
+def _auto_register_all() -> None:
+    """Scan all BaseBuilder subclasses and register those with FEATURE_TYPE.
+
+    Classes in ``_CUSTOM_FROM_DICT`` get their manual constructor;
+    all others get ``auto_from_dict``.
+    """
+    for cls in BaseBuilder._all_subclasses:
+        ft = getattr(cls, "FEATURE_TYPE", "")
+        if not ft or ft in _REGISTRY:
+            continue
+        if ft in _CUSTOM_FROM_DICT:
+            _reg(ft, _CUSTOM_FROM_DICT[ft])
+        else:
+            # Bind cls via default arg to avoid late-binding closure issue
+            _reg(ft, lambda a, c=cls: auto_from_dict(c, a))
+
+
+_auto_register_all()
 
 
 # ---------------------------------------------------------------------------
-# Stub registry: all Blank rows from FME division.xlsx
-# Feature types listed here are not yet implemented. Each raises
-# NotImplementedError so you can find and implement them one by one.
-# To implement: build a Python builder class, write a from_dict function
-# with the attribute mapping, and replace the stub registration below.
+# Stub registry: feature types not yet implemented
 # ---------------------------------------------------------------------------
 
 
-def _stub(feature_type: str):
+def _stub(feature_type: str) -> Callable[[dict[str, Any]], None]:
     """Return a stub callable that raises NotImplementedError for *feature_type*."""
 
     def _fn(attrs: dict[str, Any]) -> None:
         raise NotImplementedError(
             f"'{feature_type}' is not yet implemented.\n"
             f"Steps to implement:\n"
-            f"  1. Build a Python builder class in citygml_energy/\n"
-            f"  2. Write a {feature_type}_from_dict(attrs) function in factory.py\n"
-            f"  3. Replace the stub _reg() call with the real function."
+            f"  1. Create a @dataclass builder class inheriting from BaseBuilder\n"
+            f"  2. Set FEATURE_TYPE = {feature_type!r} and PARENT_FIELD if needed\n"
+            f"  3. Define ELEMENT_TAG, ELEMENT_ORDER, FIELD_MAP, and fields\n"
+            f"  That's it — auto_from_dict + auto-registration handle the rest."
         )
 
     _fn.__name__ = feature_type + "_stub"
-    _fn._is_stub = True
+    _fn._is_stub = True  # type: ignore[attr-defined]
     return _fn
 
 
-# --- CityGML standard modules (Blank rows) ---
+# --- CityGML standard modules (not yet implemented) ---
 _reg("frn_CityFurniture", _stub("frn_CityFurniture"))
 _reg("gen_GenericCityObject", _stub("gen_GenericCityObject"))
 _reg("grp_CityObjectGroup", _stub("grp_CityObjectGroup"))
 _reg("luse_LandUse", _stub("luse_LandUse"))
 
-# --- Energy ADE: resources / materials (Blank rows) ---
+# --- Energy ADE: resources / materials ---
 _reg("nrg3_ConstructionMaterial", _stub("nrg3_ConstructionMaterial"))
 _reg("nrg3_LayeredConstruction", _stub("nrg3_LayeredConstruction"))
 _reg("nrg3_LayeredConstructionLibrary", _stub("nrg3_LayeredConstructionLibrary"))
@@ -956,14 +535,13 @@ _reg("nrg3_MaterialLibrary", _stub("nrg3_MaterialLibrary"))
 _reg("nrg3_ReverseLayeredConstruction", _stub("nrg3_ReverseLayeredConstruction"))
 _reg("nrg3_SolidMaterial", _stub("nrg3_SolidMaterial"))
 
-# --- Energy ADE: energy carriers / commodities (Blank rows) ---
-_reg("nrg3_Energy", energy_from_dict)
+# --- Energy ADE: energy carriers / commodities ---
 _reg("nrg3_Liquid", _stub("nrg3_Liquid"))
 _reg("nrg3_OtherResource", _stub("nrg3_OtherResource"))
 _reg("nrg3_Waste", _stub("nrg3_Waste"))
 _reg("nrg3_Water", _stub("nrg3_Water"))
 
-# --- Energy ADE: devices (Blank rows) ---
+# --- Energy ADE: devices ---
 _reg("nrg3_Boiler", _stub("nrg3_Boiler"))
 _reg("nrg3_DeviceOperation", _stub("nrg3_DeviceOperation"))
 _reg("nrg3_ElectricalStorageDevice", _stub("nrg3_ElectricalStorageDevice"))
@@ -975,12 +553,12 @@ _reg("nrg3_MovableShadingDevice", _stub("nrg3_MovableShadingDevice"))
 _reg("nrg3_SolarThermalCollector", _stub("nrg3_SolarThermalCollector"))
 _reg("nrg3_ThermalStorageDevice", _stub("nrg3_ThermalStorageDevice"))
 
-# --- Energy ADE: energy networks / distribution (Blank rows) ---
+# --- Energy ADE: energy networks / distribution ---
 _reg("nrg3_PowerDistribution", _stub("nrg3_PowerDistribution"))
 _reg("nrg3_ThermalDistribution", _stub("nrg3_ThermalDistribution"))
 _reg("nrg3_UtilityNetworkConnection", _stub("nrg3_UtilityNetworkConnection"))
 
-# --- Energy ADE: schedules (Blank rows) ---
+# --- Energy ADE: schedules ---
 _reg("nrg3_DualValueSchedule", _stub("nrg3_DualValueSchedule"))
 _reg("nrg3_IrregularTimeSeries", _stub("nrg3_IrregularTimeSeries"))
 _reg("nrg3_IrregularTimeSeriesFile", _stub("nrg3_IrregularTimeSeriesFile"))
@@ -1010,20 +588,20 @@ _reg(
     _stub("nrg3_TypicalValuesRegularTimeSeriesFile"),
 )
 
-# --- Energy ADE: sensors (Blank rows) ---
+# --- Energy ADE: sensors ---
 _reg("nrg3_SensorConnection", _stub("nrg3_SensorConnection"))
 _reg("nrg3_SensorData", _stub("nrg3_SensorData"))
 _reg("nrg3_WeatherData", _stub("nrg3_WeatherData"))
 _reg("nrg3_WeatherStation", _stub("nrg3_WeatherStation"))
 
-# --- Energy ADE: urban / zone objects (Blank rows) ---
+# --- Energy ADE: urban / zone objects ---
 _reg("nrg3_Intervention", _stub("nrg3_Intervention"))
 _reg("nrg3_UrbanFunctionArea", _stub("nrg3_UrbanFunctionArea"))
 _reg("nrg3_UrbanSpace", _stub("nrg3_UrbanSpace"))
 _reg("nrg3_Zone", _stub("nrg3_Zone"))
 _reg("nrg3_ZonePart", _stub("nrg3_ZonePart"))
 
-# --- Energy ADE: zone surfaces (Blank rows) ---
+# --- Energy ADE: zone surfaces ---
 _reg("nrg3_ZoneAtticFloorSurface", _stub("nrg3_ZoneAtticFloorSurface"))
 _reg("nrg3_ZoneClosureSurface", _stub("nrg3_ZoneClosureSurface"))
 _reg("nrg3_ZoneDoor", _stub("nrg3_ZoneDoor"))
@@ -1083,67 +661,22 @@ def list_feature_types(*, include_unimplemented: bool = False) -> list[str]:
 class FeatureFactory:
     """Stateful batch builder that assembles a city model from flat feature rows.
 
+    Parent-child relationships are resolved automatically using the
+    ``PARENT_FIELD`` class variable on each builder class.  When a child
+    feature has ``gml_parent_id``, the factory appends the child to
+    ``getattr(parent, child_cls.PARENT_FIELD)``.
+
     Usage::
 
         factory = FeatureFactory(description="My city", name="City 1")
-
-        factory.add("bldg_Building", {
-            "gml_id":                  "bldg_1",
-            "gml_name":                "House 1",
-            "bldg_yearOfConstruction": "2020",
-            "nrg3_bdgOwnerName":       "Jane Doe",
-        })
-
+        factory.add("bldg_Building", {"gml_id": "bldg_1", ...})
         factory.add("nrg3_PhotovoltaicCollector", {
-            "gml_id":            "pv_1",
-            "gml_parent_id":     "bldg_1",    # ← links to bldg_1
-            "nrg3_model":        "SunPower X",
-            "nrg3_installedPower":     "5000",
-            "nrg3_installedPower_uom": "W",
-            "nrg3_azimuth":            "180",
-            "nrg3_azimuth_uom":        "deg",
-            "nrg3_inclination":        "30",
-            "nrg3_inclination_uom":    "deg",
-            "nrg3_cellType":           "monocrystalline",
+            "gml_id": "pv_1",
+            "gml_parent_id": "bldg_1",
+            ...
         })
-
         city_model = factory.build()
-        city_model.write("output.gml")
-
-    Supported parent-child relationships
-    -------------------------------------
-    * ``nrg3_*`` devices (PV, HeatPump, EV) → Building (via ``devices``)
-    * ``bldg_*Surface``                      → Building (via ``bounded_by_surfaces``)
-    * ``bldg_BuildingPart``                  → Building (via ``building_parts``)
-    * ``nrg3_BuildingUnit``                  → Building
-    * ``nrg3_EnergyPerformanceCertificate``  → Building
-    * ``bldg_Room``                          → Building (via ``interior_rooms``)
-    * ``bldg_Window`` / ``bldg_Door``        → any BoundarySurface (via ``openings``)
-    * ``bldg_BuildingInstallation``          → Building (outer)
-    * ``bldg_IntBuildingInstallation``       → Building (interior)
     """
-
-    # Feature types that are "devices" attached to a building
-    _DEVICE_TYPES: ClassVar[set[str]] = {
-        "nrg3_PhotovoltaicCollector",
-        "nrg3_HeatPump",
-        "nrg3_EVChargingStation",
-    }
-
-    # Feature types that are boundary surfaces attached to a building
-    _SURFACE_TYPES: ClassVar[set[str]] = {
-        "bldg_WallSurface",
-        "bldg_RoofSurface",
-        "bldg_GroundSurface",
-        "bldg_CeilingSurface",
-        "bldg_ClosureSurface",
-        "bldg_FloorSurface",
-        "bldg_OuterCeilingSurface",
-        "bldg_OuterFloorSurface",
-    }
-
-    # Feature types that are openings attached to a surface
-    _OPENING_TYPES: ClassVar[set[str]] = {"bldg_Door", "bldg_Window"}
 
     def __init__(
         self,
@@ -1197,41 +730,19 @@ class FeatureFactory:
         return model
 
     # ------------------------------------------------------------------
-    def _attach(self, child_type: str, child: Any, parent_type: str, parent: Any) -> None:
-        """Attach a child feature to its parent."""
-        if child_type in self._DEVICE_TYPES:
-            parent.devices.append(child)
-
-        elif child_type in self._SURFACE_TYPES:
-            parent.bounded_by_surfaces.append(child)
-
-        elif child_type in self._OPENING_TYPES:
-            parent.openings.append(child)
-
-        elif child_type == "bldg_BuildingPart":
-            parent.building_parts.append(child)
-
-        elif child_type == "bldg_Room":
-            parent.interior_rooms.append(child)
-
-        elif child_type == "bldg_BuildingInstallation":
-            parent.outer_building_installations.append(child)
-
-        elif child_type == "bldg_IntBuildingInstallation":
-            parent.interior_building_installations.append(child)
-
-        elif child_type == "nrg3_BuildingUnit":
-            parent.building_units.append(child)
-
-        elif child_type == "nrg3_EnergyPerformanceCertificate":
-            if hasattr(parent, "energy_performance_certificates"):
-                parent.energy_performance_certificates.append(child)
-
-        elif child_type == "nrg3_Occupants":
-            parent.occupied_by.append(child)
-
-        elif child_type == "nrg3_Energy":
-            parent.nrg3_resources.append(child)
-
-        else:
-            raise ValueError(f"Don't know how to attach {child_type!r} to {parent_type!r}")
+    @staticmethod
+    def _attach(child_type: str, child: Any, parent_type: str, parent: Any) -> None:
+        """Attach a child feature to its parent using PARENT_FIELD."""
+        parent_field = getattr(type(child), "PARENT_FIELD", "")
+        if not parent_field:
+            raise ValueError(
+                f"Don't know how to attach {child_type!r} to {parent_type!r}: "
+                f"no PARENT_FIELD defined on {type(child).__name__}"
+            )
+        target = getattr(parent, parent_field, None)
+        if target is None:
+            raise ValueError(
+                f"Parent {parent_type!r} ({type(parent).__name__}) has no "
+                f"field {parent_field!r} for attaching {child_type!r}"
+            )
+        target.append(child)

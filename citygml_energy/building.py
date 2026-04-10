@@ -105,41 +105,57 @@ class _BoundarySurface(BaseBuilder):
 @dataclass
 class WallSurface(_BoundarySurface):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "WallSurface")
+    FEATURE_TYPE: ClassVar = "bldg_WallSurface"
+    PARENT_FIELD: ClassVar = "bounded_by_surfaces"
 
 
 @dataclass
 class RoofSurface(_BoundarySurface):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "RoofSurface")
+    FEATURE_TYPE: ClassVar = "bldg_RoofSurface"
+    PARENT_FIELD: ClassVar = "bounded_by_surfaces"
 
 
 @dataclass
 class GroundSurface(_BoundarySurface):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "GroundSurface")
+    FEATURE_TYPE: ClassVar = "bldg_GroundSurface"
+    PARENT_FIELD: ClassVar = "bounded_by_surfaces"
 
 
 @dataclass
 class CeilingSurface(_BoundarySurface):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "CeilingSurface")
+    FEATURE_TYPE: ClassVar = "bldg_CeilingSurface"
+    PARENT_FIELD: ClassVar = "bounded_by_surfaces"
 
 
 @dataclass
 class ClosureSurface(_BoundarySurface):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "ClosureSurface")
+    FEATURE_TYPE: ClassVar = "bldg_ClosureSurface"
+    PARENT_FIELD: ClassVar = "bounded_by_surfaces"
 
 
 @dataclass
 class FloorSurface(_BoundarySurface):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "FloorSurface")
+    FEATURE_TYPE: ClassVar = "bldg_FloorSurface"
+    PARENT_FIELD: ClassVar = "bounded_by_surfaces"
 
 
 @dataclass
 class OuterCeilingSurface(_BoundarySurface):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "OuterCeilingSurface")
+    FEATURE_TYPE: ClassVar = "bldg_OuterCeilingSurface"
+    PARENT_FIELD: ClassVar = "bounded_by_surfaces"
 
 
 @dataclass
 class OuterFloorSurface(_BoundarySurface):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "OuterFloorSurface")
+    FEATURE_TYPE: ClassVar = "bldg_OuterFloorSurface"
+    PARENT_FIELD: ClassVar = "bounded_by_surfaces"
 
 
 # ===================================================================
@@ -208,11 +224,15 @@ class _Opening(BaseBuilder):
 @dataclass
 class Door(_Opening):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "Door")
+    FEATURE_TYPE: ClassVar = "bldg_Door"
+    PARENT_FIELD: ClassVar = "openings"
 
 
 @dataclass
 class Window(_Opening):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "Window")
+    FEATURE_TYPE: ClassVar = "bldg_Window"
+    PARENT_FIELD: ClassVar = "openings"
 
 
 # ===================================================================
@@ -223,6 +243,8 @@ class Window(_Opening):
 @dataclass
 class Room(BaseBuilder):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "Room")
+    FEATURE_TYPE: ClassVar = "bldg_Room"
+    PARENT_FIELD: ClassVar = "interior_rooms"
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),
@@ -318,6 +340,8 @@ _INSTALLATION_FIELD_MAP: dict[str, tuple[str, str]] = {
 @dataclass
 class BuildingInstallation(BaseBuilder):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "BuildingInstallation")
+    FEATURE_TYPE: ClassVar = "bldg_BuildingInstallation"
+    PARENT_FIELD: ClassVar = "outer_building_installations"
     ELEMENT_ORDER: ClassVar = _INSTALLATION_ORDER
     FIELD_MAP: ClassVar = _INSTALLATION_FIELD_MAP
 
@@ -342,6 +366,8 @@ class BuildingInstallation(BaseBuilder):
 @dataclass
 class IntBuildingInstallation(BaseBuilder):
     ELEMENT_TAG: ClassVar = (NS_BLDG, "IntBuildingInstallation")
+    FEATURE_TYPE: ClassVar = "bldg_IntBuildingInstallation"
+    PARENT_FIELD: ClassVar = "interior_building_installations"
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),
@@ -551,6 +577,7 @@ class Building(BaseBuilder):
     """CityGML 2.0 ``bldg:Building`` with Energy ADE 3.0 extensions."""
 
     ELEMENT_TAG: ClassVar = (NS_BLDG, "Building")
+    FEATURE_TYPE: ClassVar = "bldg_Building"
     ELEMENT_ORDER: ClassVar = _BUILDING_ELEMENT_ORDER
     FIELD_MAP: ClassVar = _BUILDING_FIELD_MAP
 
@@ -636,3 +663,5 @@ class BuildingPart(Building):
     """``bldg:BuildingPart`` -- structurally identical to Building."""
 
     ELEMENT_TAG: ClassVar = (NS_BLDG, "BuildingPart")
+    FEATURE_TYPE: ClassVar = "bldg_BuildingPart"
+    PARENT_FIELD: ClassVar = "building_parts"

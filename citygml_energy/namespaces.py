@@ -66,6 +66,10 @@ NSMAP = OrderedDict(
 )
 
 
+# Reverse lookup: namespace URI → prefix  (used by auto_from_dict)
+NS_PREFIX_MAP: dict[str, str] = {uri: prefix for prefix, uri in NSMAP.items()}
+
+
 def qn(prefix: str, local: str) -> str:
     """Build Clark-notation tag ``{uri}local`` from a namespace prefix."""
     uri = NSMAP[prefix]
