@@ -801,7 +801,16 @@ def _build_solid(
     gml_id: str,
     polygons: list[_GeometryPolygon],
 ) -> RawXmlElement:
-    """Build a ``gml:Solid`` whose exterior shell is a ``gml:CompositeSurface``."""
+    """Build a ``gml:Solid`` whose exterior shell is a ``gml:CompositeSurface``.
+
+    Polygon normals are automatically oriented **outward** (away from the
+    solid's centroid) by reversing the vertex winding order where needed.
+    This corrects shared surfaces between adjacent zones whose normals may
+    point inward because they were drawn from the neighboring zone's
+    perspective.
+    """
+    oriented = _orient_solid_polygons(polygons)
+
     solid = etree.Element(qn("gml", "Solid"))
     solid.set(f"{{{NS_GML}}}id", gml_id)
     solid.set("srsName", DEFAULT_SRS_NAME)
@@ -811,12 +820,87 @@ def _build_solid(
     composite_surface = etree.SubElement(exterior, qn("gml", "CompositeSurface"))
     composite_surface.set(f"{{{NS_GML}}}id", f"{gml_id}_shell")
 
-    for index, polygon_geometry in enumerate(polygons, start=1):
+    for index, polygon_geometry in enumerate(oriented, start=1):
         polygon_id = f"{gml_id}_poly_{index}"
         surface_member = etree.SubElement(composite_surface, qn("gml", "surfaceMember"))
         surface_member.append(_build_polygon_element(polygon_id, polygon_geometry))
 
     return RawXmlElement.from_element(solid)
+
+
+def _orient_solid_polygons(
+    polygons: list[_GeometryPolygon],
+) -> list[_GeometryPolygon]:
+    """Return *polygons* with exterior-ring normals pointing outward.
+
+    Uses the Newell method to compute each polygon's normal and checks
+    whether it points away from the centroid of all vertices.  Polygons
+    whose normals point inward get their vertex winding reversed.
+    """
+    all_vertices = [v for p in polygons for v in _open_ring(p.exterior)]
+    if not all_vertices:
+        return polygons
+
+    n = len(all_vertices)
+    centroid: Coord3D = (
+        sum(v[0] for v in all_vertices) / n,
+        sum(v[1] for v in all_vertices) / n,
+        sum(v[2] for v in all_vertices) / n,
+    )
+
+    oriented: list[_GeometryPolygon] = []
+    for polygon in polygons:
+        normal = _newell_normal(polygon.exterior)
+        center = _ring_center(polygon.exterior)
+        outward = (
+            center[0] - centroid[0],
+            center[1] - centroid[1],
+            center[2] - centroid[2],
+        )
+        dot = normal[0] * outward[0] + normal[1] * outward[1] + normal[2] * outward[2]
+        if dot < 0:
+            oriented.append(
+                _GeometryPolygon(
+                    exterior=list(reversed(polygon.exterior)),
+                    interiors=[list(reversed(i)) for i in polygon.interiors],
+                )
+            )
+        else:
+            oriented.append(polygon)
+
+    return oriented
+
+
+def _newell_normal(ring: list[Coord3D]) -> Coord3D:
+    """Compute the surface normal of a polygon ring via the Newell method."""
+    nx, ny, nz = 0.0, 0.0, 0.0
+    vertices = _open_ring(ring)
+    count = len(vertices)
+    for i in range(count):
+        curr = vertices[i]
+        nxt = vertices[(i + 1) % count]
+        nx += (curr[1] - nxt[1]) * (curr[2] + nxt[2])
+        ny += (curr[2] - nxt[2]) * (curr[0] + nxt[0])
+        nz += (curr[0] - nxt[0]) * (curr[1] + nxt[1])
+    return (nx, ny, nz)
+
+
+def _ring_center(ring: list[Coord3D]) -> Coord3D:
+    """Compute the centroid of a polygon ring's vertices."""
+    vertices = _open_ring(ring)
+    n = len(vertices)
+    return (
+        sum(v[0] for v in vertices) / n,
+        sum(v[1] for v in vertices) / n,
+        sum(v[2] for v in vertices) / n,
+    )
+
+
+def _open_ring(ring: list[Coord3D]) -> list[Coord3D]:
+    """Return *ring* without the closing vertex (if the ring is closed)."""
+    if len(ring) > 1 and _points_close(ring[0], ring[-1]):
+        return ring[:-1]
+    return ring
 
 
 def _collect_all_step_polygons(
