@@ -138,19 +138,3 @@ def _normalize_element(element: etree._Element) -> None:
             child.tag = f"{{{NS_NRG3}}}{new_local}"
             qname = etree.QName(child)
 
-        if qname.localname == "access":
-            _normalize_access_codespace(child)
-
-
-def _normalize_access_codespace(element: etree._Element) -> None:
-    code_space = element.get("codeSpace")
-    if not code_space:
-        return
-    if "EVChargingAccessValue.xml" in code_space:
-        element.set(
-            "codeSpace",
-            code_space.replace(
-                "EVChargingAccessValue.xml",
-                "EVChargingAccessTypeValue.xml",
-            ),
-        )
