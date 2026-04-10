@@ -40,8 +40,13 @@ Create a GML file from the JSON input file:
 python examples/create_renodat.py --input inputs/renodat_input.json --output generated/renodat.gml
 ```
 
-The default input lives at `inputs/renodat_input.json`, and the default output
-path is `generated/renodat.gml`.
+Create a GML file from the RenoDAT Excel input (Task 1.1):
+
+```powershell
+python examples/create_renodat.py --input "C:/Users/daans/Delft University of Technology/Hiba Doi - RenoDAT_WP1_ressources/Tasks/Task_1_1/CityGML work/renodat_input.xlsx" --output generated/renodat.gml
+```
+
+The default input lives at `inputs/renodat_input.json`, and the default output path is `generated/renodat.gml`. Excel (`.xlsx`) files are detected automatically and loaded via the Excel loader.
 
 If you need to maintain the Alderaan reference dataset, keep using
 `examples/create_alderaan.py`. Treat that as reference tooling, not as a
