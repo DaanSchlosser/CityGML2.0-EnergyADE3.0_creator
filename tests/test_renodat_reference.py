@@ -34,12 +34,10 @@ def test_renodat_imports_step_brep_geometry():
     # LOD1: aggregate solid on the Building
     assert building.lod1_solid is not None
 
-    # Surfaces shared between LOD2 and LOD3 are merged into a single entry
-    # carrying both lod2MultiSurface and lod3MultiSurface (per the XSD).
-    # LOD2: 7 surfaces (1 ground + 4 walls + 2 roofs) — all also in LOD3
-    # LOD3: 11 surfaces (1 ground + 8 walls + 2 roofs) — 4 walls are LOD3-only
-    # Total unique boundary surfaces: 11
-    assert len(building.bounded_by_surfaces) == 11
+    # Each LOD level creates its own set of boundedBy entries (no merging).
+    # LOD2: 7 surfaces (1 ground + 4 walls + 2 roofs)
+    # LOD3: 11 surfaces (1 ground + 8 walls + 2 roofs)
+    assert len(building.bounded_by_surfaces) == 18
 
     lod2_surfaces = [
         s for s in building.bounded_by_surfaces if s.lod2_multi_surface is not None
@@ -50,14 +48,6 @@ def test_renodat_imports_step_brep_geometry():
         s for s in building.bounded_by_surfaces if s.lod3_multi_surface is not None
     ]
     assert len(lod3_surfaces) == 11
-
-    # The 7 shared surfaces carry both LOD2 and LOD3 geometry.
-    both_lod = [
-        s
-        for s in building.bounded_by_surfaces
-        if s.lod2_multi_surface is not None and s.lod3_multi_surface is not None
-    ]
-    assert len(both_lod) == 7
 
     # LOD3 wall surfaces with auto-generated IDs
     wall_surfaces = [
@@ -204,7 +194,7 @@ def test_renodat_input_supports_multiple_buildings():
 
     assert len(model.city_object_members) == 2
     assert len(buildings) == 2
-    assert len(buildings[0].bounded_by_surfaces) == 11
+    assert len(buildings[0].bounded_by_surfaces) == 18
 
 
 def test_renodat_input_rejects_unknown_feature_type():
