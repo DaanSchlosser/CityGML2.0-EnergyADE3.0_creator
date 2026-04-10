@@ -7,10 +7,40 @@
   },
   "geometry_sources": [
     {
+      "type": "step-renodat-lod0",
+      "path": "Owner-Occupier1_LOD0_STEP.stp",
+      "target_building_id": "id_building_1"
+    },
+    {
+      "type": "step-renodat-lod1",
+      "path": "Owner-Occupier1_LOD1_STEP.stp",
+      "target_building_id": "id_building_1"
+    },
+    {
+      "type": "step-renodat-lod2",
+      "path": "Owner-Occupier1_LOD2_STEP.stp",
+      "target_building_id": "id_building_1"
+    },
+    {
       "type": "step-renodat-lod3",
-      "path": "Owner-Occupier1_LOD3.0_STEP.stp",
+      "path": "Owner-Occupier1_LOD3_STEP.stp",
       "target_building_id": "id_building_1",
       "target_pv_id": "pv_panel_1"
+    },
+    {
+      "type": "step-zonepart-lod3",
+      "path": "Owner-Occupier1_ZonePart1_STEP.stp",
+      "target_zone_part_id": "zone_part_1"
+    },
+    {
+      "type": "step-zonepart-lod3",
+      "path": "Owner-Occupier1_ZonePart2_STEP.stp",
+      "target_zone_part_id": "zone_part_2"
+    },
+    {
+      "type": "step-zonepart-lod3",
+      "path": "Owner-Occupier1_ZonePart3_STEP.stp",
+      "target_zone_part_id": "zone_part_3"
     }
   ],
   "features": [
