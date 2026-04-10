@@ -1,4 +1,4 @@
-"""Import RenoDAT-style LOD3 STEP geometry into typed CityGML builders."""
+"""Import STEP geometry into typed CityGML builders."""
 
 from __future__ import annotations
 
@@ -10,7 +10,20 @@ from typing import Any
 
 from lxml import etree
 
-from .building import Building, Door, GroundSurface, RoofSurface, WallSurface, Window
+from .building import (
+    Building,
+    CeilingSurface,
+    ClosureSurface,
+    Door,
+    FloorSurface,
+    GroundSurface,
+    OuterCeilingSurface,
+    OuterFloorSurface,
+    RoofSurface,
+    WallSurface,
+    Window,
+    Zone,
+)
 from .core import CityModel, Envelope
 from .energy_ade import CityObjectRelation, PhotovoltaicCollector
 from .namespaces import CS_NRG3_RELATION_TYPE, NS_GML, qn
@@ -18,6 +31,8 @@ from .types import CodeValue
 from .xml_support import RawXmlElement
 
 _STEP_GEOMETRY_SOURCE_TYPE_RE = re.compile(r"^step-renodat-lod([0-4])$")
+_STEP_ZONEPART_TYPE_RE = re.compile(r"^step-zonepart-lod([0-3])$")
+_LOD_PREFIX_RE = re.compile(r"^lod\d+(?:\.\d+)?_", re.IGNORECASE)
 _SOLAR_PANEL_PREFIX = "SolarPanelSurface_"
 
 DEFAULT_SRS_NAME = "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109"
@@ -31,7 +46,12 @@ _STEP_ENTITY_RE = re.compile(
 Coord3D = tuple[float, float, float]
 
 _SURFACE_NAME_PREFIXES = {
+    "CeilingSurface_": CeilingSurface,
+    "ClosureSurface_": ClosureSurface,
+    "FloorSurface_": FloorSurface,
     "GroundSurface_": GroundSurface,
+    "OuterCeilingSurface_": OuterCeilingSurface,
+    "OuterFloorSurface_": OuterFloorSurface,
     "RoofSurface_": RoofSurface,
     "WallSurface_": WallSurface,
 }
@@ -52,6 +72,8 @@ _NESTED_CHILD_LISTS = (
     "building_units",
     "occupied_by",
     "energy_performance_certificates",
+    "zones",
+    "zone_parts",
 )
 
 _FEATURE_KIND_SURFACE = "surface"
@@ -86,20 +108,40 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
     """Apply all configured geometry sources to *model* in place."""
     all_coordinates: list[Coord3D] = []
 
+    # Shared state across geometry sources so that surfaces with the same
+    # classified name across different LOD levels are merged into a single
+    # boundary surface element (as required by the CityGML XSD).
+    surface_registry: dict[tuple[str, str], Any] = {}
+    type_counters: dict[tuple[str, str], int] = {}
+
     for source in geometry_sources:
         source_type = source.get("type")
-        target_pv_id = (
-            str(source["target_pv_id"]) if source.get("target_pv_id") is not None else None
-        )
 
         lod_match = _STEP_GEOMETRY_SOURCE_TYPE_RE.match(source_type or "")
         if lod_match:
+            target_pv_id = (
+                str(source["target_pv_id"]) if source.get("target_pv_id") is not None else None
+            )
             lod_level = int(lod_match.group(1))
             coords = apply_step_geometry(
                 model,
                 step_path=Path(str(source["path"])),
                 target_building_id=str(source["target_building_id"]),
                 target_pv_id=target_pv_id,
+                lod_level=lod_level,
+                surface_registry=surface_registry,
+                type_counters=type_counters,
+            )
+            all_coordinates.extend(coords)
+            continue
+
+        zonepart_match = _STEP_ZONEPART_TYPE_RE.match(source_type or "")
+        if zonepart_match:
+            lod_level = int(zonepart_match.group(1))
+            coords = apply_step_zonepart_geometry(
+                model,
+                step_path=Path(str(source["path"])),
+                target_zone_part_id=str(source["target_zone_part_id"]),
                 lod_level=lod_level,
             )
             all_coordinates.extend(coords)
@@ -118,12 +160,27 @@ def apply_step_geometry(
     target_building_id: str,
     target_pv_id: str | None,
     lod_level: int = 3,
+    surface_registry: dict[tuple[str, str], Any] | None = None,
+    type_counters: dict[tuple[str, str], int] | None = None,
 ) -> list[Coord3D]:
-    """Attach STEP-derived semantic geometry to an existing building and PV collector.
+    """Attach STEP-derived geometry to an existing building.
 
-    *lod_level* (0-4) determines which ``lodNMultiSurface`` field is populated.
+    * **LOD 0–1** — aggregate geometry placed directly on the Building
+      (``lod0FootPrint`` as MultiSurface, ``lod1Solid`` as Solid).
+    * **LOD 2–4** — individual thematic surfaces attached via ``boundedBy``.
+      Surfaces with the same classified name across LOD levels are merged
+      into a single boundary surface element via *surface_registry*.
+
     Returns all coordinates encountered for bounding box computation.
     """
+    if lod_level <= 1:
+        return _apply_aggregate_building_geometry(
+            model,
+            step_path=step_path,
+            target_building_id=target_building_id,
+            lod_level=lod_level,
+        )
+
     parsed_features = _parse_step_file(step_path)
     return _attach_geometry_features(
         model,
@@ -132,7 +189,73 @@ def apply_step_geometry(
         target_building_id=target_building_id,
         target_pv_id=target_pv_id,
         lod_level=lod_level,
+        surface_registry=surface_registry if surface_registry is not None else {},
+        type_counters=type_counters if type_counters is not None else {},
     )
+
+
+def apply_step_zonepart_geometry(
+    model: CityModel,
+    *,
+    step_path: Path,
+    target_zone_part_id: str,
+    lod_level: int = 0,
+) -> list[Coord3D]:
+    """Attach STEP-derived volume geometry to a Zone or ZonePart.
+
+    All STEP shells in the file are collected into a single geometry:
+
+    * **lod0** → ``lod0MultiSurface`` (gml:MultiSurface)
+    * **lod1–3** → ``lod{N}Solid`` (gml:Solid with a CompositeSurface shell)
+
+    Returns all coordinates encountered for bounding-box computation.
+    """
+    all_polygons, all_coordinates = _collect_all_step_polygons(step_path)
+
+    if not all_polygons:
+        raise ValueError(f"STEP geometry {step_path} contains no polygon geometry")
+
+    zone = _require_feature(model, target_zone_part_id, Zone)
+    gml_id = f"{target_zone_part_id}_lod{lod_level}"
+
+    if lod_level == 0:
+        multi_surface, _ = _build_multi_surface(gml_id, all_polygons)
+        zone.lod0_multi_surface = multi_surface
+    else:
+        solid = _build_solid(gml_id, all_polygons)
+        setattr(zone, f"lod{lod_level}_solid", solid)
+
+    return all_coordinates
+
+
+def _apply_aggregate_building_geometry(
+    model: CityModel,
+    *,
+    step_path: Path,
+    target_building_id: str,
+    lod_level: int,
+) -> list[Coord3D]:
+    """Attach aggregate LOD0/LOD1 geometry directly to a Building.
+
+    * **LOD 0** → ``lod0FootPrint`` as ``gml:MultiSurface``
+    * **LOD 1** → ``lod1Solid`` as ``gml:Solid``
+    """
+    all_polygons, all_coordinates = _collect_all_step_polygons(step_path)
+
+    if not all_polygons:
+        raise ValueError(f"STEP geometry {step_path} contains no polygon geometry")
+
+    building = _require_feature(model, target_building_id, Building)
+    gml_id = f"{target_building_id}_lod{lod_level}"
+
+    if lod_level == 0:
+        multi_surface, _ = _build_multi_surface(gml_id, all_polygons)
+        building.lod0_foot_print = multi_surface
+    elif lod_level == 1:
+        solid = _build_solid(gml_id, all_polygons)
+        building.lod1_solid = solid
+
+    return all_coordinates
 
 
 def _compute_envelope(coordinates: list[Coord3D]) -> Envelope:
@@ -155,11 +278,25 @@ def _attach_geometry_features(
     target_building_id: str,
     target_pv_id: str | None,
     lod_level: int = 3,
+    surface_registry: dict[tuple[str, str], Any],
+    type_counters: dict[tuple[str, str], int],
 ) -> list[Coord3D]:
+    """Attach parsed STEP geometry features to a building.
+
+    IDs are auto-generated from *target_building_id* and a per-type counter.
+    Surfaces whose classified name matches an entry in *surface_registry*
+    are merged (the LOD geometry is added to the existing surface) rather
+    than duplicated — keeping one ``boundedBy`` element per physical surface
+    as required by the CityGML XSD.
+    Opening-to-surface relations are derived geometrically by matching the
+    opening's exterior ring vertices to interior rings (holes) in surfaces.
+    """
     building = _require_feature(model, target_building_id, Building)
     lod_field = f"lod{lod_level}_multi_surface"
 
-    surface_index: dict[str, Any] = {}
+    # step_name → (surface instance, polygons at this LOD, gml_id)
+    surface_data: dict[str, tuple[Any, list[_GeometryPolygon], str]] = {}
+
     pending_openings: list[_ParsedGeometryFeature] = []
     solar_panel_polygons: list[_GeometryPolygon] = []
     solar_panel_roof_parents: set[str] = set()
@@ -185,22 +322,41 @@ def _attach_geometry_features(
                 raise ValueError(
                     f"Geometry source {source_path} produced a surface without a builder class"
                 )
-            if feature.object_name in surface_index:
-                raise ValueError(
-                    f"Geometry source {source_path} contains duplicate surface name {feature.object_name!r}"
-                )
 
-            multi_surface, _polygon_ids = _build_multi_surface(
-                f"{feature.object_name}_lod{lod_level}",
-                feature.polygons,
-            )
-            surface = feature.element_cls(
-                gml_id=feature.object_name,
-                gml_name=feature.object_name,
-                **{lod_field: multi_surface},
-            )
-            building.bounded_by_surfaces.append(surface)
-            surface_index[feature.object_name] = surface
+            classified_name = _strip_lod_prefix(feature.object_name)
+            registry_key = (target_building_id, classified_name)
+            existing = surface_registry.get(registry_key)
+
+            if existing is not None:
+                # Merge: add this LOD's geometry to the existing surface.
+                multi_surface, _ = _build_multi_surface(
+                    f"{existing.gml_id}_lod{lod_level}",
+                    feature.polygons,
+                )
+                setattr(existing, lod_field, multi_surface)
+                surface_data[feature.object_name] = (
+                    existing,
+                    feature.polygons,
+                    existing.gml_id,
+                )
+            else:
+                # New surface — create, register, and append to the building.
+                type_name = feature.element_cls.__name__
+                counter_key = (target_building_id, type_name)
+                type_counters[counter_key] = type_counters.get(counter_key, 0) + 1
+                gml_id = f"{target_building_id}_{type_name}_{type_counters[counter_key]}"
+
+                multi_surface, _ = _build_multi_surface(
+                    f"{gml_id}_lod{lod_level}",
+                    feature.polygons,
+                )
+                surface = feature.element_cls(
+                    gml_id=gml_id,
+                    **{lod_field: multi_surface},
+                )
+                building.bounded_by_surfaces.append(surface)
+                surface_registry[registry_key] = surface
+                surface_data[feature.object_name] = (surface, feature.polygons, gml_id)
             continue
 
         if feature.kind == _FEATURE_KIND_OPENING:
@@ -211,32 +367,34 @@ def _attach_geometry_features(
             f"Geometry source {source_path} produced unsupported feature kind {feature.kind!r}"
         )
 
+    # Match openings to parent surfaces by interior-ring geometry.
     for feature in pending_openings:
-        if not feature.parent_name:
-            raise ValueError(
-                f"Opening {feature.object_name!r} in {source_path} is missing a parent=... tag"
-            )
-
-        parent_surface = surface_index.get(feature.parent_name)
-        if parent_surface is None:
-            raise ValueError(
-                f"Opening {feature.object_name!r} in {source_path} references unknown parent "
-                f"surface {feature.parent_name!r}"
-            )
-
         if feature.element_cls is None:
             raise ValueError(
                 f"Geometry source {source_path} produced an opening without a builder class"
             )
 
+        parent_step_name = _match_opening_to_parent(feature, surface_data)
+        if parent_step_name is None:
+            raise ValueError(
+                f"Opening in {source_path} could not be matched to any parent "
+                f"surface by interior-ring geometry"
+            )
+
+        parent_surface = surface_data[parent_step_name][0]
+
+        type_name = feature.element_cls.__name__
+        counter_key = (target_building_id, type_name)
+        type_counters[counter_key] = type_counters.get(counter_key, 0) + 1
+        gml_id = f"{target_building_id}_{type_name}_{type_counters[counter_key]}"
+
         multi_surface, _ = _build_multi_surface(
-            f"{feature.object_name}_lod{lod_level}",
+            f"{gml_id}_lod{lod_level}",
             feature.polygons,
         )
         parent_surface.openings.append(
             feature.element_cls(
-                gml_id=feature.object_name,
-                gml_name=feature.object_name,
+                gml_id=gml_id,
                 **{lod_field: multi_surface},
             )
         )
@@ -257,16 +415,16 @@ def _attach_geometry_features(
             )[0],
         )
 
-        for roof_name in sorted(solar_panel_roof_parents):
-            roof_surface = surface_index.get(roof_name)
-            if roof_surface is not None:
+        for roof_step_name in sorted(solar_panel_roof_parents):
+            entry = surface_data.get(roof_step_name)
+            if entry is not None:
                 pv_collector.nrg3_related_to.append(
                     CityObjectRelation(
                         relation_type=CodeValue(
                             value="installedOn",
                             code_space=CS_NRG3_RELATION_TYPE,
                         ),
-                        related_to_href=f"#{roof_name}",
+                        related_to_href=f"#{entry[2]}",
                     )
                 )
     elif target_pv_id is not None:
@@ -314,6 +472,11 @@ def _parse_step_file(path: Path) -> list[_ParsedGeometryFeature]:
     return features
 
 
+def _strip_lod_prefix(name: str) -> str:
+    """Strip an optional leading ``lod{N}_`` prefix (case-insensitive)."""
+    return _LOD_PREFIX_RE.sub("", name)
+
+
 def _build_step_geometry_feature(
     path: Path,
     *,
@@ -321,7 +484,11 @@ def _build_step_geometry_feature(
     parent_name: str | None,
     polygons: list[_GeometryPolygon],
 ) -> _ParsedGeometryFeature:
-    if object_name.startswith(_SOLAR_PANEL_PREFIX):
+    # Strip optional LoD prefix (e.g. "lod3_WallSurface_1" → "WallSurface_1")
+    # so classification works regardless of LoD-level layer naming.
+    classified_name = _strip_lod_prefix(object_name)
+
+    if classified_name.startswith(_SOLAR_PANEL_PREFIX):
         return _ParsedGeometryFeature(
             object_name=object_name,
             parent_name=parent_name,
@@ -331,7 +498,7 @@ def _build_step_geometry_feature(
         )
 
     for prefix, surface_cls in _SURFACE_NAME_PREFIXES.items():
-        if object_name.startswith(prefix):
+        if classified_name.startswith(prefix):
             return _ParsedGeometryFeature(
                 object_name=object_name,
                 parent_name=parent_name,
@@ -341,7 +508,7 @@ def _build_step_geometry_feature(
             )
 
     for prefix, opening_cls in _OPENING_NAME_PREFIXES.items():
-        if object_name.startswith(prefix):
+        if classified_name.startswith(prefix):
             return _ParsedGeometryFeature(
                 object_name=object_name,
                 parent_name=parent_name,
@@ -658,6 +825,81 @@ def _build_multi_surface(
     return RawXmlElement.from_element(multi_surface), polygon_ids
 
 
+def _build_solid(
+    gml_id: str,
+    polygons: list[_GeometryPolygon],
+) -> RawXmlElement:
+    """Build a ``gml:Solid`` whose exterior shell is a ``gml:CompositeSurface``."""
+    solid = etree.Element(qn("gml", "Solid"))
+    solid.set(f"{{{NS_GML}}}id", gml_id)
+    solid.set("srsName", DEFAULT_SRS_NAME)
+    solid.set("srsDimension", str(DEFAULT_SRS_DIMENSION))
+
+    exterior = etree.SubElement(solid, qn("gml", "exterior"))
+    composite_surface = etree.SubElement(exterior, qn("gml", "CompositeSurface"))
+    composite_surface.set(f"{{{NS_GML}}}id", f"{gml_id}_shell")
+
+    for index, polygon_geometry in enumerate(polygons, start=1):
+        polygon_id = f"{gml_id}_poly_{index}"
+        surface_member = etree.SubElement(composite_surface, qn("gml", "surfaceMember"))
+        surface_member.append(_build_polygon_element(polygon_id, polygon_geometry))
+
+    return RawXmlElement.from_element(solid)
+
+
+def _collect_all_step_polygons(
+    step_path: Path,
+) -> tuple[list[_GeometryPolygon], list[Coord3D]]:
+    """Collect all polygons from a STEP file regardless of shell naming.
+
+    Handles both ``SHELL_BASED_SURFACE_MODEL`` (with ``OPEN_SHELL``) and
+    ``MANIFOLD_SOLID_BREP`` (with ``CLOSED_SHELL``) entity types.
+
+    Returns ``(polygons, coordinates)`` for bounding-box computation.
+    """
+    entities = _parse_step_entities(step_path)
+    all_polygons: list[_GeometryPolygon] = []
+    all_coordinates: list[Coord3D] = []
+
+    for entity_id in sorted(entities):
+        entity = entities[entity_id]
+
+        if entity.entity_type == "SHELL_BASED_SURFACE_MODEL":
+            shell_refs = _parse_step_ref_list(entity.args[1])
+            for shell_ref in shell_refs:
+                shell_entity = _require_step_entity(
+                    entities,
+                    shell_ref,
+                    expected_type="OPEN_SHELL",
+                    source_path=step_path,
+                )
+                for face_ref in _parse_step_ref_list(shell_entity.args[1]):
+                    polygon = _parse_step_face(step_path, entities, face_ref)
+                    all_polygons.append(polygon)
+                    all_coordinates.extend(polygon.exterior)
+                    for interior in polygon.interiors:
+                        all_coordinates.extend(interior)
+            continue
+
+        if entity.entity_type == "MANIFOLD_SOLID_BREP":
+            shell_ref = _parse_step_ref(entity.args[1])
+            shell_entity = _require_step_entity(
+                entities,
+                shell_ref,
+                expected_type="CLOSED_SHELL",
+                source_path=step_path,
+            )
+            for face_ref in _parse_step_ref_list(shell_entity.args[1]):
+                polygon = _parse_step_face(step_path, entities, face_ref)
+                all_polygons.append(polygon)
+                all_coordinates.extend(polygon.exterior)
+                for interior in polygon.interiors:
+                    all_coordinates.extend(interior)
+            continue
+
+    return all_polygons, all_coordinates
+
+
 def _build_polygon_element(
     polygon_id: str,
     polygon_geometry: _GeometryPolygon,
@@ -703,6 +945,40 @@ def _format_coordinate(value: float) -> str:
         return str(int(value))
     formatted = f"{value:.15f}".rstrip("0").rstrip(".")
     return formatted
+
+
+def _match_opening_to_parent(
+    opening: _ParsedGeometryFeature,
+    surface_data: dict[str, tuple[Any, list[_GeometryPolygon], str]],
+) -> str | None:
+    """Find the parent surface whose interior ring matches the opening's geometry.
+
+    Returns the STEP object name of the matched surface, or ``None``.
+    """
+    opening_keys = {_ring_vertex_key(p.exterior) for p in opening.polygons}
+    for step_name, (_, polygons, _) in surface_data.items():
+        for polygon in polygons:
+            for interior in polygon.interiors:
+                if _ring_vertex_key(interior) in opening_keys:
+                    return step_name
+    return None
+
+
+def _ring_vertex_key(
+    ring: list[Coord3D],
+    precision: int = 4,
+) -> frozenset[tuple[float, float, float]]:
+    """Create a hashable vertex set from a coordinate ring for comparison.
+
+    Strips the closing vertex (if ring is closed) and rounds to *precision*
+    decimals (default 4 → 0.1 mm) so that floating-point noise from shared
+    STEP edges does not prevent matching.
+    """
+    vertices = ring[:-1] if len(ring) > 1 and _points_close(ring[0], ring[-1]) else ring
+    return frozenset(
+        (round(v[0], precision), round(v[1], precision), round(v[2], precision))
+        for v in vertices
+    )
 
 
 def _require_feature(model: CityModel, gml_id: str, expected_type: type[Any]) -> Any:

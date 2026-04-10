@@ -12383,34 +12383,71 @@
     "geometry_sources": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": [
-          "type",
-          "path",
-          "target_building_id"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "step-renodat-lod3"
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Import semantic boundary surfaces (wall/roof/ground/opening) and optional PV geometry from a RenoDAT-style STEP file onto a Building or BuildingPart.",
+            "required": [
+              "type",
+              "path",
+              "target_building_id"
             ],
-            "description": "Import LOD3 wall/roof/ground/opening geometry and optional PV panel geometry from a RenoDAT-style STEP file."
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "step-renodat-lod0",
+                  "step-renodat-lod1",
+                  "step-renodat-lod2",
+                  "step-renodat-lod3",
+                  "step-renodat-lod4"
+                ]
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_building_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_pv_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           },
-          "path": {
-            "type": "string",
-            "minLength": 1
-          },
-          "target_building_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "target_pv_id": {
-            "type": "string",
-            "minLength": 1
+          {
+            "type": "object",
+            "description": "Import volume geometry from a STEP file onto a Zone or ZonePart. All shells are collected into a single lod0MultiSurface or lod1-3Solid.",
+            "required": [
+              "type",
+              "path",
+              "target_zone_part_id"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "step-zonepart-lod0",
+                  "step-zonepart-lod1",
+                  "step-zonepart-lod2",
+                  "step-zonepart-lod3"
+                ]
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_zone_part_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
-        }
+        ]
       }
     }
   }

@@ -18,38 +18,60 @@ from examples.create_renodat import INPUT
 
 
 def test_renodat_imports_step_brep_geometry():
-    """The RenoDAT example imports STEP-backed LOD3 BREP geometry."""
+    """The RenoDAT example imports multi-LOD STEP-backed geometry."""
     model = generate_city_model(INPUT)
 
     assert len(model.city_object_members) == 1
 
     building = model.city_object_members[0]
     assert isinstance(building, Building)
-    assert len(building.bounded_by_surfaces) == 11
     assert len(building.devices) == 2
     assert len(building.occupied_by) == 1
 
-    wall_surfaces = {
-        surface.gml_id: surface
-        for surface in building.bounded_by_surfaces
-        if surface.__class__.__name__ == "WallSurface"
-    }
-    assert sorted(wall_surfaces) == [
-        "WallSurface_01",
-        "WallSurface_02",
-        "WallSurface_03",
-        "WallSurface_04",
-        "WallSurface_05",
-        "WallSurface_06",
-        "WallSurface_07",
-        "WallSurface_08",
-    ]
-    assert len(wall_surfaces["WallSurface_01"].openings) == 1
-    assert len(wall_surfaces["WallSurface_02"].openings) == 4
-    assert len(wall_surfaces["WallSurface_03"].openings) == 2
-    assert len(wall_surfaces["WallSurface_04"].openings) == 6
+    # LOD0: aggregate footprint on the Building
+    assert building.lod0_foot_print is not None
 
-    wall_surface_geometry = wall_surfaces["WallSurface_04"].lod3_multi_surface.element
+    # LOD1: aggregate solid on the Building
+    assert building.lod1_solid is not None
+
+    # Surfaces shared between LOD2 and LOD3 are merged into a single entry
+    # carrying both lod2MultiSurface and lod3MultiSurface (per the XSD).
+    # LOD2: 7 surfaces (1 ground + 4 walls + 2 roofs) — all also in LOD3
+    # LOD3: 11 surfaces (1 ground + 8 walls + 2 roofs) — 4 walls are LOD3-only
+    # Total unique boundary surfaces: 11
+    assert len(building.bounded_by_surfaces) == 11
+
+    lod2_surfaces = [
+        s for s in building.bounded_by_surfaces if s.lod2_multi_surface is not None
+    ]
+    assert len(lod2_surfaces) == 7
+
+    lod3_surfaces = [
+        s for s in building.bounded_by_surfaces if s.lod3_multi_surface is not None
+    ]
+    assert len(lod3_surfaces) == 11
+
+    # The 7 shared surfaces carry both LOD2 and LOD3 geometry.
+    both_lod = [
+        s
+        for s in building.bounded_by_surfaces
+        if s.lod2_multi_surface is not None and s.lod3_multi_surface is not None
+    ]
+    assert len(both_lod) == 7
+
+    # LOD3 wall surfaces with auto-generated IDs
+    wall_surfaces = [
+        s for s in lod3_surfaces if s.__class__.__name__ == "WallSurface"
+    ]
+    assert len(wall_surfaces) == 8
+    for ws in wall_surfaces:
+        assert ws.gml_id.startswith("id_building_1_WallSurface_")
+
+    opening_counts = sorted(len(ws.openings) for ws in wall_surfaces)
+    assert opening_counts == [0, 0, 0, 0, 1, 2, 4, 6]
+
+    wall_with_6_openings = next(ws for ws in wall_surfaces if len(ws.openings) == 6)
+    wall_surface_geometry = wall_with_6_openings.lod3_multi_surface.element
     wall_polygons = wall_surface_geometry.findall(
         "./{http://www.opengis.net/gml}surfaceMember/{http://www.opengis.net/gml}Polygon"
     )
@@ -60,6 +82,13 @@ def test_renodat_imports_step_brep_geometry():
     assert isinstance(pv_collector, PhotovoltaicCollector)
     pv_geometry = pv_collector.lod3_multi_surface.element
     assert len(pv_geometry.findall("./{http://www.opengis.net/gml}surfaceMember")) == 36
+
+    # ZonePart geometry: each zone part has lod3Solid
+    assert len(building.zones) == 1
+    zone = building.zones[0]
+    assert len(zone.zone_parts) == 3
+    for zone_part in zone.zone_parts:
+        assert zone_part.lod3_solid is not None
 
 
 def test_renodat_serializes_pv_as_nested_building_device():
@@ -90,7 +119,7 @@ def test_pv_collector_has_installed_on_relation():
     assert len(pv_collector.nrg3_related_to) >= 1
     relation = pv_collector.nrg3_related_to[0]
     assert relation.relation_type.value == "installedOn"
-    assert relation.related_to_href.startswith("#RoofSurface_")
+    assert "_RoofSurface_" in relation.related_to_href
 
     # Verify it serializes correctly in the XML
     generated = model.to_string()
@@ -108,7 +137,7 @@ def test_pv_collector_has_installed_on_relation():
     assert inner_ref is not None
     href = inner_ref.get(f"{{{ns['xlink']}}}href")
     assert href is not None
-    assert href.startswith("#RoofSurface_")
+    assert "_RoofSurface_" in href
 
 
 def test_generated_is_well_formed_xml():
