@@ -400,6 +400,24 @@ _COMPOSITE_SCHEDULE_FIELDS = (
     _field("nrg3_startYear", "nrg3_start_year"),
 )
 
+_ZONE_FIELDS = (
+    _field("nrg3_zoneType", "nrg3_type"),
+    _field("nrg3_zoneType_codeSpace", "nrg3_type_codeSpace"),
+    _field("nrg3_isCooled", "nrg3_is_cooled"),
+    _field("nrg3_isHeated", "nrg3_is_heated"),
+    _field("nrg3_isMechanicallyVentilated", "nrg3_is_mechanically_ventilated"),
+    _field("nrg3_infiltrationRate", "nrg3_infiltration_rate"),
+    _field("nrg3_infiltrationRate_uom", "nrg3_infiltration_rate_units"),
+    _field("nrg3_coincidesWithLod2Hull", "nrg3_coincides_with_lod2_hull"),
+    _field("nrg3_coincidesWithLod3Hull", "nrg3_coincides_with_lod3_hull"),
+    _field("nrg3_heatingSetpoint", "nrg3_heating_setpoint"),
+    _field("nrg3_heatingSetpoint_uom", "nrg3_heating_setpoint_units"),
+    _field("nrg3_coolingSetpoint", "nrg3_cooling_setpoint"),
+    _field("nrg3_coolingSetpoint_uom", "nrg3_cooling_setpoint_units"),
+    *_qualified_fields("nrg3_volume", "nrg3_volume"),
+    *_qualified_fields("nrg3_area", "nrg3_area"),
+)
+
 FEATURE_INPUT_FIELDS: dict[str, tuple[InputField, ...]] = {
     "bldg_Building": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _BUILDING_FIELDS,
     "bldg_BuildingPart": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _BUILDING_FIELDS,
@@ -479,6 +497,8 @@ FEATURE_INPUT_FIELDS: dict[str, tuple[InputField, ...]] = {
     "nrg3_CompositeSchedule": _NRG_FEATURE_FIELDS
     + _NRG_FEATURE_METADATA_FIELDS
     + _COMPOSITE_SCHEDULE_FIELDS,
+    "nrg3_Zone": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _ZONE_FIELDS,
+    "nrg3_ZonePart": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _ZONE_FIELDS,
     "core_Address": _COMMON_FIELDS
     + (
         _field("xal_country"),

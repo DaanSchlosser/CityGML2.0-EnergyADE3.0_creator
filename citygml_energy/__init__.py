@@ -27,6 +27,8 @@ from .building import (
     Room,
     WallSurface,
     Window,
+    Zone,
+    ZonePart,
 )
 
 # Core
@@ -73,6 +75,8 @@ from .factory import (
     list_feature_types,
     occupants_from_dict,
     pv_collector_from_dict,
+    zone_from_dict,
+    zone_part_from_dict,
 )
 
 # Canonical generation workflow
@@ -101,6 +105,7 @@ from .namespaces import (
     CS_NRG3_BU_TYPE,
     CS_NRG3_BUILDING_TYPE,
     CS_NRG3_CELL_TYPE,
+    CS_NRG3_CURRENT_USE,
     CS_NRG3_CONSTRUCTION_WEIGHT,
     CS_NRG3_DEVICE_OPERATION_TYPE,
     CS_NRG3_EPC_TYPE,
@@ -133,6 +138,7 @@ __all__ = [
     "CS_NRG3_BUILDING_TYPE",
     "CS_NRG3_BU_TYPE",
     "CS_NRG3_CELL_TYPE",
+    "CS_NRG3_CURRENT_USE",
     "CS_NRG3_CONSTRUCTION_WEIGHT",
     "CS_NRG3_DEVICE_OPERATION_TYPE",
     "CS_NRG3_EPC_TYPE",
@@ -215,4 +221,8 @@ __all__ = [
     "normalize_city_model_for_beta8",
     "occupants_from_dict",
     "pv_collector_from_dict",
+    "Zone",
+    "ZonePart",
+    "zone_from_dict",
+    "zone_part_from_dict",
 ]

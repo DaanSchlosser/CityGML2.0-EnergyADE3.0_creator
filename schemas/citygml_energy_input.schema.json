@@ -65,7 +65,9 @@
               "nrg3_EnergyPerformanceCertificate",
               "nrg3_HeatPump",
               "nrg3_Occupants",
-              "nrg3_PhotovoltaicCollector"
+              "nrg3_PhotovoltaicCollector",
+              "nrg3_Zone",
+              "nrg3_ZonePart"
             ],
             "description": "Supported feature types that can currently be created from JSON input."
           },
@@ -11343,6 +11345,1026 @@
                       ]
                     },
                     "nrg3_year_of_manufacture": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "feature_type": {
+                  "const": "nrg3_Zone"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "attributes": {
+                  "type": "object",
+                  "required": [
+                    "gml_id"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "citygml_creationDate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "citygml_terminationDate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "core_creationDate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "core_terminationDate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "gml_description": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "gml_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "gml_name": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "gml_parent_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "nrg3_area_description": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_source": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_type": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_type_codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_value": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_value_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coincidesWithLod2Hull": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coincidesWithLod3Hull": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coincides_with_lod2_hull": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coincides_with_lod3_hull": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coolingSetpoint": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coolingSetpoint_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_cooling_setpoint": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_cooling_setpoint_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_heatingSetpoint": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_heatingSetpoint_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_heating_setpoint": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_heating_setpoint_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_identifier": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_identifier_codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_identifier{}": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_identifier{}.codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_infiltrationRate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_infiltrationRate_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_infiltration_rate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_infiltration_rate_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_isCooled": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_isHeated": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_isMechanicallyVentilated": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_is_cooled": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_is_heated": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_is_mechanically_ventilated": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_acquisitionMethod": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_author": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_owner": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_qualityDescription": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_source": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_acquisition_method": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_author": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_owner": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_quality_description": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_source": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_type": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_type_codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_description": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_source": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_type": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_type_codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_value": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_value_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_zoneType": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_zoneType_codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "feature_type": {
+                  "const": "nrg3_ZonePart"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "attributes": {
+                  "type": "object",
+                  "required": [
+                    "gml_id"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "citygml_creationDate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "citygml_terminationDate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "core_creationDate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "core_terminationDate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "gml_description": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "gml_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "gml_name": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "gml_parent_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "nrg3_area_description": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_source": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_type": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_type_codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_value": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_area_value_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coincidesWithLod2Hull": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coincidesWithLod3Hull": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coincides_with_lod2_hull": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coincides_with_lod3_hull": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coolingSetpoint": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_coolingSetpoint_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_cooling_setpoint": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_cooling_setpoint_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_heatingSetpoint": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_heatingSetpoint_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_heating_setpoint": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_heating_setpoint_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_identifier": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_identifier_codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_identifier{}": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_identifier{}.codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_infiltrationRate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_infiltrationRate_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_infiltration_rate": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_infiltration_rate_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_isCooled": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_isHeated": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_isMechanicallyVentilated": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_is_cooled": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_is_heated": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_is_mechanically_ventilated": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_acquisitionMethod": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_author": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_owner": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_qualityDescription": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata_source": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_acquisition_method": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_author": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_owner": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_quality_description": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_metadata{}.nrg3_metadata_nrg3_source": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_type": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_type_codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_description": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_source": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_type": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_type_codeSpace": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_uom": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_value": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_volume_value_units": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_zoneType": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "nrg3_zoneType_codeSpace": {
                       "type": [
                         "string",
                         "number",

@@ -68,7 +68,7 @@
         "nrg3_inclination": "44.51",
         "nrg3_inclination_uom": "deg",
         "nrg3_cellType": "unknown",
-        "nrg3_cellType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/CellTypeValue.xml"
+        "nrg3_cellType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml"
       }
     },
     {
@@ -80,10 +80,10 @@
         "gml_name": "Occupants 1",
         "nrg3_creationDate": "2026-04-04",
         "nrg3_occupantType": "residents",
-        "nrg3_occupantType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/OccupantsTypeValue.xml",
+        "nrg3_occupantType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml",
         "nrg3_numberOfOccupants": 6,
         "nrg3_averageDietType": "omnivorous",
-        "nrg3_averageDietType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/DietTypeValue.xml",
+        "nrg3_averageDietType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/DietTypeValue.xml",
         "nrg3_heatDissipation": "80",
         "nrg3_heatDissipation_uom": "W",
         "nrg3_heatDissipationConvectiveFraction": "0.3",
@@ -96,24 +96,26 @@
       "attributes": {
         "gml_id": "id_ev_charging_station_1",
         "gml_parent_id": "id_building_1",
-        "gml_description": "AC Level 2 charger, 11 kW rated. Dedicated to Golf GTE 2015 (8.7 kWh gross / 7.5 kWh net); car-side limit 3.6 kW. ~150 charges/year.",
-        "gml_name": "EV Charging Station 1",
+        "gml_description": "EVHUB AC Mode 3 laadpaal, 3.7-22 kW (32A, 1/3-phase), Type 2 connector with 8m cable. IP55, polycarbonate housing (410x280x150 mm), built-in DC detection. Dedicated to Golf GTE 2015 (8.7 kWh gross / 7.5 kWh net); car-side limit 3.6 kW. ~150 charges/year.",
+        "gml_name": "EVHUB Laadpaal Type 2",
         "core_creationDate": "2026-04-04",
-        "nrg3_identifier": "ev_charger_1",
-        "nrg3_identifier_codeSpace": "urn:local:ev-charger",
+        "nrg3_model": "LP-H8T5OIUGL5",
+        "nrg3_identifier": "LP-H8T5OIUGL5",
+        "nrg3_identifier_codeSpace": "https://www.elektramat.nl/evhub-laadpaal-type-2-32a-3-7-22kw-met-laadkabel-8-meter-zwart-lp-h8t5oiugl5/",
         "nrg3_yearOfInstallation": 2022,
+        "nrg3_validFrom": "2022-07-18",
         "nrg3_numberOfDevices": 1,
-        "nrg3_installedPower": 11000,
+        "nrg3_installedPower": 22000,
         "nrg3_installedPower_uom": "W",
         "nrg3_evType": "AC",
-        "nrg3_evType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EVChargingStationTypeValue.xml",
+        "nrg3_evType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml",
         "nrg3_chargingSpeedLevel": "Level 2",
-        "nrg3_chargingSpeedLevel_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EVChargingSpeedLevelValue.xml",
+        "nrg3_chargingSpeedLevel_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingSpeedLevelValue.xml",
         "nrg3_connectorType": "AC - Mennekes (Type2)",
-        "nrg3_connectorType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EVChargingConnectorTypeValue.xml",
+        "nrg3_connectorType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingConnectorTypeValue.xml",
         "nrg3_hasLoadManagement": true,
         "nrg3_access": "private",
-        "nrg3_access_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EVChargingAccessValue.xml"
+        "nrg3_access_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingAccessTypeValue.xml"
       }
     },
     {
@@ -125,23 +127,89 @@
         "gml_name": "EV charging energy demand",
         "nrg3_creationDate": "2026-04-10",
         "nrg3_operationType": "demands",
-        "nrg3_operationType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/ResourceOperationTypeValue.xml",
+        "nrg3_operationType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml",
         "nrg3_referencePeriod": "year",
-        "nrg3_referencePeriod_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/ReferencePeriodValue.xml",
+        "nrg3_referencePeriod_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ReferencePeriodValue.xml",
         "nrg3_amount": "1.125",
         "nrg3_amount_uom": "MWh/a",
         "nrg3_year": 2025,
         "nrg3_isAmountNormalized": false,
         "nrg3_energyType": "finalEnergy",
-        "nrg3_energyType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EnergyTypeValue.xml",
+        "nrg3_energyType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml",
         "nrg3_endUse": "mobility",
-        "nrg3_endUse_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EnergyEndUseValue.xml",
+        "nrg3_endUse_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml",
         "nrg3_energyCarrier": "electricity",
-        "nrg3_energyCarrier_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EnergyCarrierValue.xml",
+        "nrg3_energyCarrier_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml",
         "nrg3_maximumLoad": "3.6",
         "nrg3_maximumLoad_uom": "kW",
         "nrg3_energySource": "powerGrid",
-        "nrg3_energySource_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/codelists/EnergySourceValue.xml"
+        "nrg3_energySource_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"
+      }
+    },
+    {
+      "feature_type": "nrg3_Zone",
+      "attributes": {
+        "gml_id": "zone_1",
+        "gml_parent_id": "id_building_1",
+        "gml_description": "Residential thermal zone with three storeys",
+        "gml_name": "Building zone",
+        "nrg3_zoneType": "residential",
+        "nrg3_zoneType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+        "nrg3_coincidesWithLod2Hull": false,
+        "nrg3_coincidesWithLod3Hull": true
+      }
+    },
+    {
+      "feature_type": "nrg3_ZonePart",
+      "attributes": {
+        "gml_id": "zone_part_1",
+        "gml_parent_id": "zone_1",
+        "gml_description": "Ground floor, heated and cooled year-round at 22 °C",
+        "gml_name": "Ground floor",
+        "nrg3_zoneType": "residential",
+        "nrg3_zoneType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+        "nrg3_isHeated": true,
+        "nrg3_isCooled": true,
+        "nrg3_heatingSetpoint": "22",
+        "nrg3_heatingSetpoint_uom": "°C",
+        "nrg3_coolingSetpoint": "24",
+        "nrg3_coolingSetpoint_uom": "°C",
+        "nrg3_coincidesWithLod2Hull": false,
+        "nrg3_coincidesWithLod3Hull": false
+      }
+    },
+    {
+      "feature_type": "nrg3_ZonePart",
+      "attributes": {
+        "gml_id": "zone_part_2",
+        "gml_parent_id": "zone_1",
+        "gml_description": "First floor, heated to 18 °C when cold outside",
+        "gml_name": "First floor",
+        "nrg3_zoneType": "residential",
+        "nrg3_zoneType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+        "nrg3_isHeated": true,
+        "nrg3_isCooled": true,
+        "nrg3_heatingSetpoint": "18",
+        "nrg3_heatingSetpoint_uom": "°C",
+        "nrg3_coolingSetpoint": "24",
+        "nrg3_coolingSetpoint_uom": "°C",
+        "nrg3_coincidesWithLod2Hull": false,
+        "nrg3_coincidesWithLod3Hull": false
+      }
+    },
+    {
+      "feature_type": "nrg3_ZonePart",
+      "attributes": {
+        "gml_id": "zone_part_3",
+        "gml_parent_id": "zone_1",
+        "gml_description": "Attic / second floor, not heated or cooled",
+        "gml_name": "Attic",
+        "nrg3_zoneType": "residential",
+        "nrg3_zoneType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+        "nrg3_isHeated": false,
+        "nrg3_isCooled": false,
+        "nrg3_coincidesWithLod2Hull": false,
+        "nrg3_coincidesWithLod3Hull": false
       }
     }
   ]
