@@ -17,7 +17,7 @@ from .namespaces import CS_NRG3_RELATION_TYPE, NS_GML, qn
 from .types import CodeValue
 from .xml_support import RawXmlElement
 
-_STEP_GEOMETRY_SOURCE_TYPE = "step-renodat-lod3"
+_STEP_GEOMETRY_SOURCE_TYPE_RE = re.compile(r"^step-renodat-lod([0-4])$")
 _SOLAR_PANEL_PREFIX = "SolarPanelSurface_"
 
 DEFAULT_SRS_NAME = "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109"
@@ -92,12 +92,15 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
             str(source["target_pv_id"]) if source.get("target_pv_id") is not None else None
         )
 
-        if source_type == _STEP_GEOMETRY_SOURCE_TYPE:
+        lod_match = _STEP_GEOMETRY_SOURCE_TYPE_RE.match(source_type or "")
+        if lod_match:
+            lod_level = int(lod_match.group(1))
             coords = apply_step_geometry(
                 model,
                 step_path=Path(str(source["path"])),
                 target_building_id=str(source["target_building_id"]),
                 target_pv_id=target_pv_id,
+                lod_level=lod_level,
             )
             all_coordinates.extend(coords)
             continue
@@ -114,9 +117,11 @@ def apply_step_geometry(
     step_path: Path,
     target_building_id: str,
     target_pv_id: str | None,
+    lod_level: int = 3,
 ) -> list[Coord3D]:
     """Attach STEP-derived semantic geometry to an existing building and PV collector.
 
+    *lod_level* (0-4) determines which ``lodNMultiSurface`` field is populated.
     Returns all coordinates encountered for bounding box computation.
     """
     parsed_features = _parse_step_file(step_path)
@@ -126,6 +131,7 @@ def apply_step_geometry(
         source_path=step_path,
         target_building_id=target_building_id,
         target_pv_id=target_pv_id,
+        lod_level=lod_level,
     )
 
 
@@ -148,8 +154,10 @@ def _attach_geometry_features(
     source_path: Path,
     target_building_id: str,
     target_pv_id: str | None,
+    lod_level: int = 3,
 ) -> list[Coord3D]:
     building = _require_feature(model, target_building_id, Building)
+    lod_field = f"lod{lod_level}_multi_surface"
 
     surface_index: dict[str, Any] = {}
     pending_openings: list[_ParsedGeometryFeature] = []
@@ -183,13 +191,13 @@ def _attach_geometry_features(
                 )
 
             multi_surface, _polygon_ids = _build_multi_surface(
-                f"{feature.object_name}_lod3",
+                f"{feature.object_name}_lod{lod_level}",
                 feature.polygons,
             )
             surface = feature.element_cls(
                 gml_id=feature.object_name,
                 gml_name=feature.object_name,
-                lod3_multi_surface=multi_surface,
+                **{lod_field: multi_surface},
             )
             building.bounded_by_surfaces.append(surface)
             surface_index[feature.object_name] = surface
@@ -222,14 +230,14 @@ def _attach_geometry_features(
             )
 
         multi_surface, _ = _build_multi_surface(
-            f"{feature.object_name}_lod3",
+            f"{feature.object_name}_lod{lod_level}",
             feature.polygons,
         )
         parent_surface.openings.append(
             feature.element_cls(
                 gml_id=feature.object_name,
                 gml_name=feature.object_name,
-                lod3_multi_surface=multi_surface,
+                **{lod_field: multi_surface},
             )
         )
 
@@ -240,10 +248,14 @@ def _attach_geometry_features(
             )
 
         pv_collector = _require_feature(model, target_pv_id, PhotovoltaicCollector)
-        pv_collector.lod3_multi_surface = _build_multi_surface(
-            f"{target_pv_id}_lod3",
-            solar_panel_polygons,
-        )[0]
+        setattr(
+            pv_collector,
+            lod_field,
+            _build_multi_surface(
+                f"{target_pv_id}_lod{lod_level}",
+                solar_panel_polygons,
+            )[0],
+        )
 
         for roof_name in sorted(solar_panel_roof_parents):
             roof_surface = surface_index.get(roof_name)
