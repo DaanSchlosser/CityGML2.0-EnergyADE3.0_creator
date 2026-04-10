@@ -108,10 +108,8 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
     """Apply all configured geometry sources to *model* in place."""
     all_coordinates: list[Coord3D] = []
 
-    # Shared state across geometry sources so that surfaces with the same
-    # classified name across different LOD levels are merged into a single
-    # boundary surface element (as required by the CityGML XSD).
-    surface_registry: dict[tuple[str, str], Any] = {}
+    # Shared ID counters across geometry sources so that surfaces created
+    # at different LOD levels for the same building get unique gml_ids.
     type_counters: dict[tuple[str, str], int] = {}
 
     for source in geometry_sources:
@@ -129,7 +127,6 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
                 target_building_id=str(source["target_building_id"]),
                 target_pv_id=target_pv_id,
                 lod_level=lod_level,
-                surface_registry=surface_registry,
                 type_counters=type_counters,
             )
             all_coordinates.extend(coords)
@@ -160,7 +157,6 @@ def apply_step_geometry(
     target_building_id: str,
     target_pv_id: str | None,
     lod_level: int = 3,
-    surface_registry: dict[tuple[str, str], Any] | None = None,
     type_counters: dict[tuple[str, str], int] | None = None,
 ) -> list[Coord3D]:
     """Attach STEP-derived geometry to an existing building.
@@ -168,8 +164,6 @@ def apply_step_geometry(
     * **LOD 0–1** — aggregate geometry placed directly on the Building
       (``lod0FootPrint`` as MultiSurface, ``lod1Solid`` as Solid).
     * **LOD 2–4** — individual thematic surfaces attached via ``boundedBy``.
-      Surfaces with the same classified name across LOD levels are merged
-      into a single boundary surface element via *surface_registry*.
 
     Returns all coordinates encountered for bounding box computation.
     """
@@ -189,7 +183,6 @@ def apply_step_geometry(
         target_building_id=target_building_id,
         target_pv_id=target_pv_id,
         lod_level=lod_level,
-        surface_registry=surface_registry if surface_registry is not None else {},
         type_counters=type_counters if type_counters is not None else {},
     )
 
@@ -278,16 +271,14 @@ def _attach_geometry_features(
     target_building_id: str,
     target_pv_id: str | None,
     lod_level: int = 3,
-    surface_registry: dict[tuple[str, str], Any],
     type_counters: dict[tuple[str, str], int],
 ) -> list[Coord3D]:
     """Attach parsed STEP geometry features to a building.
 
-    IDs are auto-generated from *target_building_id* and a per-type counter.
-    Surfaces whose classified name matches an entry in *surface_registry*
-    are merged (the LOD geometry is added to the existing surface) rather
-    than duplicated — keeping one ``boundedBy`` element per physical surface
-    as required by the CityGML XSD.
+    IDs are auto-generated from *target_building_id* and a per-type counter
+    (shared across LOD levels via *type_counters* to avoid collisions).
+    Each LOD level creates its own set of ``boundedBy`` entries — no merging
+    across LODs, following the Alderaan reference pattern.
     Opening-to-surface relations are derived geometrically by matching the
     opening's exterior ring vertices to interior rings (holes) in surfaces.
     """
@@ -323,40 +314,21 @@ def _attach_geometry_features(
                     f"Geometry source {source_path} produced a surface without a builder class"
                 )
 
-            classified_name = _strip_lod_prefix(feature.object_name)
-            registry_key = (target_building_id, classified_name)
-            existing = surface_registry.get(registry_key)
+            type_name = feature.element_cls.__name__
+            counter_key = (target_building_id, type_name)
+            type_counters[counter_key] = type_counters.get(counter_key, 0) + 1
+            gml_id = f"{target_building_id}_{type_name}_{type_counters[counter_key]}"
 
-            if existing is not None:
-                # Merge: add this LOD's geometry to the existing surface.
-                multi_surface, _ = _build_multi_surface(
-                    f"{existing.gml_id}_lod{lod_level}",
-                    feature.polygons,
-                )
-                setattr(existing, lod_field, multi_surface)
-                surface_data[feature.object_name] = (
-                    existing,
-                    feature.polygons,
-                    existing.gml_id,
-                )
-            else:
-                # New surface — create, register, and append to the building.
-                type_name = feature.element_cls.__name__
-                counter_key = (target_building_id, type_name)
-                type_counters[counter_key] = type_counters.get(counter_key, 0) + 1
-                gml_id = f"{target_building_id}_{type_name}_{type_counters[counter_key]}"
-
-                multi_surface, _ = _build_multi_surface(
-                    f"{gml_id}_lod{lod_level}",
-                    feature.polygons,
-                )
-                surface = feature.element_cls(
-                    gml_id=gml_id,
-                    **{lod_field: multi_surface},
-                )
-                building.bounded_by_surfaces.append(surface)
-                surface_registry[registry_key] = surface
-                surface_data[feature.object_name] = (surface, feature.polygons, gml_id)
+            multi_surface, _ = _build_multi_surface(
+                f"{gml_id}_lod{lod_level}",
+                feature.polygons,
+            )
+            surface = feature.element_cls(
+                gml_id=gml_id,
+                **{lod_field: multi_surface},
+            )
+            building.bounded_by_surfaces.append(surface)
+            surface_data[feature.object_name] = (surface, feature.polygons, gml_id)
             continue
 
         if feature.kind == _FEATURE_KIND_OPENING:
