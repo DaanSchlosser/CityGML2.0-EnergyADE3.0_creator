@@ -32,7 +32,20 @@ class BaseBuilder:
     ELEMENT_ORDER: ClassVar[tuple[tuple[str, str], ...]] = ()
     FIELD_MAP: ClassVar[dict[str, tuple[str, str]]] = {}
 
+    # Registry / extensibility hooks (optional; set on concrete classes)
+    FEATURE_TYPE: ClassVar[str] = ""  # e.g. "nrg3_PhotovoltaicCollector"
+    PARENT_FIELD: ClassVar[str] = ""  # parent list attr, e.g. "devices"
+
     gml_id: str | None = None
+
+    # ------------------------------------------------------------------
+    # Subclass tracking (used by factory auto-registration)
+    # ------------------------------------------------------------------
+    _all_subclasses: ClassVar[list[type]] = []
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        BaseBuilder._all_subclasses.append(cls)
 
     # ------------------------------------------------------------------
     # Internal: reverse lookup (ns, local) -> field name

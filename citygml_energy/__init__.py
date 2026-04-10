@@ -61,6 +61,7 @@ from .excel_loader import (
 # Factory
 from .factory import (
     FeatureFactory,
+    auto_from_dict,
     building_from_dict,
     building_unit_from_dict,
     constant_value_schedule_from_dict,
@@ -169,6 +170,7 @@ __all__ = [
     "Envelope",
     # Factory
     "FeatureFactory",
+    "auto_from_dict",
     "FloorSurface",
     "GroundSurface",
     "HeatPump",

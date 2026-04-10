@@ -334,6 +334,8 @@ class PhotovoltaicCollector(_AbstractDevice):
     """``nrg3:PhotovoltaicCollector`` -- PV panel/array."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "PhotovoltaicCollector")
+    FEATURE_TYPE: ClassVar = "nrg3_PhotovoltaicCollector"
+    PARENT_FIELD: ClassVar = "devices"
     ELEMENT_ORDER: ClassVar = (
         *_DEVICE_BASE_ORDER,
         *_SOLAR_EXTRA_ORDER,
@@ -366,6 +368,8 @@ class HeatPump(_AbstractDevice):
     """``nrg3:HeatPump``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "HeatPump")
+    FEATURE_TYPE: ClassVar = "nrg3_HeatPump"
+    PARENT_FIELD: ClassVar = "devices"
     ELEMENT_ORDER: ClassVar = (
         *_DEVICE_BASE_ORDER,
         (NS_NRG3, "heatSource"),
@@ -394,6 +398,8 @@ class EVChargingStation(_AbstractDevice):
     """``nrg3:EVChargingStation``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "EVChargingStation")
+    FEATURE_TYPE: ClassVar = "nrg3_EVChargingStation"
+    PARENT_FIELD: ClassVar = "devices"
     ELEMENT_ORDER: ClassVar = (
         *_DEVICE_BASE_ORDER,
         (NS_NRG3, "type"),
@@ -492,6 +498,7 @@ class ConstantValueSchedule(_AbstractSchedule):
     """``nrg3:ConstantValueSchedule``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "ConstantValueSchedule")
+    FEATURE_TYPE: ClassVar = "nrg3_ConstantValueSchedule"
     ELEMENT_ORDER: ClassVar = (
         *_SCHEDULE_BASE_ORDER,
         (NS_NRG3, "value"),
@@ -566,6 +573,7 @@ class CompositeSchedule(_AbstractSchedule):
     """``nrg3:CompositeSchedule``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "CompositeSchedule")
+    FEATURE_TYPE: ClassVar = "nrg3_CompositeSchedule"
     ELEMENT_ORDER: ClassVar = (
         *_SCHEDULE_BASE_ORDER,
         (NS_NRG3, "scheduleComponent"),
@@ -588,6 +596,8 @@ class Occupants(BaseBuilder):
     """``nrg3:Occupants``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "Occupants")
+    FEATURE_TYPE: ClassVar = "nrg3_Occupants"
+    PARENT_FIELD: ClassVar = "occupied_by"
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),
@@ -674,6 +684,8 @@ class EnergyPerformanceCertificate(BaseBuilder):
     """``nrg3:EnergyPerformanceCertificate``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "EnergyPerformanceCertificate")
+    FEATURE_TYPE: ClassVar = "nrg3_EnergyPerformanceCertificate"
+    PARENT_FIELD: ClassVar = "energy_performance_certificates"
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),
@@ -741,6 +753,8 @@ class Energy(BaseBuilder):
     """
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "Energy")
+    FEATURE_TYPE: ClassVar = "nrg3_Energy"
+    PARENT_FIELD: ClassVar = "nrg3_resources"
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),
@@ -849,6 +863,8 @@ class BuildingUnit(BaseBuilder):
     """``nrg3:BuildingUnit``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "BuildingUnit")
+    FEATURE_TYPE: ClassVar = "nrg3_BuildingUnit"
+    PARENT_FIELD: ClassVar = "building_units"
     ELEMENT_ORDER: ClassVar = (
         (NS_GML, "description"),
         (NS_GML, "name"),

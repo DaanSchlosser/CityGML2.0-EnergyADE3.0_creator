@@ -37,6 +37,9 @@ class Envelope:
 class Address:
     """``core:Address`` containing ``xAL:AddressDetails``."""
 
+    FEATURE_TYPE: str = "core_Address"
+    PARENT_FIELD: str = "addresses"
+
     country: str | None = None
     locality: str | None = None
     thoroughfare: str | None = None
