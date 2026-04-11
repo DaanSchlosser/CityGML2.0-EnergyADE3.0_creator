@@ -803,11 +803,9 @@ def _build_solid(
 ) -> RawXmlElement:
     """Build a ``gml:Solid`` whose exterior shell is a ``gml:CompositeSurface``.
 
-    Polygon normals are automatically oriented **outward** (away from the
-    solid's centroid) by reversing the vertex winding order where needed.
-    This corrects shared surfaces between adjacent zones whose normals may
-    point inward because they were drawn from the neighboring zone's
-    perspective.
+    Polygons are re-oriented outward before assembly: shared surfaces between
+    adjacent zones often arrive with inward-facing normals because they were
+    authored from the neighboring zone's perspective.
     """
     oriented = _orient_solid_polygons(polygons)
 
@@ -833,31 +831,27 @@ def _orient_solid_polygons(
 ) -> list[_GeometryPolygon]:
     """Return *polygons* with exterior-ring normals pointing outward.
 
-    Uses the Newell method to compute each polygon's normal and checks
-    whether it points away from the centroid of all vertices.  Polygons
-    whose normals point inward get their vertex winding reversed.
+    Each polygon's Newell-method normal is compared against a vector
+    pointing away from the mean of all exterior vertices; polygons whose
+    normals point inward get their vertex winding reversed.
     """
-    all_vertices = [v for p in polygons for v in _open_ring(p.exterior)]
+    exterior_vertices = [_open_ring(polygon.exterior) for polygon in polygons]
+
+    all_vertices = [v for ring in exterior_vertices for v in ring]
     if not all_vertices:
         return polygons
 
-    n = len(all_vertices)
-    centroid: Coord3D = (
-        sum(v[0] for v in all_vertices) / n,
-        sum(v[1] for v in all_vertices) / n,
-        sum(v[2] for v in all_vertices) / n,
-    )
+    centroid = _mean_point(all_vertices)
 
     oriented: list[_GeometryPolygon] = []
-    for polygon in polygons:
-        normal = _newell_normal(polygon.exterior)
-        center = _ring_center(polygon.exterior)
-        outward = (
-            center[0] - centroid[0],
-            center[1] - centroid[1],
-            center[2] - centroid[2],
+    for polygon, vertices in zip(polygons, exterior_vertices, strict=True):
+        normal = _newell_normal(vertices)
+        center = _mean_point(vertices)
+        dot = (
+            normal[0] * (center[0] - centroid[0])
+            + normal[1] * (center[1] - centroid[1])
+            + normal[2] * (center[2] - centroid[2])
         )
-        dot = normal[0] * outward[0] + normal[1] * outward[1] + normal[2] * outward[2]
         if dot < 0:
             oriented.append(
                 _GeometryPolygon(
@@ -871,10 +865,8 @@ def _orient_solid_polygons(
     return oriented
 
 
-def _newell_normal(ring: list[Coord3D]) -> Coord3D:
-    """Compute the surface normal of a polygon ring via the Newell method."""
+def _newell_normal(vertices: list[Coord3D]) -> Coord3D:
     nx, ny, nz = 0.0, 0.0, 0.0
-    vertices = _open_ring(ring)
     count = len(vertices)
     for i in range(count):
         curr = vertices[i]
@@ -885,19 +877,16 @@ def _newell_normal(ring: list[Coord3D]) -> Coord3D:
     return (nx, ny, nz)
 
 
-def _ring_center(ring: list[Coord3D]) -> Coord3D:
-    """Compute the centroid of a polygon ring's vertices."""
-    vertices = _open_ring(ring)
-    n = len(vertices)
+def _mean_point(points: list[Coord3D]) -> Coord3D:
+    n = len(points)
     return (
-        sum(v[0] for v in vertices) / n,
-        sum(v[1] for v in vertices) / n,
-        sum(v[2] for v in vertices) / n,
+        sum(p[0] for p in points) / n,
+        sum(p[1] for p in points) / n,
+        sum(p[2] for p in points) / n,
     )
 
 
 def _open_ring(ring: list[Coord3D]) -> list[Coord3D]:
-    """Return *ring* without the closing vertex (if the ring is closed)."""
     if len(ring) > 1 and _points_close(ring[0], ring[-1]):
         return ring[:-1]
     return ring
@@ -1030,10 +1019,9 @@ def _ring_vertex_key(
     decimals (default 4 → 0.1 mm) so that floating-point noise from shared
     STEP edges does not prevent matching.
     """
-    vertices = ring[:-1] if len(ring) > 1 and _points_close(ring[0], ring[-1]) else ring
     return frozenset(
         (round(v[0], precision), round(v[1], precision), round(v[2], precision))
-        for v in vertices
+        for v in _open_ring(ring)
     )
 
 
