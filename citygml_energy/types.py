@@ -39,10 +39,6 @@ class MeasureValue:
     @property
     def text(self) -> str:
         """Return the string representation used in XML text content."""
-        if isinstance(self.value, str):
-            return self.value
-        if isinstance(self.value, int):
-            return str(self.value)
         return str(self.value)
 
 
@@ -61,8 +57,4 @@ class ScaleValue:
 
     @property
     def text(self) -> str:
-        if isinstance(self.value, str):
-            return self.value
-        if isinstance(self.value, int):
-            return str(self.value)
         return str(self.value)

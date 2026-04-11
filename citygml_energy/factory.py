@@ -376,6 +376,8 @@ def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
 
     Custom constructor because of QualifiedArea/Volume lists.
     """
+    area = _make_qualified_area(attrs, prefix="nrg3_area")
+    volume = _make_qualified_volume(attrs, prefix="nrg3_volume")
     return BuildingUnit(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
@@ -384,12 +386,8 @@ def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
         termination_date=_str(attrs.get("core_terminationDate")),
         identifier=_code(attrs, "nrg3_identifier"),
         nrg3_metadata=_make_metadata(attrs),
-        areas=[_make_qualified_area(attrs, prefix="nrg3_area")]
-        if _make_qualified_area(attrs, prefix="nrg3_area")
-        else [],
-        volumes=[_make_qualified_volume(attrs, prefix="nrg3_volume")]
-        if _make_qualified_volume(attrs, prefix="nrg3_volume")
-        else [],
+        areas=[area] if area else [],
+        volumes=[volume] if volume else [],
         bu_type=_code(attrs, "nrg3_buType"),
         floor_number_from=_float(attrs.get("nrg3_floorNumberFrom")),
         floor_number_to=_float(attrs.get("nrg3_floorNumberTo")),
