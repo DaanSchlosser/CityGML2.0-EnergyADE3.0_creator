@@ -52,7 +52,11 @@ class BaseBuilder:
     # ------------------------------------------------------------------
     @classmethod
     def _reverse_map(cls) -> dict[tuple[str, str], str]:
-        return {v: k for k, v in cls.FIELD_MAP.items()}
+        cached = cls.__dict__.get("_REVERSE_MAP_CACHE")
+        if cached is None:
+            cached = {v: k for k, v in cls.FIELD_MAP.items()}
+            cls._REVERSE_MAP_CACHE = cached
+        return cached
 
     # ------------------------------------------------------------------
     # Serialization
