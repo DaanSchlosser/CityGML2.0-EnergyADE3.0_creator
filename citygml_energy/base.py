@@ -32,6 +32,12 @@ class BaseBuilder:
     ELEMENT_ORDER: ClassVar[tuple[tuple[str, str], ...]] = ()
     FIELD_MAP: ClassVar[dict[str, tuple[str, str]]] = {}
 
+    # Override the flat attribute key for specific fields when the default
+    # ``{ns_prefix}_{localName}`` convention produces collisions (e.g.
+    # multiple classes that all have ``(NS_NRG3, "type")``).
+    # Maps field_name → flat_key, e.g. ``{"ev_type": "nrg3_evType"}``.
+    FLAT_KEY_OVERRIDES: ClassVar[dict[str, str]] = {}
+
     # Registry / extensibility hooks (optional; set on concrete classes)
     FEATURE_TYPE: ClassVar[str] = ""  # e.g. "nrg3_PhotovoltaicCollector"
     PARENT_FIELD: ClassVar[str] = ""  # parent list attr, e.g. "devices"
@@ -129,16 +135,6 @@ class BaseBuilder:
             child = etree.SubElement(parent, child_tag)
             child.text = str(value)
 
-        elif isinstance(value, float):
-            child = etree.SubElement(parent, child_tag)
-            child.text = _format_number(value)
-
         else:
-            # Plain string / date
             child = etree.SubElement(parent, child_tag)
             child.text = str(value)
-
-
-def _format_number(v: float) -> str:
-    """Format a float value; Python's repr already preserves trailing decimals."""
-    return str(v)

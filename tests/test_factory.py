@@ -17,14 +17,8 @@ from citygml_energy import (
     WallSurface,
     building_from_dict,
     building_unit_from_dict,
-    constant_value_schedule_from_dict,
     create_feature,
-    epc_from_dict,
-    ev_charging_station_from_dict,
-    heat_pump_from_dict,
     list_feature_types,
-    occupants_from_dict,
-    pv_collector_from_dict,
 )
 
 # ---------------------------------------------------------------------------
@@ -200,7 +194,7 @@ def test_building_from_dict_empty():
 
 
 def test_pv_from_dict_fields():
-    pv = pv_collector_from_dict(_PV_ATTRS)
+    pv = create_feature("nrg3_PhotovoltaicCollector", _PV_ATTRS)
     assert pv.gml_id == "pv_panel_1"
     assert pv.gml_name == "PV collector (36x270 Wp)"
     assert pv.model == "PV-16-270 PW"
@@ -219,7 +213,8 @@ def test_pv_from_dict_fields():
 
 
 def test_heat_pump_from_dict():
-    hp = heat_pump_from_dict(
+    hp = create_feature(
+        "nrg3_HeatPump",
         {
             "gml_id": "hp_1",
             "nrg3_model": "Daikin X",
@@ -228,7 +223,7 @@ def test_heat_pump_from_dict():
             "nrg3_heatSource": "airSource",
             "nrg3_copSourceTemperature": "7",
             "nrg3_copSourceTemperature_uom": "degC",
-        }
+        },
     )
     assert hp.gml_id == "hp_1"
     assert hp.model == "Daikin X"
@@ -242,13 +237,14 @@ def test_heat_pump_from_dict():
 
 
 def test_ev_from_dict():
-    ev = ev_charging_station_from_dict(
+    ev = create_feature(
+        "nrg3_EVChargingStation",
         {
             "gml_id": "ev_1",
             "nrg3_evType": "normalCharger",
             "nrg3_chargingSpeedLevel": "slow",
             "nrg3_hasLoadManagement": "true",
-        }
+        },
     )
     assert ev.gml_id == "ev_1"
     assert ev.ev_type.value == "normalCharger"
@@ -256,17 +252,18 @@ def test_ev_from_dict():
 
 
 # ---------------------------------------------------------------------------
-# occupants_from_dict
+# Occupants via create_feature (auto_from_dict)
 # ---------------------------------------------------------------------------
 
 
 def test_occupants_from_dict():
-    occ = occupants_from_dict(
+    occ = create_feature(
+        "nrg3_Occupants",
         {
             "gml_id": "occ_1",
             "nrg3_occupantType": "residents",
             "nrg3_numberOfOccupants": "4",
-        }
+        },
     )
     assert occ.gml_id == "occ_1"
     assert occ.occupant_type.value == "residents"
@@ -274,18 +271,19 @@ def test_occupants_from_dict():
 
 
 # ---------------------------------------------------------------------------
-# epc_from_dict
+# EPC via create_feature (auto_from_dict)
 # ---------------------------------------------------------------------------
 
 
 def test_epc_from_dict():
-    epc = epc_from_dict(
+    epc = create_feature(
+        "nrg3_EnergyPerformanceCertificate",
         {
             "gml_id": "epc_1",
             "nrg3_epcLabel": "A",
             "nrg3_epcValue": "50",
             "nrg3_epcValue_uom": "kWh/(m^2*a)",
-        }
+        },
     )
     assert epc.label == "A"
     assert epc.value.text == "50"
@@ -313,17 +311,18 @@ def test_building_unit_from_dict():
 
 
 # ---------------------------------------------------------------------------
-# constant_value_schedule_from_dict
+# ConstantValueSchedule via create_feature (auto_from_dict)
 # ---------------------------------------------------------------------------
 
 
 def test_constant_value_schedule_from_dict():
-    sched = constant_value_schedule_from_dict(
+    sched = create_feature(
+        "nrg3_ConstantValueSchedule",
         {
             "gml_id": "sched_1",
             "nrg3_scheduleValue": "1.0",
             "nrg3_scheduleValue_uom": "unit interval",
-        }
+        },
     )
     assert sched.gml_id == "sched_1"
     assert sched.value.text == "1.0"

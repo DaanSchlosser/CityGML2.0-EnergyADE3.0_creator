@@ -339,3 +339,4 @@ def _resolve_geometry_source_path(path_value: str, base_path: Path) -> Path:
     if not source_path.is_absolute():
         source_path = base_path / source_path
     return source_path.resolve()
+
