@@ -119,31 +119,49 @@ def _scalar_property_schema() -> dict:
 
 def _build_geometry_source_schema() -> dict:
     return {
-        "type": "object",
-        "required": ["type", "path", "target_building_id"],
-        "additionalProperties": False,
-        "properties": {
-            "type": {
-                "type": "string",
-                "enum": ["step-renodat-lod3"],
+        "oneOf": [
+            {
+                "type": "object",
                 "description": (
-                    "Import LOD3 wall/roof/ground/opening geometry and optional PV "
-                    "panel geometry from a RenoDAT-style STEP file."
+                    "Import semantic boundary surfaces (wall/roof/ground/opening) "
+                    "and optional PV geometry from a RenoDAT-style STEP file onto "
+                    "a Building or BuildingPart."
                 ),
+                "required": ["type", "path", "target_building_id"],
+                "additionalProperties": False,
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            f"step-renodat-lod{n}" for n in range(5)
+                        ],
+                    },
+                    "path": {"type": "string", "minLength": 1},
+                    "target_building_id": {"type": "string", "minLength": 1},
+                    "target_pv_id": {"type": "string", "minLength": 1},
+                },
             },
-            "path": {
-                "type": "string",
-                "minLength": 1,
+            {
+                "type": "object",
+                "description": (
+                    "Import volume geometry from a STEP file onto a Zone or "
+                    "ZonePart. All shells are collected into a single "
+                    "lod0MultiSurface or lod1-3Solid."
+                ),
+                "required": ["type", "path", "target_zone_part_id"],
+                "additionalProperties": False,
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            f"step-zonepart-lod{n}" for n in range(4)
+                        ],
+                    },
+                    "path": {"type": "string", "minLength": 1},
+                    "target_zone_part_id": {"type": "string", "minLength": 1},
+                },
             },
-            "target_building_id": {
-                "type": "string",
-                "minLength": 1,
-            },
-            "target_pv_id": {
-                "type": "string",
-                "minLength": 1,
-            },
-        },
+        ],
     }
 
 

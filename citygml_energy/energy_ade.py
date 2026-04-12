@@ -54,76 +54,47 @@ class CityObjectRelation(BaseBuilder):
 # ===================================================================
 
 
-@dataclass
-class QualifiedVolume(BaseBuilder):
-    """``nrg3:QualifiedVolume`` -- a volume with type qualifier."""
+_QUALIFIED_ATTR_ORDER: tuple[tuple[str, str], ...] = (
+    (NS_NRG3, "description"),
+    (NS_NRG3, "source"),
+    (NS_NRG3, "value"),
+    (NS_NRG3, "type"),
+)
 
+_QUALIFIED_ATTR_FIELD_MAP: dict[str, tuple[str, str]] = {
+    "description": (NS_NRG3, "description"),
+    "source": (NS_NRG3, "source"),
+    "value": (NS_NRG3, "value"),
+    "type": (NS_NRG3, "type"),
+}
+
+
+@dataclass
+class _AbstractQualifiedAttribute(BaseBuilder):
+    """Shared base for QualifiedVolume / QualifiedArea / QualifiedHeight."""
+
+    ELEMENT_ORDER: ClassVar = _QUALIFIED_ATTR_ORDER
+    FIELD_MAP: ClassVar = _QUALIFIED_ATTR_FIELD_MAP
+
+    description: str | None = None
+    source: str | None = None
+    value: MeasureValue | None = None
+    type: CodeValue | None = None
+
+
+@dataclass
+class QualifiedVolume(_AbstractQualifiedAttribute):
     ELEMENT_TAG: ClassVar = (NS_NRG3, "QualifiedVolume")
-    ELEMENT_ORDER: ClassVar = (
-        (NS_NRG3, "description"),
-        (NS_NRG3, "source"),
-        (NS_NRG3, "value"),
-        (NS_NRG3, "type"),
-    )
-    FIELD_MAP: ClassVar = {
-        "description": (NS_NRG3, "description"),
-        "source": (NS_NRG3, "source"),
-        "value": (NS_NRG3, "value"),
-        "type": (NS_NRG3, "type"),
-    }
-
-    description: str | None = None
-    source: str | None = None
-    value: MeasureValue | None = None
-    type: CodeValue | None = None
 
 
 @dataclass
-class QualifiedArea(BaseBuilder):
-    """``nrg3:QualifiedArea`` -- an area with type qualifier."""
-
+class QualifiedArea(_AbstractQualifiedAttribute):
     ELEMENT_TAG: ClassVar = (NS_NRG3, "QualifiedArea")
-    ELEMENT_ORDER: ClassVar = (
-        (NS_NRG3, "description"),
-        (NS_NRG3, "source"),
-        (NS_NRG3, "value"),
-        (NS_NRG3, "type"),
-    )
-    FIELD_MAP: ClassVar = {
-        "description": (NS_NRG3, "description"),
-        "source": (NS_NRG3, "source"),
-        "value": (NS_NRG3, "value"),
-        "type": (NS_NRG3, "type"),
-    }
-
-    description: str | None = None
-    source: str | None = None
-    value: MeasureValue | None = None
-    type: CodeValue | None = None
 
 
 @dataclass
-class QualifiedHeight(BaseBuilder):
-    """``nrg3:QualifiedHeight`` -- a height with type qualifier."""
-
+class QualifiedHeight(_AbstractQualifiedAttribute):
     ELEMENT_TAG: ClassVar = (NS_NRG3, "QualifiedHeight")
-    ELEMENT_ORDER: ClassVar = (
-        (NS_NRG3, "description"),
-        (NS_NRG3, "source"),
-        (NS_NRG3, "value"),
-        (NS_NRG3, "type"),
-    )
-    FIELD_MAP: ClassVar = {
-        "description": (NS_NRG3, "description"),
-        "source": (NS_NRG3, "source"),
-        "value": (NS_NRG3, "value"),
-        "type": (NS_NRG3, "type"),
-    }
-
-    description: str | None = None
-    source: str | None = None
-    value: MeasureValue | None = None
-    type: CodeValue | None = None
 
 
 # ===================================================================
@@ -159,59 +130,85 @@ class Metadata(BaseBuilder):
 
 
 # ===================================================================
-# Device Operation
+# Abstract ADE Feature (XSD: AbstractFeatureWithLifeSpanType)
 # ===================================================================
+
+# Shared element order for all features extending AbstractFeatureWithLifeSpanType.
+# This covers: gml:AbstractFeatureType → AbstractADEFeatureType →
+# AbstractFeatureWithLifeSpanType.
+_ADE_FEATURE_BASE_ORDER: tuple[tuple[str, str], ...] = (
+    (NS_GML, "description"),
+    (NS_GML, "name"),
+    (NS_NRG3, "creationDate"),
+    (NS_NRG3, "terminationDate"),
+    (NS_NRG3, "externalReference"),  # AbstractADEFeatureType (0..*)
+    (NS_NRG3, "metadata"),  # AbstractADEFeatureType
+    (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
+    (NS_NRG3, "validFrom"),
+    (NS_NRG3, "validTo"),
+    (NS_NRG3, "status"),
+    (NS_NRG3, "relatedTo"),  # (0..*)
+)
+
+_ADE_FEATURE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
+    "gml_description": (NS_GML, "description"),
+    "gml_name": (NS_GML, "name"),
+    "creation_date": (NS_NRG3, "creationDate"),
+    "termination_date": (NS_NRG3, "terminationDate"),
+    "external_references": (NS_NRG3, "externalReference"),
+    "metadata": (NS_NRG3, "metadata"),
+    "identifier": (NS_NRG3, "identifier"),
+    "valid_from": (NS_NRG3, "validFrom"),
+    "valid_to": (NS_NRG3, "validTo"),
+    "status": (NS_NRG3, "status"),
+    "related_to": (NS_NRG3, "relatedTo"),
+}
 
 
 @dataclass
-class DeviceOperation(BaseBuilder):
-    """``nrg3:DeviceOperation``."""
+class _AbstractADEFeature(BaseBuilder):
+    """Base for all Energy ADE features extending AbstractFeatureWithLifeSpanType.
 
-    ELEMENT_TAG: ClassVar = (NS_NRG3, "DeviceOperation")
-    ELEMENT_ORDER: ClassVar = (
-        (NS_GML, "description"),
-        (NS_GML, "name"),
-        (NS_NRG3, "creationDate"),
-        (NS_NRG3, "terminationDate"),
-        (NS_NRG3, "externalReference"),  # AbstractADEFeatureType
-        (NS_NRG3, "metadata"),  # AbstractADEFeatureType
-        (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "validFrom"),
-        (NS_NRG3, "validTo"),
-        (NS_NRG3, "status"),  # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "relatedTo"),  # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "type"),
-        (NS_NRG3, "yearlyGlobalEfficiency"),
-        (NS_NRG3, "schedule"),
-    )
-    FIELD_MAP: ClassVar = {
-        "gml_description": (NS_GML, "description"),
-        "gml_name": (NS_GML, "name"),
-        "creation_date": (NS_NRG3, "creationDate"),
-        "termination_date": (NS_NRG3, "terminationDate"),
-        "external_references": (NS_NRG3, "externalReference"),
-        "metadata": (NS_NRG3, "metadata"),
-        "identifier": (NS_NRG3, "identifier"),
-        "valid_from": (NS_NRG3, "validFrom"),
-        "valid_to": (NS_NRG3, "validTo"),
-        "status": (NS_NRG3, "status"),
-        "related_to": (NS_NRG3, "relatedTo"),
-        "type": (NS_NRG3, "type"),
-        "yearly_global_efficiency": (NS_NRG3, "yearlyGlobalEfficiency"),
-        "schedule": (NS_NRG3, "schedule"),
-    }
+    Covers: Occupants, EPC, Energy, all Schedules, all TimeSeries,
+    DeviceOperation, ScheduleComponent.
+    """
 
     gml_description: str | None = None
     gml_name: str | None = None
     creation_date: str | None = None
     termination_date: str | None = None
     external_references: list[Any] = field(default_factory=list)
-    metadata: Any | None = None
+    metadata: Any | None = None  # Metadata builder
     identifier: CodeValue | None = None
     valid_from: str | None = None
     valid_to: str | None = None
     status: CodeValue | None = None
     related_to: list[Any] = field(default_factory=list)
+
+
+# ===================================================================
+# Device Operation
+# ===================================================================
+
+
+@dataclass
+class DeviceOperation(_AbstractADEFeature):
+    """``nrg3:DeviceOperation``."""
+
+    ELEMENT_TAG: ClassVar = (NS_NRG3, "DeviceOperation")
+    ELEMENT_ORDER: ClassVar = (
+        *_ADE_FEATURE_BASE_ORDER,
+        (NS_NRG3, "type"),
+        (NS_NRG3, "yearlyGlobalEfficiency"),
+        (NS_NRG3, "schedule"),
+    )
+    FIELD_MAP: ClassVar = {
+        **_ADE_FEATURE_BASE_FIELD_MAP,
+        "type": (NS_NRG3, "type"),
+        "yearly_global_efficiency": (NS_NRG3, "yearlyGlobalEfficiency"),
+        "schedule": (NS_NRG3, "schedule"),
+    }
+
     type: CodeValue | None = None
     yearly_global_efficiency: float | None = None
     schedule: Any | None = None  # AbstractSchedule or xlink ref
@@ -307,10 +304,11 @@ class _AbstractDevice(BaseBuilder):
 
 
 # ===================================================================
-# Solar collector base + PV
+# Solar Collectors (XSD: AbstractSolarCollectorType → AbstractDeviceType)
 # ===================================================================
 
-_SOLAR_EXTRA_ORDER: tuple[tuple[str, str], ...] = (
+_SOLAR_COLLECTOR_ORDER: tuple[tuple[str, str], ...] = (
+    *_DEVICE_BASE_ORDER,
     (NS_NRG3, "moduleArea"),
     (NS_NRG3, "apertureArea"),
     (NS_NRG3, "azimuth"),
@@ -319,7 +317,8 @@ _SOLAR_EXTRA_ORDER: tuple[tuple[str, str], ...] = (
     (NS_NRG3, "lod3MultiSurface"),
 )
 
-_SOLAR_EXTRA_FIELD_MAP: dict[str, tuple[str, str]] = {
+_SOLAR_COLLECTOR_FIELD_MAP: dict[str, tuple[str, str]] = {
+    **_DEVICE_BASE_FIELD_MAP,
     "module_area": (NS_NRG3, "moduleArea"),
     "aperture_area": (NS_NRG3, "apertureArea"),
     "azimuth": (NS_NRG3, "azimuth"),
@@ -330,31 +329,39 @@ _SOLAR_EXTRA_FIELD_MAP: dict[str, tuple[str, str]] = {
 
 
 @dataclass
-class PhotovoltaicCollector(_AbstractDevice):
-    """``nrg3:PhotovoltaicCollector`` -- PV panel/array."""
+class _AbstractSolarCollector(_AbstractDevice):
+    """XSD: AbstractSolarCollectorType → AbstractDeviceType.
 
-    ELEMENT_TAG: ClassVar = (NS_NRG3, "PhotovoltaicCollector")
-    FEATURE_TYPE: ClassVar = "nrg3_PhotovoltaicCollector"
-    PARENT_FIELD: ClassVar = "devices"
-    ELEMENT_ORDER: ClassVar = (
-        *_DEVICE_BASE_ORDER,
-        *_SOLAR_EXTRA_ORDER,
-        (NS_NRG3, "cellType"),
-    )
-    FIELD_MAP: ClassVar = {
-        **_DEVICE_BASE_FIELD_MAP,
-        **_SOLAR_EXTRA_FIELD_MAP,
-        "cell_type": (NS_NRG3, "cellType"),
-    }
+    Shared base for PhotovoltaicCollector, SolarThermalCollector.
+    """
 
-    # Solar collector fields
     module_area: MeasureValue | None = None
     aperture_area: MeasureValue | None = None
     azimuth: MeasureValue | None = None
     inclination: MeasureValue | None = None
     lod2_multi_surface: Any | None = None
     lod3_multi_surface: Any | None = None
-    # PV-specific
+
+
+@dataclass
+class PhotovoltaicCollector(_AbstractSolarCollector):
+    """``nrg3:PhotovoltaicCollector`` -- PV panel/array.
+
+    XSD: PhotovoltaicCollectorType → AbstractSolarCollectorType.
+    """
+
+    ELEMENT_TAG: ClassVar = (NS_NRG3, "PhotovoltaicCollector")
+    FEATURE_TYPE: ClassVar = "nrg3_PhotovoltaicCollector"
+    PARENT_FIELD: ClassVar = "devices"
+    ELEMENT_ORDER: ClassVar = (
+        *_SOLAR_COLLECTOR_ORDER,
+        (NS_NRG3, "cellType"),
+    )
+    FIELD_MAP: ClassVar = {
+        **_SOLAR_COLLECTOR_FIELD_MAP,
+        "cell_type": (NS_NRG3, "cellType"),
+    }
+
     cell_type: CodeValue | None = None
 
 
@@ -400,6 +407,7 @@ class EVChargingStation(_AbstractDevice):
     ELEMENT_TAG: ClassVar = (NS_NRG3, "EVChargingStation")
     FEATURE_TYPE: ClassVar = "nrg3_EVChargingStation"
     PARENT_FIELD: ClassVar = "devices"
+    FLAT_KEY_OVERRIDES: ClassVar = {"ev_type": "nrg3_evType"}
     ELEMENT_ORDER: ClassVar = (
         *_DEVICE_BASE_ORDER,
         (NS_NRG3, "type"),
@@ -430,17 +438,7 @@ class EVChargingStation(_AbstractDevice):
 
 # Shared schedule base order (AbstractScheduleType extends AbstractFeatureWithLifeSpanType)
 _SCHEDULE_BASE_ORDER: tuple[tuple[str, str], ...] = (
-    (NS_GML, "description"),
-    (NS_GML, "name"),
-    (NS_NRG3, "creationDate"),
-    (NS_NRG3, "terminationDate"),
-    (NS_NRG3, "externalReference"),  # AbstractADEFeatureType
-    (NS_NRG3, "metadata"),  # AbstractADEFeatureType
-    (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
-    (NS_NRG3, "validFrom"),
-    (NS_NRG3, "validTo"),
-    (NS_NRG3, "status"),  # AbstractFeatureWithLifeSpanType
-    (NS_NRG3, "relatedTo"),  # AbstractFeatureWithLifeSpanType
+    *_ADE_FEATURE_BASE_ORDER,
     (NS_NRG3, "type"),
     (NS_NRG3, "startTime"),
     (NS_NRG3, "startDay"),
@@ -450,17 +448,7 @@ _SCHEDULE_BASE_ORDER: tuple[tuple[str, str], ...] = (
 )
 
 _SCHEDULE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
-    "gml_description": (NS_GML, "description"),
-    "gml_name": (NS_GML, "name"),
-    "creation_date": (NS_NRG3, "creationDate"),
-    "termination_date": (NS_NRG3, "terminationDate"),
-    "external_references": (NS_NRG3, "externalReference"),
-    "schedule_metadata": (NS_NRG3, "metadata"),
-    "identifier": (NS_NRG3, "identifier"),
-    "valid_from": (NS_NRG3, "validFrom"),
-    "valid_to": (NS_NRG3, "validTo"),
-    "status": (NS_NRG3, "status"),
-    "related_to": (NS_NRG3, "relatedTo"),
+    **_ADE_FEATURE_BASE_FIELD_MAP,
     "schedule_type": (NS_NRG3, "type"),
     "start_time": (NS_NRG3, "startTime"),
     "start_day": (NS_NRG3, "startDay"),
@@ -471,20 +459,11 @@ _SCHEDULE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
 
 
 @dataclass
-class _AbstractSchedule(BaseBuilder):
-    """Shared fields for all schedule types."""
+class _AbstractSchedule(_AbstractADEFeature):
+    """Shared fields for all schedule types (XSD: AbstractScheduleType)."""
 
-    gml_description: str | None = None
-    gml_name: str | None = None
-    creation_date: str | None = None
-    termination_date: str | None = None
-    external_references: list[Any] = field(default_factory=list)
-    schedule_metadata: Any | None = None  # Metadata builder
-    identifier: CodeValue | None = None
-    valid_from: str | None = None
-    valid_to: str | None = None
-    status: CodeValue | None = None
-    related_to: list[Any] = field(default_factory=list)
+    FLAT_KEY_OVERRIDES: ClassVar = {"schedule_type": "nrg3_scheduleType"}
+
     schedule_type: CodeValue | None = None
     start_time: str | None = None
     start_day: int | None = None
@@ -499,6 +478,10 @@ class ConstantValueSchedule(_AbstractSchedule):
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "ConstantValueSchedule")
     FEATURE_TYPE: ClassVar = "nrg3_ConstantValueSchedule"
+    FLAT_KEY_OVERRIDES: ClassVar = {
+        **_AbstractSchedule.FLAT_KEY_OVERRIDES,
+        "value": "nrg3_scheduleValue",
+    }
     ELEMENT_ORDER: ClassVar = (
         *_SCHEDULE_BASE_ORDER,
         (NS_NRG3, "value"),
@@ -512,56 +495,25 @@ class ConstantValueSchedule(_AbstractSchedule):
 
 
 @dataclass
-class ScheduleComponent(BaseBuilder):
+class ScheduleComponent(_AbstractADEFeature):
     """``nrg3:ScheduleComponent`` -- part of a CompositeSchedule."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "ScheduleComponent")
     ELEMENT_ORDER: ClassVar = (
-        (NS_GML, "description"),
-        (NS_GML, "name"),
-        (NS_NRG3, "creationDate"),  # AbstractADEFeatureType
-        (NS_NRG3, "terminationDate"),
-        (NS_NRG3, "externalReference"),  # AbstractADEFeatureType (0..*)
-        (NS_NRG3, "metadata"),  # AbstractADEFeatureType
-        (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "validFrom"),
-        (NS_NRG3, "validTo"),
-        (NS_NRG3, "status"),
-        (NS_NRG3, "relatedTo"),  # (0..*)
+        *_ADE_FEATURE_BASE_ORDER,
         (NS_NRG3, "type"),
         (NS_NRG3, "repetitions"),
         (NS_NRG3, "additionalGap"),
         (NS_NRG3, "scheduleComponentMember"),
     )
     FIELD_MAP: ClassVar = {
-        "gml_description": (NS_GML, "description"),
-        "gml_name": (NS_GML, "name"),
-        "creation_date": (NS_NRG3, "creationDate"),
-        "termination_date": (NS_NRG3, "terminationDate"),
-        "external_references": (NS_NRG3, "externalReference"),
-        "component_metadata": (NS_NRG3, "metadata"),
-        "identifier": (NS_NRG3, "identifier"),
-        "valid_from": (NS_NRG3, "validFrom"),
-        "valid_to": (NS_NRG3, "validTo"),
-        "status": (NS_NRG3, "status"),
-        "related_to": (NS_NRG3, "relatedTo"),
+        **_ADE_FEATURE_BASE_FIELD_MAP,
         "component_type": (NS_NRG3, "type"),
         "repetitions": (NS_NRG3, "repetitions"),
         "additional_gap": (NS_NRG3, "additionalGap"),
         "schedule_member": (NS_NRG3, "scheduleComponentMember"),
     }
 
-    gml_description: str | None = None
-    gml_name: str | None = None
-    creation_date: str | None = None
-    termination_date: str | None = None
-    external_references: list[Any] = field(default_factory=list)
-    component_metadata: Any | None = None
-    identifier: CodeValue | None = None
-    valid_from: str | None = None
-    valid_to: str | None = None
-    status: CodeValue | None = None
-    related_to: list[Any] = field(default_factory=list)
     component_type: CodeValue | None = None
     repetitions: int | None = None
     additional_gap: Any | None = None
@@ -592,24 +544,15 @@ class CompositeSchedule(_AbstractSchedule):
 
 
 @dataclass
-class Occupants(BaseBuilder):
+class Occupants(_AbstractADEFeature):
     """``nrg3:Occupants``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "Occupants")
     FEATURE_TYPE: ClassVar = "nrg3_Occupants"
     PARENT_FIELD: ClassVar = "occupied_by"
+    FLAT_KEY_OVERRIDES: ClassVar = {"occupant_type": "nrg3_occupantType"}
     ELEMENT_ORDER: ClassVar = (
-        (NS_GML, "description"),
-        (NS_GML, "name"),
-        (NS_NRG3, "creationDate"),
-        (NS_NRG3, "terminationDate"),
-        (NS_NRG3, "externalReference"),  # AbstractADEFeatureType
-        (NS_NRG3, "metadata"),  # AbstractADEFeatureType
-        (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "validFrom"),
-        (NS_NRG3, "validTo"),
-        (NS_NRG3, "status"),  # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "relatedTo"),  # AbstractFeatureWithLifeSpanType
+        *_ADE_FEATURE_BASE_ORDER,
         (NS_NRG3, "type"),
         (NS_NRG3, "numberOfOccupants"),
         (NS_NRG3, "averageDietType"),
@@ -622,17 +565,7 @@ class Occupants(BaseBuilder):
         (NS_NRG3, "occupancySchedule"),
     )
     FIELD_MAP: ClassVar = {
-        "gml_description": (NS_GML, "description"),
-        "gml_name": (NS_GML, "name"),
-        "creation_date": (NS_NRG3, "creationDate"),
-        "termination_date": (NS_NRG3, "terminationDate"),
-        "external_references": (NS_NRG3, "externalReference"),
-        "occ_metadata": (NS_NRG3, "metadata"),
-        "identifier": (NS_NRG3, "identifier"),
-        "valid_from": (NS_NRG3, "validFrom"),
-        "valid_to": (NS_NRG3, "validTo"),
-        "status": (NS_NRG3, "status"),
-        "related_to": (NS_NRG3, "relatedTo"),
+        **_ADE_FEATURE_BASE_FIELD_MAP,
         "occupant_type": (NS_NRG3, "type"),
         "number_of_occupants": (NS_NRG3, "numberOfOccupants"),
         "average_diet_type": (NS_NRG3, "averageDietType"),
@@ -651,17 +584,6 @@ class Occupants(BaseBuilder):
         "occupancy_schedule": (NS_NRG3, "occupancySchedule"),
     }
 
-    gml_description: str | None = None
-    gml_name: str | None = None
-    creation_date: str | None = None
-    termination_date: str | None = None
-    external_references: list[Any] = field(default_factory=list)
-    occ_metadata: Any | None = None
-    identifier: CodeValue | None = None
-    valid_from: str | None = None
-    valid_to: str | None = None
-    status: CodeValue | None = None
-    related_to: list[Any] = field(default_factory=list)
     occupant_type: CodeValue | None = None
     number_of_occupants: int | None = None
     average_diet_type: CodeValue | None = None
@@ -680,58 +602,33 @@ class Occupants(BaseBuilder):
 
 
 @dataclass
-class EnergyPerformanceCertificate(BaseBuilder):
+class EnergyPerformanceCertificate(_AbstractADEFeature):
     """``nrg3:EnergyPerformanceCertificate``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "EnergyPerformanceCertificate")
     FEATURE_TYPE: ClassVar = "nrg3_EnergyPerformanceCertificate"
     PARENT_FIELD: ClassVar = "energy_performance_certificates"
+    FLAT_KEY_OVERRIDES: ClassVar = {
+        "epc_type": "nrg3_epcType",
+        "label": "nrg3_epcLabel",
+        "value": "nrg3_epcValue",
+        "certification_method": "nrg3_epcCertificationMethod",
+    }
     ELEMENT_ORDER: ClassVar = (
-        (NS_GML, "description"),
-        (NS_GML, "name"),
-        (NS_NRG3, "creationDate"),
-        (NS_NRG3, "terminationDate"),
-        (NS_NRG3, "externalReference"),  # AbstractADEFeatureType (0..*)
-        (NS_NRG3, "metadata"),  # AbstractADEFeatureType
-        (NS_NRG3, "identifier"),  # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "validFrom"),
-        (NS_NRG3, "validTo"),
-        (NS_NRG3, "status"),  # AbstractFeatureWithLifeSpanType
-        (NS_NRG3, "relatedTo"),  # AbstractFeatureWithLifeSpanType (0..*)
+        *_ADE_FEATURE_BASE_ORDER,
         (NS_NRG3, "type"),
         (NS_NRG3, "label"),
         (NS_NRG3, "value"),
         (NS_NRG3, "certificationMethod"),
     )
     FIELD_MAP: ClassVar = {
-        "gml_description": (NS_GML, "description"),
-        "gml_name": (NS_GML, "name"),
-        "creation_date": (NS_NRG3, "creationDate"),
-        "termination_date": (NS_NRG3, "terminationDate"),
-        "external_references": (NS_NRG3, "externalReference"),
-        "epc_metadata": (NS_NRG3, "metadata"),
-        "identifier": (NS_NRG3, "identifier"),
-        "valid_from": (NS_NRG3, "validFrom"),
-        "valid_to": (NS_NRG3, "validTo"),
-        "status": (NS_NRG3, "status"),
-        "related_to": (NS_NRG3, "relatedTo"),
+        **_ADE_FEATURE_BASE_FIELD_MAP,
         "epc_type": (NS_NRG3, "type"),
         "label": (NS_NRG3, "label"),
         "value": (NS_NRG3, "value"),
         "certification_method": (NS_NRG3, "certificationMethod"),
     }
 
-    gml_description: str | None = None
-    gml_name: str | None = None
-    creation_date: str | None = None
-    termination_date: str | None = None
-    external_references: list[Any] = field(default_factory=list)
-    epc_metadata: Any | None = None
-    identifier: CodeValue | None = None
-    valid_from: str | None = None
-    valid_to: str | None = None
-    status: CodeValue | None = None
-    related_to: list[Any] = field(default_factory=list)
     epc_type: CodeValue | None = None
     label: str | None = None
     value: MeasureValue | None = None
@@ -739,99 +636,49 @@ class EnergyPerformanceCertificate(BaseBuilder):
 
 
 # ===================================================================
-# Energy (resource)
+# Resources (XSD: AbstractResourceType → AbstractFeatureWithLifeSpanType)
 # ===================================================================
+
+_RESOURCE_BASE_ORDER: tuple[tuple[str, str], ...] = (
+    *_ADE_FEATURE_BASE_ORDER,
+    (NS_NRG3, "operationType"),
+    (NS_NRG3, "referencePeriod"),
+    (NS_NRG3, "amount"),
+    (NS_NRG3, "year"),
+    (NS_NRG3, "isAmountNormalized"),
+    (NS_NRG3, "normalizationValue"),
+    (NS_NRG3, "normalizationParameter"),
+    (NS_NRG3, "expense"),
+    (NS_NRG3, "revenue"),
+    (NS_NRG3, "co2Equivalent"),
+    (NS_NRG3, "timeDependentAmount"),
+)
+
+_RESOURCE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
+    **_ADE_FEATURE_BASE_FIELD_MAP,
+    "operation_type": (NS_NRG3, "operationType"),
+    "reference_period": (NS_NRG3, "referencePeriod"),
+    "amount": (NS_NRG3, "amount"),
+    "year": (NS_NRG3, "year"),
+    "is_amount_normalized": (NS_NRG3, "isAmountNormalized"),
+    "normalization_value": (NS_NRG3, "normalizationValue"),
+    "normalization_parameter": (NS_NRG3, "normalizationParameter"),
+    "expense": (NS_NRG3, "expense"),
+    "revenue": (NS_NRG3, "revenue"),
+    "co2_equivalent": (NS_NRG3, "co2Equivalent"),
+    "time_dependent_amount": (NS_NRG3, "timeDependentAmount"),
+}
 
 
 @dataclass
-class Energy(BaseBuilder):
-    """``nrg3:Energy`` -- energy resource (consumption or production).
+class _AbstractResource(_AbstractADEFeature):
+    """XSD: AbstractResourceType → AbstractFeatureWithLifeSpanType.
 
-    Inherits from ``AbstractResourceType`` which extends
-    ``AbstractFeatureWithLifeSpanType``.  Used to model annual energy
-    demand/supply for a building or device (e.g. EV charging consumption).
+    Shared base for Energy, Waste, Liquid, Water, OtherResource.
     """
 
-    ELEMENT_TAG: ClassVar = (NS_NRG3, "Energy")
-    FEATURE_TYPE: ClassVar = "nrg3_Energy"
     PARENT_FIELD: ClassVar = "nrg3_resources"
-    ELEMENT_ORDER: ClassVar = (
-        (NS_GML, "description"),
-        (NS_GML, "name"),
-        (NS_NRG3, "creationDate"),
-        (NS_NRG3, "terminationDate"),
-        (NS_NRG3, "externalReference"),
-        (NS_NRG3, "metadata"),
-        (NS_NRG3, "identifier"),
-        (NS_NRG3, "validFrom"),
-        (NS_NRG3, "validTo"),
-        (NS_NRG3, "status"),
-        (NS_NRG3, "relatedTo"),
-        # AbstractResource fields
-        (NS_NRG3, "operationType"),
-        (NS_NRG3, "referencePeriod"),
-        (NS_NRG3, "amount"),
-        (NS_NRG3, "year"),
-        (NS_NRG3, "isAmountNormalized"),
-        (NS_NRG3, "normalizationValue"),
-        (NS_NRG3, "normalizationParameter"),
-        (NS_NRG3, "expense"),
-        (NS_NRG3, "revenue"),
-        (NS_NRG3, "co2Equivalent"),
-        # Energy-specific fields
-        (NS_NRG3, "type"),
-        (NS_NRG3, "endUse"),
-        (NS_NRG3, "energyCarrier"),
-        (NS_NRG3, "maximumLoad"),
-        (NS_NRG3, "maximumLoadTime"),
-        (NS_NRG3, "maximumLoadDay"),
-        (NS_NRG3, "maximumLoadMonth"),
-        (NS_NRG3, "source"),
-    )
-    FIELD_MAP: ClassVar = {
-        "gml_description": (NS_GML, "description"),
-        "gml_name": (NS_GML, "name"),
-        "creation_date": (NS_NRG3, "creationDate"),
-        "termination_date": (NS_NRG3, "terminationDate"),
-        "external_references": (NS_NRG3, "externalReference"),
-        "energy_metadata": (NS_NRG3, "metadata"),
-        "identifier": (NS_NRG3, "identifier"),
-        "valid_from": (NS_NRG3, "validFrom"),
-        "valid_to": (NS_NRG3, "validTo"),
-        "status": (NS_NRG3, "status"),
-        "related_to": (NS_NRG3, "relatedTo"),
-        "operation_type": (NS_NRG3, "operationType"),
-        "reference_period": (NS_NRG3, "referencePeriod"),
-        "amount": (NS_NRG3, "amount"),
-        "year": (NS_NRG3, "year"),
-        "is_amount_normalized": (NS_NRG3, "isAmountNormalized"),
-        "normalization_value": (NS_NRG3, "normalizationValue"),
-        "normalization_parameter": (NS_NRG3, "normalizationParameter"),
-        "expense": (NS_NRG3, "expense"),
-        "revenue": (NS_NRG3, "revenue"),
-        "co2_equivalent": (NS_NRG3, "co2Equivalent"),
-        "energy_type": (NS_NRG3, "type"),
-        "end_use": (NS_NRG3, "endUse"),
-        "energy_carrier": (NS_NRG3, "energyCarrier"),
-        "maximum_load": (NS_NRG3, "maximumLoad"),
-        "maximum_load_time": (NS_NRG3, "maximumLoadTime"),
-        "maximum_load_day": (NS_NRG3, "maximumLoadDay"),
-        "maximum_load_month": (NS_NRG3, "maximumLoadMonth"),
-        "energy_source": (NS_NRG3, "source"),
-    }
 
-    gml_description: str | None = None
-    gml_name: str | None = None
-    creation_date: str | None = None
-    termination_date: str | None = None
-    external_references: list[Any] = field(default_factory=list)
-    energy_metadata: Any | None = None
-    identifier: CodeValue | None = None
-    valid_from: str | None = None
-    valid_to: str | None = None
-    status: CodeValue | None = None
-    related_to: list[Any] = field(default_factory=list)
-    # AbstractResource
     operation_type: CodeValue | None = None
     reference_period: CodeValue | None = None
     amount: MeasureValue | None = None
@@ -842,7 +689,45 @@ class Energy(BaseBuilder):
     expense: MeasureValue | None = None
     revenue: MeasureValue | None = None
     co2_equivalent: MeasureValue | None = None
-    # Energy-specific
+    time_dependent_amount: Any | None = None
+
+
+@dataclass
+class Energy(_AbstractResource):
+    """``nrg3:Energy`` -- energy resource (consumption or production).
+
+    XSD: EnergyType → AbstractResourceType → AbstractFeatureWithLifeSpanType.
+    """
+
+    ELEMENT_TAG: ClassVar = (NS_NRG3, "Energy")
+    FEATURE_TYPE: ClassVar = "nrg3_Energy"
+    FLAT_KEY_OVERRIDES: ClassVar = {
+        "energy_type": "nrg3_energyType",
+        "energy_source": "nrg3_energySource",
+    }
+    ELEMENT_ORDER: ClassVar = (
+        *_RESOURCE_BASE_ORDER,
+        (NS_NRG3, "type"),
+        (NS_NRG3, "endUse"),
+        (NS_NRG3, "energyCarrier"),
+        (NS_NRG3, "maximumLoad"),
+        (NS_NRG3, "maximumLoadTime"),
+        (NS_NRG3, "maximumLoadDay"),
+        (NS_NRG3, "maximumLoadMonth"),
+        (NS_NRG3, "source"),
+    )
+    FIELD_MAP: ClassVar = {
+        **_RESOURCE_BASE_FIELD_MAP,
+        "energy_type": (NS_NRG3, "type"),
+        "end_use": (NS_NRG3, "endUse"),
+        "energy_carrier": (NS_NRG3, "energyCarrier"),
+        "maximum_load": (NS_NRG3, "maximumLoad"),
+        "maximum_load_time": (NS_NRG3, "maximumLoadTime"),
+        "maximum_load_day": (NS_NRG3, "maximumLoadDay"),
+        "maximum_load_month": (NS_NRG3, "maximumLoadMonth"),
+        "energy_source": (NS_NRG3, "source"),
+    }
+
     energy_type: CodeValue | None = None
     end_use: CodeValue | None = None
     energy_carrier: CodeValue | None = None
@@ -851,6 +736,61 @@ class Energy(BaseBuilder):
     maximum_load_day: int | None = None
     maximum_load_month: int | None = None
     energy_source: CodeValue | None = None
+
+
+# ===================================================================
+# Time Series (XSD: AbstractTimeSeriesType → AbstractFeatureWithLifeSpanType)
+# ===================================================================
+
+_TIME_SERIES_BASE_ORDER: tuple[tuple[str, str], ...] = (
+    *_ADE_FEATURE_BASE_ORDER,
+    (NS_NRG3, "interpolationType"),
+)
+
+_TIME_SERIES_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
+    **_ADE_FEATURE_BASE_FIELD_MAP,
+    "interpolation_type": (NS_NRG3, "interpolationType"),
+}
+
+
+@dataclass
+class _AbstractTimeSeries(_AbstractADEFeature):
+    """XSD: AbstractTimeSeriesType → AbstractFeatureWithLifeSpanType.
+
+    Shared base for MonthlyTimeSeries, RegularTimeSeries,
+    IrregularTimeSeries, and all TypicalValues* variants.
+    """
+
+    PARENT_FIELD: ClassVar = "time_dependent_amount"
+
+    interpolation_type: str | None = None
+
+
+@dataclass
+class MonthlyTimeSeries(_AbstractTimeSeries):
+    """``nrg3:MonthlyTimeSeries`` -- monthly time series with inline values.
+
+    XSD: MonthlyTimeSeriesType → AbstractTimeSeriesType.
+    """
+
+    ELEMENT_TAG: ClassVar = (NS_NRG3, "MonthlyTimeSeries")
+    FEATURE_TYPE: ClassVar = "nrg3_MonthlyTimeSeries"
+    ELEMENT_ORDER: ClassVar = (
+        *_TIME_SERIES_BASE_ORDER,
+        (NS_NRG3, "startDate"),
+        (NS_NRG3, "endDate"),
+        (NS_NRG3, "valuesList"),
+    )
+    FIELD_MAP: ClassVar = {
+        **_TIME_SERIES_BASE_FIELD_MAP,
+        "start_date": (NS_NRG3, "startDate"),
+        "end_date": (NS_NRG3, "endDate"),
+        "values_list": (NS_NRG3, "valuesList"),
+    }
+
+    start_date: str | None = None
+    end_date: str | None = None
+    values_list: MeasureValue | None = None
 
 
 # ===================================================================

@@ -94,17 +94,10 @@ from .building import (  # noqa: F401
 )
 from .building import Zone, ZonePart
 from .core import Address, CityModel
-from .energy_ade import (
+from .energy_ade import (  # noqa: F401 — importing triggers __init_subclass__
     BuildingUnit,
-    CompositeSchedule,
     ConstantValueSchedule,
-    Energy,
-    EnergyPerformanceCertificate,
-    EVChargingStation,
-    HeatPump,
     Metadata,
-    Occupants,
-    PhotovoltaicCollector,
     QualifiedArea,
     QualifiedHeight,
     QualifiedVolume,
@@ -213,9 +206,10 @@ def auto_from_dict(cls: type[BaseBuilder], attrs: dict[str, Any]) -> BaseBuilder
     """
     hints = _get_hints(cls)
     kwargs: dict[str, Any] = {"gml_id": _str(attrs.get("gml_id"))}
+    overrides = getattr(cls, "FLAT_KEY_OVERRIDES", {})
 
     for field_name, (ns, local_name) in cls.FIELD_MAP.items():
-        flat = _flat_key(ns, local_name)
+        flat = overrides.get(field_name) or _flat_key(ns, local_name)
 
         # Special case: metadata fields → delegate to _make_metadata
         if (ns, local_name) == (NS_NRG3, "metadata"):
@@ -264,24 +258,19 @@ def auto_from_dict(cls: type[BaseBuilder], attrs: dict[str, Any]) -> BaseBuilder
 
 def _make_metadata(attrs: dict[str, Any], prefix: str = "nrg3_metadata") -> Metadata | None:
     """Build a Metadata from flat attrs with a given prefix."""
-    found = any(
-        _str(attrs.get(f"{prefix}_{k}")) is not None
-        for k in (
-            "author",
-            "acquisitionMethod",
-            "owner",
-            "qualityDescription",
-            "source",
-        )
-    )
-    if not found:
+    author = _str(attrs.get(f"{prefix}_author"))
+    acquisition_method = _str(attrs.get(f"{prefix}_acquisitionMethod"))
+    owner = _str(attrs.get(f"{prefix}_owner"))
+    quality_description = _str(attrs.get(f"{prefix}_qualityDescription"))
+    source = _str(attrs.get(f"{prefix}_source"))
+    if not any((author, acquisition_method, owner, quality_description, source)):
         return None
     return Metadata(
-        author=_str(attrs.get(f"{prefix}_author")),
-        acquisition_method=_str(attrs.get(f"{prefix}_acquisitionMethod")),
-        owner=_str(attrs.get(f"{prefix}_owner")),
-        quality_description=_str(attrs.get(f"{prefix}_qualityDescription")),
-        source=_str(attrs.get(f"{prefix}_source")),
+        author=author,
+        acquisition_method=acquisition_method,
+        owner=owner,
+        quality_description=quality_description,
+        source=source,
     )
 
 
@@ -412,173 +401,6 @@ def address_from_dict(attrs: dict[str, Any]) -> Address:
     )
 
 
-# ---------------------------------------------------------------------------
-# Custom from_dict functions for classes with ambiguous XSD element names
-# (e.g. multiple classes share "type", "value", "source" element names,
-# so the flat attribute keys add a disambiguating prefix like nrg3_evType
-# vs nrg3_epcType vs nrg3_scheduleType).
-# ---------------------------------------------------------------------------
-
-
-def _device_base_kwargs(attrs: dict[str, Any]) -> dict[str, Any]:
-    """Shared kwargs for all AbstractDevice subclasses."""
-    return {
-        "gml_id": _str(attrs.get("gml_id")),
-        "gml_description": _str(attrs.get("gml_description")),
-        "gml_name": _str(attrs.get("gml_name")),
-        "creation_date": _str(attrs.get("core_creationDate")),
-        "termination_date": _str(attrs.get("core_terminationDate")),
-        "nrg3_identifier": _code(attrs, "nrg3_identifier"),
-        "valid_from": _str(attrs.get("nrg3_validFrom")),
-        "valid_to": _str(attrs.get("nrg3_validTo")),
-        "model": _str(attrs.get("nrg3_model")),
-        "year_of_installation": _int(attrs.get("nrg3_yearOfInstallation")),
-        "year_of_manufacture": _int(attrs.get("nrg3_yearOfManufacture")),
-        "number_of_devices": _int(attrs.get("nrg3_numberOfDevices")),
-        "installed_power": _measure(attrs, "nrg3_installedPower"),
-        "nominal_efficiency": _measure(attrs, "nrg3_nominalEfficiency"),
-        "efficiency_indicator": _str(attrs.get("nrg3_efficiencyIndicator")),
-        "heat_dissipation": _measure(attrs, "nrg3_heatDissipation"),
-        "heat_dissipation_convective_fraction": _scale(
-            attrs, "nrg3_heatDissipationConvectiveFraction"
-        ),
-        "heat_dissipation_latent_fraction": _scale(attrs, "nrg3_heatDissipationLatentFraction"),
-        "heat_dissipation_radiant_fraction": _scale(attrs, "nrg3_heatDissipationRadiantFraction"),
-    }
-
-
-def pv_collector_from_dict(attrs: dict[str, Any]) -> PhotovoltaicCollector:
-    """Create a :class:`PhotovoltaicCollector` from flat attributes."""
-    return PhotovoltaicCollector(
-        **_device_base_kwargs(attrs),
-        module_area=_measure(attrs, "nrg3_moduleArea"),
-        aperture_area=_measure(attrs, "nrg3_apertureArea"),
-        azimuth=_measure(attrs, "nrg3_azimuth"),
-        inclination=_measure(attrs, "nrg3_inclination"),
-        cell_type=_code(attrs, "nrg3_cellType"),
-    )
-
-
-def heat_pump_from_dict(attrs: dict[str, Any]) -> HeatPump:
-    """Create a :class:`HeatPump` from flat attributes."""
-    return HeatPump(
-        **_device_base_kwargs(attrs),
-        heat_source=_code(attrs, "nrg3_heatSource"),
-        cop_source_temperature=_measure(attrs, "nrg3_copSourceTemperature"),
-        cop_operation_temperature=_measure(attrs, "nrg3_copOperationTemperature"),
-    )
-
-
-def ev_charging_station_from_dict(attrs: dict[str, Any]) -> EVChargingStation:
-    """Create an :class:`EVChargingStation` from flat attributes."""
-    return EVChargingStation(
-        **_device_base_kwargs(attrs),
-        ev_type=_code(attrs, "nrg3_evType"),
-        charging_speed_level=_code(attrs, "nrg3_chargingSpeedLevel"),
-        connector_type=_code(attrs, "nrg3_connectorType"),
-        has_load_management=_bool(attrs.get("nrg3_hasLoadManagement")),
-        access=_code(attrs, "nrg3_access"),
-    )
-
-
-def _ade_feature_base_kwargs(attrs: dict[str, Any]) -> dict[str, Any]:
-    """Shared kwargs for Energy ADE features (nrg3:creationDate namespace)."""
-    return {
-        "gml_id": _str(attrs.get("gml_id")),
-        "gml_description": _str(attrs.get("gml_description")),
-        "gml_name": _str(attrs.get("gml_name")),
-        "creation_date": _str(attrs.get("nrg3_creationDate")),
-        "termination_date": _str(attrs.get("nrg3_terminationDate")),
-        "identifier": _code(attrs, "nrg3_identifier"),
-        "valid_from": _str(attrs.get("nrg3_validFrom")),
-        "valid_to": _str(attrs.get("nrg3_validTo")),
-        "status": _code(attrs, "nrg3_status"),
-    }
-
-
-def occupants_from_dict(attrs: dict[str, Any]) -> Occupants:
-    """Create :class:`Occupants` from flat attributes."""
-    return Occupants(
-        **_ade_feature_base_kwargs(attrs),
-        occ_metadata=_make_metadata(attrs),
-        occupant_type=_code(attrs, "nrg3_occupantType"),
-        number_of_occupants=_int(attrs.get("nrg3_numberOfOccupants")),
-        average_diet_type=_code(attrs, "nrg3_averageDietType"),
-        average_income_level=_code(attrs, "nrg3_averageIncomeLevel"),
-        average_instruction_level=_code(attrs, "nrg3_averageInstructionLevel"),
-        heat_dissipation=_measure(attrs, "nrg3_heatDissipation"),
-        heat_dissipation_convective_fraction=_scale(
-            attrs, "nrg3_heatDissipationConvectiveFraction"
-        ),
-        heat_dissipation_latent_fraction=_scale(attrs, "nrg3_heatDissipationLatentFraction"),
-        heat_dissipation_radiant_fraction=_scale(attrs, "nrg3_heatDissipationRadiantFraction"),
-    )
-
-
-def epc_from_dict(attrs: dict[str, Any]) -> EnergyPerformanceCertificate:
-    """Create an :class:`EnergyPerformanceCertificate` from flat attributes."""
-    return EnergyPerformanceCertificate(
-        **_ade_feature_base_kwargs(attrs),
-        epc_metadata=_make_metadata(attrs),
-        epc_type=_code(attrs, "nrg3_epcType"),
-        label=_str(attrs.get("nrg3_epcLabel")),
-        value=_measure(attrs, "nrg3_epcValue"),
-        certification_method=_str(attrs.get("nrg3_epcCertificationMethod")),
-    )
-
-
-def energy_from_dict(attrs: dict[str, Any]) -> Energy:
-    """Create an :class:`Energy` resource from flat attributes."""
-    return Energy(
-        **_ade_feature_base_kwargs(attrs),
-        energy_metadata=_make_metadata(attrs),
-        operation_type=_code(attrs, "nrg3_operationType"),
-        reference_period=_code(attrs, "nrg3_referencePeriod"),
-        amount=_measure(attrs, "nrg3_amount"),
-        year=_int(attrs.get("nrg3_year")),
-        is_amount_normalized=_bool(attrs.get("nrg3_isAmountNormalized")),
-        normalization_value=_measure(attrs, "nrg3_normalizationValue"),
-        normalization_parameter=_str(attrs.get("nrg3_normalizationParameter")),
-        expense=_measure(attrs, "nrg3_expense"),
-        revenue=_measure(attrs, "nrg3_revenue"),
-        co2_equivalent=_measure(attrs, "nrg3_co2Equivalent"),
-        energy_type=_code(attrs, "nrg3_energyType"),
-        end_use=_code(attrs, "nrg3_endUse"),
-        energy_carrier=_code(attrs, "nrg3_energyCarrier"),
-        maximum_load=_measure(attrs, "nrg3_maximumLoad"),
-        maximum_load_time=_str(attrs.get("nrg3_maximumLoadTime")),
-        maximum_load_day=_int(attrs.get("nrg3_maximumLoadDay")),
-        maximum_load_month=_int(attrs.get("nrg3_maximumLoadMonth")),
-        energy_source=_code(attrs, "nrg3_energySource"),
-    )
-
-
-def _schedule_base_kwargs(attrs: dict[str, Any]) -> dict[str, Any]:
-    """Shared kwargs for schedule types."""
-    return {
-        **_ade_feature_base_kwargs(attrs),
-        "schedule_metadata": _make_metadata(attrs),
-        "schedule_type": _code(attrs, "nrg3_scheduleType"),
-        "start_time": _str(attrs.get("nrg3_startTime")),
-        "start_day": _int(attrs.get("nrg3_startDay")),
-        "start_month": _int(attrs.get("nrg3_startMonth")),
-        "start_year": _int(attrs.get("nrg3_startYear")),
-    }
-
-
-def constant_value_schedule_from_dict(attrs: dict[str, Any]) -> ConstantValueSchedule:
-    """Create a :class:`ConstantValueSchedule` from flat attributes."""
-    return ConstantValueSchedule(
-        **_schedule_base_kwargs(attrs),
-        value=_measure(attrs, "nrg3_scheduleValue"),
-    )
-
-
-def composite_schedule_from_dict(attrs: dict[str, Any]) -> CompositeSchedule:
-    """Create a :class:`CompositeSchedule` from flat attributes."""
-    return CompositeSchedule(**_schedule_base_kwargs(attrs))
-
-
 def zone_from_dict(attrs: dict[str, Any]) -> Zone:
     """Create a :class:`Zone` from flat attributes.
 
@@ -655,21 +477,14 @@ def _reg(fme_name: str, fn: Callable[[dict[str, Any]], Any]) -> None:
 
 
 # --- Custom from_dict overrides ---
-# Classes with complex construction (QualifiedVolume lists, xAL address) or
-# ambiguous XSD element names ("type", "value") that need explicit flat keys.
+# Classes with complex construction (QualifiedVolume lists, xAL address,
+# core: vs nrg3: namespace differences, or Zone setpoint → schedule conversion)
+# need manual from_dict. All others use auto_from_dict via FLAT_KEY_OVERRIDES.
 _CUSTOM_FROM_DICT: dict[str, Callable[[dict[str, Any]], Any]] = {
     "bldg_Building": building_from_dict,
     "bldg_BuildingPart": building_part_from_dict,
     "nrg3_BuildingUnit": building_unit_from_dict,
     "core_Address": address_from_dict,
-    "nrg3_PhotovoltaicCollector": pv_collector_from_dict,
-    "nrg3_HeatPump": heat_pump_from_dict,
-    "nrg3_EVChargingStation": ev_charging_station_from_dict,
-    "nrg3_Occupants": occupants_from_dict,
-    "nrg3_EnergyPerformanceCertificate": epc_from_dict,
-    "nrg3_Energy": energy_from_dict,
-    "nrg3_ConstantValueSchedule": constant_value_schedule_from_dict,
-    "nrg3_CompositeSchedule": composite_schedule_from_dict,
     "nrg3_Zone": zone_from_dict,
     "nrg3_ZonePart": zone_part_from_dict,
 }
@@ -760,7 +575,6 @@ _reg("nrg3_UtilityNetworkConnection", _stub("nrg3_UtilityNetworkConnection"))
 _reg("nrg3_DualValueSchedule", _stub("nrg3_DualValueSchedule"))
 _reg("nrg3_IrregularTimeSeries", _stub("nrg3_IrregularTimeSeries"))
 _reg("nrg3_IrregularTimeSeriesFile", _stub("nrg3_IrregularTimeSeriesFile"))
-_reg("nrg3_MonthlyTimeSeries", _stub("nrg3_MonthlyTimeSeries"))
 _reg("nrg3_MonthlyTimeSeriesFile", _stub("nrg3_MonthlyTimeSeriesFile"))
 _reg("nrg3_RegularTimeSeries", _stub("nrg3_RegularTimeSeries"))
 _reg("nrg3_RegularTimeSeriesFile", _stub("nrg3_RegularTimeSeriesFile"))
@@ -937,10 +751,19 @@ class FeatureFactory:
                 f"Don't know how to attach {child_type!r} to {parent_type!r}: "
                 f"no PARENT_FIELD defined on {type(child).__name__}"
             )
-        target = getattr(parent, parent_field, None)
-        if target is None:
+        if not hasattr(parent, parent_field):
             raise ValueError(
                 f"Parent {parent_type!r} ({type(parent).__name__}) has no "
                 f"field {parent_field!r} for attaching {child_type!r}"
             )
-        target.append(child)
+        target = getattr(parent, parent_field)
+        if isinstance(target, list):
+            target.append(child)
+        else:
+            if target is not None:
+                raise ValueError(
+                    f"Parent {parent_type!r} field {parent_field!r} already set "
+                    f"(by {getattr(target, 'gml_id', '?')!r}); cannot attach "
+                    f"{child_type!r} ({child.gml_id!r})"
+                )
+            setattr(parent, parent_field, child)

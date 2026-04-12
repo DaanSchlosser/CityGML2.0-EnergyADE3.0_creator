@@ -344,13 +344,16 @@ _EPC_FIELDS = (
     _field("nrg3_epcCertificationMethod", "nrg3_certification_method"),
 )
 
-_CONSTANT_SCHEDULE_FIELDS = (
+_SCHEDULE_BASE_FIELDS = (
     _field("nrg3_scheduleType", "nrg3_type"),
     _field("nrg3_scheduleType_codeSpace", "nrg3_type_codeSpace"),
     _field("nrg3_startTime", "nrg3_start_time"),
     _field("nrg3_startDay", "nrg3_start_day"),
     _field("nrg3_startMonth", "nrg3_start_month"),
     _field("nrg3_startYear", "nrg3_start_year"),
+)
+
+_CONSTANT_SCHEDULE_FIELDS = _SCHEDULE_BASE_FIELDS + (
     _field("nrg3_scheduleValue", "nrg3_value"),
     _field("nrg3_scheduleValue_uom", "nrg3_value_units"),
 )
@@ -391,14 +394,7 @@ _ENERGY_FIELDS = (
     _field("nrg3_energySource_codeSpace", "nrg3_source_codeSpace"),
 )
 
-_COMPOSITE_SCHEDULE_FIELDS = (
-    _field("nrg3_scheduleType", "nrg3_type"),
-    _field("nrg3_scheduleType_codeSpace", "nrg3_type_codeSpace"),
-    _field("nrg3_startTime", "nrg3_start_time"),
-    _field("nrg3_startDay", "nrg3_start_day"),
-    _field("nrg3_startMonth", "nrg3_start_month"),
-    _field("nrg3_startYear", "nrg3_start_year"),
-)
+_COMPOSITE_SCHEDULE_FIELDS = _SCHEDULE_BASE_FIELDS
 
 _ZONE_FIELDS = (
     _field("nrg3_zoneType", "nrg3_type"),
@@ -490,6 +486,15 @@ FEATURE_INPUT_FIELDS: dict[str, tuple[InputField, ...]] = {
     + _NRG_FEATURE_METADATA_FIELDS
     + _ABSTRACT_RESOURCE_FIELDS
     + _ENERGY_FIELDS,
+    "nrg3_MonthlyTimeSeries": _NRG_FEATURE_FIELDS
+    + _NRG_FEATURE_METADATA_FIELDS
+    + (
+        _field("nrg3_interpolationType", "nrg3_interpolation_type"),
+        _field("nrg3_startDate", "nrg3_start_date"),
+        _field("nrg3_endDate", "nrg3_end_date"),
+        _field("nrg3_valuesList", "nrg3_values_list"),
+        _field("nrg3_valuesList_uom", "nrg3_values_list_units"),
+    ),
     "nrg3_BuildingUnit": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _BUILDING_UNIT_FIELDS,
     "nrg3_ConstantValueSchedule": _NRG_FEATURE_FIELDS
     + _NRG_FEATURE_METADATA_FIELDS

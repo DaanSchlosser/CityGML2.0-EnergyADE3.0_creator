@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -107,6 +108,7 @@ class _StepEntity:
 def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str, Any]]) -> None:
     """Apply all configured geometry sources to *model* in place."""
     all_coordinates: list[Coord3D] = []
+    pv_surface_ids: list[str] = []
 
     # Shared ID counters across geometry sources so that surfaces created
     # at different LOD levels for the same building get unique gml_ids.
@@ -130,6 +132,8 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
                 type_counters=type_counters,
             )
             all_coordinates.extend(coords)
+            if target_pv_id is not None:
+                pv_surface_ids.append(f"{target_pv_id}_lod{lod_level}")
             continue
 
         zonepart_match = _STEP_ZONEPART_TYPE_RE.match(source_type or "")
@@ -148,6 +152,48 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
 
     if all_coordinates:
         model.envelope = _compute_envelope(all_coordinates)
+
+    if pv_surface_ids:
+        _generate_pv_appearance(model, pv_surface_ids)
+
+
+def _generate_pv_appearance(model: CityModel, pv_surface_ids: list[str]) -> None:
+    """Generate an ``app:Appearance`` with black X3DMaterial for all PV panels.
+
+    Follows the Alderaan reference pattern: one FRONT and one BACK material
+    with ``diffuseColor 0 0 0`` and ``transparency 0``, targeting every PV
+    MultiSurface across all LoD levels.
+    """
+    app_id = str(uuid.uuid4())
+    appearance = etree.Element(qn("app", "Appearance"))
+    appearance.set(f"{{{NS_GML}}}id", f"id_appearance_{app_id}")
+
+    theme = etree.SubElement(appearance, qn("app", "theme"))
+    theme.text = "Solar Device Appearance"
+
+    for is_front in (False, True):
+        side = "FRONT" if is_front else "BACK"
+        surface_data_member = etree.SubElement(appearance, qn("app", "surfaceDataMember"))
+        material = etree.SubElement(surface_data_member, qn("app", "X3DMaterial"))
+        material.set(f"{{{NS_GML}}}id", f"X3DMaterial_{app_id}_{side.lower()}")
+
+        desc = etree.SubElement(material, qn("gml", "description"))
+        desc.text = f"This is Colour Black ({side}) for Solar Devices LoD2-3"
+        name = etree.SubElement(material, qn("gml", "name"))
+        name.text = f"Colour Black ({side}) Solar Devices LoD2-3"
+
+        front_el = etree.SubElement(material, qn("app", "isFront"))
+        front_el.text = "true" if is_front else "false"
+        color_el = etree.SubElement(material, qn("app", "diffuseColor"))
+        color_el.text = "0 0 0"
+        transp_el = etree.SubElement(material, qn("app", "transparency"))
+        transp_el.text = "0"
+
+        for surface_id in pv_surface_ids:
+            target = etree.SubElement(material, qn("app", "target"))
+            target.text = f"#{surface_id}"
+
+    model.add_appearance(RawXmlElement.from_element(appearance))
 
 
 def apply_step_geometry(
@@ -252,14 +298,26 @@ def _apply_aggregate_building_geometry(
 
 
 def _compute_envelope(coordinates: list[Coord3D]) -> Envelope:
-    xs = [c[0] for c in coordinates]
-    ys = [c[1] for c in coordinates]
-    zs = [c[2] for c in coordinates]
+    min_x = min_y = min_z = float("inf")
+    max_x = max_y = max_z = float("-inf")
+    for x, y, z in coordinates:
+        if x < min_x:
+            min_x = x
+        if x > max_x:
+            max_x = x
+        if y < min_y:
+            min_y = y
+        if y > max_y:
+            max_y = y
+        if z < min_z:
+            min_z = z
+        if z > max_z:
+            max_z = z
     return Envelope(
         srs_name=DEFAULT_SRS_NAME,
         srs_dimension=DEFAULT_SRS_DIMENSION,
-        lower_corner=f"{min(xs):.6f} {min(ys):.6f} {min(zs):.6f}",
-        upper_corner=f"{max(xs):.6f} {max(ys):.6f} {max(zs):.6f}",
+        lower_corner=f"{min_x:.6f} {min_y:.6f} {min_z:.6f}",
+        upper_corner=f"{max_x:.6f} {max_y:.6f} {max_z:.6f}",
     )
 
 

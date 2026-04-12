@@ -22,6 +22,28 @@
 							<nrg3:relatedTo xlink:href="#id_building_1_RoofSurface_3"/>
 						</nrg3:CityObjectRelation>
 					</nrg3:relatedTo>
+					<nrg3:resource>
+						<nrg3:Energy gml:id="id_pv_production_1">
+							<gml:description>PV energy production for pv_panel_1</gml:description>
+							<gml:name>PV Production pv_panel_1</gml:name>
+							<nrg3:creationDate>2026-04-04</nrg3:creationDate>
+							<nrg3:operationType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml">produces</nrg3:operationType>
+							<nrg3:isAmountNormalized>false</nrg3:isAmountNormalized>
+							<nrg3:timeDependentAmount>
+								<nrg3:MonthlyTimeSeries gml:id="id_monthly_ts_pv_production_1">
+									<gml:description>Monthly PV energy production for pv_panel_1</gml:description>
+									<gml:name>MonthlyTimeSeries pv_panel_1</gml:name>
+									<nrg3:interpolationType>averageInSucceedingInterval</nrg3:interpolationType>
+									<nrg3:startDate>2022-01-01</nrg3:startDate>
+									<nrg3:endDate>2025-07-01</nrg3:endDate>
+									<nrg3:valuesList uom="kWh">374 370 390 904 936 904 513 513 496 514 496 513 277 252 277 887 910 884 731 732 708 149 142 149 229 215 229 679 702 679 686 694 671 213 143 147 311 283 311 901 955 928</nrg3:valuesList>
+								</nrg3:MonthlyTimeSeries>
+							</nrg3:timeDependentAmount>
+							<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml">finalEnergy</nrg3:type>
+							<nrg3:energyCarrier codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml">electricity</nrg3:energyCarrier>
+							<nrg3:source codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml">solarEnergy</nrg3:source>
+						</nrg3:Energy>
+					</nrg3:resource>
 					<nrg3:model>PV-16-270 PW</nrg3:model>
 					<nrg3:yearOfInstallation>2020</nrg3:yearOfInstallation>
 					<nrg3:numberOfDevices>36</nrg3:numberOfDevices>
@@ -1580,4 +1602,29 @@
 			</nrg3:zone>
 		</bldg:Building>
 	</core:cityObjectMember>
+	<app:appearanceMember>
+		<app:Appearance gml:id="id_appearance_0b52cc5e-92df-49e8-b1e3-ab39e65957b4">
+			<app:theme>Solar Device Appearance</app:theme>
+			<app:surfaceDataMember>
+				<app:X3DMaterial gml:id="X3DMaterial_0b52cc5e-92df-49e8-b1e3-ab39e65957b4_back">
+					<gml:description>This is Colour Black (BACK) for Solar Devices LoD2-3</gml:description>
+					<gml:name>Colour Black (BACK) Solar Devices LoD2-3</gml:name>
+					<app:isFront>false</app:isFront>
+					<app:diffuseColor>0 0 0</app:diffuseColor>
+					<app:transparency>0</app:transparency>
+					<app:target>#pv_panel_1_lod3</app:target>
+				</app:X3DMaterial>
+			</app:surfaceDataMember>
+			<app:surfaceDataMember>
+				<app:X3DMaterial gml:id="X3DMaterial_0b52cc5e-92df-49e8-b1e3-ab39e65957b4_front">
+					<gml:description>This is Colour Black (FRONT) for Solar Devices LoD2-3</gml:description>
+					<gml:name>Colour Black (FRONT) Solar Devices LoD2-3</gml:name>
+					<app:isFront>true</app:isFront>
+					<app:diffuseColor>0 0 0</app:diffuseColor>
+					<app:transparency>0</app:transparency>
+					<app:target>#pv_panel_1_lod3</app:target>
+				</app:X3DMaterial>
+			</app:surfaceDataMember>
+		</app:Appearance>
+	</app:appearanceMember>
 </core:CityModel>

@@ -177,6 +177,25 @@
       }
     },
     {
+      "feature_type": "nrg3_Energy",
+      "attributes": {
+        "gml_id": "id_pv_production_1",
+        "gml_parent_id": "pv_panel_1",
+        "gml_description": "PV energy production for pv_panel_1",
+        "gml_name": "PV Production pv_panel_1",
+        "nrg3_creationDate": "2026-04-04",
+        "nrg3_operationType": "produces",
+        "nrg3_operationType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml",
+        "nrg3_isAmountNormalized": false,
+        "nrg3_energyType": "finalEnergy",
+        "nrg3_energyType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml",
+        "nrg3_energyCarrier": "electricity",
+        "nrg3_energyCarrier_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml",
+        "nrg3_energySource": "solarEnergy",
+        "nrg3_energySource_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"
+      }
+    },
+    {
       "feature_type": "nrg3_Zone",
       "attributes": {
         "gml_id": "zone_1",
@@ -240,6 +259,20 @@
         "nrg3_isCooled": false,
         "nrg3_coincidesWithLod2Hull": false,
         "nrg3_coincidesWithLod3Hull": false
+      }
+    },
+    {
+      "feature_type": "nrg3_MonthlyTimeSeries",
+      "attributes": {
+        "gml_id": "id_monthly_ts_pv_production_1",
+        "gml_parent_id": "id_pv_production_1",
+        "gml_description": "Monthly PV energy production for pv_panel_1",
+        "gml_name": "MonthlyTimeSeries pv_panel_1",
+        "nrg3_interpolationType": "averageInSucceedingInterval",
+        "nrg3_startDate": "2022-01-01",
+        "nrg3_endDate": "2025-07-01",
+        "nrg3_valuesList": "374 370 390 904 936 904 513 513 496 514 496 513 277 252 277 887 910 884 731 732 708 149 142 149 229 215 229 679 702 679 686 694 671 213 143 147 311 283 311 901 955 928",
+        "nrg3_valuesList_uom": "kWh"
       }
     }
   ]
