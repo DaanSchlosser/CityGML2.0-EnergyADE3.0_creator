@@ -24,6 +24,7 @@ from .bindings import (
     FloorSurface2,
     GroundSurface2,
     Interior,
+    LayeredConstruction2,
     LinearRing,
     MultiSurface,
     MultiSurfacePropertyType,
@@ -163,6 +164,127 @@ def apply_geometry_sources(
 
     if all_coordinates:
         _set_envelope(model, _compute_envelope(all_coordinates))
+
+
+# Surface type class → short name used in construction_mapping.by_type
+_SURFACE_TYPE_NAMES: dict[type[Any], str] = {
+    WallSurface2: "WallSurface",
+    RoofSurface2: "RoofSurface",
+    GroundSurface2: "GroundSurface",
+    CeilingSurface2: "CeilingSurface",
+    ClosureSurface2: "ClosureSurface",
+    FloorSurface2: "FloorSurface",
+    OuterCeilingSurface2: "OuterCeilingSurface",
+    OuterFloorSurface2: "OuterFloorSurface",
+}
+
+_OPENING_TYPE_NAMES: dict[type[Any], str] = {
+    Door2: "Door",
+    Window2: "Window",
+}
+
+# BoundarySurfacePropertyType2 field → surface class
+_BOUNDED_BY_FIELDS: list[tuple[str, type[Any]]] = [
+    (name, cls) for cls, name in [
+        (WallSurface2, "wall_surface"),
+        (RoofSurface2, "roof_surface"),
+        (GroundSurface2, "ground_surface"),
+        (CeilingSurface2, "ceiling_surface"),
+        (ClosureSurface2, "closure_surface"),
+        (FloorSurface2, "floor_surface"),
+        (OuterCeilingSurface2, "outer_ceiling_surface"),
+        (OuterFloorSurface2, "outer_floor_surface"),
+    ]
+]
+
+_OPENING_FIELDS: list[tuple[str, type[Any]]] = [
+    ("door", Door2),
+    ("window", Window2),
+]
+
+
+def _make_construction_ref(construction_id: str) -> LayeredConstruction2:
+    """Create a LayeredConstruction2 xlink:href reference."""
+    return LayeredConstruction2(href=f"#{construction_id}")
+
+
+def apply_construction_mapping(
+    model: CityModel,
+    mapping: dict[str, Any],
+) -> None:
+    """Apply construction references to boundary surfaces and openings.
+
+    *mapping* has two optional sub-dicts:
+
+    ``by_type``
+        Maps surface/opening type names (``WallSurface``, ``Door``, etc.)
+        to construction feature IDs.
+
+    ``by_id``
+        Maps specific ``gml:id`` values to construction feature IDs,
+        overriding ``by_type``.
+    """
+    by_type: dict[str, str] = mapping.get("by_type", {})
+    by_id: dict[str, str] = mapping.get("by_id", {})
+
+    for member in model.xsd.city_object_member:
+        building = getattr(member, "building", None)
+        if building is None:
+            continue
+
+        for bounded in building.bounded_by:
+            surface, surface_cls = _extract_surface(bounded)
+            if surface is None:
+                continue
+
+            type_name = _SURFACE_TYPE_NAMES.get(surface_cls)
+            gml_id = getattr(surface, "id", None)
+
+            # Resolve construction for this surface
+            constr_id = by_id.get(gml_id) if gml_id else None
+            if constr_id is None and type_name:
+                constr_id = by_type.get(type_name)
+
+            if constr_id is not None:
+                surface.layered_construction.append(_make_construction_ref(constr_id))
+
+            # Process openings on this surface
+            for opening_prop in getattr(surface, "opening", []):
+                opening, opening_cls = _extract_opening(opening_prop)
+                if opening is None:
+                    continue
+
+                opening_type = _OPENING_TYPE_NAMES.get(opening_cls)
+                opening_id = getattr(opening, "id", None)
+
+                opening_constr_id = by_id.get(opening_id) if opening_id else None
+                if opening_constr_id is None and opening_type:
+                    opening_constr_id = by_type.get(opening_type)
+
+                if opening_constr_id is not None:
+                    opening.layered_construction.append(
+                        _make_construction_ref(opening_constr_id)
+                    )
+
+
+def _extract_surface(
+    bounded: BoundarySurfacePropertyType2,
+) -> tuple[Any | None, type[Any] | None]:
+    """Extract the surface object and its class from a BoundarySurfacePropertyType2."""
+    for field_name, cls in _BOUNDED_BY_FIELDS:
+        obj = getattr(bounded, field_name, None)
+        if obj is not None:
+            return obj, cls
+    return None, None
+
+
+def _extract_opening(opening_prop: OpeningPropertyType2) -> tuple[Any | None, type[Any] | None]:
+    """Extract the opening object and its class from an OpeningPropertyType2."""
+    for field_name, cls in _OPENING_FIELDS:
+        obj = getattr(opening_prop, field_name, None)
+        if obj is not None:
+            return obj, cls
+    return None, None
 
 
 def apply_step_geometry(
