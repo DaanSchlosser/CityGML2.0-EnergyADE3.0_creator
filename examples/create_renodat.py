@@ -63,4 +63,4 @@ if __name__ == "__main__":
     )
 
     print(f"Written to {args.output}")
-    print(f"Top-level city objects: {len(model.city_object_members)}")
+    print(f"Top-level city objects: {len(model.xsd.city_object_member)}")
