@@ -1098,11 +1098,6 @@
 					</bldg:lod3MultiSurface>
 				</bldg:GroundSurface>
 			</bldg:boundedBy>
-			<nrg3:bdgIsProtected>false</nrg3:bdgIsProtected>
-			<nrg3:bdgNumberOfBuildingUnits>1</nrg3:bdgNumberOfBuildingUnits>
-			<nrg3:bdgOwnerName>Han Solo</nrg3:bdgOwnerName>
-			<nrg3:bdgOwnershipType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml">occupantPrivateOwner</nrg3:bdgOwnershipType>
-			<nrg3:bdgType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingTypeValue.xml">singleFamilyHouse</nrg3:bdgType>
 			<nrg3:bdgVolume>
 				<nrg3:QualifiedVolume>
 					<nrg3:description>Building's gross volume of 3D model</nrg3:description>
@@ -1111,6 +1106,11 @@
 					<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/VolumeTypeValue.xml">grossVolume</nrg3:type>
 				</nrg3:QualifiedVolume>
 			</nrg3:bdgVolume>
+			<nrg3:bdgOwnerName>Han Solo</nrg3:bdgOwnerName>
+			<nrg3:bdgOwnershipType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml">occupantPrivateOwner</nrg3:bdgOwnershipType>
+			<nrg3:bdgNumberOfBuildingUnits>1</nrg3:bdgNumberOfBuildingUnits>
+			<nrg3:bdgIsProtected>false</nrg3:bdgIsProtected>
+			<nrg3:bdgType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingTypeValue.xml">singleFamilyHouse</nrg3:bdgType>
 			<nrg3:occupiedBy>
 				<nrg3:Occupants gml:id="id_occupants_1">
 					<gml:description>Residents of Han Solo's house</gml:description>
@@ -1603,10 +1603,10 @@
 		</bldg:Building>
 	</core:cityObjectMember>
 	<app:appearanceMember>
-		<app:Appearance gml:id="id_appearance_3232ec7d-93bd-4363-8fd2-a70c92e83e2e">
+		<app:Appearance gml:id="id_appearance_aa3657a1-7012-4dc2-9d3d-cd17f72d1c4d">
 			<app:theme>Solar Device Appearance</app:theme>
 			<app:surfaceDataMember>
-				<app:X3DMaterial gml:id="X3DMaterial_3232ec7d-93bd-4363-8fd2-a70c92e83e2e_back">
+				<app:X3DMaterial gml:id="X3DMaterial_aa3657a1-7012-4dc2-9d3d-cd17f72d1c4d_back">
 					<gml:description>This is Colour Black (BACK) for Solar Devices LoD2-3</gml:description>
 					<gml:name>Colour Black (BACK) Solar Devices LoD2-3</gml:name>
 					<app:isFront>false</app:isFront>
@@ -1616,7 +1616,7 @@
 				</app:X3DMaterial>
 			</app:surfaceDataMember>
 			<app:surfaceDataMember>
-				<app:X3DMaterial gml:id="X3DMaterial_3232ec7d-93bd-4363-8fd2-a70c92e83e2e_front">
+				<app:X3DMaterial gml:id="X3DMaterial_aa3657a1-7012-4dc2-9d3d-cd17f72d1c4d_front">
 					<gml:description>This is Colour Black (FRONT) for Solar Devices LoD2-3</gml:description>
 					<gml:name>Colour Black (FRONT) Solar Devices LoD2-3</gml:name>
 					<app:isFront>true</app:isFront>

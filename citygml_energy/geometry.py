@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,6 +26,7 @@ from .building import (
 )
 from .core import CityModel, Envelope
 from .energy_ade import CityObjectRelation, PhotovoltaicCollector
+from .types import XlinkRef
 from .namespaces import CS_NRG3_RELATION_TYPE, NS_GML, qn
 from .types import CodeValue
 from .xml_support import RawXmlElement
@@ -108,7 +108,6 @@ class _StepEntity:
 def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str, Any]]) -> None:
     """Apply all configured geometry sources to *model* in place."""
     all_coordinates: list[Coord3D] = []
-    pv_surface_ids: list[str] = []
 
     # Shared ID counters across geometry sources so that surfaces created
     # at different LOD levels for the same building get unique gml_ids.
@@ -132,8 +131,6 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
                 type_counters=type_counters,
             )
             all_coordinates.extend(coords)
-            if target_pv_id is not None:
-                pv_surface_ids.append(f"{target_pv_id}_lod{lod_level}")
             continue
 
         zonepart_match = _STEP_ZONEPART_TYPE_RE.match(source_type or "")
@@ -152,48 +149,6 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
 
     if all_coordinates:
         model.envelope = _compute_envelope(all_coordinates)
-
-    if pv_surface_ids:
-        _generate_pv_appearance(model, pv_surface_ids)
-
-
-def _generate_pv_appearance(model: CityModel, pv_surface_ids: list[str]) -> None:
-    """Generate an ``app:Appearance`` with black X3DMaterial for all PV panels.
-
-    Follows the Alderaan reference pattern: one FRONT and one BACK material
-    with ``diffuseColor 0 0 0`` and ``transparency 0``, targeting every PV
-    MultiSurface across all LoD levels.
-    """
-    app_id = str(uuid.uuid4())
-    appearance = etree.Element(qn("app", "Appearance"))
-    appearance.set(f"{{{NS_GML}}}id", f"id_appearance_{app_id}")
-
-    theme = etree.SubElement(appearance, qn("app", "theme"))
-    theme.text = "Solar Device Appearance"
-
-    for is_front in (False, True):
-        side = "FRONT" if is_front else "BACK"
-        surface_data_member = etree.SubElement(appearance, qn("app", "surfaceDataMember"))
-        material = etree.SubElement(surface_data_member, qn("app", "X3DMaterial"))
-        material.set(f"{{{NS_GML}}}id", f"X3DMaterial_{app_id}_{side.lower()}")
-
-        desc = etree.SubElement(material, qn("gml", "description"))
-        desc.text = f"This is Colour Black ({side}) for Solar Devices LoD2-3"
-        name = etree.SubElement(material, qn("gml", "name"))
-        name.text = f"Colour Black ({side}) Solar Devices LoD2-3"
-
-        front_el = etree.SubElement(material, qn("app", "isFront"))
-        front_el.text = "true" if is_front else "false"
-        color_el = etree.SubElement(material, qn("app", "diffuseColor"))
-        color_el.text = "0 0 0"
-        transp_el = etree.SubElement(material, qn("app", "transparency"))
-        transp_el.text = "0"
-
-        for surface_id in pv_surface_ids:
-            target = etree.SubElement(material, qn("app", "target"))
-            target.text = f"#{surface_id}"
-
-    model.add_appearance(RawXmlElement.from_element(appearance))
 
 
 def apply_step_geometry(
@@ -454,7 +409,7 @@ def _attach_geometry_features(
                             value="installedOn",
                             code_space=CS_NRG3_RELATION_TYPE,
                         ),
-                        related_to_href=f"#{entry[2]}",
+                        related_to=XlinkRef(f"#{entry[2]}"),
                     )
                 )
     elif target_pv_id is not None:
