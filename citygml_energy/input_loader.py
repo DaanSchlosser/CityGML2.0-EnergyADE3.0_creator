@@ -20,6 +20,7 @@ _ALLOWED_TOP_LEVEL_KEYS = {
     "city_model",
     "features",
     "geometry_sources",
+    "coordinate_origin",
 }
 _ALLOWED_CITY_MODEL_KEYS = {"description", "name"}
 _ALLOWED_GEOMETRY_SOURCE_KEYS = {
@@ -171,7 +172,16 @@ def build_city_model_from_feature_collection(
         )
 
     model = factory.build()
-    apply_geometry_sources(model, data.get("geometry_sources", []))
+
+    raw_origin = data.get("coordinate_origin")
+    if raw_origin is not None:
+        if not isinstance(raw_origin, list) or len(raw_origin) != 3:
+            raise InputFileError("coordinate_origin must be an array of 3 numbers [x, y, z]")
+        origin = (float(raw_origin[0]), float(raw_origin[1]), float(raw_origin[2]))
+    else:
+        origin = (0.0, 0.0, 0.0)
+
+    apply_geometry_sources(model, data.get("geometry_sources", []), origin=origin)
     return model
 
 

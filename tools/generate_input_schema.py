@@ -40,6 +40,13 @@ def main() -> None:
                     "name": {"type": "string"},
                 },
             },
+            "coordinate_origin": {
+                "type": "array",
+                "description": "Optional XYZ offset added to all imported STEP coordinates.",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {"type": "number"},
+            },
             "features": {
                 "type": "array",
                 "items": _build_feature_item_schema(),
@@ -132,9 +139,7 @@ def _build_geometry_source_schema() -> dict:
                 "properties": {
                     "type": {
                         "type": "string",
-                        "enum": [
-                            f"step-renodat-lod{n}" for n in range(5)
-                        ],
+                        "enum": [f"step-renodat-lod{n}" for n in range(5)],
                     },
                     "path": {"type": "string", "minLength": 1},
                     "target_building_id": {"type": "string", "minLength": 1},
@@ -153,9 +158,7 @@ def _build_geometry_source_schema() -> dict:
                 "properties": {
                     "type": {
                         "type": "string",
-                        "enum": [
-                            f"step-zonepart-lod{n}" for n in range(4)
-                        ],
+                        "enum": [f"step-zonepart-lod{n}" for n in range(4)],
                     },
                     "path": {"type": "string", "minLength": 1},
                     "target_zone_part_id": {"type": "string", "minLength": 1},

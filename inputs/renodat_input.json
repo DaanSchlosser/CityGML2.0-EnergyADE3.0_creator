@@ -5,6 +5,7 @@
     "description": "This is a description",
     "name": "RenoDAT City"
   },
+  "coordinate_origin": [85182.085, 446868.675, 0.105],
   "geometry_sources": [
     {
       "type": "step-renodat-lod0",
