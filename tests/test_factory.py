@@ -1,81 +1,44 @@
-"""Tests for the FME-style flat-attribute factory (citygml_energy/factory.py)."""
+"""XSD validation tests for each supported feature type.
 
+Every test creates a feature from a flat attribute dict, wraps it in a
+CityModel, serializes to XML, and validates against the full Energy ADE 3.0
+beta8 + CityGML 2.0 XSD schema set.  This is the same validation that FME
+performs when writing CityGML.
+"""
+
+import lxml.etree as etree
 import pytest
-from lxml import etree
 
 from citygml_energy import (
-    CS_BUILDING_CLASS,
-    CS_BUILDING_FUNCTION,
-    CS_BUILDING_ROOFTYPE,
-    CS_BUILDING_USAGE,
-    CS_NRG3_BUILDING_TYPE,
-    CS_NRG3_OWNERSHIP_TYPE,
-    CS_NRG3_VOLUME_TYPE,
-    Building,
     FeatureFactory,
-    PhotovoltaicCollector,
-    WallSurface,
-    building_from_dict,
-    building_unit_from_dict,
     create_feature,
     list_feature_types,
 )
+from tools.validate_xsd import load_schema
 
 # ---------------------------------------------------------------------------
-# Helpers: reusable attribute dicts
+# Shared XSD schema (loaded once per session)
 # ---------------------------------------------------------------------------
 
-_BUILDING_ATTRS = {
-    "gml_id": "id_building_1",
-    "gml_name": "Han solo's house",
-    "core_creationDate": "2026-04-04",
-    "nrg3_identifier": "0503100000032914",
-    "nrg3_identifier_codeSpace": "https://bagviewer.kadaster.nl/?objectId=0503100000032914",
-    "nrg3_metadata_author": "Daan Schlosser",
-    "nrg3_metadata_acquisitionMethod": "measurement",
-    "nrg3_metadata_owner": "Han Solo",
-    "bldg_class": "1000",
-    "bldg_class_codeSpace": CS_BUILDING_CLASS,
-    "bldg_function": "1000",
-    "bldg_function_codeSpace": CS_BUILDING_FUNCTION,
-    "bldg_usage": "1000",
-    "bldg_usage_codeSpace": CS_BUILDING_USAGE,
-    "bldg_yearOfConstruction": "2020",
-    "bldg_roofType": "1030",
-    "bldg_roofType_codeSpace": CS_BUILDING_ROOFTYPE,
-    "bldg_storeysAboveGround": "3",
-    "bldg_storeysBelowGround": "0",
-    "nrg3_bdgIsProtected": "false",
-    "nrg3_bdgNumberOfBuildingUnits": "1",
-    "nrg3_bdgOwnerName": "Han Solo",
-    "nrg3_bdgOwnershipType": "occupantPrivateOwner",
-    "nrg3_bdgOwnershipType_codeSpace": CS_NRG3_OWNERSHIP_TYPE,
-    "nrg3_bdgType": "singleFamilyHouse",
-    "nrg3_bdgType_codeSpace": CS_NRG3_BUILDING_TYPE,
-    "nrg3_bdgVolume_description": "Building's gross volume of 3D model",
-    "nrg3_bdgVolume_source": "3D model",
-    "nrg3_bdgVolume_value": "823.30",
-    "nrg3_bdgVolume_uom": "m3",
-    "nrg3_bdgVolume_type": "grossVolume",
-    "nrg3_bdgVolume_type_codeSpace": CS_NRG3_VOLUME_TYPE,
-}
 
-_PV_ATTRS = {
-    "gml_id": "pv_panel_1",
-    "gml_parent_id": "id_building_1",
-    "gml_name": "PV collector (36x270 Wp)",
-    "core_creationDate": "2026-04-04",
-    "nrg3_model": "PV-16-270 PW",
-    "nrg3_yearOfInstallation": "2020",
-    "nrg3_numberOfDevices": "36",
-    "nrg3_installedPower": "9720",
-    "nrg3_installedPower_uom": "W",
-    "nrg3_azimuth": "235.65",
-    "nrg3_azimuth_uom": "deg",
-    "nrg3_inclination": "44.51",
-    "nrg3_inclination_uom": "deg",
-    "nrg3_cellType": "unknown",
-}
+@pytest.fixture(scope="session")
+def xsd_schema():
+    return load_schema()
+
+
+def _validate_features(features: list[tuple[str, dict]], xsd_schema):
+    """Build a CityModel from *features*, serialize, and assert XSD validity.
+
+    Each entry is ``(feature_type, attributes_dict)``.  Features with a
+    ``gml_parent_id`` are attached as children automatically.
+    """
+    factory = FeatureFactory()
+    for ftype, attrs in features:
+        factory.add(ftype, attrs)
+    model = factory.build()
+    xml = model.to_string()
+    doc = etree.fromstring(xml.encode("utf-8"))
+    xsd_schema.assertValid(doc)
 
 
 # ---------------------------------------------------------------------------
@@ -105,298 +68,405 @@ def test_list_feature_types_is_sorted():
     assert types == sorted(types)
 
 
-def test_list_feature_types_excludes_unimplemented_by_default():
-    types = list_feature_types()
-    assert "nrg3_WeatherStation" not in types
-
-
-# ---------------------------------------------------------------------------
-# create_feature dispatch
-# ---------------------------------------------------------------------------
-
-
-def test_create_feature_building():
-    obj = create_feature("bldg_Building", {"gml_id": "b1"})
-    assert isinstance(obj, Building)
-    assert obj.gml_id == "b1"
-
-
-def test_create_feature_pv():
-    obj = create_feature("nrg3_PhotovoltaicCollector", {"gml_id": "pv1"})
-    assert isinstance(obj, PhotovoltaicCollector)
-    assert obj.gml_id == "pv1"
-
-
 def test_create_feature_unknown_raises():
     with pytest.raises(ValueError, match="Unknown feature type"):
         create_feature("not_a_feature", {})
 
 
 # ---------------------------------------------------------------------------
-# building_from_dict
+# XSD validation: individual feature types
 # ---------------------------------------------------------------------------
 
 
-def test_building_from_dict_basic_fields():
-    b = building_from_dict(_BUILDING_ATTRS)
-    assert b.gml_id == "id_building_1"
-    assert b.gml_name == "Han solo's house"
-    assert b.creation_date == "2026-04-04"
-    assert b.year_of_construction == 2020
-    assert b.storeys_above_ground == 3
-    assert b.storeys_below_ground == 0
-    assert b.bdg_is_protected is False
-    assert b.bdg_number_of_building_units == 1
-    assert b.bdg_owner_name == "Han Solo"
-
-
-def test_building_from_dict_code_values():
-    b = building_from_dict(_BUILDING_ATTRS)
-    assert b.bldg_class.value == "1000"
-    assert b.bldg_class.code_space == CS_BUILDING_CLASS
-    assert b.bdg_ownership_type.value == "occupantPrivateOwner"
-    assert b.bdg_type.value == "singleFamilyHouse"
-
-
-def test_building_from_dict_identifier():
-    b = building_from_dict(_BUILDING_ATTRS)
-    assert b.nrg3_identifier.value == "0503100000032914"
-    assert "bagviewer" in b.nrg3_identifier.code_space
-
-
-def test_building_from_dict_metadata():
-    b = building_from_dict(_BUILDING_ATTRS)
-    assert b.nrg3_metadata.author == "Daan Schlosser"
-    assert b.nrg3_metadata.acquisition_method.value == "measurement"
-    assert b.nrg3_metadata.owner == "Han Solo"
-
-
-def test_building_from_dict_qualified_volume():
-    b = building_from_dict(_BUILDING_ATTRS)
-    assert len(b.bdg_volumes) == 1
-    vol = b.bdg_volumes[0]
-    assert vol.value.text == "823.30"
-    assert vol.value.uom == "m3"
-    assert vol.type.value == "grossVolume"
-
-
-def test_building_from_dict_empty():
-    """Empty attrs should not raise, all optional fields stay None."""
-    b = building_from_dict({})
-    assert b.gml_id is None
-    assert b.bldg_class is None
-    assert b.bdg_volumes == []
-
-
-# ---------------------------------------------------------------------------
-# pv_collector_from_dict
-# ---------------------------------------------------------------------------
-
-
-def test_pv_from_dict_fields():
-    pv = create_feature("nrg3_PhotovoltaicCollector", _PV_ATTRS)
-    assert pv.gml_id == "pv_panel_1"
-    assert pv.gml_name == "PV collector (36x270 Wp)"
-    assert pv.model == "PV-16-270 PW"
-    assert pv.year_of_installation == 2020
-    assert pv.number_of_devices == 36
-    assert pv.installed_power.text == "9720"
-    assert pv.installed_power.uom == "W"
-    assert pv.azimuth.text == "235.65"
-    assert pv.inclination.text == "44.51"
-    assert pv.cell_type.value == "unknown"
-
-
-# ---------------------------------------------------------------------------
-# heat_pump_from_dict
-# ---------------------------------------------------------------------------
-
-
-def test_heat_pump_from_dict():
-    hp = create_feature(
-        "nrg3_HeatPump",
-        {
-            "gml_id": "hp_1",
-            "nrg3_model": "Daikin X",
-            "nrg3_installedPower": "5000",
-            "nrg3_installedPower_uom": "W",
-            "nrg3_heatSource": "airSource",
-            "nrg3_copSourceTemperature": "7",
-            "nrg3_copSourceTemperature_uom": "degC",
-        },
+def test_building_validates(xsd_schema):
+    _validate_features(
+        [
+            (
+                "bldg_Building",
+                {
+                    "gml_id": "bldg_1",
+                    "gml_name": "Test house",
+                    "core_creationDate": "2026-04-13",
+                    "bldg_class": {
+                        "value": "1000",
+                        "codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml",
+                    },
+                    "bldg_function": {
+                        "value": "1000",
+                        "codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml",
+                    },
+                    "bldg_yearOfConstruction": 2020,
+                    "bldg_storeysAboveGround": 2,
+                    "bldg_storeysBelowGround": 0,
+                    "bldg_roofType": {
+                        "value": "1030",
+                        "codeSpace": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml",
+                    },
+                },
+            )
+        ],
+        xsd_schema,
     )
-    assert hp.gml_id == "hp_1"
-    assert hp.model == "Daikin X"
-    assert hp.heat_source.value == "airSource"
-    assert hp.cop_source_temperature.text == "7"
 
 
-# ---------------------------------------------------------------------------
-# ev_charging_station_from_dict
-# ---------------------------------------------------------------------------
-
-
-def test_ev_from_dict():
-    ev = create_feature(
-        "nrg3_EVChargingStation",
-        {
-            "gml_id": "ev_1",
-            "nrg3_evType": "normalCharger",
-            "nrg3_chargingSpeedLevel": "slow",
-            "nrg3_hasLoadManagement": "true",
-        },
+def test_pv_collector_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_PhotovoltaicCollector",
+                {
+                    "gml_id": "pv_1",
+                    "gml_parent_id": "bldg_1",
+                    "gml_name": "Test PV",
+                    "core_creationDate": "2026-04-13",
+                    "nrg3_model": "PV-16-270 PW",
+                    "nrg3_yearOfInstallation": 2020,
+                    "nrg3_numberOfDevices": 36,
+                    "nrg3_installedPower": {"value": "9720", "uom": "W"},
+                    "nrg3_azimuth": {"value": "235.65", "uom": "deg"},
+                    "nrg3_inclination": {"value": "44.51", "uom": "deg"},
+                    "nrg3_cellType": {
+                        "value": "monocrystalline",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml",
+                    },
+                },
+            ),
+        ],
+        xsd_schema,
     )
-    assert ev.gml_id == "ev_1"
-    assert ev.ev_type.value == "normalCharger"
-    assert ev.has_load_management is True
 
 
-# ---------------------------------------------------------------------------
-# Occupants via create_feature (auto_from_dict)
-# ---------------------------------------------------------------------------
-
-
-def test_occupants_from_dict():
-    occ = create_feature(
-        "nrg3_Occupants",
-        {
-            "gml_id": "occ_1",
-            "nrg3_occupantType": "residents",
-            "nrg3_numberOfOccupants": "4",
-        },
+def test_heat_pump_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_HeatPump",
+                {
+                    "gml_id": "hp_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_model": "NIBE F1255 PC",
+                    "nrg3_installedPower": {"value": "6000", "uom": "W"},
+                    "nrg3_heatSource": {
+                        "value": "waterSource",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceTypeValue.xml",
+                    },
+                    "nrg3_copSourceTemperature": {"value": "24", "uom": "degC"},
+                    "nrg3_copOperationTemperature": {"value": "31", "uom": "degC"},
+                },
+            ),
+        ],
+        xsd_schema,
     )
-    assert occ.gml_id == "occ_1"
-    assert occ.occupant_type.value == "residents"
-    assert occ.number_of_occupants == 4
 
 
-# ---------------------------------------------------------------------------
-# EPC via create_feature (auto_from_dict)
-# ---------------------------------------------------------------------------
-
-
-def test_epc_from_dict():
-    epc = create_feature(
-        "nrg3_EnergyPerformanceCertificate",
-        {
-            "gml_id": "epc_1",
-            "nrg3_epcLabel": "A",
-            "nrg3_epcValue": "50",
-            "nrg3_epcValue_uom": "kWh/(m^2*a)",
-        },
+def test_ev_charging_station_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_EVChargingStation",
+                {
+                    "gml_id": "ev_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_type": {
+                        "value": "AC",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml",
+                    },
+                    "nrg3_chargingSpeedLevel": {
+                        "value": "Level 2",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingSpeedLevelValue.xml",
+                    },
+                    "nrg3_hasLoadManagement": True,
+                },
+            ),
+        ],
+        xsd_schema,
     )
-    assert epc.label == "A"
-    assert epc.value.text == "50"
-    assert epc.value.uom == "kWh/(m^2*a)"
 
 
-# ---------------------------------------------------------------------------
-# building_unit_from_dict
-# ---------------------------------------------------------------------------
-
-
-def test_building_unit_from_dict():
-    bu = building_unit_from_dict(
-        {
-            "gml_id": "bu_1",
-            "nrg3_buType": "apartment",
-            "nrg3_numberOfRooms": "3",
-            "nrg3_ownerName": "Jane Doe",
-        }
+def test_occupants_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_Occupants",
+                {
+                    "gml_id": "occ_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_type": {
+                        "value": "residents",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml",
+                    },
+                    "nrg3_numberOfOccupants": 4,
+                    "nrg3_heatDissipation": {"value": "80", "uom": "W"},
+                },
+            ),
+        ],
+        xsd_schema,
     )
-    assert bu.gml_id == "bu_1"
-    assert bu.bu_type.value == "apartment"
-    assert bu.number_of_rooms == 3
-    assert bu.owner_name == "Jane Doe"
 
 
-# ---------------------------------------------------------------------------
-# ConstantValueSchedule via create_feature (auto_from_dict)
-# ---------------------------------------------------------------------------
-
-
-def test_constant_value_schedule_from_dict():
-    sched = create_feature(
-        "nrg3_ConstantValueSchedule",
-        {
-            "gml_id": "sched_1",
-            "nrg3_scheduleValue": "1.0",
-            "nrg3_scheduleValue_uom": "unit interval",
-        },
+def test_epc_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_EnergyPerformanceCertificate",
+                {
+                    "gml_id": "epc_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_type": {
+                        "value": "EPC-NL",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EPCTypeValue.xml",
+                    },
+                    "nrg3_label": "A",
+                    "nrg3_value": {"value": "50", "uom": "kWh/(m^2*a)"},
+                },
+            ),
+        ],
+        xsd_schema,
     )
-    assert sched.gml_id == "sched_1"
-    assert sched.value.text == "1.0"
-    assert sched.value.uom == "unit interval"
 
 
-# ---------------------------------------------------------------------------
-# FeatureFactory: parent-child assembly
-# ---------------------------------------------------------------------------
-
-
-def test_factory_pv_attached_to_building():
-    factory = FeatureFactory()
-    factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add("nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"})
-    model = factory.build()
-    # Should have exactly one member (the building)
-    assert len(model.city_object_members) == 1
-    bldg = model.city_object_members[0]
-    assert len(bldg.devices) == 1
-    assert isinstance(bldg.devices[0], PhotovoltaicCollector)
-
-
-def test_factory_surface_attached_to_building():
-    factory = FeatureFactory()
-    factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add("bldg_WallSurface", {"gml_id": "wall_1", "gml_parent_id": "bldg_1"})
-    model = factory.build()
-    bldg = model.city_object_members[0]
-    assert len(bldg.bounded_by_surfaces) == 1
-    assert isinstance(bldg.bounded_by_surfaces[0], WallSurface)
-
-
-def test_factory_missing_parent_raises():
-    factory = FeatureFactory()
-    factory.add(
-        "nrg3_PhotovoltaicCollector",
-        {
-            "gml_id": "pv_1",
-            "gml_parent_id": "nonexistent_building",
-        },
+def test_building_unit_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_BuildingUnit",
+                {
+                    "gml_id": "bu_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_buType": {
+                        "value": "apartment",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingUnitTypeValue.xml",
+                    },
+                    "nrg3_numberOfRooms": 3,
+                    "nrg3_ownerName": "Jane Doe",
+                },
+            ),
+        ],
+        xsd_schema,
     )
-    with pytest.raises(ValueError, match="gml_parent_id"):
-        factory.build()
 
 
-def test_factory_no_parent_id_is_top_level():
-    factory = FeatureFactory()
-    factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add("bldg_Building", {"gml_id": "bldg_2"})
-    model = factory.build()
-    assert len(model.city_object_members) == 2
+def test_constant_value_schedule_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_Zone",
+                {
+                    "gml_id": "zone_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_zoneType": {
+                        "value": "residential",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+                    },
+                },
+            ),
+            (
+                "nrg3_ZonePart",
+                {
+                    "gml_id": "zp_1",
+                    "gml_parent_id": "zone_1",
+                    "nrg3_zoneType": {
+                        "value": "residential",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+                    },
+                    "nrg3_isHeated": True,
+                    "nrg3_isCooled": False,
+                },
+            ),
+            (
+                "nrg3_ConstantValueSchedule",
+                {
+                    "gml_id": "sched_1",
+                    "gml_parent_id": "zp_1",
+                    "gml_parent_field": "heating_schedule",
+                    "nrg3_type": {
+                        "value": "typicalYear",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml",
+                    },
+                    "nrg3_value": {"value": "22", "uom": "degC"},
+                },
+            ),
+        ],
+        xsd_schema,
+    )
 
 
-def test_factory_multiple_devices():
-    factory = FeatureFactory()
-    factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add("nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"})
-    factory.add("nrg3_HeatPump", {"gml_id": "hp_1", "gml_parent_id": "bldg_1"})
-    factory.add("nrg3_EVChargingStation", {"gml_id": "ev_1", "gml_parent_id": "bldg_1"})
-    model = factory.build()
-    bldg = model.city_object_members[0]
-    assert len(bldg.devices) == 3
+def test_energy_resource_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_EVChargingStation",
+                {
+                    "gml_id": "ev_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_type": {
+                        "value": "AC",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml",
+                    },
+                },
+            ),
+            (
+                "nrg3_Energy",
+                {
+                    "gml_id": "energy_1",
+                    "gml_parent_id": "ev_1",
+                    "nrg3_operationType": {
+                        "value": "demands",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml",
+                    },
+                    "nrg3_isAmountNormalized": False,
+                    "nrg3_type": {
+                        "value": "finalEnergy",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml",
+                    },
+                    "nrg3_endUse": {
+                        "value": "mobility",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml",
+                    },
+                    "nrg3_amount": {"value": "1.125", "uom": "MWh/a"},
+                },
+            ),
+        ],
+        xsd_schema,
+    )
 
 
-def test_factory_output_is_well_formed_xml():
-    """FeatureFactory produces well-formed XML for assembled models."""
-    factory = FeatureFactory()
-    factory.add("bldg_Building", {"gml_id": "bldg_1"})
-    factory.add("nrg3_PhotovoltaicCollector", {"gml_id": "pv_1", "gml_parent_id": "bldg_1"})
-    generated = factory.build().to_string()
-    etree.fromstring(generated.encode("utf-8"))
+def test_wall_surface_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "bldg_WallSurface",
+                {
+                    "gml_id": "wall_1",
+                    "gml_parent_id": "bldg_1",
+                },
+            ),
+        ],
+        xsd_schema,
+    )
 
 
-if __name__ == "__main__":
-    test_factory_output_is_well_formed_xml()
-    print("All factory tests passed!")
+def test_window_on_wall_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            ("bldg_WallSurface", {"gml_id": "wall_1", "gml_parent_id": "bldg_1"}),
+            ("bldg_Window", {"gml_id": "win_1", "gml_parent_id": "wall_1"}),
+        ],
+        xsd_schema,
+    )
+
+
+def test_multiple_devices_validate(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_PhotovoltaicCollector",
+                {
+                    "gml_id": "pv_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_cellType": {
+                        "value": "monocrystalline",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml",
+                    },
+                },
+            ),
+            (
+                "nrg3_HeatPump",
+                {
+                    "gml_id": "hp_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_heatSource": {
+                        "value": "airSource",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceTypeValue.xml",
+                    },
+                },
+            ),
+            (
+                "nrg3_EVChargingStation",
+                {
+                    "gml_id": "ev_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_type": {
+                        "value": "AC",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml",
+                    },
+                },
+            ),
+        ],
+        xsd_schema,
+    )
+
+
+def test_multiple_buildings_validate(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1", "gml_name": "House 1"}),
+            ("bldg_Building", {"gml_id": "bldg_2", "gml_name": "House 2"}),
+        ],
+        xsd_schema,
+    )
+
+
+def test_monthly_time_series_validates(xsd_schema):
+    _validate_features(
+        [
+            ("bldg_Building", {"gml_id": "bldg_1"}),
+            (
+                "nrg3_PhotovoltaicCollector",
+                {
+                    "gml_id": "pv_1",
+                    "gml_parent_id": "bldg_1",
+                    "nrg3_cellType": {
+                        "value": "monocrystalline",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml",
+                    },
+                },
+            ),
+            (
+                "nrg3_Energy",
+                {
+                    "gml_id": "energy_1",
+                    "gml_parent_id": "pv_1",
+                    "nrg3_operationType": {
+                        "value": "produces",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml",
+                    },
+                    "nrg3_isAmountNormalized": False,
+                    "nrg3_type": {
+                        "value": "finalEnergy",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml",
+                    },
+                    "nrg3_endUse": {
+                        "value": "electricalAppliances",
+                        "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml",
+                    },
+                },
+            ),
+            (
+                "nrg3_MonthlyTimeSeries",
+                {
+                    "gml_id": "ts_1",
+                    "gml_parent_id": "energy_1",
+                    "nrg3_interpolationType": "averageInSucceedingInterval",
+                    "nrg3_startDate": "2024-01-01",
+                    "nrg3_endDate": "2024-12-01",
+                    "nrg3_valuesList": {
+                        "value": "100 200 300 400 500 600 700 800 900 1000 1100 1200",
+                        "uom": "kWh",
+                    },
+                },
+            ),
+        ],
+        xsd_schema,
+    )

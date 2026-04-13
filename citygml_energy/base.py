@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-from lxml import etree
+import lxml.etree as etree
 
 from .namespaces import NS_GML, NS_XLINK, NSMAP
 from .types import CodeValue, MeasureValue, ScaleValue, XlinkRef
@@ -32,15 +32,9 @@ class BaseBuilder:
     ELEMENT_ORDER: ClassVar[tuple[tuple[str, str], ...]] = ()
     FIELD_MAP: ClassVar[dict[str, tuple[str, str]]] = {}
 
-    # Override the flat attribute key for specific fields when the default
-    # ``{ns_prefix}_{localName}`` convention produces collisions (e.g.
-    # multiple classes that all have ``(NS_NRG3, "type")``).
-    # Maps field_name → flat_key, e.g. ``{"ev_type": "nrg3_evType"}``.
-    FLAT_KEY_OVERRIDES: ClassVar[dict[str, str]] = {}
-
     # Registry / extensibility hooks (optional; set on concrete classes)
     FEATURE_TYPE: ClassVar[str] = ""  # e.g. "nrg3_PhotovoltaicCollector"
-    PARENT_FIELD: ClassVar[str] = ""  # parent list attr, e.g. "devices"
+    PARENT_FIELD: ClassVar[str] = ""  # parent list attr, e.g. "nrg3_devices"
 
     gml_id: str | None = None
 

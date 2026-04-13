@@ -51,29 +51,22 @@
         "gml_id": "id_building_1",
         "gml_name": "Han solo's house",
         "core_creationDate": "2026-04-04",
-        "nrg3_identifier": "0503100000032914",
-        "nrg3_identifier_codeSpace": "https://bagviewer.kadaster.nl/?objectId=0503100000032914",
+        "nrg3_identifier": {"value": "0503100000032914", "codeSpace": "https://bagviewer.kadaster.nl/?objectId=0503100000032914"},
         "nrg3_metadata_author": "Daan Schlosser",
         "nrg3_metadata_acquisitionMethod": "measurement",
         "nrg3_metadata_owner": "Han Solo",
-        "bldg_class": "1000",
-        "bldg_class_codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml",
-        "bldg_function": "1000",
-        "bldg_function_codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml",
-        "bldg_usage": "1000",
-        "bldg_usage_codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml",
+        "bldg_class": {"value": "1000", "codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"},
+        "bldg_function": {"value": "1000", "codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml"},
+        "bldg_usage": {"value": "1000", "codeSpace": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml"},
         "bldg_yearOfConstruction": 2020,
-        "bldg_roofType": "1030",
-        "bldg_roofType_codeSpace": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml",
+        "bldg_roofType": {"value": "1030", "codeSpace": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml"},
         "bldg_storeysAboveGround": 3,
         "bldg_storeysBelowGround": 0,
         "nrg3_bdgIsProtected": false,
         "nrg3_bdgNumberOfBuildingUnits": 1,
         "nrg3_bdgOwnerName": "Han Solo",
-        "nrg3_bdgOwnershipType": "occupantPrivateOwner",
-        "nrg3_bdgOwnershipType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml",
-        "nrg3_bdgType": "singleFamilyHouse",
-        "nrg3_bdgType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingTypeValue.xml",
+        "nrg3_bdgOwnershipType": {"value": "occupantPrivateOwner", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml"},
+        "nrg3_bdgType": {"value": "singleFamilyHouse", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingTypeValue.xml"},
         "nrg3_bdgVolume_description": "Building's gross volume of 3D model",
         "nrg3_bdgVolume_source": "3D model",
         "nrg3_bdgVolume_value": "823.30",
@@ -92,14 +85,27 @@
         "nrg3_model": "PV-16-270 PW",
         "nrg3_yearOfInstallation": 2020,
         "nrg3_numberOfDevices": 36,
-        "nrg3_installedPower": 9720,
-        "nrg3_installedPower_uom": "W",
-        "nrg3_azimuth": "235.65",
-        "nrg3_azimuth_uom": "deg",
-        "nrg3_inclination": "44.51",
-        "nrg3_inclination_uom": "deg",
-        "nrg3_cellType": "unknown",
-        "nrg3_cellType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml"
+        "nrg3_installedPower": {"value": "9720", "uom": "W"},
+        "nrg3_azimuth": {"value": "235.65", "uom": "deg"},
+        "nrg3_inclination": {"value": "44.51", "uom": "deg"},
+        "nrg3_cellType": {"value": "unknown", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml"}
+      }
+    },
+    {
+      "feature_type": "nrg3_HeatPump",
+      "attributes": {
+        "gml_id": "heat_pump_1",
+        "gml_parent_id": "id_building_1",
+        "gml_description": "NIBE F1255 PC water-water heat pump (geothermal), source 24 °C / system 31 °C, water distribution medium",
+        "gml_name": "NIBE F1255 PC",
+        "core_creationDate": "2026-04-13",
+        "nrg3_model": "NIBE F1255 PC",
+        "nrg3_identifier": {"value": "F1255 PC", "codeSpace": "https://www.nibe.eu/nl-nl/producten/warmtepompen/water-water-warmtepompen/f1255-pc"},
+        "nrg3_numberOfDevices": 1,
+        "nrg3_installedPower": {"value": "6000", "uom": "W"},
+        "nrg3_heatSource": {"value": "waterSource", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceTypeValue.xml"},
+        "nrg3_copSourceTemperature": {"value": "24", "uom": "degC"},
+        "nrg3_copOperationTemperature": {"value": "31", "uom": "degC"}
       }
     },
     {
@@ -110,13 +116,10 @@
         "gml_description": "Residents of Han Solo's house",
         "gml_name": "Occupants 1",
         "nrg3_creationDate": "2026-04-04",
-        "nrg3_occupantType": "residents",
-        "nrg3_occupantType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml",
+        "nrg3_type": {"value": "residents", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml"},
         "nrg3_numberOfOccupants": 6,
-        "nrg3_averageDietType": "omnivorous",
-        "nrg3_averageDietType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/DietTypeValue.xml",
-        "nrg3_heatDissipation": "80",
-        "nrg3_heatDissipation_uom": "W",
+        "nrg3_averageDietType": {"value": "omnivorous", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/DietTypeValue.xml"},
+        "nrg3_heatDissipation": {"value": "80", "uom": "W"},
         "nrg3_heatDissipationConvectiveFraction": "0.3",
         "nrg3_heatDissipationLatentFraction": "0.2",
         "nrg3_heatDissipationRadiantFraction": "0.5"
@@ -131,22 +134,16 @@
         "gml_name": "EVHUB Laadpaal Type 2",
         "core_creationDate": "2026-04-04",
         "nrg3_model": "LP-H8T5OIUGL5",
-        "nrg3_identifier": "LP-H8T5OIUGL5",
-        "nrg3_identifier_codeSpace": "https://www.elektramat.nl/evhub-laadpaal-type-2-32a-3-7-22kw-met-laadkabel-8-meter-zwart-lp-h8t5oiugl5/",
+        "nrg3_identifier": {"value": "LP-H8T5OIUGL5", "codeSpace": "https://www.elektramat.nl/evhub-laadpaal-type-2-32a-3-7-22kw-met-laadkabel-8-meter-zwart-lp-h8t5oiugl5/"},
         "nrg3_yearOfInstallation": 2022,
         "nrg3_validFrom": "2022-07-18T00:00:00",
         "nrg3_numberOfDevices": 1,
-        "nrg3_installedPower": 22000,
-        "nrg3_installedPower_uom": "W",
-        "nrg3_evType": "AC",
-        "nrg3_evType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml",
-        "nrg3_chargingSpeedLevel": "Level 2",
-        "nrg3_chargingSpeedLevel_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingSpeedLevelValue.xml",
-        "nrg3_connectorType": "AC - Mennekes (Type2)",
-        "nrg3_connectorType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingConnectorTypeValue.xml",
+        "nrg3_installedPower": {"value": "22000", "uom": "W"},
+        "nrg3_type": {"value": "AC", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml"},
+        "nrg3_chargingSpeedLevel": {"value": "Level 2", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingSpeedLevelValue.xml"},
+        "nrg3_connectorType": {"value": "AC - Mennekes (Type2)", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingConnectorTypeValue.xml"},
         "nrg3_hasLoadManagement": true,
-        "nrg3_access": "private",
-        "nrg3_access_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingAccessTypeValue.xml"
+        "nrg3_access": {"value": "private", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingAccessTypeValue.xml"}
       }
     },
     {
@@ -157,24 +154,16 @@
         "gml_description": "Annual electricity consumption for EV charging (Golf GTE 2015, ~150 charges/year x 7.5 kWh net)",
         "gml_name": "EV charging energy demand",
         "nrg3_creationDate": "2026-04-10",
-        "nrg3_operationType": "demands",
-        "nrg3_operationType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml",
-        "nrg3_referencePeriod": "year",
-        "nrg3_referencePeriod_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ReferencePeriodValue.xml",
-        "nrg3_amount": "1.125",
-        "nrg3_amount_uom": "MWh/a",
+        "nrg3_operationType": {"value": "demands", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
+        "nrg3_referencePeriod": {"value": "year", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ReferencePeriodValue.xml"},
+        "nrg3_amount": {"value": "1.125", "uom": "MWh/a"},
         "nrg3_year": 2025,
         "nrg3_isAmountNormalized": false,
-        "nrg3_energyType": "finalEnergy",
-        "nrg3_energyType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml",
-        "nrg3_endUse": "mobility",
-        "nrg3_endUse_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml",
-        "nrg3_energyCarrier": "electricity",
-        "nrg3_energyCarrier_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml",
-        "nrg3_maximumLoad": "3.6",
-        "nrg3_maximumLoad_uom": "kW",
-        "nrg3_energySource": "powerGrid",
-        "nrg3_energySource_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"
+        "nrg3_type": {"value": "finalEnergy", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
+        "nrg3_endUse": {"value": "mobility", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
+        "nrg3_energyCarrier": {"value": "electricity", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
+        "nrg3_maximumLoad": {"value": "3.6", "uom": "kW"},
+        "nrg3_source": {"value": "powerGrid", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
       }
     },
     {
@@ -185,17 +174,12 @@
         "gml_description": "PV energy production for pv_panel_1",
         "gml_name": "PV Production pv_panel_1",
         "nrg3_creationDate": "2026-04-04",
-        "nrg3_operationType": "produces",
-        "nrg3_operationType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml",
+        "nrg3_operationType": {"value": "produces", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
         "nrg3_isAmountNormalized": false,
-        "nrg3_energyType": "finalEnergy",
-        "nrg3_energyType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml",
-        "nrg3_endUse": "electricalAppliances",
-        "nrg3_endUse_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml",
-        "nrg3_energyCarrier": "electricity",
-        "nrg3_energyCarrier_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml",
-        "nrg3_energySource": "solarEnergy",
-        "nrg3_energySource_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"
+        "nrg3_type": {"value": "finalEnergy", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
+        "nrg3_endUse": {"value": "electricalAppliances", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
+        "nrg3_energyCarrier": {"value": "electricity", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
+        "nrg3_source": {"value": "solarEnergy", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
       }
     },
     {
@@ -205,8 +189,7 @@
         "gml_parent_id": "id_building_1",
         "gml_description": "Residential thermal zone with three storeys",
         "gml_name": "Building zone",
-        "nrg3_zoneType": "residential",
-        "nrg3_zoneType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+        "nrg3_zoneType": {"value": "residential", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
         "nrg3_coincidesWithLod2Hull": false,
         "nrg3_coincidesWithLod3Hull": true
       }
@@ -218,16 +201,31 @@
         "gml_parent_id": "zone_1",
         "gml_description": "Ground floor, heated and cooled year-round at 22 °C",
         "gml_name": "Ground floor",
-        "nrg3_zoneType": "residential",
-        "nrg3_zoneType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+        "nrg3_zoneType": {"value": "residential", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
         "nrg3_isHeated": true,
         "nrg3_isCooled": true,
-        "nrg3_heatingSetpoint": "22",
-        "nrg3_heatingSetpoint_uom": "°C",
-        "nrg3_coolingSetpoint": "24",
-        "nrg3_coolingSetpoint_uom": "°C",
         "nrg3_coincidesWithLod2Hull": false,
         "nrg3_coincidesWithLod3Hull": false
+      }
+    },
+    {
+      "feature_type": "nrg3_ConstantValueSchedule",
+      "attributes": {
+        "gml_id": "zone_part_1_heating_schedule",
+        "gml_parent_id": "zone_part_1",
+        "gml_parent_field": "heating_schedule",
+        "nrg3_type": {"value": "typicalYear", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
+        "nrg3_value": {"value": "22", "uom": "°C"}
+      }
+    },
+    {
+      "feature_type": "nrg3_ConstantValueSchedule",
+      "attributes": {
+        "gml_id": "zone_part_1_cooling_schedule",
+        "gml_parent_id": "zone_part_1",
+        "gml_parent_field": "cooling_schedule",
+        "nrg3_type": {"value": "typicalYear", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
+        "nrg3_value": {"value": "24", "uom": "°C"}
       }
     },
     {
@@ -237,16 +235,31 @@
         "gml_parent_id": "zone_1",
         "gml_description": "First floor, heated to 18 °C when cold outside",
         "gml_name": "First floor",
-        "nrg3_zoneType": "residential",
-        "nrg3_zoneType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+        "nrg3_zoneType": {"value": "residential", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
         "nrg3_isHeated": true,
         "nrg3_isCooled": true,
-        "nrg3_heatingSetpoint": "18",
-        "nrg3_heatingSetpoint_uom": "°C",
-        "nrg3_coolingSetpoint": "24",
-        "nrg3_coolingSetpoint_uom": "°C",
         "nrg3_coincidesWithLod2Hull": false,
         "nrg3_coincidesWithLod3Hull": false
+      }
+    },
+    {
+      "feature_type": "nrg3_ConstantValueSchedule",
+      "attributes": {
+        "gml_id": "zone_part_2_heating_schedule",
+        "gml_parent_id": "zone_part_2",
+        "gml_parent_field": "heating_schedule",
+        "nrg3_type": {"value": "typicalYear", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
+        "nrg3_value": {"value": "18", "uom": "°C"}
+      }
+    },
+    {
+      "feature_type": "nrg3_ConstantValueSchedule",
+      "attributes": {
+        "gml_id": "zone_part_2_cooling_schedule",
+        "gml_parent_id": "zone_part_2",
+        "gml_parent_field": "cooling_schedule",
+        "nrg3_type": {"value": "typicalYear", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
+        "nrg3_value": {"value": "24", "uom": "°C"}
       }
     },
     {
@@ -256,8 +269,7 @@
         "gml_parent_id": "zone_1",
         "gml_description": "Attic / second floor, not heated or cooled",
         "gml_name": "Attic",
-        "nrg3_zoneType": "residential",
-        "nrg3_zoneType_codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
+        "nrg3_zoneType": {"value": "residential", "codeSpace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
         "nrg3_isHeated": false,
         "nrg3_isCooled": false,
         "nrg3_coincidesWithLod2Hull": false,
@@ -274,8 +286,7 @@
         "nrg3_interpolationType": "averageInSucceedingInterval",
         "nrg3_startDate": "2022-01-01",
         "nrg3_endDate": "2025-07-01",
-        "nrg3_valuesList": "374 370 390 904 936 904 513 513 496 514 496 513 277 252 277 887 910 884 731 732 708 149 142 149 229 215 229 679 702 679 686 694 671 213 143 147 311 283 311 901 955 928",
-        "nrg3_valuesList_uom": "kWh"
+        "nrg3_valuesList": {"value": "374 370 390 904 936 904 513 513 496 514 496 513 277 252 277 887 910 884 731 732 708 149 142 149 229 215 229 679 702 679 686 694 671 213 143 147 311 283 311 901 955 928", "uom": "kWh"}
       }
     }
   ]

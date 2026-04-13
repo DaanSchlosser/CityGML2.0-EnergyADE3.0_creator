@@ -6,7 +6,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
-from lxml import etree
+import lxml.etree as etree
 
 from .namespaces import NS_GML, qn
 

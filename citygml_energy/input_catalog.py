@@ -3,6 +3,15 @@
 The repository accepts a curated subset of FME attribute names.
 Each supported field has one canonical input key and can optionally define
 one or more raw FME aliases. Users may provide either form in JSON input.
+
+CodeValue, MeasureValue, and ScaleValue fields accept nested objects::
+
+    "nrg3_identifier": {"value": "abc", "codeSpace": "http://..."}
+    "nrg3_installedPower": {"value": "1000", "uom": "W"}
+
+Plain strings/numbers are also accepted when no sub-properties are needed::
+
+    "nrg3_identifier": "abc"
 """
 
 from __future__ import annotations
@@ -36,6 +45,7 @@ def _qualified_fields(canonical_prefix: str, raw_prefix: str) -> tuple[InputFiel
 _COMMON_FIELDS = (
     _field("gml_id"),
     _field("gml_parent_id"),
+    _field("gml_parent_field"),
     _field("gml_description"),
     _field("gml_name"),
 )
@@ -44,7 +54,6 @@ _CITY_OBJECT_FIELDS = _COMMON_FIELDS + (
     _field("core_creationDate", "citygml_creationDate"),
     _field("core_terminationDate", "citygml_terminationDate"),
     _field("nrg3_identifier", "nrg3_identifier{}"),
-    _field("nrg3_identifier_codeSpace", "nrg3_identifier{}.codeSpace"),
 )
 
 _CITY_OBJECT_METADATA_FIELDS = (
@@ -65,11 +74,9 @@ _NRG_FEATURE_FIELDS = _COMMON_FIELDS + (
     _field("nrg3_creationDate", "nrg3_creation_date"),
     _field("nrg3_terminationDate", "nrg3_termination_date"),
     _field("nrg3_identifier"),
-    _field("nrg3_identifier_codeSpace"),
     _field("nrg3_validFrom", "nrg3_valid_from"),
     _field("nrg3_validTo", "nrg3_valid_to"),
     _field("nrg3_status"),
-    _field("nrg3_status_codeSpace"),
 )
 
 _NRG_FEATURE_METADATA_FIELDS = (
@@ -91,19 +98,13 @@ _BUILDING_FIELDS = (
         _field("nrg3_validFrom", "nrg3_valid_from{}"),
         _field("nrg3_validTo", "nrg3_valid_to{}"),
         _field("nrg3_status", "nrg3_status{}"),
-        _field("nrg3_status_codeSpace", "nrg3_status{}.codeSpace"),
         _field("bldg_class", "citygml_class"),
-        _field("bldg_class_codeSpace", "citygml_class_codeSpace"),
         _field("bldg_function", "citygml_function{}"),
-        _field("bldg_function_codeSpace", "citygml_function{}.codeSpace"),
         _field("bldg_usage", "citygml_usage{}"),
-        _field("bldg_usage_codeSpace", "citygml_usage{}.codeSpace"),
         _field("bldg_yearOfConstruction", "citygml_year_of_construction"),
         _field("bldg_yearOfDemolition", "citygml_year_of_demolition"),
         _field("bldg_roofType", "citygml_roof_type"),
-        _field("bldg_roofType_codeSpace", "citygml_roof_type_codeSpace"),
         _field("bldg_measuredHeight", "citygml_measured_height"),
-        _field("bldg_measuredHeight_uom", "citygml_measured_height_units"),
         _field("bldg_storeysAboveGround", "citygml_storeys_above_ground"),
         _field("bldg_storeysBelowGround", "citygml_storeys_below_ground"),
         _field("bldg_storeyHeightsAboveGround", "citygml_storey_heights_above_ground"),
@@ -115,22 +116,13 @@ _BUILDING_FIELDS = (
         ),
         _field("nrg3_bdgOwnerName", "nrg3_bdg_owner_name{}"),
         _field("nrg3_bdgOwnershipType", "nrg3_bdg_ownership_type{}"),
-        _field(
-            "nrg3_bdgOwnershipType_codeSpace",
-            "nrg3_bdg_ownership_type{}.codeSpace",
-        ),
         _field("nrg3_bdgType", "nrg3_bdg_type{}"),
-        _field("nrg3_bdgType_codeSpace", "nrg3_bdg_type{}.codeSpace"),
         _field("nrg3_bdgAtticThermalStatus", "nrg3_bdg_attic_thermal_status{}"),
         _field(
             "nrg3_bdgBasementThermalStatus",
             "nrg3_bdg_basement_thermal_status{}",
         ),
         _field("nrg3_bdgConstructionWeight", "nrg3_bdg_construction_weight{}"),
-        _field(
-            "nrg3_bdgConstructionWeight_codeSpace",
-            "nrg3_bdg_construction_weight{}.codeSpace",
-        ),
     )
     + _qualified_fields(
         "nrg3_bdgArea",
@@ -154,12 +146,9 @@ _DEVICE_FIELDS = (
     _field("nrg3_yearOfManufacture", "nrg3_year_of_manufacture"),
     _field("nrg3_numberOfDevices", "nrg3_number_of_devices"),
     _field("nrg3_installedPower", "nrg3_installed_power"),
-    _field("nrg3_installedPower_uom", "nrg3_installed_power_units"),
     _field("nrg3_nominalEfficiency", "nrg3_nominal_efficiency"),
-    _field("nrg3_nominalEfficiency_uom", "nrg3_nominal_efficiency_units"),
     _field("nrg3_efficiencyIndicator", "nrg3_efficiency_indicator"),
     _field("nrg3_heatDissipation", "nrg3_heat_dissipation"),
-    _field("nrg3_heatDissipation_uom", "nrg3_heat_dissipation_units"),
     _field(
         "nrg3_heatDissipationConvectiveFraction",
         "nrg3_heat_dissipation_convective_fraction",
@@ -176,13 +165,9 @@ _DEVICE_FIELDS = (
 
 _SOLAR_FIELDS = (
     _field("nrg3_moduleArea", "nrg3_module_area"),
-    _field("nrg3_moduleArea_uom", "nrg3_module_area_units"),
     _field("nrg3_apertureArea", "nrg3_aperture_area"),
-    _field("nrg3_apertureArea_uom", "nrg3_aperture_area_units"),
     _field("nrg3_azimuth", "nrg3_azimuth"),
-    _field("nrg3_azimuth_uom", "nrg3_azimuth_units"),
     _field("nrg3_inclination", "nrg3_inclination"),
-    _field("nrg3_inclination_uom", "nrg3_inclination_units"),
 )
 
 _SURFACE_FIELDS = (
@@ -190,15 +175,7 @@ _SURFACE_FIELDS = (
         "nrg3_bdgBdrySurfAdditionalThermalBridgeUValue",
         "nrg3_bdg_bdry_surf_additional_thermal_bridge_uvalue{}",
     ),
-    _field(
-        "nrg3_bdgBdrySurfAdditionalThermalBridgeUValue_uom",
-        "nrg3_bdg_bdry_surf_additional_thermal_bridge_uvalue{}.units",
-    ),
     _field("nrg3_bdgBdrySurfAzimuth", "nrg3_bdg_bdry_surf_azimuth{}"),
-    _field(
-        "nrg3_bdgBdrySurfAzimuth_uom",
-        "nrg3_bdg_bdry_surf_azimuth{}.units",
-    ),
     _field(
         "nrg3_bdgBdrySurfGroundViewFactor",
         "nrg3_bdg_bdry_surf_ground_view_factor{}",
@@ -208,25 +185,13 @@ _SURFACE_FIELDS = (
         "nrg3_bdg_bdry_surf_heat_capacity{}",
     ),
     _field(
-        "nrg3_bdgBdrySurfHeatCapacity_uom",
-        "nrg3_bdg_bdry_surf_heat_capacity{}.units",
-    ),
-    _field(
         "nrg3_bdgBdrySurfInclination",
         "nrg3_bdg_bdry_surf_inclination{}",
-    ),
-    _field(
-        "nrg3_bdgBdrySurfInclination_uom",
-        "nrg3_bdg_bdry_surf_inclination{}.units",
     ),
     _field("nrg3_bdgBdrySurfIsShared", "nrg3_bdg_bdry_surf_is_shared{}"),
     _field(
         "nrg3_bdgBdrySurfOpaqueSurfaceArea",
         "nrg3_bdg_bdry_surf_opaque_surface_area{}",
-    ),
-    _field(
-        "nrg3_bdgBdrySurfOpaqueSurfaceArea_uom",
-        "nrg3_bdg_bdry_surf_opaque_surface_area{}.units",
     ),
     _field(
         "nrg3_bdgBdrySurfSkyViewFactor",
@@ -237,55 +202,36 @@ _SURFACE_FIELDS = (
         "nrg3_bdg_bdry_surf_thickness{}",
     ),
     _field(
-        "nrg3_bdgBdrySurfThickness_uom",
-        "nrg3_bdg_bdry_surf_thickness{}.units",
-    ),
-    _field(
         "nrg3_bdgBdrySurfTotalSurfaceArea",
         "nrg3_bdg_bdry_surf_total_surface_area{}",
-    ),
-    _field(
-        "nrg3_bdgBdrySurfTotalSurfaceArea_uom",
-        "nrg3_bdg_bdry_surf_total_surface_area{}.units",
     ),
 )
 
 _OPENING_FIELDS = (
     _field("nrg3_bdgOpnArea", "nrg3_bdg_opn_area{}"),
-    _field("nrg3_bdgOpnArea_uom", "nrg3_bdg_opn_area{}.units"),
     _field("nrg3_bdgOpnAzimuth", "nrg3_bdg_opn_azimuth{}"),
-    _field("nrg3_bdgOpnAzimuth_uom", "nrg3_bdg_opn_azimuth{}.units"),
     _field(
         "nrg3_bdgOpnGroundViewFactor",
         "nrg3_bdg_opn_ground_view_factor{}",
     ),
     _field("nrg3_bdgOpnInclination", "nrg3_bdg_opn_inclination{}"),
-    _field(
-        "nrg3_bdgOpnInclination_uom",
-        "nrg3_bdg_opn_inclination{}.units",
-    ),
     _field("nrg3_bdgOpnSkyViewFactor", "nrg3_bdg_opn_sky_view_factor{}"),
 )
 
 _ROOM_AND_INSTALLATION_FIELDS = (
     _field("bldg_class", "citygml_class"),
-    _field("bldg_class_codeSpace", "citygml_class_codeSpace"),
     _field("bldg_function", "citygml_function{}"),
-    _field("bldg_function_codeSpace", "citygml_function{}.codeSpace"),
     _field("bldg_usage", "citygml_usage{}"),
-    _field("bldg_usage_codeSpace", "citygml_usage{}.codeSpace"),
 )
 
 _BUILDING_UNIT_FIELDS = (
     (
         _field("nrg3_buType", "nrg3_type"),
-        _field("nrg3_buType_codeSpace", "nrg3_type_codeSpace"),
         _field("nrg3_floorNumberFrom", "nrg3_floor_number_from"),
         _field("nrg3_floorNumberTo", "nrg3_floor_number_to"),
         _field("nrg3_numberOfRooms", "nrg3_number_of_rooms"),
         _field("nrg3_ownerName", "nrg3_owner_name"),
         _field("nrg3_ownershipType", "nrg3_ownership_type"),
-        _field("nrg3_ownershipType_codeSpace", "nrg3_ownership_type_codeSpace"),
     )
     + _qualified_fields(
         "nrg3_area",
@@ -298,29 +244,12 @@ _BUILDING_UNIT_FIELDS = (
 )
 
 _OCCUPANTS_FIELDS = (
-    _field("nrg3_occupantType", "nrg3_type"),
-    _field("nrg3_occupantType_codeSpace", "nrg3_type_codeSpace"),
+    _field("nrg3_type"),
     _field("nrg3_numberOfOccupants", "nrg3_number_of_occupants"),
     _field("nrg3_averageDietType", "nrg3_average_diet_type"),
-    _field(
-        "nrg3_averageDietType_codeSpace",
-        "nrg3_average_diet_type_codeSpace",
-    ),
     _field("nrg3_averageIncomeLevel", "nrg3_average_income_level"),
-    _field(
-        "nrg3_averageIncomeLevel_codeSpace",
-        "nrg3_average_income_level_codeSpace",
-    ),
-    _field(
-        "nrg3_averageInstructionLevel",
-        "nrg3_average_instruction_level",
-    ),
-    _field(
-        "nrg3_averageInstructionLevel_codeSpace",
-        "nrg3_average_instruction_level_codeSpace",
-    ),
+    _field("nrg3_averageInstructionLevel", "nrg3_average_instruction_level"),
     _field("nrg3_heatDissipation", "nrg3_heat_dissipation"),
-    _field("nrg3_heatDissipation_uom", "nrg3_heat_dissipation_units"),
     _field(
         "nrg3_heatDissipationConvectiveFraction",
         "nrg3_heat_dissipation_convective_fraction",
@@ -336,17 +265,14 @@ _OCCUPANTS_FIELDS = (
 )
 
 _EPC_FIELDS = (
-    _field("nrg3_epcType", "nrg3_type"),
-    _field("nrg3_epcType_codeSpace", "nrg3_type_codeSpace"),
-    _field("nrg3_epcLabel", "nrg3_label"),
-    _field("nrg3_epcValue", "nrg3_value"),
-    _field("nrg3_epcValue_uom", "nrg3_value_units"),
-    _field("nrg3_epcCertificationMethod", "nrg3_certification_method"),
+    _field("nrg3_type"),
+    _field("nrg3_label"),
+    _field("nrg3_value"),
+    _field("nrg3_certificationMethod", "nrg3_certification_method"),
 )
 
 _SCHEDULE_BASE_FIELDS = (
-    _field("nrg3_scheduleType", "nrg3_type"),
-    _field("nrg3_scheduleType_codeSpace", "nrg3_type_codeSpace"),
+    _field("nrg3_type"),
     _field("nrg3_startTime", "nrg3_start_time"),
     _field("nrg3_startDay", "nrg3_start_day"),
     _field("nrg3_startMonth", "nrg3_start_month"),
@@ -354,64 +280,52 @@ _SCHEDULE_BASE_FIELDS = (
 )
 
 _CONSTANT_SCHEDULE_FIELDS = _SCHEDULE_BASE_FIELDS + (
-    _field("nrg3_scheduleValue", "nrg3_value"),
-    _field("nrg3_scheduleValue_uom", "nrg3_value_units"),
+    _field("nrg3_value"),
 )
 
 _ABSTRACT_RESOURCE_FIELDS = (
     _field("nrg3_operationType", "nrg3_operation_type"),
-    _field("nrg3_operationType_codeSpace", "nrg3_operation_type_codeSpace"),
     _field("nrg3_referencePeriod", "nrg3_reference_period"),
-    _field("nrg3_referencePeriod_codeSpace", "nrg3_reference_period_codeSpace"),
     _field("nrg3_amount"),
-    _field("nrg3_amount_uom", "nrg3_amount_units"),
     _field("nrg3_year"),
     _field("nrg3_isAmountNormalized", "nrg3_is_amount_normalized"),
     _field("nrg3_normalizationValue", "nrg3_normalization_value"),
-    _field("nrg3_normalizationValue_uom", "nrg3_normalization_value_units"),
     _field("nrg3_normalizationParameter", "nrg3_normalization_parameter"),
     _field("nrg3_expense"),
-    _field("nrg3_expense_uom", "nrg3_expense_units"),
     _field("nrg3_revenue"),
-    _field("nrg3_revenue_uom", "nrg3_revenue_units"),
     _field("nrg3_co2Equivalent", "nrg3_co2_equivalent"),
-    _field("nrg3_co2Equivalent_uom", "nrg3_co2_equivalent_units"),
 )
 
 _ENERGY_FIELDS = (
-    _field("nrg3_energyType", "nrg3_type"),
-    _field("nrg3_energyType_codeSpace", "nrg3_type_codeSpace"),
+    _field("nrg3_type"),
     _field("nrg3_endUse", "nrg3_end_use"),
-    _field("nrg3_endUse_codeSpace", "nrg3_end_use_codeSpace"),
     _field("nrg3_energyCarrier", "nrg3_energy_carrier"),
-    _field("nrg3_energyCarrier_codeSpace", "nrg3_energy_carrier_codeSpace"),
     _field("nrg3_maximumLoad", "nrg3_maximum_load"),
-    _field("nrg3_maximumLoad_uom", "nrg3_maximum_load_units"),
     _field("nrg3_maximumLoadTime", "nrg3_maximum_load_time"),
     _field("nrg3_maximumLoadDay", "nrg3_maximum_load_day"),
     _field("nrg3_maximumLoadMonth", "nrg3_maximum_load_month"),
-    _field("nrg3_energySource", "nrg3_source"),
-    _field("nrg3_energySource_codeSpace", "nrg3_source_codeSpace"),
+    _field("nrg3_source"),
 )
 
 _COMPOSITE_SCHEDULE_FIELDS = _SCHEDULE_BASE_FIELDS
 
 _ZONE_FIELDS = (
     _field("nrg3_zoneType", "nrg3_type"),
-    _field("nrg3_zoneType_codeSpace", "nrg3_type_codeSpace"),
     _field("nrg3_isCooled", "nrg3_is_cooled"),
     _field("nrg3_isHeated", "nrg3_is_heated"),
     _field("nrg3_isMechanicallyVentilated", "nrg3_is_mechanically_ventilated"),
     _field("nrg3_infiltrationRate", "nrg3_infiltration_rate"),
-    _field("nrg3_infiltrationRate_uom", "nrg3_infiltration_rate_units"),
     _field("nrg3_coincidesWithLod2Hull", "nrg3_coincides_with_lod2_hull"),
     _field("nrg3_coincidesWithLod3Hull", "nrg3_coincides_with_lod3_hull"),
-    _field("nrg3_heatingSetpoint", "nrg3_heating_setpoint"),
-    _field("nrg3_heatingSetpoint_uom", "nrg3_heating_setpoint_units"),
-    _field("nrg3_coolingSetpoint", "nrg3_cooling_setpoint"),
-    _field("nrg3_coolingSetpoint_uom", "nrg3_cooling_setpoint_units"),
     *_qualified_fields("nrg3_volume", "nrg3_volume"),
     *_qualified_fields("nrg3_area", "nrg3_area"),
+)
+
+_MONTHLY_TIME_SERIES_FIELDS = (
+    _field("nrg3_interpolationType", "nrg3_interpolation_type"),
+    _field("nrg3_startDate", "nrg3_start_date"),
+    _field("nrg3_endDate", "nrg3_end_date"),
+    _field("nrg3_valuesList", "nrg3_values_list"),
 )
 
 FEATURE_INPUT_FIELDS: dict[str, tuple[InputField, ...]] = {
@@ -437,46 +351,29 @@ FEATURE_INPUT_FIELDS: dict[str, tuple[InputField, ...]] = {
     + _CITY_OBJECT_METADATA_FIELDS
     + _ROOM_AND_INSTALLATION_FIELDS,
     "nrg3_PhotovoltaicCollector": _CITY_OBJECT_FIELDS
+    + _CITY_OBJECT_METADATA_FIELDS
     + _DEVICE_FIELDS
     + _SOLAR_FIELDS
     + (
         _field("nrg3_cellType", "nrg3_cell_type"),
-        _field("nrg3_cellType_codeSpace", "nrg3_cell_type_codeSpace"),
     ),
     "nrg3_HeatPump": _CITY_OBJECT_FIELDS
+    + _CITY_OBJECT_METADATA_FIELDS
     + _DEVICE_FIELDS
     + (
         _field("nrg3_heatSource", "nrg3_heat_source"),
-        _field("nrg3_heatSource_codeSpace", "nrg3_heat_source_codeSpace"),
         _field("nrg3_copSourceTemperature", "nrg3_cop_source_temperature"),
-        _field(
-            "nrg3_copSourceTemperature_uom",
-            "nrg3_cop_source_temperature_units",
-        ),
-        _field(
-            "nrg3_copOperationTemperature",
-            "nrg3_cop_operation_temperature",
-        ),
-        _field(
-            "nrg3_copOperationTemperature_uom",
-            "nrg3_cop_operation_temperature_units",
-        ),
+        _field("nrg3_copOperationTemperature", "nrg3_cop_operation_temperature"),
     ),
     "nrg3_EVChargingStation": _CITY_OBJECT_FIELDS
+    + _CITY_OBJECT_METADATA_FIELDS
     + _DEVICE_FIELDS
     + (
-        _field("nrg3_evType", "nrg3_type"),
-        _field("nrg3_evType_codeSpace", "nrg3_type_codeSpace"),
+        _field("nrg3_type"),
         _field("nrg3_chargingSpeedLevel", "nrg3_charging_speed_level"),
-        _field(
-            "nrg3_chargingSpeedLevel_codeSpace",
-            "nrg3_charging_speed_level_codeSpace",
-        ),
         _field("nrg3_connectorType", "nrg3_connector_type"),
-        _field("nrg3_connectorType_codeSpace", "nrg3_connector_type_codeSpace"),
         _field("nrg3_hasLoadManagement", "nrg3_has_load_management"),
-        _field("nrg3_access", "nrg3_access"),
-        _field("nrg3_access_codeSpace", "nrg3_access_codeSpace"),
+        _field("nrg3_access"),
     ),
     "nrg3_Occupants": _NRG_FEATURE_FIELDS + _NRG_FEATURE_METADATA_FIELDS + _OCCUPANTS_FIELDS,
     "nrg3_EnergyPerformanceCertificate": _NRG_FEATURE_FIELDS
@@ -488,13 +385,7 @@ FEATURE_INPUT_FIELDS: dict[str, tuple[InputField, ...]] = {
     + _ENERGY_FIELDS,
     "nrg3_MonthlyTimeSeries": _NRG_FEATURE_FIELDS
     + _NRG_FEATURE_METADATA_FIELDS
-    + (
-        _field("nrg3_interpolationType", "nrg3_interpolation_type"),
-        _field("nrg3_startDate", "nrg3_start_date"),
-        _field("nrg3_endDate", "nrg3_end_date"),
-        _field("nrg3_valuesList", "nrg3_values_list"),
-        _field("nrg3_valuesList_uom", "nrg3_values_list_units"),
-    ),
+    + _MONTHLY_TIME_SERIES_FIELDS,
     "nrg3_BuildingUnit": _CITY_OBJECT_FIELDS + _CITY_OBJECT_METADATA_FIELDS + _BUILDING_UNIT_FIELDS,
     "nrg3_ConstantValueSchedule": _NRG_FEATURE_FIELDS
     + _NRG_FEATURE_METADATA_FIELDS
@@ -512,6 +403,23 @@ FEATURE_INPUT_FIELDS: dict[str, tuple[InputField, ...]] = {
         _field("xal_thoroughfareNumber"),
         _field("xal_postalCode"),
     ),
+}
+
+
+# XSD-required fields per feature type (minOccurs=1 or unspecified → required).
+# gml_id is always required and validated separately.
+FEATURE_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "nrg3_Zone": ("nrg3_zoneType",),
+    "nrg3_ZonePart": ("nrg3_zoneType",),
+    "nrg3_BuildingUnit": ("nrg3_buType",),
+    "nrg3_ConstantValueSchedule": ("nrg3_type", "nrg3_value"),
+    "nrg3_CompositeSchedule": ("nrg3_type",),
+    "nrg3_PhotovoltaicCollector": ("nrg3_cellType",),
+    "nrg3_HeatPump": ("nrg3_heatSource",),
+    "nrg3_EVChargingStation": ("nrg3_type",),
+    "nrg3_Occupants": ("nrg3_type",),
+    "nrg3_EnergyPerformanceCertificate": ("nrg3_type", "nrg3_label"),
+    "nrg3_Energy": ("nrg3_operationType", "nrg3_isAmountNormalized", "nrg3_type", "nrg3_endUse"),
 }
 
 

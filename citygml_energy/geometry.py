@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from lxml import etree
+import lxml.etree as etree
 
 from .building import (
     Building,
@@ -26,9 +26,8 @@ from .building import (
 )
 from .core import CityModel, Envelope
 from .energy_ade import CityObjectRelation, PhotovoltaicCollector
-from .types import XlinkRef
 from .namespaces import CS_NRG3_RELATION_TYPE, NS_GML, qn
-from .types import CodeValue
+from .types import CodeValue, XlinkRef
 from .xml_support import RawXmlElement
 
 _STEP_GEOMETRY_SOURCE_TYPE_RE = re.compile(r"^step-renodat-lod([0-4])$")
@@ -63,7 +62,7 @@ _OPENING_NAME_PREFIXES = {
 }
 
 _NESTED_CHILD_LISTS = (
-    "devices",
+    "nrg3_devices",
     "bounded_by_surfaces",
     "openings",
     "building_parts",
@@ -443,10 +442,7 @@ def _offset_polygon(
     ox, oy, oz = origin
     return _GeometryPolygon(
         exterior=[(x + ox, y + oy, z + oz) for x, y, z in polygon.exterior],
-        interiors=[
-            [(x + ox, y + oy, z + oz) for x, y, z in ring]
-            for ring in polygon.interiors
-        ],
+        interiors=[[(x + ox, y + oy, z + oz) for x, y, z in ring] for ring in polygon.interiors],
     )
 
 
@@ -456,7 +452,9 @@ def _offset_coords(coords: list[Coord3D], origin: Coord3D) -> list[Coord3D]:
     return [(x + ox, y + oy, z + oz) for x, y, z in coords]
 
 
-def _parse_step_file(path: Path, *, origin: Coord3D = (0.0, 0.0, 0.0)) -> list[_ParsedGeometryFeature]:
+def _parse_step_file(
+    path: Path, *, origin: Coord3D = (0.0, 0.0, 0.0)
+) -> list[_ParsedGeometryFeature]:
     entities = _parse_step_entities(path)
     features: list[_ParsedGeometryFeature] = []
 

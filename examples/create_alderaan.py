@@ -17,7 +17,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from lxml import etree
+import lxml.etree as etree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

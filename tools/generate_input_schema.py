@@ -105,12 +105,17 @@ def _build_attributes_schema(fields) -> dict:
             "type": "string",
             "minLength": 1,
         },
+        "gml_parent_field": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Override the target field name on the parent when attaching this child.",
+        },
     }
 
     for field in fields:
-        properties.setdefault(field.canonical, _scalar_property_schema())
+        properties.setdefault(field.canonical, _scalar_or_nested_property_schema())
         for alias in field.aliases:
-            properties.setdefault(alias, _scalar_property_schema())
+            properties.setdefault(alias, _scalar_or_nested_property_schema())
 
     return {
         "type": "object",
@@ -120,8 +125,24 @@ def _build_attributes_schema(fields) -> dict:
     }
 
 
-def _scalar_property_schema() -> dict:
-    return {"type": ["string", "number", "boolean", "null"]}
+def _scalar_or_nested_property_schema() -> dict:
+    """Allow scalar values or nested objects for CodeValue/MeasureValue/ScaleValue."""
+    return {
+        "oneOf": [
+            {"type": ["string", "number", "boolean", "null"]},
+            {
+                "type": "object",
+                "description": "Nested CodeValue/MeasureValue/ScaleValue object.",
+                "required": ["value"],
+                "additionalProperties": False,
+                "properties": {
+                    "value": {"type": ["string", "number", "null"]},
+                    "uom": {"type": "string"},
+                    "codeSpace": {"type": "string"},
+                },
+            },
+        ],
+    }
 
 
 def _build_geometry_source_schema() -> dict:

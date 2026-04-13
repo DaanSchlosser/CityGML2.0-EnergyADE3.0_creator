@@ -14,7 +14,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from lxml import etree
+import lxml.etree as etree
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
