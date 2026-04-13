@@ -28,6 +28,15 @@
         }
       }
     },
+    "coordinate_origin": {
+      "type": "array",
+      "description": "Optional XYZ offset added to all imported STEP coordinates.",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    },
     "features": {
       "type": "array",
       "items": {

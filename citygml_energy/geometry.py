@@ -105,8 +105,17 @@ class _StepEntity:
     args: list[str]
 
 
-def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str, Any]]) -> None:
-    """Apply all configured geometry sources to *model* in place."""
+def apply_geometry_sources(
+    model: CityModel,
+    geometry_sources: Iterable[dict[str, Any]],
+    *,
+    origin: Coord3D = (0.0, 0.0, 0.0),
+) -> None:
+    """Apply all configured geometry sources to *model* in place.
+
+    When *origin* is given, all local STEP coordinates are translated by
+    adding the origin offset so the output uses real-world coordinates.
+    """
     all_coordinates: list[Coord3D] = []
 
     # Shared ID counters across geometry sources so that surfaces created
@@ -129,6 +138,7 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
                 target_pv_id=target_pv_id,
                 lod_level=lod_level,
                 type_counters=type_counters,
+                origin=origin,
             )
             all_coordinates.extend(coords)
             continue
@@ -141,6 +151,7 @@ def apply_geometry_sources(model: CityModel, geometry_sources: Iterable[dict[str
                 step_path=Path(str(source["path"])),
                 target_zone_part_id=str(source["target_zone_part_id"]),
                 lod_level=lod_level,
+                origin=origin,
             )
             all_coordinates.extend(coords)
             continue
@@ -159,6 +170,7 @@ def apply_step_geometry(
     target_pv_id: str | None,
     lod_level: int = 3,
     type_counters: dict[tuple[str, str], int] | None = None,
+    origin: Coord3D = (0.0, 0.0, 0.0),
 ) -> list[Coord3D]:
     """Attach STEP-derived geometry to an existing building.
 
@@ -174,9 +186,10 @@ def apply_step_geometry(
             step_path=step_path,
             target_building_id=target_building_id,
             lod_level=lod_level,
+            origin=origin,
         )
 
-    parsed_features = _parse_step_file(step_path)
+    parsed_features = _parse_step_file(step_path, origin=origin)
     return _attach_geometry_features(
         model,
         parsed_features,
@@ -194,6 +207,7 @@ def apply_step_zonepart_geometry(
     step_path: Path,
     target_zone_part_id: str,
     lod_level: int = 0,
+    origin: Coord3D = (0.0, 0.0, 0.0),
 ) -> list[Coord3D]:
     """Attach STEP-derived volume geometry to a Zone or ZonePart.
 
@@ -204,7 +218,7 @@ def apply_step_zonepart_geometry(
 
     Returns all coordinates encountered for bounding-box computation.
     """
-    all_polygons, all_coordinates = _collect_all_step_polygons(step_path)
+    all_polygons, all_coordinates = _collect_all_step_polygons(step_path, origin=origin)
 
     if not all_polygons:
         raise ValueError(f"STEP geometry {step_path} contains no polygon geometry")
@@ -228,13 +242,14 @@ def _apply_aggregate_building_geometry(
     step_path: Path,
     target_building_id: str,
     lod_level: int,
+    origin: Coord3D = (0.0, 0.0, 0.0),
 ) -> list[Coord3D]:
     """Attach aggregate LOD0/LOD1 geometry directly to a Building.
 
     * **LOD 0** → ``lod0FootPrint`` as ``gml:MultiSurface``
     * **LOD 1** → ``lod1Solid`` as ``gml:Solid``
     """
-    all_polygons, all_coordinates = _collect_all_step_polygons(step_path)
+    all_polygons, all_coordinates = _collect_all_step_polygons(step_path, origin=origin)
 
     if not all_polygons:
         raise ValueError(f"STEP geometry {step_path} contains no polygon geometry")
@@ -420,7 +435,28 @@ def _attach_geometry_features(
     return all_coordinates
 
 
-def _parse_step_file(path: Path) -> list[_ParsedGeometryFeature]:
+def _offset_polygon(
+    polygon: _GeometryPolygon,
+    origin: Coord3D,
+) -> _GeometryPolygon:
+    """Translate all coordinates in a polygon by *origin*."""
+    ox, oy, oz = origin
+    return _GeometryPolygon(
+        exterior=[(x + ox, y + oy, z + oz) for x, y, z in polygon.exterior],
+        interiors=[
+            [(x + ox, y + oy, z + oz) for x, y, z in ring]
+            for ring in polygon.interiors
+        ],
+    )
+
+
+def _offset_coords(coords: list[Coord3D], origin: Coord3D) -> list[Coord3D]:
+    """Translate a list of coordinates by *origin*."""
+    ox, oy, oz = origin
+    return [(x + ox, y + oy, z + oz) for x, y, z in coords]
+
+
+def _parse_step_file(path: Path, *, origin: Coord3D = (0.0, 0.0, 0.0)) -> list[_ParsedGeometryFeature]:
     entities = _parse_step_entities(path)
     features: list[_ParsedGeometryFeature] = []
 
@@ -444,6 +480,9 @@ def _parse_step_file(path: Path) -> list[_ParsedGeometryFeature]:
                 _parse_step_face(path, entities, face_ref)
                 for face_ref in _parse_step_ref_list(shell_entity.args[1])
             )
+
+        if origin != (0.0, 0.0, 0.0):
+            polygons = [_offset_polygon(p, origin) for p in polygons]
 
         features.append(
             _build_step_geometry_feature(
@@ -907,6 +946,8 @@ def _open_ring(ring: list[Coord3D]) -> list[Coord3D]:
 
 def _collect_all_step_polygons(
     step_path: Path,
+    *,
+    origin: Coord3D = (0.0, 0.0, 0.0),
 ) -> tuple[list[_GeometryPolygon], list[Coord3D]]:
     """Collect all polygons from a STEP file regardless of shell naming.
 
@@ -918,6 +959,7 @@ def _collect_all_step_polygons(
     entities = _parse_step_entities(step_path)
     all_polygons: list[_GeometryPolygon] = []
     all_coordinates: list[Coord3D] = []
+    needs_offset = origin != (0.0, 0.0, 0.0)
 
     for entity_id in sorted(entities):
         entity = entities[entity_id]
@@ -933,6 +975,8 @@ def _collect_all_step_polygons(
                 )
                 for face_ref in _parse_step_ref_list(shell_entity.args[1]):
                     polygon = _parse_step_face(step_path, entities, face_ref)
+                    if needs_offset:
+                        polygon = _offset_polygon(polygon, origin)
                     all_polygons.append(polygon)
                     all_coordinates.extend(polygon.exterior)
                     for interior in polygon.interiors:
@@ -949,6 +993,8 @@ def _collect_all_step_polygons(
             )
             for face_ref in _parse_step_ref_list(shell_entity.args[1]):
                 polygon = _parse_step_face(step_path, entities, face_ref)
+                if needs_offset:
+                    polygon = _offset_polygon(polygon, origin)
                 all_polygons.append(polygon)
                 all_coordinates.extend(polygon.exterior)
                 for interior in polygon.interiors:
