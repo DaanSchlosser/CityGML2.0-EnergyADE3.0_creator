@@ -1603,10 +1603,10 @@
 		</bldg:Building>
 	</core:cityObjectMember>
 	<app:appearanceMember>
-		<app:Appearance gml:id="id_appearance_0b52cc5e-92df-49e8-b1e3-ab39e65957b4">
+		<app:Appearance gml:id="id_appearance_3232ec7d-93bd-4363-8fd2-a70c92e83e2e">
 			<app:theme>Solar Device Appearance</app:theme>
 			<app:surfaceDataMember>
-				<app:X3DMaterial gml:id="X3DMaterial_0b52cc5e-92df-49e8-b1e3-ab39e65957b4_back">
+				<app:X3DMaterial gml:id="X3DMaterial_3232ec7d-93bd-4363-8fd2-a70c92e83e2e_back">
 					<gml:description>This is Colour Black (BACK) for Solar Devices LoD2-3</gml:description>
 					<gml:name>Colour Black (BACK) Solar Devices LoD2-3</gml:name>
 					<app:isFront>false</app:isFront>
@@ -1616,7 +1616,7 @@
 				</app:X3DMaterial>
 			</app:surfaceDataMember>
 			<app:surfaceDataMember>
-				<app:X3DMaterial gml:id="X3DMaterial_0b52cc5e-92df-49e8-b1e3-ab39e65957b4_front">
+				<app:X3DMaterial gml:id="X3DMaterial_3232ec7d-93bd-4363-8fd2-a70c92e83e2e_front">
 					<gml:description>This is Colour Black (FRONT) for Solar Devices LoD2-3</gml:description>
 					<gml:name>Colour Black (FRONT) Solar Devices LoD2-3</gml:name>
 					<app:isFront>true</app:isFront>
