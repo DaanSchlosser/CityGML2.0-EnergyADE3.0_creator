@@ -1,9 +1,7 @@
 """Validate a GML file against the CityGML 2.0 + Energy ADE 3.0 beta8 XSD schemas.
 
 Uses lxml's XMLSchema with a custom resolver that redirects all schema imports
-to local files, so no network access is required.  The local CityGML 2.0
-schemas are sourced from the KIT ModelViewer distribution bundled in this
-repository.
+to local files, so no network access is required.
 
 Usage:
     python tools/validate_xsd.py generated/renodat.gml
@@ -21,22 +19,25 @@ from lxml import etree
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # ── Schema locations ──────────────────────────────────────────────────────────
-# Energy ADE 3.0 beta8 (authoritative, from the ADE documentation bundle)
 ENERGY_XSD = REPO_ROOT / "Energy_ADE-3.0beta8" / "xsd" / "Energy_ADE_3.0_beta8.xsd"
 
-# Local CityGML 2.0 schemas from the KIT ModelViewer distribution
-_KIT_SCHEMA_ROOT = REPO_ROOT / "KITModelViewer_V7.5_Build-3636" / "GMLSchemata" / "CityGML_2_0"
-_CITYGML_DIR = _KIT_SCHEMA_ROOT / "CityGML"
-_GML_BASE_DIR = _KIT_SCHEMA_ROOT / "3.1.1" / "base"
-_XAL_XSD = _KIT_SCHEMA_ROOT / "xAL" / "xAL.xsd"
+_XSD_ROOT = REPO_ROOT / "xsd"
+_CITYGML_DIR = _XSD_ROOT / "citygml" / "2.0"
+_GML_BASE_DIR = _XSD_ROOT / "gml" / "3.1.1" / "base"
+_SMIL_DIR = _XSD_ROOT / "gml" / "3.1.1" / "smil"
+_XAL_XSD = _XSD_ROOT / "xAL.xsd"
+_XLINK_XSD = _XSD_ROOT / "xlink" / "xlink.xsd"
 
 # ── URL → local file mapping ─────────────────────────────────────────────────
-# The Energy ADE XSD imports CityGML/GML via online OGC URLs.  We map every
-# known URL to its local equivalent so lxml never hits the network.
-
 _URL_MAP: dict[str, Path] = {
     # GML 3.1.1
     "http://schemas.opengis.net/gml/3.1.1/base/gml.xsd": _GML_BASE_DIR / "gml.xsd",
+    # GML SMIL
+    "http://schemas.opengis.net/gml/3.1.1/smil/smil20.xsd": _SMIL_DIR / "smil20.xsd",
+    "http://schemas.opengis.net/gml/3.1.1/smil/smil20-language.xsd": _SMIL_DIR
+    / "smil20-language.xsd",
+    # xlink
+    "http://www.w3.org/1999/xlink.xsd": _XLINK_XSD,
     # CityGML 2.0 base
     "http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd": _CITYGML_DIR / "cityGMLBase.xsd",
     # CityGML 2.0 modules
@@ -87,7 +88,7 @@ class _LocalResolver(etree.Resolver):
         if any(hint in system_url for hint in _XAL_HINTS):
             return self.resolve_filename(str(_XAL_XSD), context)
 
-        return None  # fall through to lxml default (file-relative or network)
+        return None  # fall through to lxml default (file-relative)
 
 
 def load_schema() -> etree.XMLSchema:

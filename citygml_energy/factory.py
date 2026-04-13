@@ -102,7 +102,7 @@ from .energy_ade import (  # noqa: F401 — importing triggers __init_subclass__
     QualifiedHeight,
     QualifiedVolume,
 )
-from .namespaces import NS_NRG3, NS_PREFIX_MAP
+from .namespaces import CS_NRG3_SCHEDULE_TYPE, NS_NRG3, NS_PREFIX_MAP
 from .types import CodeValue, MeasureValue, ScaleValue
 
 _METADATA_KEY = (NS_NRG3, "metadata")
@@ -466,6 +466,7 @@ def zone_from_dict(attrs: dict[str, Any]) -> Zone:
     if _str(attrs.get("nrg3_heatingSetpoint")) is not None:
         heating_sched = ConstantValueSchedule(
             gml_id=f"{gml_id}_heating_schedule" if gml_id else None,
+            schedule_type=CodeValue("typicalYear", CS_NRG3_SCHEDULE_TYPE),
             value=_measure(attrs, "nrg3_heatingSetpoint"),
         )
 
@@ -473,6 +474,7 @@ def zone_from_dict(attrs: dict[str, Any]) -> Zone:
     if _str(attrs.get("nrg3_coolingSetpoint")) is not None:
         cooling_sched = ConstantValueSchedule(
             gml_id=f"{gml_id}_cooling_schedule" if gml_id else None,
+            schedule_type=CodeValue("typicalYear", CS_NRG3_SCHEDULE_TYPE),
             value=_measure(attrs, "nrg3_coolingSetpoint"),
         )
 
