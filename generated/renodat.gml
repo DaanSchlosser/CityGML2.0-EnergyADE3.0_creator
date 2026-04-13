@@ -40,6 +40,7 @@
 								</nrg3:MonthlyTimeSeries>
 							</nrg3:timeDependentAmount>
 							<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml">finalEnergy</nrg3:type>
+							<nrg3:endUse codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml">electricalAppliances</nrg3:endUse>
 							<nrg3:energyCarrier codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml">electricity</nrg3:energyCarrier>
 							<nrg3:source codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml">solarEnergy</nrg3:source>
 						</nrg3:Energy>
@@ -387,7 +388,7 @@
 					<gml:name>EVHUB Laadpaal Type 2</gml:name>
 					<core:creationDate>2026-04-04</core:creationDate>
 					<nrg3:identifier codeSpace="https://www.elektramat.nl/evhub-laadpaal-type-2-32a-3-7-22kw-met-laadkabel-8-meter-zwart-lp-h8t5oiugl5/">LP-H8T5OIUGL5</nrg3:identifier>
-					<nrg3:validFrom>2022-07-18</nrg3:validFrom>
+					<nrg3:validFrom>2022-07-18T00:00:00</nrg3:validFrom>
 					<nrg3:resource>
 						<nrg3:Energy gml:id="id_ev_energy_1">
 							<gml:description>Annual electricity consumption for EV charging (Golf GTE 2015, ~150 charges/year x 7.5 kWh net)</gml:description>
@@ -1339,11 +1340,13 @@
 							<nrg3:coincidesWithLod3Hull>false</nrg3:coincidesWithLod3Hull>
 							<nrg3:heatingSchedule>
 								<nrg3:ConstantValueSchedule gml:id="zone_part_1_heating_schedule">
+									<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml">typicalYear</nrg3:type>
 									<nrg3:value uom="°C">22</nrg3:value>
 								</nrg3:ConstantValueSchedule>
 							</nrg3:heatingSchedule>
 							<nrg3:coolingSchedule>
 								<nrg3:ConstantValueSchedule gml:id="zone_part_1_cooling_schedule">
+									<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml">typicalYear</nrg3:type>
 									<nrg3:value uom="°C">24</nrg3:value>
 								</nrg3:ConstantValueSchedule>
 							</nrg3:coolingSchedule>
@@ -1524,11 +1527,13 @@
 							<nrg3:coincidesWithLod3Hull>false</nrg3:coincidesWithLod3Hull>
 							<nrg3:heatingSchedule>
 								<nrg3:ConstantValueSchedule gml:id="zone_part_2_heating_schedule">
+									<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml">typicalYear</nrg3:type>
 									<nrg3:value uom="°C">18</nrg3:value>
 								</nrg3:ConstantValueSchedule>
 							</nrg3:heatingSchedule>
 							<nrg3:coolingSchedule>
 								<nrg3:ConstantValueSchedule gml:id="zone_part_2_cooling_schedule">
+									<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml">typicalYear</nrg3:type>
 									<nrg3:value uom="°C">24</nrg3:value>
 								</nrg3:ConstantValueSchedule>
 							</nrg3:coolingSchedule>
@@ -1602,29 +1607,4 @@
 			</nrg3:zone>
 		</bldg:Building>
 	</core:cityObjectMember>
-	<app:appearanceMember>
-		<app:Appearance gml:id="id_appearance_aa3657a1-7012-4dc2-9d3d-cd17f72d1c4d">
-			<app:theme>Solar Device Appearance</app:theme>
-			<app:surfaceDataMember>
-				<app:X3DMaterial gml:id="X3DMaterial_aa3657a1-7012-4dc2-9d3d-cd17f72d1c4d_back">
-					<gml:description>This is Colour Black (BACK) for Solar Devices LoD2-3</gml:description>
-					<gml:name>Colour Black (BACK) Solar Devices LoD2-3</gml:name>
-					<app:isFront>false</app:isFront>
-					<app:diffuseColor>0 0 0</app:diffuseColor>
-					<app:transparency>0</app:transparency>
-					<app:target>#pv_panel_1_lod3</app:target>
-				</app:X3DMaterial>
-			</app:surfaceDataMember>
-			<app:surfaceDataMember>
-				<app:X3DMaterial gml:id="X3DMaterial_aa3657a1-7012-4dc2-9d3d-cd17f72d1c4d_front">
-					<gml:description>This is Colour Black (FRONT) for Solar Devices LoD2-3</gml:description>
-					<gml:name>Colour Black (FRONT) Solar Devices LoD2-3</gml:name>
-					<app:isFront>true</app:isFront>
-					<app:diffuseColor>0 0 0</app:diffuseColor>
-					<app:transparency>0</app:transparency>
-					<app:target>#pv_panel_1_lod3</app:target>
-				</app:X3DMaterial>
-			</app:surfaceDataMember>
-		</app:Appearance>
-	</app:appearanceMember>
 </core:CityModel>

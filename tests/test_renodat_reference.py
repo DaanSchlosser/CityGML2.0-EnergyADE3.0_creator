@@ -138,6 +138,18 @@ def test_generated_is_well_formed_xml():
     etree.fromstring(generated.encode("utf-8"))
 
 
+def test_generated_validates_against_xsd():
+    """The generated GML validates against the Energy ADE 3.0 + CityGML 2.0 XSD schemas."""
+    from tools.validate_xsd import load_schema
+
+    model = generate_city_model(INPUT)
+    generated = model.to_string()
+    doc = etree.fromstring(generated.encode("utf-8"))
+
+    schema = load_schema()
+    schema.assertValid(doc)
+
+
 def test_generated_has_envelope_with_crs():
     """The generated GML has a gml:boundedBy envelope with srsName."""
     doc = generate_city_model(INPUT)
