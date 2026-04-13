@@ -16,12 +16,12 @@ To add a new feature type, define a dataclass that inherits from
 :class:`BaseBuilder` with ``FEATURE_TYPE`` and (optionally) ``PARENT_FIELD``::
 
     @dataclass
-    class SolarThermalCollector(_AbstractDevice):
+    class SolarThermalCollector(_AbstractSolarCollector):
         ELEMENT_TAG: ClassVar = (NS_NRG3, "SolarThermalCollector")
         FEATURE_TYPE: ClassVar = "nrg3_SolarThermalCollector"
         PARENT_FIELD: ClassVar = "devices"
-        ELEMENT_ORDER: ClassVar = (*_DEVICE_BASE_ORDER, (NS_NRG3, "fluidType"))
-        FIELD_MAP: ClassVar = {**_DEVICE_BASE_FIELD_MAP, "fluid_type": (NS_NRG3, "fluidType")}
+        ELEMENT_ORDER: ClassVar = (*_SOLAR_COLLECTOR_ORDER, (NS_NRG3, "fluidType"))
+        FIELD_MAP: ClassVar = {**_SOLAR_COLLECTOR_FIELD_MAP, "fluid_type": (NS_NRG3, "fluidType")}
 
         fluid_type: CodeValue | None = None
 
@@ -105,6 +105,8 @@ from .energy_ade import (  # noqa: F401 — importing triggers __init_subclass__
 from .namespaces import NS_NRG3, NS_PREFIX_MAP
 from .types import CodeValue, MeasureValue, ScaleValue
 
+_METADATA_KEY = (NS_NRG3, "metadata")
+
 # ---------------------------------------------------------------------------
 # Low-level helpers
 # ---------------------------------------------------------------------------
@@ -161,9 +163,6 @@ def _scale(attrs: dict[str, Any], key: str) -> ScaleValue | None:
 # auto_from_dict: generic flat-dict → builder via FIELD_MAP + type hints
 # ---------------------------------------------------------------------------
 
-# Cache resolved type hints per class (avoids repeated evaluation)
-_hints_cache: dict[type, dict[str, Any]] = {}
-
 
 def _flat_key(ns: str, local_name: str) -> str:
     """Convert ``(namespace_uri, local_name)`` to a flat attribute key.
@@ -183,40 +182,46 @@ def _unwrap_optional(tp: Any) -> Any:
     return tp
 
 
-def _get_hints(cls: type) -> dict[str, Any]:
-    """Return resolved type hints for *cls* (cached)."""
-    if cls not in _hints_cache:
-        try:
-            _hints_cache[cls] = get_type_hints(cls)
-        except Exception:
-            _hints_cache[cls] = {}
-    return _hints_cache[cls]
+# Per-class dispatch plan: list of (field_name, flat_key, converter_tag)
+# tuples precomputed once so auto_from_dict avoids redundant type introspection.
+# converter_tag is one of: "str", "int", "float", "bool", "code", "measure",
+# "scale", "metadata", or None (skip).
+_dispatch_cache: dict[type, list[tuple[str, str, str | None]]] = {}
+
+_CONVERTER_TAGS: dict[type, str] = {
+    str: "str",
+    int: "int",
+    float: "float",
+    bool: "bool",
+    CodeValue: "code",
+    MeasureValue: "measure",
+    ScaleValue: "scale",
+}
 
 
-def auto_from_dict(cls: type[BaseBuilder], attrs: dict[str, Any]) -> BaseBuilder:
-    """Auto-create a builder instance from flat attributes.
+def _get_dispatch_plan(cls: type[BaseBuilder]) -> list[tuple[str, str, str | None]]:
+    """Return the precomputed dispatch plan for *cls* (cached)."""
+    plan = _dispatch_cache.get(cls)
+    if plan is not None:
+        return plan
 
-    Uses ``cls.FIELD_MAP`` and type annotations to determine how to
-    convert each flat attribute key to a constructor kwarg.
+    try:
+        hints = get_type_hints(cls)
+    except Exception:
+        hints = {}
 
-    Handles: ``str``, ``int``, ``float``, ``bool``, ``CodeValue``,
-    ``MeasureValue``, ``ScaleValue``, and ``Metadata`` fields.
-    Skips: ``list`` fields, ``Any`` typed fields, and nested builders
-    (those are populated by ``FeatureFactory._attach``).
-    """
-    hints = _get_hints(cls)
-    kwargs: dict[str, Any] = {"gml_id": _str(attrs.get("gml_id"))}
-    overrides = getattr(cls, "FLAT_KEY_OVERRIDES", {})
+    overrides = cls.FLAT_KEY_OVERRIDES
+    plan = []
 
     for field_name, (ns, local_name) in cls.FIELD_MAP.items():
         flat = overrides.get(field_name) or _flat_key(ns, local_name)
 
-        # Special case: metadata fields → delegate to _make_metadata
-        if (ns, local_name) == (NS_NRG3, "metadata"):
-            kwargs[field_name] = _make_metadata(attrs)
+        # Metadata assembles from multiple nrg3_metadata_* sub-keys;
+        # skip the normal single-key dispatch.
+        if (ns, local_name) == _METADATA_KEY:
+            plan.append((field_name, flat, "metadata"))
             continue
 
-        # Resolve type hint
         hint = hints.get(field_name)
         if hint is None:
             continue
@@ -232,20 +237,43 @@ def auto_from_dict(cls: type[BaseBuilder], attrs: dict[str, Any]) -> BaseBuilder
         if isinstance(real_type, type) and issubclass(real_type, BaseBuilder):
             continue
 
-        # Dispatch by type
-        if real_type is str:
+        tag = _CONVERTER_TAGS.get(real_type)
+        if tag is not None:
+            plan.append((field_name, flat, tag))
+
+    _dispatch_cache[cls] = plan
+    return plan
+
+
+def auto_from_dict(cls: type[BaseBuilder], attrs: dict[str, Any]) -> BaseBuilder:
+    """Auto-create a builder instance from flat attributes.
+
+    Uses ``cls.FIELD_MAP`` and type annotations to determine how to
+    convert each flat attribute key to a constructor kwarg.
+
+    Handles: ``str``, ``int``, ``float``, ``bool``, ``CodeValue``,
+    ``MeasureValue``, ``ScaleValue``, and ``Metadata`` fields.
+    Skips: ``list`` fields, ``Any`` typed fields, and nested builders
+    (those are populated by ``FeatureFactory._attach``).
+    """
+    kwargs: dict[str, Any] = {"gml_id": _str(attrs.get("gml_id"))}
+
+    for field_name, flat, tag in _get_dispatch_plan(cls):
+        if tag == "metadata":
+            kwargs[field_name] = _make_metadata(attrs)
+        elif tag == "str":
             kwargs[field_name] = _str(attrs.get(flat))
-        elif real_type is int:
+        elif tag == "int":
             kwargs[field_name] = _int(attrs.get(flat))
-        elif real_type is float:
+        elif tag == "float":
             kwargs[field_name] = _float(attrs.get(flat))
-        elif real_type is bool:
+        elif tag == "bool":
             kwargs[field_name] = _bool(attrs.get(flat))
-        elif real_type is CodeValue:
+        elif tag == "code":
             kwargs[field_name] = _code(attrs, flat)
-        elif real_type is MeasureValue:
+        elif tag == "measure":
             kwargs[field_name] = _measure(attrs, flat)
-        elif real_type is ScaleValue:
+        elif tag == "scale":
             kwargs[field_name] = _scale(attrs, flat)
 
     return cls(**kwargs)
@@ -288,16 +316,6 @@ def _make_qualified[Q: (QualifiedVolume, QualifiedArea, QualifiedHeight)](
     )
 
 
-def _make_qualified_volume(attrs: dict[str, Any], prefix: str = "nrg3_bdgVolume") -> QualifiedVolume | None:
-    return _make_qualified(QualifiedVolume, attrs, prefix)
-
-
-def _make_qualified_area(attrs: dict[str, Any], prefix: str = "nrg3_bdgArea") -> QualifiedArea | None:
-    return _make_qualified(QualifiedArea, attrs, prefix)
-
-
-def _make_qualified_height(attrs: dict[str, Any], prefix: str = "nrg3_bdgHeight") -> QualifiedHeight | None:
-    return _make_qualified(QualifiedHeight, attrs, prefix)
 
 
 # ---------------------------------------------------------------------------
@@ -311,9 +329,9 @@ def building_from_dict(attrs: dict[str, Any]) -> Building:
     This is a custom constructor because Building has QualifiedVolume/Area/Height
     lists that require nested sub-object assembly from flat keys.
     """
-    vol = _make_qualified_volume(attrs)
-    area = _make_qualified_area(attrs)
-    height = _make_qualified_height(attrs)
+    vol = _make_qualified(QualifiedVolume, attrs, "nrg3_bdgVolume")
+    area = _make_qualified(QualifiedArea, attrs, "nrg3_bdgArea")
+    height = _make_qualified(QualifiedHeight, attrs, "nrg3_bdgHeight")
 
     return Building(
         gml_id=_str(attrs.get("gml_id")),
@@ -321,13 +339,11 @@ def building_from_dict(attrs: dict[str, Any]) -> Building:
         gml_name=_str(attrs.get("gml_name")),
         creation_date=_str(attrs.get("core_creationDate")),
         termination_date=_str(attrs.get("core_terminationDate")),
-        # Energy ADE CityObject extensions
         nrg3_identifier=_code(attrs, "nrg3_identifier"),
         nrg3_metadata=_make_metadata(attrs),
         nrg3_status=_code(attrs, "nrg3_status"),
         nrg3_valid_from=_str(attrs.get("nrg3_validFrom")),
         nrg3_valid_to=_str(attrs.get("nrg3_validTo")),
-        # bldg properties
         bldg_class=_code(attrs, "bldg_class"),
         bldg_function=_code(attrs, "bldg_function"),
         bldg_usage=_code(attrs, "bldg_usage"),
@@ -339,7 +355,6 @@ def building_from_dict(attrs: dict[str, Any]) -> Building:
         storeys_below_ground=_int(attrs.get("bldg_storeysBelowGround")),
         storey_heights_above_ground=_str(attrs.get("bldg_storeyHeightsAboveGround")),
         storey_heights_below_ground=_str(attrs.get("bldg_storeyHeightsBelowGround")),
-        # Energy ADE building extensions
         bdg_is_protected=_bool(attrs.get("nrg3_bdgIsProtected")),
         bdg_number_of_building_units=_int(attrs.get("nrg3_bdgNumberOfBuildingUnits")),
         bdg_owner_name=_str(attrs.get("nrg3_bdgOwnerName")),
@@ -354,10 +369,14 @@ def building_from_dict(attrs: dict[str, Any]) -> Building:
     )
 
 
+def _copy_as[T](cls: type[T], src: Any) -> T:
+    """Copy all dataclass fields from *src* into a new instance of *cls*."""
+    return cls(**{f.name: getattr(src, f.name) for f in dataclasses.fields(src)})
+
+
 def building_part_from_dict(attrs: dict[str, Any]) -> BuildingPart:
     """Create a :class:`BuildingPart` -- reuses Building logic."""
-    b = building_from_dict(attrs)
-    return BuildingPart(**{f.name: getattr(b, f.name) for f in dataclasses.fields(b)})
+    return _copy_as(BuildingPart, building_from_dict(attrs))
 
 
 def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
@@ -365,8 +384,8 @@ def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
 
     Custom constructor because of QualifiedArea/Volume lists.
     """
-    area = _make_qualified_area(attrs, prefix="nrg3_area")
-    volume = _make_qualified_volume(attrs, prefix="nrg3_volume")
+    area = _make_qualified(QualifiedArea, attrs, "nrg3_area")
+    volume = _make_qualified(QualifiedVolume, attrs, "nrg3_volume")
     return BuildingUnit(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
@@ -424,8 +443,8 @@ def zone_from_dict(attrs: dict[str, Any]) -> Zone:
             value=_measure(attrs, "nrg3_coolingSetpoint"),
         )
 
-    vol = _make_qualified_volume(attrs, prefix="nrg3_volume")
-    area = _make_qualified_area(attrs, prefix="nrg3_area")
+    vol = _make_qualified(QualifiedVolume, attrs, "nrg3_volume")
+    area = _make_qualified(QualifiedArea, attrs, "nrg3_area")
 
     return Zone(
         gml_id=_str(attrs.get("gml_id")),
@@ -438,10 +457,8 @@ def zone_from_dict(attrs: dict[str, Any]) -> Zone:
         nrg3_status=_code(attrs, "nrg3_status"),
         nrg3_valid_from=_str(attrs.get("nrg3_validFrom")),
         nrg3_valid_to=_str(attrs.get("nrg3_validTo")),
-        # AbstractCityObjectSpaceType
         areas=[area] if area else [],
         volumes=[vol] if vol else [],
-        # AbstractZoneType
         zone_type=_code(attrs, "nrg3_zoneType"),
         is_cooled=_bool(attrs.get("nrg3_isCooled")),
         is_heated=_bool(attrs.get("nrg3_isHeated")),
@@ -456,9 +473,7 @@ def zone_from_dict(attrs: dict[str, Any]) -> Zone:
 
 def zone_part_from_dict(attrs: dict[str, Any]) -> ZonePart:
     """Create a :class:`ZonePart` -- reuses Zone logic."""
-    z = zone_from_dict(attrs)
-    kwargs = {f.name: getattr(z, f.name) for f in dataclasses.fields(z)}
-    return ZonePart(**kwargs)
+    return _copy_as(ZonePart, zone_from_dict(attrs))
 
 
 # ---------------------------------------------------------------------------
@@ -509,6 +524,12 @@ def _auto_register_all() -> None:
 
 
 _auto_register_all()
+
+# Register custom from_dict entries for classes that don't inherit BaseBuilder
+# (e.g. Address) and therefore aren't picked up by _auto_register_all.
+for _ft, _fn in _CUSTOM_FROM_DICT.items():
+    if _ft not in _REGISTRY:
+        _reg(_ft, _fn)
 
 
 # ---------------------------------------------------------------------------
