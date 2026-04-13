@@ -1,146 +1,157 @@
-"""CityModel root element and Address."""
+"""CityModel convenience wrapper around xsdata-generated bindings."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import dataclasses
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import lxml.etree as etree
-
-from .namespaces import NS_GML, NS_XAL, NSMAP, qn
-from .xml_support import append_xml_content
-
-
-@dataclass
-class Envelope:
-    """``gml:Envelope`` with SRS and corner coordinates."""
-
-    srs_name: str
-    srs_dimension: int = 3
-    lower_corner: str = ""
-    upper_corner: str = ""
-
-    def to_xml(self, parent: etree._Element) -> etree._Element:
-        bounded = etree.SubElement(parent, qn("gml", "boundedBy"))
-        env = etree.SubElement(bounded, qn("gml", "Envelope"))
-        env.set("srsName", self.srs_name)
-        env.set("srsDimension", str(self.srs_dimension))
-        lc = etree.SubElement(env, qn("gml", "lowerCorner"))
-        lc.text = self.lower_corner
-        uc = etree.SubElement(env, qn("gml", "upperCorner"))
-        uc.text = self.upper_corner
-        return bounded
+from .bindings import (
+    BoundedBy,
+    CityModel as XsdCityModel,
+    CityObjectMember,
+    Description,
+    DirectPositionType,
+    Envelope,
+    Name,
+)
+from .serialization import serialize_to_file, serialize_to_string
 
 
-@dataclass
-class Address:
-    """``core:Address`` containing ``xAL:AddressDetails``."""
-
-    FEATURE_TYPE: str = "core_Address"
-    PARENT_FIELD: str = "addresses"
-
-    country: str | None = None
-    locality: str | None = None
-    thoroughfare: str | None = None
-    thoroughfare_number: str | None = None
-    postal_code: str | None = None
-    gml_id: str | None = None
-
-    def to_xml(self, parent: etree._Element) -> etree._Element:
-        addr = etree.SubElement(parent, qn("core", "Address"))
-        if self.gml_id:
-            addr.set(f"{{{NS_GML}}}id", self.gml_id)
-        xal = etree.SubElement(addr, qn("core", "xalAddress"))
-        details = etree.SubElement(xal, f"{{{NS_XAL}}}AddressDetails")
-        if self.country:
-            c = etree.SubElement(details, f"{{{NS_XAL}}}Country")
-            cn = etree.SubElement(c, f"{{{NS_XAL}}}CountryName")
-            cn.text = self.country
-            if self.locality:
-                loc = etree.SubElement(c, f"{{{NS_XAL}}}Locality")
-                loc.set("Type", "Town")
-                ln = etree.SubElement(loc, f"{{{NS_XAL}}}LocalityName")
-                ln.text = self.locality
-                if self.thoroughfare:
-                    th = etree.SubElement(loc, f"{{{NS_XAL}}}Thoroughfare")
-                    th.set("Type", "Street")
-                    tn = etree.SubElement(th, f"{{{NS_XAL}}}ThoroughfareName")
-                    tn.text = self.thoroughfare
-                    if self.thoroughfare_number:
-                        tnum = etree.SubElement(th, f"{{{NS_XAL}}}ThoroughfareNumber")
-                        tnum.text = self.thoroughfare_number
-                if self.postal_code:
-                    pc = etree.SubElement(loc, f"{{{NS_XAL}}}PostalCode")
-                    pcn = etree.SubElement(pc, f"{{{NS_XAL}}}PostalCodeNumber")
-                    pcn.text = self.postal_code
-        return addr
-
-
-@dataclass
 class CityModel:
-    """Top-level ``core:CityModel`` container."""
+    """Convenience wrapper around the xsdata-generated ``CityModelType``.
 
-    gml_description: str | None = None
-    gml_name: str | None = None
-    envelope: Envelope | None = None
-    city_object_members: list[Any] = field(default_factory=list)
-    appearance_members: list[Any] = field(default_factory=list)
+    Provides a builder-style ``add()`` API and ``write()`` / ``to_string()``
+    for easy serialization.
+    """
 
-    def add(self, city_object: Any) -> CityModel:
-        """Add a city object (Building, etc.) as a cityObjectMember."""
-        self.city_object_members.append(city_object)
-        return self
-
-    def add_appearance(self, appearance: Any) -> CityModel:
-        """Add an appearance object as an ``app:appearanceMember``."""
-        self.appearance_members.append(appearance)
-        return self
-
-    def to_xml(self) -> etree._Element:
-        root = etree.Element(qn("core", "CityModel"), nsmap=NSMAP)
-
-        if self.gml_description is not None:
-            desc = etree.SubElement(root, qn("gml", "description"))
-            desc.text = self.gml_description
-
-        if self.gml_name is not None:
-            name = etree.SubElement(root, qn("gml", "name"))
-            name.text = self.gml_name
-
-        if self.envelope is not None:
-            self.envelope.to_xml(root)
-
-        for member in self.city_object_members:
-            append_xml_content(root, qn("core", "cityObjectMember"), member)
-
-        for appearance in self.appearance_members:
-            append_xml_content(root, qn("app", "appearanceMember"), appearance)
-
-        return root
-
-    def to_string(
+    def __init__(
         self,
-        xml_declaration: bool = True,
-        pretty_print: bool = True,
-    ) -> str:
-        root = self.to_xml()
-        raw = etree.tostring(
-            root,
-            xml_declaration=xml_declaration,
-            encoding="UTF-8",
-            pretty_print=pretty_print,
-        ).decode("utf-8")
-        # Convert 2-space indentation to tab indentation to match references
-        lines = raw.split("\n")
-        result = []
-        for line in lines:
-            stripped = line.lstrip(" ")
-            n_spaces = len(line) - len(stripped)
-            n_tabs = n_spaces // 2
-            result.append("\t" * n_tabs + stripped)
-        return "\n".join(result)
+        *,
+        gml_id: str | None = None,
+        gml_description: str | None = None,
+        gml_name: str | None = None,
+        srs_name: str | None = None,
+        srs_dimension: int = 3,
+        lower_corner: list[float] | None = None,
+        upper_corner: list[float] | None = None,
+    ) -> None:
+        self._model = XsdCityModel(
+            id=gml_id,
+            description=Description(value=gml_description) if gml_description else None,
+            name=[Name(value=gml_name)] if gml_name else [],
+        )
+        if srs_name and lower_corner and upper_corner:
+            self._model.opengis_net_gml_bounded_by = BoundedBy(
+                envelope=Envelope(
+                    lower_corner=DirectPositionType(
+                        value=lower_corner, srs_dimension=srs_dimension
+                    ),
+                    upper_corner=DirectPositionType(
+                        value=upper_corner, srs_dimension=srs_dimension
+                    ),
+                    srs_name=srs_name,
+                    srs_dimension=srs_dimension,
+                ),
+            )
 
-    def write(self, filepath: str | Path, **kwargs: Any) -> None:
-        with Path(filepath).open("w", encoding="utf-8") as f:
-            f.write(self.to_string(**kwargs))
+    @property
+    def xsd(self) -> XsdCityModel:
+        """Access the underlying xsdata-generated CityModel object."""
+        return self._model
+
+    @property
+    def gml_name(self) -> str | None:
+        if self._model.name:
+            return self._model.name[0].value
+        return None
+
+    @gml_name.setter
+    def gml_name(self, value: str | None) -> None:
+        if value is None:
+            self._model.name = []
+        elif self._model.name:
+            self._model.name[0].value = value
+        else:
+            self._model.name = [Name(value=value)]
+
+    @property
+    def gml_description(self) -> str | None:
+        if self._model.description:
+            return self._model.description.value
+        return None
+
+    @gml_description.setter
+    def gml_description(self, value: str | None) -> None:
+        if value is None:
+            self._model.description = None
+        elif self._model.description:
+            self._model.description.value = value
+        else:
+            self._model.description = Description(value=value)
+
+    def add_member(self, member: CityObjectMember) -> CityModel:
+        """Add a pre-built ``CityObjectMember``."""
+        self._model.city_object_member.append(member)
+        return self
+
+    def add(self, city_object: Any, *, field_name: str | None = None) -> CityModel:
+        """Add a city object (Building, etc.) as a ``cityObjectMember``.
+
+        The *field_name* is the attribute name on ``CityObjectMember`` that
+        should hold this object (e.g. ``"building"``).  If omitted, it is
+        resolved by matching the object's type against ``CityObjectMember``
+        field type annotations.
+        """
+        if field_name is None:
+            field_name = _resolve_member_field(type(city_object))
+
+        member = CityObjectMember(**{field_name: city_object})
+        self._model.city_object_member.append(member)
+        return self
+
+    def to_string(self, *, indent: str = "\t") -> str:
+        """Serialize to an XML string."""
+        return serialize_to_string(self._model, indent=indent)
+
+    def write(self, filepath: str | Path, *, indent: str = "\t") -> None:
+        """Write the CityModel to a GML/XML file."""
+        serialize_to_file(self._model, filepath, indent=indent)
+
+
+@lru_cache(maxsize=None)
+def _build_member_type_map() -> dict[type, str]:
+    """Build a mapping from concrete types to CityObjectMember field names."""
+    import typing
+
+    result: dict[type, str] = {}
+    for f in dataclasses.fields(CityObjectMember):
+        hints = typing.get_type_hints(CityObjectMember)
+        hint = hints.get(f.name)
+        if hint is None:
+            continue
+        # Extract the concrete type from ``None | SomeType``
+        args = getattr(hint, "__args__", None)
+        if args:
+            for arg in args:
+                if arg is not type(None):
+                    result[arg] = f.name
+        elif isinstance(hint, type):
+            result[hint] = f.name
+    return result
+
+
+def _resolve_member_field(cls: type) -> str:
+    """Find the CityObjectMember field name for an xsdata binding class."""
+    type_map = _build_member_type_map()
+    # Check exact match first, then walk MRO for base classes
+    if cls in type_map:
+        return type_map[cls]
+    for base in cls.__mro__[1:]:
+        if base in type_map:
+            return type_map[base]
+    raise TypeError(
+        f"Cannot find a CityObjectMember field for {cls.__name__}. "
+        f"Pass field_name= explicitly."
+    )

@@ -1,4 +1,10 @@
-"""Load data-only feature collections into CityGML models."""
+"""Load data-only feature collections into CityGML models.
+
+Supports the schema_version 2 JSON format where each feature is a flat dict
+with ``type``, ``id``, ``parent``, ``parent_field``, and xsdata field names
+as keys.  All object construction is delegated to the generic ``mapping``
+module — no feature-type-specific code lives here.
+"""
 
 from __future__ import annotations
 
@@ -8,15 +14,13 @@ from pathlib import Path
 from typing import Any
 
 from .core import CityModel
-from .factory import FeatureFactory, list_feature_types
 from .geometry import apply_geometry_sources
-from .input_catalog import (
-    FEATURE_REQUIRED_FIELDS,
-    get_allowed_attribute_names,
-    normalize_feature_attributes,
-)
+from .mapping import attach_child, build_from_dict, resolve_class
 
 PathLike = str | Path
+
+# Keys that live at the feature level, not passed to build_from_dict.
+_FEATURE_META_KEYS = frozenset({"type", "parent", "parent_field"})
 
 _ALLOWED_TOP_LEVEL_KEYS = {
     "$schema",
@@ -34,12 +38,9 @@ _ALLOWED_GEOMETRY_SOURCE_KEYS = {
     "target_pv_id",
     "target_zone_part_id",
 }
-_ALLOWED_GEOMETRY_SOURCE_TYPES = {
-    f"step-renodat-lod{n}" for n in range(5)
-} | {
+_ALLOWED_GEOMETRY_SOURCE_TYPES = {f"step-renodat-lod{n}" for n in range(5)} | {
     f"step-zonepart-lod{n}" for n in range(4)
 }
-_ALLOWED_SCALAR_TYPES = (str, int, float, bool, type(None))
 
 
 class InputFileError(ValueError):
@@ -73,7 +74,7 @@ def validate_feature_collection(
     source: str = "input",
     base_path: PathLike | None = None,
 ) -> None:
-    """Validate the repository's JSON input format."""
+    """Validate the repository's JSON input format (schema_version 2)."""
     if not isinstance(data, dict):
         raise InputFileError(f"{source}: top-level JSON value must be an object")
 
@@ -83,8 +84,8 @@ def validate_feature_collection(
             f"{source}: unexpected top-level key(s): {', '.join(unexpected_top_level)}"
         )
 
-    if data.get("schema_version") != 1:
-        raise InputFileError(f"{source}: schema_version must be 1")
+    if data.get("schema_version") != 2:
+        raise InputFileError(f"{source}: schema_version must be 2")
 
     if "$schema" in data and not isinstance(data["$schema"], str):
         raise InputFileError(f"{source}: $schema must be a string when provided")
@@ -107,32 +108,30 @@ def validate_feature_collection(
     if not isinstance(features, list):
         raise InputFileError(f"{source}: features must be an array")
 
-    supported_feature_types = set(list_feature_types())
     feature_ids: set[str] = set()
-
     feature_types_by_id: dict[str, str] = {}
 
     for index, feature in enumerate(features):
-        _validate_feature(feature, index, source, supported_feature_types)
-        gml_id = feature["attributes"]["gml_id"].strip()
+        _validate_feature(feature, index, source)
+        gml_id = feature["id"].strip()
         if gml_id in feature_ids:
             raise InputFileError(
-                f"{source}: features[{index}].attributes.gml_id duplicates {gml_id!r}"
+                f"{source}: features[{index}].id duplicates {gml_id!r}"
             )
         feature_ids.add(gml_id)
-        feature_types_by_id[gml_id] = feature["feature_type"]
+        feature_types_by_id[gml_id] = feature["type"]
 
     for index, feature in enumerate(features):
-        parent_id = feature["attributes"].get("gml_parent_id")
+        parent_id = feature.get("parent")
         if parent_id is None:
             continue
         if not isinstance(parent_id, str) or not parent_id.strip():
             raise InputFileError(
-                f"{source}: features[{index}].attributes.gml_parent_id must be a non-empty string when provided"
+                f"{source}: features[{index}].parent must be a non-empty string when provided"
             )
         if parent_id not in feature_ids:
             raise InputFileError(
-                f"{source}: features[{index}].attributes.gml_parent_id references missing gml_id {parent_id!r}"
+                f"{source}: features[{index}].parent references missing id {parent_id!r}"
             )
 
     geometry_sources = data.get("geometry_sources", [])
@@ -160,23 +159,52 @@ def build_city_model_from_feature_collection(
     if base_path is not None:
         _normalize_geometry_source_paths(data, Path(base_path))
 
-    city_model = data["city_model"]
-    factory = FeatureFactory(
-        description=city_model.get("description"),
-        name=city_model.get("name"),
+    city_model_meta = data["city_model"]
+    model = CityModel(
+        gml_description=city_model_meta.get("description"),
+        gml_name=city_model_meta.get("name"),
     )
 
+    # Build all xsdata objects from feature definitions
+    id_index: dict[str, Any] = {}
+    rows: list[tuple[str | None, str | None, Any]] = []
+
     for feature in data["features"]:
-        factory.add(
-            feature["feature_type"],
-            normalize_feature_attributes(
-                feature["feature_type"],
-                dict(feature["attributes"]),
-            ),
-        )
+        type_string = feature["type"]
+        cls = resolve_class(type_string)
 
-    model = factory.build()
+        # Extract attribute data (everything except meta keys)
+        attrs = {k: v for k, v in feature.items() if k not in _FEATURE_META_KEYS}
 
+        # "id" in the JSON maps to "id" on the xsdata class (gml:id attribute)
+        obj = build_from_dict(cls, attrs)
+
+        parent_id = feature.get("parent")
+        parent_field = feature.get("parent_field")
+        rows.append((parent_id, parent_field, obj))
+
+        gml_id = feature.get("id")
+        if gml_id:
+            id_index[gml_id] = obj
+
+    # Attach children to parents
+    for parent_id, parent_field, obj in rows:
+        if parent_id is None:
+            continue
+        parent_obj = id_index.get(parent_id)
+        if parent_obj is None:
+            raise InputFileError(
+                f"parent {parent_id!r} not found "
+                f"(referenced by {getattr(obj, 'id', '?')!r})"
+            )
+        attach_child(parent_obj, obj, field_hint=parent_field)
+
+    # Add top-level features as cityObjectMembers
+    for parent_id, _parent_field, obj in rows:
+        if parent_id is None:
+            model.add(obj)
+
+    # Apply geometry
     raw_origin = data.get("coordinate_origin")
     if raw_origin is not None:
         if not isinstance(raw_origin, list) or len(raw_origin) != 3:
@@ -196,100 +224,39 @@ def load_city_model_from_feature_collection(path: PathLike) -> CityModel:
     return build_city_model_from_feature_collection(data, base_path=input_path.parent)
 
 
+# ---------------------------------------------------------------------------
+# Validation helpers
+# ---------------------------------------------------------------------------
+
+
 def _validate_feature(
     feature: Any,
     index: int,
     source: str,
-    supported_feature_types: set[str],
 ) -> None:
     if not isinstance(feature, dict):
         raise InputFileError(f"{source}: features[{index}] must be an object")
 
-    unexpected_feature_keys = sorted(set(feature) - {"feature_type", "attributes"})
-    if unexpected_feature_keys:
+    type_string = feature.get("type")
+    if not isinstance(type_string, str) or not type_string.strip():
         raise InputFileError(
-            f"{source}: features[{index}] has unexpected key(s): {', '.join(unexpected_feature_keys)}"
+            f"{source}: features[{index}].type must be a non-empty string "
+            f"like 'bldg:Building' or 'nrg3:Energy'"
         )
 
-    feature_type = feature.get("feature_type")
-    if not isinstance(feature_type, str) or feature_type not in supported_feature_types:
-        valid_types = ", ".join(sorted(supported_feature_types))
+    # Validate that the type resolves to a known xsdata class
+    try:
+        resolve_class(type_string)
+    except ValueError as exc:
         raise InputFileError(
-            f"{source}: features[{index}].feature_type must be one of: {valid_types}"
-        )
+            f"{source}: features[{index}].type: {exc}"
+        ) from exc
 
-    attributes = feature.get("attributes")
-    if not isinstance(attributes, dict):
-        raise InputFileError(f"{source}: features[{index}].attributes must be an object")
-
-    unexpected_attribute_keys = sorted(set(attributes) - get_allowed_attribute_names(feature_type))
-    if unexpected_attribute_keys:
-        raise InputFileError(
-            f"{source}: features[{index}].attributes contains unsupported key(s) for "
-            f"{feature_type}: {', '.join(unexpected_attribute_keys)}"
-        )
-
-    gml_id = attributes.get("gml_id")
+    gml_id = feature.get("id")
     if not isinstance(gml_id, str) or not gml_id.strip():
         raise InputFileError(
-            f"{source}: features[{index}].attributes.gml_id must be a non-empty string"
+            f"{source}: features[{index}].id must be a non-empty string"
         )
-
-    try:
-        normalize_feature_attributes(feature_type, attributes)
-    except ValueError as exc:
-        raise InputFileError(f"{source}: features[{index}].attributes {exc}") from exc
-
-    for key, value in attributes.items():
-        if not isinstance(key, str):
-            raise InputFileError(f"{source}: features[{index}].attributes keys must be strings")
-        if isinstance(value, dict):
-            # Nested object for CodeValue/MeasureValue/ScaleValue
-            _validate_nested_value(value, key, index, source)
-        elif not isinstance(value, _ALLOWED_SCALAR_TYPES):
-            raise InputFileError(
-                f"{source}: features[{index}].attributes.{key} must be a scalar or nested object"
-            )
-
-    # Check XSD-required fields
-    required = FEATURE_REQUIRED_FIELDS.get(feature_type, ())
-    normalized = normalize_feature_attributes(feature_type, attributes)
-    for req_key in required:
-        val = normalized.get(req_key)
-        if val is None or (isinstance(val, str) and not val.strip()):
-            raise InputFileError(
-                f"{source}: features[{index}].attributes.{req_key} is required "
-                f"for {feature_type} (XSD minOccurs=1)"
-            )
-
-
-_ALLOWED_NESTED_KEYS = {"value", "uom", "codeSpace"}
-
-
-def _validate_nested_value(
-    obj: dict[str, Any],
-    attr_key: str,
-    index: int,
-    source: str,
-) -> None:
-    """Validate a nested CodeValue/MeasureValue/ScaleValue object."""
-    unexpected = sorted(set(obj) - _ALLOWED_NESTED_KEYS)
-    if unexpected:
-        raise InputFileError(
-            f"{source}: features[{index}].attributes.{attr_key} "
-            f"has unexpected key(s): {', '.join(unexpected)}"
-        )
-    if "value" not in obj:
-        raise InputFileError(
-            f"{source}: features[{index}].attributes.{attr_key} "
-            f"nested object must contain a 'value' key"
-        )
-    for k, v in obj.items():
-        if not isinstance(v, _ALLOWED_SCALAR_TYPES):
-            raise InputFileError(
-                f"{source}: features[{index}].attributes.{attr_key}.{k} "
-                f"must be a scalar JSON value"
-            )
 
 
 def _validate_geometry_source(
@@ -330,14 +297,7 @@ def _validate_geometry_source(
             )
         if target_zone_part_id not in feature_ids:
             raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_zone_part_id references missing gml_id {target_zone_part_id!r}"
-            )
-        if feature_types_by_id.get(target_zone_part_id) not in {
-            "nrg3_Zone",
-            "nrg3_ZonePart",
-        }:
-            raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_zone_part_id must reference a Zone or ZonePart"
+                f"{source}: geometry_sources[{index}].target_zone_part_id references missing id {target_zone_part_id!r}"
             )
     else:
         target_building_id = geometry_source.get("target_building_id")
@@ -347,14 +307,7 @@ def _validate_geometry_source(
             )
         if target_building_id not in feature_ids:
             raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_building_id references missing gml_id {target_building_id!r}"
-            )
-        if feature_types_by_id.get(target_building_id) not in {
-            "bldg_Building",
-            "bldg_BuildingPart",
-        }:
-            raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_building_id must reference a building or building part"
+                f"{source}: geometry_sources[{index}].target_building_id references missing id {target_building_id!r}"
             )
 
         target_pv_id = geometry_source.get("target_pv_id")
@@ -365,11 +318,7 @@ def _validate_geometry_source(
                 )
             if target_pv_id not in feature_ids:
                 raise InputFileError(
-                    f"{source}: geometry_sources[{index}].target_pv_id references missing gml_id {target_pv_id!r}"
-                )
-            if feature_types_by_id.get(target_pv_id) != "nrg3_PhotovoltaicCollector":
-                raise InputFileError(
-                    f"{source}: geometry_sources[{index}].target_pv_id must reference an nrg3_PhotovoltaicCollector"
+                    f"{source}: geometry_sources[{index}].target_pv_id references missing id {target_pv_id!r}"
                 )
 
     if base_path is not None:
@@ -396,4 +345,3 @@ def _resolve_geometry_source_path(path_value: str, base_path: Path) -> Path:
     if not source_path.is_absolute():
         source_path = base_path / source_path
     return source_path.resolve()
-
