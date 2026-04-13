@@ -9,11 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
-from lxml import etree
-
 from .base import BaseBuilder
-from .namespaces import NS_CORE, NS_GML, NS_NRG3, NS_XLINK
-from .types import CodeValue, MeasureValue, ScaleValue
+from .namespaces import NS_CORE, NS_GML, NS_NRG3
+from .types import CodeValue, MeasureValue, ScaleValue, XlinkRef
 
 # ===================================================================
 # CityObjectRelation
@@ -24,9 +22,8 @@ from .types import CodeValue, MeasureValue, ScaleValue
 class CityObjectRelation(BaseBuilder):
     """``nrg3:CityObjectRelation`` -- relation between city objects.
 
-    The inner ``nrg3:relatedTo`` child carries an ``xlink:href`` pointing
-    to the related object rather than nesting a full element, so we
-    override ``to_xml`` for this special case.
+    The ``relatedTo`` child is an ``xlink:href`` reference to the related
+    object, represented using :class:`XlinkRef`.
     """
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "CityObjectRelation")
@@ -36,17 +33,20 @@ class CityObjectRelation(BaseBuilder):
     )
     FIELD_MAP: ClassVar = {
         "relation_type": (NS_NRG3, "relationType"),
+        "related_to": (NS_NRG3, "relatedTo"),
     }
 
     relation_type: CodeValue | None = None
-    related_to_href: str | None = None
+    related_to: XlinkRef | None = None
 
-    def to_xml(self, parent: etree._Element | None = None) -> etree._Element:
-        elem = super().to_xml(parent)
-        if self.related_to_href is not None:
-            inner = etree.SubElement(elem, f"{{{NS_NRG3}}}relatedTo")
-            inner.set(f"{{{NS_XLINK}}}href", self.related_to_href)
-        return elem
+    @property
+    def related_to_href(self) -> str | None:
+        """Backwards-compatible accessor for the href string."""
+        return self.related_to.href if self.related_to is not None else None
+
+    @related_to_href.setter
+    def related_to_href(self, value: str | None) -> None:
+        self.related_to = XlinkRef(value) if value is not None else None
 
 
 # ===================================================================
@@ -123,7 +123,7 @@ class Metadata(BaseBuilder):
     }
 
     author: str | None = None
-    acquisition_method: str | None = None
+    acquisition_method: CodeValue | None = None
     owner: str | None = None
     quality_description: str | None = None
     source: str | None = None
@@ -652,6 +652,9 @@ _RESOURCE_BASE_ORDER: tuple[tuple[str, str], ...] = (
     (NS_NRG3, "revenue"),
     (NS_NRG3, "co2Equivalent"),
     (NS_NRG3, "timeDependentAmount"),
+    (NS_NRG3, "timeDependentExpense"),
+    (NS_NRG3, "timeDependentRevenue"),
+    (NS_NRG3, "amountBasedOn"),
 )
 
 _RESOURCE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
@@ -667,6 +670,9 @@ _RESOURCE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
     "revenue": (NS_NRG3, "revenue"),
     "co2_equivalent": (NS_NRG3, "co2Equivalent"),
     "time_dependent_amount": (NS_NRG3, "timeDependentAmount"),
+    "time_dependent_expense": (NS_NRG3, "timeDependentExpense"),
+    "time_dependent_revenue": (NS_NRG3, "timeDependentRevenue"),
+    "amount_based_on": (NS_NRG3, "amountBasedOn"),
 }
 
 
@@ -689,7 +695,10 @@ class _AbstractResource(_AbstractADEFeature):
     expense: MeasureValue | None = None
     revenue: MeasureValue | None = None
     co2_equivalent: MeasureValue | None = None
-    time_dependent_amount: Any | None = None
+    time_dependent_amount: Any | None = None  # AbstractTimeSeries
+    time_dependent_expense: Any | None = None  # AbstractTimeSeries
+    time_dependent_revenue: Any | None = None  # AbstractTimeSeries
+    amount_based_on: Any | None = None  # AbstractSchedule
 
 
 @dataclass

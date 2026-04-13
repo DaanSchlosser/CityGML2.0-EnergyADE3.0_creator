@@ -7,8 +7,8 @@ from typing import Any, ClassVar
 
 from lxml import etree
 
-from .namespaces import NS_GML, NSMAP
-from .types import CodeValue, MeasureValue, ScaleValue
+from .namespaces import NS_GML, NS_XLINK, NSMAP
+from .types import CodeValue, MeasureValue, ScaleValue, XlinkRef
 from .xml_support import RawXmlElement, append_xml_content
 
 
@@ -112,6 +112,11 @@ class BaseBuilder:
     ) -> None:
         """Emit a single child element under *parent*."""
         child_tag = f"{{{ns}}}{local}"
+
+        if isinstance(value, XlinkRef):
+            child = etree.SubElement(parent, child_tag)
+            child.set(f"{{{NS_XLINK}}}href", value.href)
+            return
 
         if isinstance(value, (BaseBuilder, RawXmlElement, etree._Element)):
             append_xml_content(parent, child_tag, value)

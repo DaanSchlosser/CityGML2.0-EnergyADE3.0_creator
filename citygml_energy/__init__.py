@@ -119,7 +119,7 @@ from .template import (
     load_city_model_template,
     normalize_city_model_for_beta8,
 )
-from .types import CodeValue, MeasureValue, ScaleValue
+from .types import CodeValue, MeasureValue, ScaleValue, XlinkRef
 from .xml_support import RawXmlElement
 
 __all__ = [
@@ -186,6 +186,7 @@ __all__ = [
     "ScheduleComponent",
     "WallSurface",
     "Window",
+    "XlinkRef",
     "Zone",
     "ZonePart",
     "auto_from_dict",

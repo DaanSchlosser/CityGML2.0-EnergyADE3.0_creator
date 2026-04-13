@@ -58,3 +58,21 @@ class ScaleValue:
     @property
     def text(self) -> str:
         return str(self.value)
+
+
+@dataclass
+class XlinkRef:
+    """An ``xlink:href`` reference to another object.
+
+    This is the standard GML pattern for property types that reference
+    another object by URI instead of nesting it inline.  Any GML property
+    type (``*PropertyType``) can carry an ``xlink:href`` attribute pointing
+    to the referenced object.
+
+    Usage::
+
+        XlinkRef("#id_roof_surface_001")
+        XlinkRef("http://example.com/objects/building_1")
+    """
+
+    href: str

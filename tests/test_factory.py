@@ -167,7 +167,7 @@ def test_building_from_dict_identifier():
 def test_building_from_dict_metadata():
     b = building_from_dict(_BUILDING_ATTRS)
     assert b.nrg3_metadata.author == "Daan Schlosser"
-    assert b.nrg3_metadata.acquisition_method == "measurement"
+    assert b.nrg3_metadata.acquisition_method.value == "measurement"
     assert b.nrg3_metadata.owner == "Han Solo"
 
 

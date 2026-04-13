@@ -287,7 +287,7 @@ def auto_from_dict(cls: type[BaseBuilder], attrs: dict[str, Any]) -> BaseBuilder
 def _make_metadata(attrs: dict[str, Any], prefix: str = "nrg3_metadata") -> Metadata | None:
     """Build a Metadata from flat attrs with a given prefix."""
     author = _str(attrs.get(f"{prefix}_author"))
-    acquisition_method = _str(attrs.get(f"{prefix}_acquisitionMethod"))
+    acquisition_method = _code(attrs, f"{prefix}_acquisitionMethod")
     owner = _str(attrs.get(f"{prefix}_owner"))
     quality_description = _str(attrs.get(f"{prefix}_qualityDescription"))
     source = _str(attrs.get(f"{prefix}_source"))
@@ -316,6 +316,45 @@ def _make_qualified[Q: (QualifiedVolume, QualifiedArea, QualifiedHeight)](
     )
 
 
+def _make_qualified_list[Q: (QualifiedVolume, QualifiedArea, QualifiedHeight)](
+    cls: type[Q], attrs: dict[str, Any], prefix: str
+) -> list[Q]:
+    """Build a list of QualifiedVolume / QualifiedArea / QualifiedHeight.
+
+    Supports two flat-key conventions:
+
+    1. **Un-indexed** (single value, backwards compatible)::
+
+           nrg3_bdgVolume_value, nrg3_bdgVolume_uom, ...
+
+    2. **Indexed** (multiple values)::
+
+           nrg3_bdgVolume_0_value, nrg3_bdgVolume_0_uom, ...
+           nrg3_bdgVolume_1_value, nrg3_bdgVolume_1_uom, ...
+
+    Both forms can be mixed: the un-indexed entry becomes the first item,
+    then indexed entries are appended in order.
+    """
+    result: list[Q] = []
+
+    # Un-indexed (backwards compatible)
+    item = _make_qualified(cls, attrs, prefix)
+    if item is not None:
+        result.append(item)
+
+    # Indexed: scan for prefix_0_value, prefix_1_value, ...
+    idx = 0
+    while True:
+        indexed_prefix = f"{prefix}_{idx}"
+        item = _make_qualified(cls, attrs, indexed_prefix)
+        if item is None:
+            break
+        result.append(item)
+        idx += 1
+
+    return result
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -329,10 +368,6 @@ def building_from_dict(attrs: dict[str, Any]) -> Building:
     This is a custom constructor because Building has QualifiedVolume/Area/Height
     lists that require nested sub-object assembly from flat keys.
     """
-    vol = _make_qualified(QualifiedVolume, attrs, "nrg3_bdgVolume")
-    area = _make_qualified(QualifiedArea, attrs, "nrg3_bdgArea")
-    height = _make_qualified(QualifiedHeight, attrs, "nrg3_bdgHeight")
-
     return Building(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
@@ -363,9 +398,9 @@ def building_from_dict(attrs: dict[str, Any]) -> Building:
         bdg_attic_thermal_status=_str(attrs.get("nrg3_bdgAtticThermalStatus")),
         bdg_basement_thermal_status=_str(attrs.get("nrg3_bdgBasementThermalStatus")),
         bdg_construction_weight=_code(attrs, "nrg3_bdgConstructionWeight"),
-        bdg_volumes=[vol] if vol else [],
-        bdg_areas=[area] if area else [],
-        bdg_heights=[height] if height else [],
+        bdg_volumes=_make_qualified_list(QualifiedVolume, attrs, "nrg3_bdgVolume"),
+        bdg_areas=_make_qualified_list(QualifiedArea, attrs, "nrg3_bdgArea"),
+        bdg_heights=_make_qualified_list(QualifiedHeight, attrs, "nrg3_bdgHeight"),
     )
 
 
@@ -384,8 +419,6 @@ def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
 
     Custom constructor because of QualifiedArea/Volume lists.
     """
-    area = _make_qualified(QualifiedArea, attrs, "nrg3_area")
-    volume = _make_qualified(QualifiedVolume, attrs, "nrg3_volume")
     return BuildingUnit(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
@@ -394,8 +427,8 @@ def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
         termination_date=_str(attrs.get("core_terminationDate")),
         identifier=_code(attrs, "nrg3_identifier"),
         nrg3_metadata=_make_metadata(attrs),
-        areas=[area] if area else [],
-        volumes=[volume] if volume else [],
+        areas=_make_qualified_list(QualifiedArea, attrs, "nrg3_area"),
+        volumes=_make_qualified_list(QualifiedVolume, attrs, "nrg3_volume"),
         bu_type=_code(attrs, "nrg3_buType"),
         floor_number_from=_float(attrs.get("nrg3_floorNumberFrom")),
         floor_number_to=_float(attrs.get("nrg3_floorNumberTo")),
@@ -443,9 +476,6 @@ def zone_from_dict(attrs: dict[str, Any]) -> Zone:
             value=_measure(attrs, "nrg3_coolingSetpoint"),
         )
 
-    vol = _make_qualified(QualifiedVolume, attrs, "nrg3_volume")
-    area = _make_qualified(QualifiedArea, attrs, "nrg3_area")
-
     return Zone(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
@@ -457,8 +487,8 @@ def zone_from_dict(attrs: dict[str, Any]) -> Zone:
         nrg3_status=_code(attrs, "nrg3_status"),
         nrg3_valid_from=_str(attrs.get("nrg3_validFrom")),
         nrg3_valid_to=_str(attrs.get("nrg3_validTo")),
-        areas=[area] if area else [],
-        volumes=[vol] if vol else [],
+        areas=_make_qualified_list(QualifiedArea, attrs, "nrg3_area"),
+        volumes=_make_qualified_list(QualifiedVolume, attrs, "nrg3_volume"),
         zone_type=_code(attrs, "nrg3_zoneType"),
         is_cooled=_bool(attrs.get("nrg3_isCooled")),
         is_heated=_bool(attrs.get("nrg3_isHeated")),
