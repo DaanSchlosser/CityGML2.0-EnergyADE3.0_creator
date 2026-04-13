@@ -207,7 +207,7 @@ def test_multiple_buildings_validate_against_xsd(xsd_schema):
     second_building["id"] = "id_building_2"
     second_building["name"] = ["Leia's house"]
     second_building["identifier"] = [
-        {"value": "0503100000032915", "code_space": "https://bagviewer.kadaster.nl/?objectId=0503100000032915"},
+        {"value": "0000000000000002", "code_space": "https://example.invalid/bag"},
     ]
 
     extended_data = deepcopy(data)

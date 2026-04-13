@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <core:CityModel xmlns:app="http://www.opengis.net/citygml/appearance/2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:brid="http://www.opengis.net/citygml/bridge/2.0" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/2.0" xmlns:gen="http://www.opengis.net/citygml/generics/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0" xmlns:luse="http://www.opengis.net/citygml/landuse/2.0" xmlns:nrg3="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0" xmlns:pbase="http://www.opengis.net/citygml/profiles/base/2.0" xmlns:sch="http://www.ascc.net/xml/schematron" xmlns:smil20="http://www.w3.org/2001/SMIL20/" xmlns:smil20lang="http://www.w3.org/2001/SMIL20/Language" xmlns:tex="http://www.opengis.net/citygml/texturedsurface/2.0" xmlns:tran="http://www.opengis.net/citygml/transportation/2.0" xmlns:tun="http://www.opengis.net/citygml/tunnel/2.0" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0" xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-	<gml:description xlink:type="simple">This is a description</gml:description>
+	<gml:description xlink:type="simple">Example CityGML2.0 + EnergyADE3.0 dataset for a single-family residence with various energy-related features and metadata.</gml:description>
 	<gml:name>RenoDAT City</gml:name>
 	<gml:boundedBy>
 		<gml:Envelope srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
@@ -15,9 +15,9 @@
 				<nrg3:acquisitionMethod>measurement</nrg3:acquisitionMethod>
 				<nrg3:owner>Han Solo</nrg3:owner>
 			</nrg3:Metadata>
-			<gml:name>Han solo's house</gml:name>
+			<gml:name>Han Solo's House</gml:name>
 			<core:creationDate>2026-04-04</core:creationDate>
-			<nrg3:identifier codeSpace="https://bagviewer.kadaster.nl/?objectId=0503100000032914">0503100000032914</nrg3:identifier>
+			<nrg3:identifier codeSpace="https://example.invalid/bag">0000000000000001</nrg3:identifier>
 			<nrg3:device xlink:type="simple">
 				<nrg3:PhotovoltaicCollector gml:id="pv_panel_1">
 					<gml:name>PV collector (36x270 Wp)</gml:name>
@@ -521,6 +521,7 @@
 			</bldg:lod1Solid>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:GroundSurface gml:id="id_building_1_GroundSurface2_1">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_ground_floor"/>
 					<bldg:lod2MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_GroundSurface2_1_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -538,6 +539,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_1">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod2MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_1_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -555,6 +557,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_2">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod2MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_2_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -572,6 +575,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_3">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod2MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_3_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -589,6 +593,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_4">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod2MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_4_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -606,6 +611,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:RoofSurface gml:id="id_building_1_RoofSurface2_1">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_reed_roof"/>
 					<bldg:lod2MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_RoofSurface2_1_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -623,6 +629,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:RoofSurface gml:id="id_building_1_RoofSurface2_2">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_reed_roof"/>
 					<bldg:lod2MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_RoofSurface2_2_lod2" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -640,6 +647,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_5">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_5_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -657,6 +665,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_6">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_6_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -674,6 +683,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_7">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_7_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -691,6 +701,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_8">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_8_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -708,6 +719,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:RoofSurface gml:id="id_building_1_RoofSurface2_3">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_reed_roof"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_RoofSurface2_3_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -725,6 +737,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:RoofSurface gml:id="id_building_1_RoofSurface2_4">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_reed_roof"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_RoofSurface2_4_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -742,6 +755,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_9">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_9_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -777,6 +791,7 @@
 					</bldg:lod3MultiSurface>
 					<bldg:opening xlink:type="simple">
 						<bldg:Window gml:id="id_building_1_Window2_7">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_window_hr"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Window2_7_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -794,6 +809,7 @@
 					</bldg:opening>
 					<bldg:opening xlink:type="simple">
 						<bldg:Window gml:id="id_building_1_Window2_8">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_window_hr"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Window2_8_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -811,6 +827,7 @@
 					</bldg:opening>
 					<bldg:opening xlink:type="simple">
 						<bldg:Door gml:id="id_building_1_Door2_4">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_back_door"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Door2_4_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -828,6 +845,7 @@
 					</bldg:opening>
 					<bldg:opening xlink:type="simple">
 						<bldg:Door gml:id="id_building_1_Door2_5">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_back_door"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Door2_5_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -847,6 +865,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_10">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_10_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -892,6 +911,7 @@
 					</bldg:lod3MultiSurface>
 					<bldg:opening xlink:type="simple">
 						<bldg:Window gml:id="id_building_1_Window2_1">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_window_hr"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Window2_1_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -909,6 +929,7 @@
 					</bldg:opening>
 					<bldg:opening xlink:type="simple">
 						<bldg:Window gml:id="id_building_1_Window2_2">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_window_hr"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Window2_2_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -926,6 +947,7 @@
 					</bldg:opening>
 					<bldg:opening xlink:type="simple">
 						<bldg:Window gml:id="id_building_1_Window2_3">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_window_hr"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Window2_3_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -943,6 +965,7 @@
 					</bldg:opening>
 					<bldg:opening xlink:type="simple">
 						<bldg:Window gml:id="id_building_1_Window2_4">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_window_hr"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Window2_4_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -960,6 +983,7 @@
 					</bldg:opening>
 					<bldg:opening xlink:type="simple">
 						<bldg:Window gml:id="id_building_1_Window2_5">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_window_hr"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Window2_5_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -977,6 +1001,7 @@
 					</bldg:opening>
 					<bldg:opening xlink:type="simple">
 						<bldg:Window gml:id="id_building_1_Window2_6">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_window_hr"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Window2_6_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -996,6 +1021,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_11">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_11_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -1021,6 +1047,7 @@
 					</bldg:lod3MultiSurface>
 					<bldg:opening xlink:type="simple">
 						<bldg:Door gml:id="id_building_1_Door2_1">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_front_door"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Door2_1_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -1038,6 +1065,7 @@
 					</bldg:opening>
 					<bldg:opening xlink:type="simple">
 						<bldg:Door gml:id="id_building_1_Door2_2">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_front_door"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Door2_2_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -1057,6 +1085,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:WallSurface gml:id="id_building_1_WallSurface2_12">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_external_wall"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_WallSurface2_12_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -1077,6 +1106,7 @@
 					</bldg:lod3MultiSurface>
 					<bldg:opening xlink:type="simple">
 						<bldg:Door gml:id="id_building_1_Door2_3">
+							<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_back_door"/>
 							<bldg:lod3MultiSurface xlink:type="simple">
 								<gml:MultiSurface gml:id="id_building_1_Door2_3_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 									<gml:surfaceMember xlink:type="simple">
@@ -1096,6 +1126,7 @@
 			</bldg:boundedBy>
 			<bldg:boundedBy xlink:type="simple">
 				<bldg:GroundSurface gml:id="id_building_1_GroundSurface2_2">
+					<nrg3:layeredConstruction xlink:type="simple" xlink:href="#constr_ground_floor"/>
 					<bldg:lod3MultiSurface xlink:type="simple">
 						<gml:MultiSurface gml:id="id_building_1_GroundSurface2_2_lod3" srsName="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109" srsDimension="3">
 							<gml:surfaceMember xlink:type="simple">
@@ -1618,5 +1649,273 @@
 				</nrg3:QualifiedVolume>
 			</nrg3:bdgVolume>
 		</bldg:Building>
+	</core:cityObjectMember>
+	<core:cityObjectMember xlink:type="simple">
+		<nrg3:MaterialLibrary gml:id="material_library_1">
+			<gml:description xlink:type="simple">Construction materials for single-family residence</gml:description>
+			<gml:name>Material Library</gml:name>
+			<nrg3:type>materialLibrary</nrg3:type>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_gypsum_board">
+					<gml:name>Gypsum plasterboard</gml:name>
+					<nrg3:type>gypsum</nrg3:type>
+					<nrg3:isTransparent>false</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">0.25</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">900.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">1000.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_mineral_wool">
+					<gml:name>Mineral wool insulation</gml:name>
+					<nrg3:type>mineralWool</nrg3:type>
+					<nrg3:isTransparent>false</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">0.035</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">30.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">840.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_osb">
+					<gml:name>OSB sheathing board</gml:name>
+					<nrg3:type>wood</nrg3:type>
+					<nrg3:isTransparent>false</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">0.13</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">600.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">1700.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_timber_hsb">
+					<gml:name>Structural timber (HSB frame)</gml:name>
+					<nrg3:type>wood</nrg3:type>
+					<nrg3:isTransparent>false</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">0.13</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">500.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">1600.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_reed_thatch">
+					<gml:name>Reed thatch (rieten dak)</gml:name>
+					<nrg3:type>thatch</nrg3:type>
+					<nrg3:isTransparent>false</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">0.09</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">190.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">1400.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_concrete">
+					<gml:name>Reinforced concrete (floor slab)</gml:name>
+					<nrg3:type>concrete</nrg3:type>
+					<nrg3:isTransparent>false</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">1.8</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">2400.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">840.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_eps">
+					<gml:name>EPS floor insulation</gml:name>
+					<nrg3:type>looseFilledInsulation</nrg3:type>
+					<nrg3:isTransparent>false</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">0.036</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">20.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">1450.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_screed">
+					<gml:name>Cement screed with floor heating</gml:name>
+					<nrg3:type>concrete</nrg3:type>
+					<nrg3:isTransparent>false</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">1.4</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">2000.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">880.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_hr_glass">
+					<gml:description xlink:type="simple">Low-e coated float glass, HR++ rated</gml:description>
+					<gml:name>HR++ double glazing pane</gml:name>
+					<nrg3:type>glass</nrg3:type>
+					<nrg3:isTransparent>true</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">1.0</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">2500.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">750.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:Gas gml:id="mat_argon">
+					<gml:name>Argon gas (glazing cavity)</gml:name>
+					<nrg3:type>argon</nrg3:type>
+					<nrg3:isVentilated>false</nrg3:isVentilated>
+					<nrg3:rValue uom="m2*K/W">0.16</nrg3:rValue>
+				</nrg3:Gas>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:SolidMaterial gml:id="mat_timber_door">
+					<gml:name>Insulated timber door panel</gml:name>
+					<nrg3:type>wood</nrg3:type>
+					<nrg3:isTransparent>false</nrg3:isTransparent>
+					<nrg3:thermalConductivity uom="W/(m*K)">0.13</nrg3:thermalConductivity>
+					<nrg3:density uom="kg/m3">550.0</nrg3:density>
+					<nrg3:specificHeatCapacity uom="J/(kg*K)">1600.0</nrg3:specificHeatCapacity>
+				</nrg3:SolidMaterial>
+			</nrg3:libraryMember>
+		</nrg3:MaterialLibrary>
+	</core:cityObjectMember>
+	<core:cityObjectMember xlink:type="simple">
+		<nrg3:LayeredConstructionLibrary gml:id="construction_library_1">
+			<gml:description xlink:type="simple">Layered constructions for single-family residence (Rc walls 5.0, Rc floor 5.0, Rc roof 6.0 m2K/W)</gml:description>
+			<gml:name>Construction Library</gml:name>
+			<nrg3:type>constructionLibrary</nrg3:type>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:LayeredConstruction gml:id="constr_external_wall">
+					<gml:description xlink:type="simple">HSB element insulated: gypsum + mineral wool + OSB. Rc=5.0 m2K/W per arch. spec.</gml:description>
+					<gml:name>External wall (HSB timber frame, Rc=5.0)</gml:name>
+					<nrg3:type>insulatedWoodenWall</nrg3:type>
+					<nrg3:uValue uom="W/(m2*K)">0.2</nrg3:uValue>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_wall_L1">
+							<nrg3:thickness uom="m">0.0125</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_gypsum_board"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_wall_L2">
+							<gml:description xlink:type="simple">Mineral wool between HSB timber studs (effective lambda includes thermal bridging)</gml:description>
+							<nrg3:thickness uom="m">0.18</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_mineral_wool"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_wall_L3">
+							<nrg3:thickness uom="m">0.018</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_osb"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+				</nrg3:LayeredConstruction>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:LayeredConstruction gml:id="constr_ground_floor">
+					<gml:description xlink:type="simple">Insulated concrete ground floor slab with floor heating. Rc=5.0 m2K/W per arch. spec.</gml:description>
+					<gml:name>Ground floor (concrete slab + EPS, Rc=5.0)</gml:name>
+					<nrg3:type>groundSlab</nrg3:type>
+					<nrg3:uValue uom="W/(m2*K)">0.2</nrg3:uValue>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_floor_L1">
+							<gml:description xlink:type="simple">Cement screed with embedded floor heating (vloerverwarming)</gml:description>
+							<nrg3:thickness uom="m">0.065</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_screed"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_floor_L2">
+							<nrg3:thickness uom="m">0.18</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_eps"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_floor_L3">
+							<nrg3:thickness uom="m">0.2</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_concrete"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+				</nrg3:LayeredConstruction>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:LayeredConstruction gml:id="constr_reed_roof">
+					<gml:description xlink:type="simple">Sloped reed-thatched roof over HSB structure. Rc=6.0 m2K/W per arch. spec.</gml:description>
+					<gml:name>Reed roof (rieten dak, Rc=6.0)</gml:name>
+					<nrg3:type>insulatedThatchRoof</nrg3:type>
+					<nrg3:uValue uom="W/(m2*K)">0.167</nrg3:uValue>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_roof_L1">
+							<nrg3:thickness uom="m">0.0125</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_gypsum_board"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_roof_L2">
+							<gml:description xlink:type="simple">Mineral wool between timber rafters</gml:description>
+							<nrg3:thickness uom="m">0.22</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_mineral_wool"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_roof_L3">
+							<nrg3:thickness uom="m">0.018</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_osb"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_roof_L4">
+							<gml:description xlink:type="simple">Reed thatch exterior (rieten dak)</gml:description>
+							<nrg3:thickness uom="m">0.3</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_reed_thatch"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+				</nrg3:LayeredConstruction>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:LayeredConstruction gml:id="constr_window_hr">
+					<gml:description xlink:type="simple">HR++ double glazing: 4mm glass / 16mm argon / 4mm low-e glass. U=1.1 W/m2K, ZTA=0.60 per arch. spec.</gml:description>
+					<gml:name>Window HR++ (U=1.1, g=0.60)</gml:name>
+					<nrg3:type>doubleGlazedWindow</nrg3:type>
+					<nrg3:uValue uom="W/(m2*K)">1.1</nrg3:uValue>
+					<nrg3:gValue uom="">0.6</nrg3:gValue>
+					<nrg3:glazingRatio uom="">0.7</nrg3:glazingRatio>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_window_L1">
+							<nrg3:thickness uom="m">0.004</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_hr_glass"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_window_L2">
+							<nrg3:thickness uom="m">0.016</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_argon"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_window_L3">
+							<gml:description xlink:type="simple">Low-e coated inner pane</gml:description>
+							<nrg3:thickness uom="m">0.004</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_hr_glass"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+				</nrg3:LayeredConstruction>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:LayeredConstruction gml:id="constr_front_door">
+					<gml:description xlink:type="simple">Insulated timber front door. U=1.43 W/m2K incl. frame per arch. spec.</gml:description>
+					<gml:name>Front door (U=1.43 incl frame)</gml:name>
+					<nrg3:type>insulatedTimberDoor</nrg3:type>
+					<nrg3:uValue uom="W/(m2*K)">1.43</nrg3:uValue>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_front_door_L1">
+							<nrg3:thickness uom="m">0.054</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_timber_door"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+				</nrg3:LayeredConstruction>
+			</nrg3:libraryMember>
+			<nrg3:libraryMember xlink:type="simple">
+				<nrg3:LayeredConstruction gml:id="constr_back_door">
+					<gml:description xlink:type="simple">Insulated timber back door. U=1.64 W/m2K incl. frame per arch. spec.</gml:description>
+					<gml:name>Back door (U=1.64 incl frame)</gml:name>
+					<nrg3:type>insulatedTimberDoor</nrg3:type>
+					<nrg3:uValue uom="W/(m2*K)">1.64</nrg3:uValue>
+					<nrg3:layer xlink:type="simple">
+						<nrg3:Layer gml:id="constr_back_door_L1">
+							<nrg3:thickness uom="m">0.048</nrg3:thickness>
+							<nrg3:material xlink:type="simple" xlink:href="#mat_timber_door"/>
+						</nrg3:Layer>
+					</nrg3:layer>
+				</nrg3:LayeredConstruction>
+			</nrg3:libraryMember>
+		</nrg3:LayeredConstructionLibrary>
 	</core:cityObjectMember>
 </core:CityModel>

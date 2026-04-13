@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .core import CityModel
-from .geometry import apply_geometry_sources
+from .geometry import apply_construction_mapping, apply_geometry_sources
 from .mapping import attach_child, build_from_dict, resolve_class
 
 PathLike = str | Path
@@ -29,6 +29,7 @@ _ALLOWED_TOP_LEVEL_KEYS = {
     "features",
     "geometry_sources",
     "coordinate_origin",
+    "construction_mapping",
 }
 _ALLOWED_CITY_MODEL_KEYS = {"description", "name"}
 _ALLOWED_GEOMETRY_SOURCE_KEYS = {
@@ -214,6 +215,11 @@ def build_city_model_from_feature_collection(
         origin = (0.0, 0.0, 0.0)
 
     apply_geometry_sources(model, data.get("geometry_sources", []), origin=origin)
+
+    construction_mapping = data.get("construction_mapping")
+    if construction_mapping is not None:
+        apply_construction_mapping(model, construction_mapping)
+
     return model
 
 
