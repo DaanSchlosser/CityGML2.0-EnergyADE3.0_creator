@@ -10,6 +10,13 @@ from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
 from .base import BaseBuilder
+from .building import (
+    _BUILDING_SPACE_FIELD_MAP,
+    _BUILDING_SPACE_ORDER,
+    _CITY_OBJECT_ADE_FIELD_MAP,
+    _CITY_OBJECT_ADE_ORDER,
+    _AbstractBuildingSpace,
+)
 from .namespaces import NS_CORE, NS_GML, NS_NRG3
 from .types import CodeValue, MeasureValue, ScaleValue, XlinkRef
 
@@ -47,6 +54,36 @@ class CityObjectRelation(BaseBuilder):
     @related_to_href.setter
     def related_to_href(self, value: str | None) -> None:
         self.related_to = XlinkRef(value) if value is not None else None
+
+
+# ===================================================================
+# FeatureRelation (XSD: FeatureRelationType)
+# ===================================================================
+
+
+@dataclass
+class FeatureRelation(BaseBuilder):
+    """``nrg3:FeatureRelation`` -- relation between ADE features.
+
+    Used by ``AbstractFeatureWithLifeSpan.relatedTo`` (as opposed to
+    :class:`CityObjectRelation` which is used by CityObject.relatedTo).
+
+    XSD: FeatureRelationType -- relationType (CodeType) + relatedTo
+    (gml:FeaturePropertyType, i.e. xlink:href to another feature).
+    """
+
+    ELEMENT_TAG: ClassVar = (NS_NRG3, "FeatureRelation")
+    ELEMENT_ORDER: ClassVar = (
+        (NS_NRG3, "relationType"),
+        (NS_NRG3, "relatedTo"),
+    )
+    FIELD_MAP: ClassVar = {
+        "relation_type": (NS_NRG3, "relationType"),
+        "related_to": (NS_NRG3, "relatedTo"),
+    }
+
+    relation_type: CodeValue | None = None
+    related_to: XlinkRef | None = None
 
 
 # ===================================================================
@@ -178,12 +215,12 @@ class _AbstractADEFeature(BaseBuilder):
     creation_date: str | None = None
     termination_date: str | None = None
     external_references: list[Any] = field(default_factory=list)
-    metadata: Any | None = None  # Metadata builder
+    metadata: Metadata | None = None
     identifier: CodeValue | None = None
     valid_from: str | None = None
     valid_to: str | None = None
     status: CodeValue | None = None
-    related_to: list[Any] = field(default_factory=list)
+    related_to: list[FeatureRelation] = field(default_factory=list)
 
 
 # ===================================================================
@@ -218,20 +255,20 @@ class DeviceOperation(_AbstractADEFeature):
 # Abstract Device (shared fields)
 # ===================================================================
 
-# Element order for CityObject extensions + AbstractDevice fields
+# Element order for CityObject extensions + AbstractDevice fields.
+# AbstractDevice substitutes core:_CityObject, so it inherits ALL 14
+# CityObject ADE hooks via _GenericApplicationPropertyOfCityObject.
 _DEVICE_BASE_ORDER: tuple[tuple[str, str], ...] = (
+    # -- gml:AbstractFeatureType --
     (NS_GML, "description"),
     (NS_GML, "name"),
+    # -- core:AbstractCityObjectType --
     (NS_CORE, "creationDate"),
     (NS_CORE, "terminationDate"),
-    # CityObject ADE extensions used by devices (XSD declaration order)
-    (NS_NRG3, "identifier"),
-    (NS_NRG3, "relatedTo"),
-    (NS_NRG3, "validFrom"),
-    (NS_NRG3, "validTo"),
-    (NS_NRG3, "referencePoint"),
-    (NS_NRG3, "resource"),
-    # AbstractDevice fields
+    (NS_CORE, "externalReference"),
+    # -- Energy ADE CityObject extensions (all 14) --
+    *_CITY_OBJECT_ADE_ORDER,
+    # -- nrg3:AbstractDeviceType --
     (NS_NRG3, "model"),
     (NS_NRG3, "yearOfInstallation"),
     (NS_NRG3, "yearOfManufacture"),
@@ -251,12 +288,10 @@ _DEVICE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
     "gml_name": (NS_GML, "name"),
     "creation_date": (NS_CORE, "creationDate"),
     "termination_date": (NS_CORE, "terminationDate"),
-    "nrg3_identifier": (NS_NRG3, "identifier"),
-    "nrg3_related_to": (NS_NRG3, "relatedTo"),
-    "valid_from": (NS_NRG3, "validFrom"),
-    "valid_to": (NS_NRG3, "validTo"),
-    "reference_point": (NS_NRG3, "referencePoint"),
-    "nrg3_resources": (NS_NRG3, "resource"),
+    "external_references": (NS_CORE, "externalReference"),
+    # All 14 CityObject ADE hooks
+    **_CITY_OBJECT_ADE_FIELD_MAP,
+    # AbstractDeviceType
     "model": (NS_NRG3, "model"),
     "year_of_installation": (NS_NRG3, "yearOfInstallation"),
     "year_of_manufacture": (NS_NRG3, "yearOfManufacture"),
@@ -277,18 +312,35 @@ _DEVICE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
 
 @dataclass
 class _AbstractDevice(BaseBuilder):
-    """Base for all device types (not instantiated directly)."""
+    """Base for all device types (not instantiated directly).
 
+    XSD: AbstractDeviceType extends core:AbstractCityObjectType,
+    so it inherits all 14 CityObject ADE extension hooks.
+    """
+
+    # -- gml:AbstractFeatureType --
     gml_description: str | None = None
     gml_name: str | None = None
+    # -- core:AbstractCityObjectType --
     creation_date: str | None = None
     termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    # -- CityObject ADE hooks (all 14) --
+    nrg3_devices: list[Any] = field(default_factory=list)
     nrg3_identifier: CodeValue | None = None
-    reference_point: Any | None = None
+    nrg3_indicators: list[Any] = field(default_factory=list)
+    nrg3_interventions: list[Any] = field(default_factory=list)
+    nrg3_layered_construction: Any | None = None
+    nrg3_metadata: Metadata | None = None
     nrg3_related_to: list[Any] = field(default_factory=list)
     nrg3_resources: list[Any] = field(default_factory=list)
-    valid_from: str | None = None
-    valid_to: str | None = None
+    nrg3_sensor_data: list[Any] = field(default_factory=list)
+    nrg3_status: CodeValue | None = None
+    nrg3_utility_network_connections: list[Any] = field(default_factory=list)
+    nrg3_valid_from: str | None = None
+    nrg3_valid_to: str | None = None
+    nrg3_reference_point: Any | None = None
+    # -- nrg3:AbstractDeviceType --
     model: str | None = None
     year_of_installation: int | None = None
     year_of_manufacture: int | None = None
@@ -352,7 +404,7 @@ class PhotovoltaicCollector(_AbstractSolarCollector):
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "PhotovoltaicCollector")
     FEATURE_TYPE: ClassVar = "nrg3_PhotovoltaicCollector"
-    PARENT_FIELD: ClassVar = "devices"
+    PARENT_FIELD: ClassVar = "nrg3_devices"
     ELEMENT_ORDER: ClassVar = (
         *_SOLAR_COLLECTOR_ORDER,
         (NS_NRG3, "cellType"),
@@ -376,7 +428,7 @@ class HeatPump(_AbstractDevice):
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "HeatPump")
     FEATURE_TYPE: ClassVar = "nrg3_HeatPump"
-    PARENT_FIELD: ClassVar = "devices"
+    PARENT_FIELD: ClassVar = "nrg3_devices"
     ELEMENT_ORDER: ClassVar = (
         *_DEVICE_BASE_ORDER,
         (NS_NRG3, "heatSource"),
@@ -406,8 +458,8 @@ class EVChargingStation(_AbstractDevice):
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "EVChargingStation")
     FEATURE_TYPE: ClassVar = "nrg3_EVChargingStation"
-    PARENT_FIELD: ClassVar = "devices"
-    FLAT_KEY_OVERRIDES: ClassVar = {"ev_type": "nrg3_evType"}
+    PARENT_FIELD: ClassVar = "nrg3_devices"
+
     ELEMENT_ORDER: ClassVar = (
         *_DEVICE_BASE_ORDER,
         (NS_NRG3, "type"),
@@ -462,8 +514,6 @@ _SCHEDULE_BASE_FIELD_MAP: dict[str, tuple[str, str]] = {
 class _AbstractSchedule(_AbstractADEFeature):
     """Shared fields for all schedule types (XSD: AbstractScheduleType)."""
 
-    FLAT_KEY_OVERRIDES: ClassVar = {"schedule_type": "nrg3_scheduleType"}
-
     schedule_type: CodeValue | None = None
     start_time: str | None = None
     start_day: int | None = None
@@ -478,10 +528,6 @@ class ConstantValueSchedule(_AbstractSchedule):
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "ConstantValueSchedule")
     FEATURE_TYPE: ClassVar = "nrg3_ConstantValueSchedule"
-    FLAT_KEY_OVERRIDES: ClassVar = {
-        **_AbstractSchedule.FLAT_KEY_OVERRIDES,
-        "value": "nrg3_scheduleValue",
-    }
     ELEMENT_ORDER: ClassVar = (
         *_SCHEDULE_BASE_ORDER,
         (NS_NRG3, "value"),
@@ -550,7 +596,6 @@ class Occupants(_AbstractADEFeature):
     ELEMENT_TAG: ClassVar = (NS_NRG3, "Occupants")
     FEATURE_TYPE: ClassVar = "nrg3_Occupants"
     PARENT_FIELD: ClassVar = "occupied_by"
-    FLAT_KEY_OVERRIDES: ClassVar = {"occupant_type": "nrg3_occupantType"}
     ELEMENT_ORDER: ClassVar = (
         *_ADE_FEATURE_BASE_ORDER,
         (NS_NRG3, "type"),
@@ -608,12 +653,6 @@ class EnergyPerformanceCertificate(_AbstractADEFeature):
     ELEMENT_TAG: ClassVar = (NS_NRG3, "EnergyPerformanceCertificate")
     FEATURE_TYPE: ClassVar = "nrg3_EnergyPerformanceCertificate"
     PARENT_FIELD: ClassVar = "energy_performance_certificates"
-    FLAT_KEY_OVERRIDES: ClassVar = {
-        "epc_type": "nrg3_epcType",
-        "label": "nrg3_epcLabel",
-        "value": "nrg3_epcValue",
-        "certification_method": "nrg3_epcCertificationMethod",
-    }
     ELEMENT_ORDER: ClassVar = (
         *_ADE_FEATURE_BASE_ORDER,
         (NS_NRG3, "type"),
@@ -710,10 +749,6 @@ class Energy(_AbstractResource):
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "Energy")
     FEATURE_TYPE: ClassVar = "nrg3_Energy"
-    FLAT_KEY_OVERRIDES: ClassVar = {
-        "energy_type": "nrg3_energyType",
-        "energy_source": "nrg3_energySource",
-    }
     ELEMENT_ORDER: ClassVar = (
         *_RESOURCE_BASE_ORDER,
         (NS_NRG3, "type"),
@@ -808,24 +843,14 @@ class MonthlyTimeSeries(_AbstractTimeSeries):
 
 
 @dataclass
-class BuildingUnit(BaseBuilder):
+class BuildingUnit(_AbstractBuildingSpace):
     """``nrg3:BuildingUnit``."""
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "BuildingUnit")
     FEATURE_TYPE: ClassVar = "nrg3_BuildingUnit"
     PARENT_FIELD: ClassVar = "building_units"
     ELEMENT_ORDER: ClassVar = (
-        (NS_GML, "description"),
-        (NS_GML, "name"),
-        (NS_CORE, "creationDate"),
-        (NS_CORE, "terminationDate"),
-        (NS_NRG3, "identifier"),
-        (NS_NRG3, "metadata"),
-        # AbstractBuildingSpace -> AbstractCityObjectSpace
-        (NS_NRG3, "area"),
-        (NS_NRG3, "volume"),
-        # AbstractBuildingSpace
-        (NS_NRG3, "occupiedBy"),
+        *_BUILDING_SPACE_ORDER,
         # BuildingUnit-specific
         (NS_NRG3, "type"),
         (NS_NRG3, "floorNumberFrom"),
@@ -837,15 +862,7 @@ class BuildingUnit(BaseBuilder):
         (NS_NRG3, "energyPerformanceCertificate"),
     )
     FIELD_MAP: ClassVar = {
-        "gml_description": (NS_GML, "description"),
-        "gml_name": (NS_GML, "name"),
-        "creation_date": (NS_CORE, "creationDate"),
-        "termination_date": (NS_CORE, "terminationDate"),
-        "identifier": (NS_NRG3, "identifier"),
-        "nrg3_metadata": (NS_NRG3, "metadata"),
-        "areas": (NS_NRG3, "area"),
-        "volumes": (NS_NRG3, "volume"),
-        "occupied_by": (NS_NRG3, "occupiedBy"),
+        **_BUILDING_SPACE_FIELD_MAP,
         "bu_type": (NS_NRG3, "type"),
         "floor_number_from": (NS_NRG3, "floorNumberFrom"),
         "floor_number_to": (NS_NRG3, "floorNumberTo"),
@@ -856,15 +873,7 @@ class BuildingUnit(BaseBuilder):
         "energy_performance_certificates": (NS_NRG3, "energyPerformanceCertificate"),
     }
 
-    gml_description: str | None = None
-    gml_name: str | None = None
-    creation_date: str | None = None
-    termination_date: str | None = None
-    identifier: CodeValue | None = None
-    nrg3_metadata: Metadata | None = None
-    areas: list[QualifiedArea] = field(default_factory=list)
-    volumes: list[QualifiedVolume] = field(default_factory=list)
-    occupied_by: list[Occupants] = field(default_factory=list)
+    # BuildingUnit-specific fields only (inherited fields come from _AbstractBuildingSpace)
     bu_type: CodeValue | None = None
     floor_number_from: float | None = None
     floor_number_to: float | None = None

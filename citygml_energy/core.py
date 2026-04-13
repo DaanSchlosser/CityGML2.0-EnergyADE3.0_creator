@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from lxml import etree
+import lxml.etree as etree
 
 from .namespaces import NS_GML, NS_XAL, NSMAP, qn
 from .xml_support import append_xml_content

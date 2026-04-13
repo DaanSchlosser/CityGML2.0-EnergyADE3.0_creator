@@ -10,7 +10,11 @@ from typing import Any
 from .core import CityModel
 from .factory import FeatureFactory, list_feature_types
 from .geometry import apply_geometry_sources
-from .input_catalog import get_allowed_attribute_names, normalize_feature_attributes
+from .input_catalog import (
+    FEATURE_REQUIRED_FIELDS,
+    get_allowed_attribute_names,
+    normalize_feature_attributes,
+)
 
 PathLike = str | Path
 
@@ -239,9 +243,52 @@ def _validate_feature(
     for key, value in attributes.items():
         if not isinstance(key, str):
             raise InputFileError(f"{source}: features[{index}].attributes keys must be strings")
-        if not isinstance(value, _ALLOWED_SCALAR_TYPES):
+        if isinstance(value, dict):
+            # Nested object for CodeValue/MeasureValue/ScaleValue
+            _validate_nested_value(value, key, index, source)
+        elif not isinstance(value, _ALLOWED_SCALAR_TYPES):
             raise InputFileError(
-                f"{source}: features[{index}].attributes.{key} must be a scalar JSON value"
+                f"{source}: features[{index}].attributes.{key} must be a scalar or nested object"
+            )
+
+    # Check XSD-required fields
+    required = FEATURE_REQUIRED_FIELDS.get(feature_type, ())
+    normalized = normalize_feature_attributes(feature_type, attributes)
+    for req_key in required:
+        val = normalized.get(req_key)
+        if val is None or (isinstance(val, str) and not val.strip()):
+            raise InputFileError(
+                f"{source}: features[{index}].attributes.{req_key} is required "
+                f"for {feature_type} (XSD minOccurs=1)"
+            )
+
+
+_ALLOWED_NESTED_KEYS = {"value", "uom", "codeSpace"}
+
+
+def _validate_nested_value(
+    obj: dict[str, Any],
+    attr_key: str,
+    index: int,
+    source: str,
+) -> None:
+    """Validate a nested CodeValue/MeasureValue/ScaleValue object."""
+    unexpected = sorted(set(obj) - _ALLOWED_NESTED_KEYS)
+    if unexpected:
+        raise InputFileError(
+            f"{source}: features[{index}].attributes.{attr_key} "
+            f"has unexpected key(s): {', '.join(unexpected)}"
+        )
+    if "value" not in obj:
+        raise InputFileError(
+            f"{source}: features[{index}].attributes.{attr_key} "
+            f"nested object must contain a 'value' key"
+        )
+    for k, v in obj.items():
+        if not isinstance(v, _ALLOWED_SCALAR_TYPES):
+            raise InputFileError(
+                f"{source}: features[{index}].attributes.{attr_key}.{k} "
+                f"must be a scalar JSON value"
             )
 
 

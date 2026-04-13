@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lxml import etree
+import lxml.etree as etree
 
 from .core import CityModel, Envelope
 from .namespaces import NS_NRG3, qn
@@ -137,4 +137,3 @@ def _normalize_element(element: etree._Element) -> None:
         if new_local is not None:
             child.tag = f"{{{NS_NRG3}}}{new_local}"
             qname = etree.QName(child)
-

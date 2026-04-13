@@ -1,7 +1,8 @@
 """CityGML 2.0 Building module classes with Energy ADE 3.0 extensions.
 
 Covers: Building, BuildingPart, BuildingInstallation,
-IntBuildingInstallation, Room, all thematic surfaces, and openings.
+IntBuildingInstallation, Room, all thematic surfaces, openings,
+and Energy ADE zone / building-space classes.
 """
 
 from __future__ import annotations
@@ -14,6 +15,137 @@ from .namespaces import NS_BLDG, NS_CORE, NS_GML, NS_NRG3
 from .types import CodeValue, MeasureValue, ScaleValue
 
 # ===================================================================
+# Shared: Energy ADE CityObject extension hooks
+# (XSD: _GenericApplicationPropertyOfCityObject substitutionGroup)
+# These apply to ALL CityObject-derived types.
+# ===================================================================
+
+_CITY_OBJECT_ADE_ORDER: tuple[tuple[str, str], ...] = (
+    (NS_NRG3, "device"),
+    (NS_NRG3, "identifier"),
+    (NS_NRG3, "indicator"),
+    (NS_NRG3, "intervention"),
+    (NS_NRG3, "layeredConstruction"),
+    (NS_NRG3, "metadata"),
+    (NS_NRG3, "relatedTo"),
+    (NS_NRG3, "resource"),
+    (NS_NRG3, "sensorData"),
+    (NS_NRG3, "status"),
+    (NS_NRG3, "utilityNetworkConnection"),
+    (NS_NRG3, "validFrom"),
+    (NS_NRG3, "validTo"),
+    (NS_NRG3, "referencePoint"),
+)
+
+_CITY_OBJECT_ADE_FIELD_MAP: dict[str, tuple[str, str]] = {
+    "nrg3_devices": (NS_NRG3, "device"),
+    "nrg3_identifier": (NS_NRG3, "identifier"),
+    "nrg3_indicators": (NS_NRG3, "indicator"),
+    "nrg3_interventions": (NS_NRG3, "intervention"),
+    "nrg3_layered_construction": (NS_NRG3, "layeredConstruction"),
+    "nrg3_metadata": (NS_NRG3, "metadata"),
+    "nrg3_related_to": (NS_NRG3, "relatedTo"),
+    "nrg3_resources": (NS_NRG3, "resource"),
+    "nrg3_sensor_data": (NS_NRG3, "sensorData"),
+    "nrg3_status": (NS_NRG3, "status"),
+    "nrg3_utility_network_connections": (NS_NRG3, "utilityNetworkConnection"),
+    "nrg3_valid_from": (NS_NRG3, "validFrom"),
+    "nrg3_valid_to": (NS_NRG3, "validTo"),
+    "nrg3_reference_point": (NS_NRG3, "referencePoint"),
+}
+
+
+# ===================================================================
+# Shared: AbstractCityObjectSpaceType + AbstractBuildingSpaceType
+# (XSD: core:AbstractCityObjectType → nrg3:AbstractCityObjectSpaceType
+#        → nrg3:AbstractBuildingSpaceType)
+# ===================================================================
+
+_BUILDING_SPACE_ORDER: tuple[tuple[str, str], ...] = (
+    # -- gml:AbstractFeatureType --
+    (NS_GML, "description"),
+    (NS_GML, "name"),
+    # -- core:AbstractCityObjectType --
+    (NS_CORE, "creationDate"),
+    (NS_CORE, "terminationDate"),
+    (NS_CORE, "externalReference"),
+    # -- Energy ADE CityObject extensions --
+    *_CITY_OBJECT_ADE_ORDER,
+    # -- nrg3:AbstractCityObjectSpaceType --
+    (NS_NRG3, "area"),
+    (NS_NRG3, "volume"),
+    (NS_NRG3, "lod0MultiSurface"),
+    (NS_NRG3, "lod1Solid"),
+    (NS_NRG3, "lod2Solid"),
+    (NS_NRG3, "lod3Solid"),
+    # -- nrg3:AbstractBuildingSpaceType --
+    (NS_NRG3, "occupiedBy"),
+)
+
+_BUILDING_SPACE_FIELD_MAP: dict[str, tuple[str, str]] = {
+    # gml
+    "gml_description": (NS_GML, "description"),
+    "gml_name": (NS_GML, "name"),
+    # core
+    "creation_date": (NS_CORE, "creationDate"),
+    "termination_date": (NS_CORE, "terminationDate"),
+    "external_references": (NS_CORE, "externalReference"),
+    # Energy ADE CityObject extensions
+    **_CITY_OBJECT_ADE_FIELD_MAP,
+    # AbstractCityObjectSpaceType
+    "areas": (NS_NRG3, "area"),
+    "volumes": (NS_NRG3, "volume"),
+    "lod0_multi_surface": (NS_NRG3, "lod0MultiSurface"),
+    "lod1_solid": (NS_NRG3, "lod1Solid"),
+    "lod2_solid": (NS_NRG3, "lod2Solid"),
+    "lod3_solid": (NS_NRG3, "lod3Solid"),
+    # AbstractBuildingSpaceType
+    "occupied_by": (NS_NRG3, "occupiedBy"),
+}
+
+
+@dataclass
+class _AbstractBuildingSpace(BaseBuilder):
+    """XSD: AbstractBuildingSpaceType → AbstractCityObjectSpaceType → core:AbstractCityObjectType.
+
+    Shared base for Zone, ZonePart, and BuildingUnit.
+    Includes all CityObject ADE hooks.
+    """
+
+    # -- gml --
+    gml_description: str | None = None
+    gml_name: str | None = None
+    # -- core --
+    creation_date: str | None = None
+    termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    # -- Energy ADE CityObject extensions (full set) --
+    nrg3_devices: list[Any] = field(default_factory=list)
+    nrg3_identifier: CodeValue | None = None
+    nrg3_indicators: list[Any] = field(default_factory=list)
+    nrg3_interventions: list[Any] = field(default_factory=list)
+    nrg3_layered_construction: Any | None = None
+    nrg3_metadata: Any | None = None
+    nrg3_related_to: list[Any] = field(default_factory=list)
+    nrg3_resources: list[Any] = field(default_factory=list)
+    nrg3_sensor_data: list[Any] = field(default_factory=list)
+    nrg3_status: CodeValue | None = None
+    nrg3_utility_network_connections: list[Any] = field(default_factory=list)
+    nrg3_valid_from: str | None = None
+    nrg3_valid_to: str | None = None
+    nrg3_reference_point: Any | None = None
+    # -- AbstractCityObjectSpaceType --
+    areas: list[Any] = field(default_factory=list)
+    volumes: list[Any] = field(default_factory=list)
+    lod0_multi_surface: Any | None = None
+    lod1_solid: Any | None = None
+    lod2_solid: Any | None = None
+    lod3_solid: Any | None = None
+    # -- AbstractBuildingSpaceType --
+    occupied_by: list[Any] = field(default_factory=list)
+
+
+# ===================================================================
 # Thematic surfaces
 # ===================================================================
 
@@ -22,16 +154,16 @@ _BOUNDARY_SURFACE_ORDER: tuple[tuple[str, str], ...] = (
     (NS_GML, "name"),
     (NS_CORE, "creationDate"),
     (NS_CORE, "terminationDate"),
-    # Energy ADE CityObject extensions on boundary surfaces
-    (NS_NRG3, "identifier"),
-    (NS_NRG3, "layeredConstruction"),  # CityObject ADE slot: before metadata
-    (NS_NRG3, "metadata"),
+    (NS_CORE, "externalReference"),
+    # Energy ADE CityObject extensions (full set)
+    *_CITY_OBJECT_ADE_ORDER,
     # bldg:AbstractBoundarySurfaceType
     (NS_BLDG, "lod2MultiSurface"),
     (NS_BLDG, "lod3MultiSurface"),
     (NS_BLDG, "lod4MultiSurface"),
     (NS_BLDG, "opening"),
     # Energy ADE boundary surface extensions
+    # (_GenericApplicationPropertyOfAbstractBoundarySurface)
     (NS_NRG3, "bdgBdrySurfAdditionalThermalBridgeUValue"),
     (NS_NRG3, "bdgBdrySurfIsShared"),
     (NS_NRG3, "bdgBdrySurfThickness"),
@@ -49,12 +181,15 @@ _BOUNDARY_SURFACE_FIELD_MAP: dict[str, tuple[str, str]] = {
     "gml_name": (NS_GML, "name"),
     "creation_date": (NS_CORE, "creationDate"),
     "termination_date": (NS_CORE, "terminationDate"),
-    "nrg3_identifier": (NS_NRG3, "identifier"),
-    "nrg3_metadata": (NS_NRG3, "metadata"),
+    "external_references": (NS_CORE, "externalReference"),
+    # Energy ADE CityObject extensions (full set)
+    **_CITY_OBJECT_ADE_FIELD_MAP,
+    # bldg
     "lod2_multi_surface": (NS_BLDG, "lod2MultiSurface"),
     "lod3_multi_surface": (NS_BLDG, "lod3MultiSurface"),
     "lod4_multi_surface": (NS_BLDG, "lod4MultiSurface"),
     "openings": (NS_BLDG, "opening"),
+    # Energy ADE boundary surface extensions
     "bdg_bdry_surf_additional_thermal_bridge_u_value": (
         NS_NRG3,
         "bdgBdrySurfAdditionalThermalBridgeUValue",
@@ -68,13 +203,15 @@ _BOUNDARY_SURFACE_FIELD_MAP: dict[str, tuple[str, str]] = {
     "bdg_bdry_surf_inclination": (NS_NRG3, "bdgBdrySurfInclination"),
     "bdg_bdry_surf_ground_view_factor": (NS_NRG3, "bdgBdrySurfGroundViewFactor"),
     "bdg_bdry_surf_sky_view_factor": (NS_NRG3, "bdgBdrySurfSkyViewFactor"),
-    "layered_construction": (NS_NRG3, "layeredConstruction"),
 }
 
 
 @dataclass
 class _BoundarySurface(BaseBuilder):
-    """Base for all thematic boundary surfaces."""
+    """Base for all thematic boundary surfaces.
+
+    Includes all CityObject ADE hooks + BoundarySurface ADE extensions.
+    """
 
     ELEMENT_ORDER: ClassVar = _BOUNDARY_SURFACE_ORDER
     FIELD_MAP: ClassVar = _BOUNDARY_SURFACE_FIELD_MAP
@@ -83,12 +220,28 @@ class _BoundarySurface(BaseBuilder):
     gml_name: str | None = None
     creation_date: str | None = None
     termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    # -- Energy ADE CityObject extensions (full set) --
+    nrg3_devices: list[Any] = field(default_factory=list)
     nrg3_identifier: CodeValue | None = None
-    nrg3_metadata: Any | None = None  # Metadata builder
-    lod2_multi_surface: Any | None = None  # raw lxml or builder
+    nrg3_indicators: list[Any] = field(default_factory=list)
+    nrg3_interventions: list[Any] = field(default_factory=list)
+    nrg3_layered_construction: Any | None = None
+    nrg3_metadata: Any | None = None
+    nrg3_related_to: list[Any] = field(default_factory=list)
+    nrg3_resources: list[Any] = field(default_factory=list)
+    nrg3_sensor_data: list[Any] = field(default_factory=list)
+    nrg3_status: CodeValue | None = None
+    nrg3_utility_network_connections: list[Any] = field(default_factory=list)
+    nrg3_valid_from: str | None = None
+    nrg3_valid_to: str | None = None
+    nrg3_reference_point: Any | None = None
+    # -- bldg --
+    lod2_multi_surface: Any | None = None
     lod3_multi_surface: Any | None = None
     lod4_multi_surface: Any | None = None
     openings: list[Any] = field(default_factory=list)
+    # -- Energy ADE boundary surface extensions --
     bdg_bdry_surf_additional_thermal_bridge_u_value: MeasureValue | None = None
     bdg_bdry_surf_is_shared: bool | None = None
     bdg_bdry_surf_thickness: MeasureValue | None = None
@@ -99,7 +252,6 @@ class _BoundarySurface(BaseBuilder):
     bdg_bdry_surf_inclination: MeasureValue | None = None
     bdg_bdry_surf_ground_view_factor: ScaleValue | None = None
     bdg_bdry_surf_sky_view_factor: ScaleValue | None = None
-    layered_construction: Any | None = None
 
 
 @dataclass
@@ -167,12 +319,14 @@ _OPENING_ORDER: tuple[tuple[str, str], ...] = (
     (NS_GML, "name"),
     (NS_CORE, "creationDate"),
     (NS_CORE, "terminationDate"),
-    (NS_NRG3, "identifier"),
-    (NS_NRG3, "layeredConstruction"),  # CityObject ADE slot: before metadata
-    (NS_NRG3, "metadata"),
+    (NS_CORE, "externalReference"),
+    # Energy ADE CityObject extensions (full set)
+    *_CITY_OBJECT_ADE_ORDER,
+    # bldg:AbstractOpeningType
     (NS_BLDG, "lod3MultiSurface"),
     (NS_BLDG, "lod4MultiSurface"),
     # Energy ADE opening extensions
+    # (_GenericApplicationPropertyOfAbstractOpening)
     (NS_NRG3, "bdgOpnArea"),
     (NS_NRG3, "bdgOpnInclination"),
     (NS_NRG3, "bdgOpnAzimuth"),
@@ -185,22 +339,27 @@ _OPENING_FIELD_MAP: dict[str, tuple[str, str]] = {
     "gml_name": (NS_GML, "name"),
     "creation_date": (NS_CORE, "creationDate"),
     "termination_date": (NS_CORE, "terminationDate"),
-    "nrg3_identifier": (NS_NRG3, "identifier"),
-    "nrg3_metadata": (NS_NRG3, "metadata"),
+    "external_references": (NS_CORE, "externalReference"),
+    # Energy ADE CityObject extensions (full set)
+    **_CITY_OBJECT_ADE_FIELD_MAP,
+    # bldg
     "lod3_multi_surface": (NS_BLDG, "lod3MultiSurface"),
     "lod4_multi_surface": (NS_BLDG, "lod4MultiSurface"),
+    # Energy ADE opening extensions
     "bdg_opn_area": (NS_NRG3, "bdgOpnArea"),
     "bdg_opn_inclination": (NS_NRG3, "bdgOpnInclination"),
     "bdg_opn_azimuth": (NS_NRG3, "bdgOpnAzimuth"),
     "bdg_opn_ground_view_factor": (NS_NRG3, "bdgOpnGroundViewFactor"),
     "bdg_opn_sky_view_factor": (NS_NRG3, "bdgOpnSkyViewFactor"),
-    "layered_construction": (NS_NRG3, "layeredConstruction"),
 }
 
 
 @dataclass
 class _Opening(BaseBuilder):
-    """Base for Door and Window openings."""
+    """Base for Door and Window openings.
+
+    Includes all CityObject ADE hooks + Opening ADE extensions.
+    """
 
     ELEMENT_ORDER: ClassVar = _OPENING_ORDER
     FIELD_MAP: ClassVar = _OPENING_FIELD_MAP
@@ -209,16 +368,31 @@ class _Opening(BaseBuilder):
     gml_name: str | None = None
     creation_date: str | None = None
     termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    # -- Energy ADE CityObject extensions (full set) --
+    nrg3_devices: list[Any] = field(default_factory=list)
     nrg3_identifier: CodeValue | None = None
+    nrg3_indicators: list[Any] = field(default_factory=list)
+    nrg3_interventions: list[Any] = field(default_factory=list)
+    nrg3_layered_construction: Any | None = None
     nrg3_metadata: Any | None = None
+    nrg3_related_to: list[Any] = field(default_factory=list)
+    nrg3_resources: list[Any] = field(default_factory=list)
+    nrg3_sensor_data: list[Any] = field(default_factory=list)
+    nrg3_status: CodeValue | None = None
+    nrg3_utility_network_connections: list[Any] = field(default_factory=list)
+    nrg3_valid_from: str | None = None
+    nrg3_valid_to: str | None = None
+    nrg3_reference_point: Any | None = None
+    # -- bldg --
     lod3_multi_surface: Any | None = None
     lod4_multi_surface: Any | None = None
+    # -- Energy ADE opening extensions --
     bdg_opn_area: MeasureValue | None = None
     bdg_opn_inclination: MeasureValue | None = None
     bdg_opn_azimuth: MeasureValue | None = None
     bdg_opn_ground_view_factor: ScaleValue | None = None
     bdg_opn_sky_view_factor: ScaleValue | None = None
-    layered_construction: Any | None = None
 
 
 @dataclass
@@ -250,8 +424,9 @@ class Room(BaseBuilder):
         (NS_GML, "name"),
         (NS_CORE, "creationDate"),
         (NS_CORE, "terminationDate"),
-        (NS_NRG3, "identifier"),
-        (NS_NRG3, "metadata"),
+        (NS_CORE, "externalReference"),
+        # Energy ADE CityObject extensions (full set)
+        *_CITY_OBJECT_ADE_ORDER,
         (NS_BLDG, "class"),
         (NS_BLDG, "function"),
         (NS_BLDG, "usage"),
@@ -266,8 +441,8 @@ class Room(BaseBuilder):
         "gml_name": (NS_GML, "name"),
         "creation_date": (NS_CORE, "creationDate"),
         "termination_date": (NS_CORE, "terminationDate"),
-        "nrg3_identifier": (NS_NRG3, "identifier"),
-        "nrg3_metadata": (NS_NRG3, "metadata"),
+        "external_references": (NS_CORE, "externalReference"),
+        **_CITY_OBJECT_ADE_FIELD_MAP,
         "bldg_class": (NS_BLDG, "class"),
         "bldg_function": (NS_BLDG, "function"),
         "bldg_usage": (NS_BLDG, "usage"),
@@ -282,8 +457,23 @@ class Room(BaseBuilder):
     gml_name: str | None = None
     creation_date: str | None = None
     termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    # -- Energy ADE CityObject extensions (full set) --
+    nrg3_devices: list[Any] = field(default_factory=list)
     nrg3_identifier: CodeValue | None = None
+    nrg3_indicators: list[Any] = field(default_factory=list)
+    nrg3_interventions: list[Any] = field(default_factory=list)
+    nrg3_layered_construction: Any | None = None
     nrg3_metadata: Any | None = None
+    nrg3_related_to: list[Any] = field(default_factory=list)
+    nrg3_resources: list[Any] = field(default_factory=list)
+    nrg3_sensor_data: list[Any] = field(default_factory=list)
+    nrg3_status: CodeValue | None = None
+    nrg3_utility_network_connections: list[Any] = field(default_factory=list)
+    nrg3_valid_from: str | None = None
+    nrg3_valid_to: str | None = None
+    nrg3_reference_point: Any | None = None
+    # -- bldg --
     bldg_class: CodeValue | None = None
     bldg_function: CodeValue | None = None
     bldg_usage: CodeValue | None = None
@@ -303,8 +493,9 @@ _INSTALLATION_ORDER: tuple[tuple[str, str], ...] = (
     (NS_GML, "name"),
     (NS_CORE, "creationDate"),
     (NS_CORE, "terminationDate"),
-    (NS_NRG3, "identifier"),
-    (NS_NRG3, "metadata"),
+    (NS_CORE, "externalReference"),
+    # Energy ADE CityObject extensions (full set)
+    *_CITY_OBJECT_ADE_ORDER,
     (NS_BLDG, "class"),
     (NS_BLDG, "function"),
     (NS_BLDG, "usage"),
@@ -322,8 +513,8 @@ _INSTALLATION_FIELD_MAP: dict[str, tuple[str, str]] = {
     "gml_name": (NS_GML, "name"),
     "creation_date": (NS_CORE, "creationDate"),
     "termination_date": (NS_CORE, "terminationDate"),
-    "nrg3_identifier": (NS_NRG3, "identifier"),
-    "nrg3_metadata": (NS_NRG3, "metadata"),
+    "external_references": (NS_CORE, "externalReference"),
+    **_CITY_OBJECT_ADE_FIELD_MAP,
     "bldg_class": (NS_BLDG, "class"),
     "bldg_function": (NS_BLDG, "function"),
     "bldg_usage": (NS_BLDG, "usage"),
@@ -349,8 +540,23 @@ class BuildingInstallation(BaseBuilder):
     gml_name: str | None = None
     creation_date: str | None = None
     termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    # -- Energy ADE CityObject extensions (full set) --
+    nrg3_devices: list[Any] = field(default_factory=list)
     nrg3_identifier: CodeValue | None = None
+    nrg3_indicators: list[Any] = field(default_factory=list)
+    nrg3_interventions: list[Any] = field(default_factory=list)
+    nrg3_layered_construction: Any | None = None
     nrg3_metadata: Any | None = None
+    nrg3_related_to: list[Any] = field(default_factory=list)
+    nrg3_resources: list[Any] = field(default_factory=list)
+    nrg3_sensor_data: list[Any] = field(default_factory=list)
+    nrg3_status: CodeValue | None = None
+    nrg3_utility_network_connections: list[Any] = field(default_factory=list)
+    nrg3_valid_from: str | None = None
+    nrg3_valid_to: str | None = None
+    nrg3_reference_point: Any | None = None
+    # -- bldg --
     bldg_class: CodeValue | None = None
     bldg_function: CodeValue | None = None
     bldg_usage: CodeValue | None = None
@@ -373,8 +579,9 @@ class IntBuildingInstallation(BaseBuilder):
         (NS_GML, "name"),
         (NS_CORE, "creationDate"),
         (NS_CORE, "terminationDate"),
-        (NS_NRG3, "identifier"),
-        (NS_NRG3, "metadata"),
+        (NS_CORE, "externalReference"),
+        # Energy ADE CityObject extensions (full set)
+        *_CITY_OBJECT_ADE_ORDER,
         (NS_BLDG, "class"),
         (NS_BLDG, "function"),
         (NS_BLDG, "usage"),
@@ -386,8 +593,8 @@ class IntBuildingInstallation(BaseBuilder):
         "gml_name": (NS_GML, "name"),
         "creation_date": (NS_CORE, "creationDate"),
         "termination_date": (NS_CORE, "terminationDate"),
-        "nrg3_identifier": (NS_NRG3, "identifier"),
-        "nrg3_metadata": (NS_NRG3, "metadata"),
+        "external_references": (NS_CORE, "externalReference"),
+        **_CITY_OBJECT_ADE_FIELD_MAP,
         "bldg_class": (NS_BLDG, "class"),
         "bldg_function": (NS_BLDG, "function"),
         "bldg_usage": (NS_BLDG, "usage"),
@@ -399,8 +606,23 @@ class IntBuildingInstallation(BaseBuilder):
     gml_name: str | None = None
     creation_date: str | None = None
     termination_date: str | None = None
+    external_references: list[Any] = field(default_factory=list)
+    # -- Energy ADE CityObject extensions (full set) --
+    nrg3_devices: list[Any] = field(default_factory=list)
     nrg3_identifier: CodeValue | None = None
+    nrg3_indicators: list[Any] = field(default_factory=list)
+    nrg3_interventions: list[Any] = field(default_factory=list)
+    nrg3_layered_construction: Any | None = None
     nrg3_metadata: Any | None = None
+    nrg3_related_to: list[Any] = field(default_factory=list)
+    nrg3_resources: list[Any] = field(default_factory=list)
+    nrg3_sensor_data: list[Any] = field(default_factory=list)
+    nrg3_status: CodeValue | None = None
+    nrg3_utility_network_connections: list[Any] = field(default_factory=list)
+    nrg3_valid_from: str | None = None
+    nrg3_valid_to: str | None = None
+    nrg3_reference_point: Any | None = None
+    # -- bldg --
     bldg_class: CodeValue | None = None
     bldg_function: CodeValue | None = None
     bldg_usage: CodeValue | None = None
@@ -427,20 +649,7 @@ _BUILDING_ELEMENT_ORDER: tuple[tuple[str, str], ...] = (
     (NS_CORE, "terminationDate"),
     (NS_CORE, "externalReference"),
     # -- Energy ADE CityObject extensions --
-    (NS_NRG3, "device"),
-    (NS_NRG3, "identifier"),
-    (NS_NRG3, "indicator"),
-    (NS_NRG3, "intervention"),
-    (NS_NRG3, "layeredConstruction"),
-    (NS_NRG3, "metadata"),
-    (NS_NRG3, "relatedTo"),
-    (NS_NRG3, "resource"),
-    (NS_NRG3, "sensorData"),
-    (NS_NRG3, "status"),
-    (NS_NRG3, "utilityNetworkConnection"),
-    (NS_NRG3, "validFrom"),
-    (NS_NRG3, "validTo"),
-    (NS_NRG3, "referencePoint"),
+    *_CITY_OBJECT_ADE_ORDER,
     # -- bldg:AbstractBuildingType --
     (NS_BLDG, "class"),
     (NS_BLDG, "function"),
@@ -504,20 +713,7 @@ _BUILDING_FIELD_MAP: dict[str, tuple[str, str]] = {
     "termination_date": (NS_CORE, "terminationDate"),
     "external_references": (NS_CORE, "externalReference"),
     # Energy ADE CityObject extensions
-    "devices": (NS_NRG3, "device"),
-    "nrg3_identifier": (NS_NRG3, "identifier"),
-    "nrg3_indicators": (NS_NRG3, "indicator"),
-    "nrg3_interventions": (NS_NRG3, "intervention"),
-    "nrg3_layered_construction": (NS_NRG3, "layeredConstruction"),
-    "nrg3_metadata": (NS_NRG3, "metadata"),
-    "nrg3_related_to": (NS_NRG3, "relatedTo"),
-    "nrg3_resources": (NS_NRG3, "resource"),
-    "nrg3_sensor_data": (NS_NRG3, "sensorData"),
-    "nrg3_status": (NS_NRG3, "status"),
-    "nrg3_utility_network_connections": (NS_NRG3, "utilityNetworkConnection"),
-    "nrg3_valid_from": (NS_NRG3, "validFrom"),
-    "nrg3_valid_to": (NS_NRG3, "validTo"),
-    "nrg3_reference_point": (NS_NRG3, "referencePoint"),
+    **_CITY_OBJECT_ADE_FIELD_MAP,
     # bldg
     "bldg_class": (NS_BLDG, "class"),
     "bldg_function": (NS_BLDG, "function"),
@@ -589,7 +785,7 @@ class Building(BaseBuilder):
     termination_date: str | None = None
     external_references: list[Any] = field(default_factory=list)
     # -- Energy ADE CityObject extensions --
-    devices: list[Any] = field(default_factory=list)
+    nrg3_devices: list[Any] = field(default_factory=list)
     nrg3_identifier: CodeValue | None = None
     nrg3_indicators: list[Any] = field(default_factory=list)
     nrg3_interventions: list[Any] = field(default_factory=list)
@@ -672,30 +868,7 @@ class BuildingPart(Building):
 # ===================================================================
 
 _ZONE_ELEMENT_ORDER: tuple[tuple[str, str], ...] = (
-    # -- gml:AbstractFeatureType --
-    (NS_GML, "description"),
-    (NS_GML, "name"),
-    # -- core:AbstractCityObjectType --
-    (NS_CORE, "creationDate"),
-    (NS_CORE, "terminationDate"),
-    (NS_CORE, "externalReference"),
-    # -- Energy ADE CityObject extensions (substitutionGroup) --
-    (NS_NRG3, "identifier"),
-    (NS_NRG3, "metadata"),
-    (NS_NRG3, "relatedTo"),
-    (NS_NRG3, "status"),
-    (NS_NRG3, "validFrom"),
-    (NS_NRG3, "validTo"),
-    (NS_NRG3, "referencePoint"),
-    # -- nrg3:AbstractCityObjectSpaceType --
-    (NS_NRG3, "area"),
-    (NS_NRG3, "volume"),
-    (NS_NRG3, "lod0MultiSurface"),
-    (NS_NRG3, "lod1Solid"),
-    (NS_NRG3, "lod2Solid"),
-    (NS_NRG3, "lod3Solid"),
-    # -- nrg3:AbstractBuildingSpaceType --
-    (NS_NRG3, "occupiedBy"),
+    *_BUILDING_SPACE_ORDER,
     # -- nrg3:AbstractZoneType --
     (NS_NRG3, "type"),
     (NS_NRG3, "isCooled"),
@@ -720,30 +893,7 @@ _ZONE_ELEMENT_ORDER: tuple[tuple[str, str], ...] = (
 )
 
 _ZONE_FIELD_MAP: dict[str, tuple[str, str]] = {
-    # gml
-    "gml_description": (NS_GML, "description"),
-    "gml_name": (NS_GML, "name"),
-    # core
-    "creation_date": (NS_CORE, "creationDate"),
-    "termination_date": (NS_CORE, "terminationDate"),
-    "external_references": (NS_CORE, "externalReference"),
-    # Energy ADE CityObject extensions
-    "nrg3_identifier": (NS_NRG3, "identifier"),
-    "nrg3_metadata": (NS_NRG3, "metadata"),
-    "nrg3_related_to": (NS_NRG3, "relatedTo"),
-    "nrg3_status": (NS_NRG3, "status"),
-    "nrg3_valid_from": (NS_NRG3, "validFrom"),
-    "nrg3_valid_to": (NS_NRG3, "validTo"),
-    "nrg3_reference_point": (NS_NRG3, "referencePoint"),
-    # AbstractCityObjectSpaceType
-    "areas": (NS_NRG3, "area"),
-    "volumes": (NS_NRG3, "volume"),
-    "lod0_multi_surface": (NS_NRG3, "lod0MultiSurface"),
-    "lod1_solid": (NS_NRG3, "lod1Solid"),
-    "lod2_solid": (NS_NRG3, "lod2Solid"),
-    "lod3_solid": (NS_NRG3, "lod3Solid"),
-    # AbstractBuildingSpaceType
-    "occupied_by": (NS_NRG3, "occupiedBy"),
+    **_BUILDING_SPACE_FIELD_MAP,
     # AbstractZoneType
     "zone_type": (NS_NRG3, "type"),
     "is_cooled": (NS_NRG3, "isCooled"),
@@ -772,8 +922,12 @@ _ZONE_FIELD_MAP: dict[str, tuple[str, str]] = {
 
 
 @dataclass
-class Zone(BaseBuilder):
-    """``nrg3:Zone`` -- a thermal zone within a building."""
+class Zone(_AbstractBuildingSpace):
+    """``nrg3:Zone`` -- a thermal zone within a building.
+
+    XSD: ZoneType → AbstractZoneType → AbstractBuildingSpaceType
+         → AbstractCityObjectSpaceType → core:AbstractCityObjectType.
+    """
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "Zone")
     FEATURE_TYPE: ClassVar = "nrg3_Zone"
@@ -781,30 +935,6 @@ class Zone(BaseBuilder):
     ELEMENT_ORDER: ClassVar = _ZONE_ELEMENT_ORDER
     FIELD_MAP: ClassVar = _ZONE_FIELD_MAP
 
-    # -- gml --
-    gml_description: str | None = None
-    gml_name: str | None = None
-    # -- core --
-    creation_date: str | None = None
-    termination_date: str | None = None
-    external_references: list[Any] = field(default_factory=list)
-    # -- Energy ADE CityObject extensions --
-    nrg3_identifier: CodeValue | None = None
-    nrg3_metadata: Any | None = None
-    nrg3_related_to: list[Any] = field(default_factory=list)
-    nrg3_status: CodeValue | None = None
-    nrg3_valid_from: str | None = None
-    nrg3_valid_to: str | None = None
-    nrg3_reference_point: Any | None = None
-    # -- AbstractCityObjectSpaceType --
-    areas: list[Any] = field(default_factory=list)
-    volumes: list[Any] = field(default_factory=list)
-    lod0_multi_surface: Any | None = None
-    lod1_solid: Any | None = None
-    lod2_solid: Any | None = None
-    lod3_solid: Any | None = None
-    # -- AbstractBuildingSpaceType --
-    occupied_by: list[Any] = field(default_factory=list)
     # -- AbstractZoneType --
     zone_type: CodeValue | None = None
     is_cooled: bool | None = None
@@ -817,8 +947,8 @@ class Zone(BaseBuilder):
     internal_heat_gains_latent_fraction: ScaleValue | None = None
     internal_heat_gains_radiant_fraction: ScaleValue | None = None
     number_of_building_units: int | None = None
-    coincides_with_lod2_hull: bool | None = None
-    coincides_with_lod3_hull: bool | None = None
+    coincides_with_lod2_hull: bool = False  # XSD required, default="false"
+    coincides_with_lod3_hull: bool = False  # XSD required, default="false"
     building_units: list[Any] = field(default_factory=list)
     heating_schedule: Any | None = None
     cooling_schedule: Any | None = None
@@ -832,8 +962,7 @@ class Zone(BaseBuilder):
 class ZonePart(Zone):
     """``nrg3:ZonePart`` -- a subdivision of a Zone.
 
-    Structurally identical to Zone's AbstractZone fields but without
-    the ``zonePart`` child element.
+    XSD: ZonePartType → AbstractZoneType (no zonePart children).
     """
 
     ELEMENT_TAG: ClassVar = (NS_NRG3, "ZonePart")

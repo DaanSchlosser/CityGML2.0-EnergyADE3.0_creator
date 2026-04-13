@@ -383,12 +383,25 @@
 				</nrg3:PhotovoltaicCollector>
 			</nrg3:device>
 			<nrg3:device>
+				<nrg3:HeatPump gml:id="heat_pump_1">
+					<gml:description>NIBE F1255 PC water-water heat pump (geothermal), source 24 °C / system 31 °C, water distribution medium</gml:description>
+					<gml:name>NIBE F1255 PC</gml:name>
+					<core:creationDate>2026-04-13</core:creationDate>
+					<nrg3:identifier codeSpace="https://www.nibe.eu/nl-nl/producten/warmtepompen/water-water-warmtepompen/f1255-pc">F1255 PC</nrg3:identifier>
+					<nrg3:model>NIBE F1255 PC</nrg3:model>
+					<nrg3:numberOfDevices>1</nrg3:numberOfDevices>
+					<nrg3:installedPower uom="W">6000</nrg3:installedPower>
+					<nrg3:heatSource codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceTypeValue.xml">waterSource</nrg3:heatSource>
+					<nrg3:copSourceTemperature uom="degC">24</nrg3:copSourceTemperature>
+					<nrg3:copOperationTemperature uom="degC">31</nrg3:copOperationTemperature>
+				</nrg3:HeatPump>
+			</nrg3:device>
+			<nrg3:device>
 				<nrg3:EVChargingStation gml:id="id_ev_charging_station_1">
 					<gml:description>EVHUB AC Mode 3 laadpaal, 3.7-22 kW (32A, 1/3-phase), Type 2 connector with 8m cable. IP55, polycarbonate housing (410x280x150 mm), built-in DC detection. Dedicated to Golf GTE 2015 (8.7 kWh gross / 7.5 kWh net); car-side limit 3.6 kW. ~150 charges/year.</gml:description>
 					<gml:name>EVHUB Laadpaal Type 2</gml:name>
 					<core:creationDate>2026-04-04</core:creationDate>
 					<nrg3:identifier codeSpace="https://www.elektramat.nl/evhub-laadpaal-type-2-32a-3-7-22kw-met-laadkabel-8-meter-zwart-lp-h8t5oiugl5/">LP-H8T5OIUGL5</nrg3:identifier>
-					<nrg3:validFrom>2022-07-18T00:00:00</nrg3:validFrom>
 					<nrg3:resource>
 						<nrg3:Energy gml:id="id_ev_energy_1">
 							<gml:description>Annual electricity consumption for EV charging (Golf GTE 2015, ~150 charges/year x 7.5 kWh net)</gml:description>
@@ -406,6 +419,7 @@
 							<nrg3:source codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml">powerGrid</nrg3:source>
 						</nrg3:Energy>
 					</nrg3:resource>
+					<nrg3:validFrom>2022-07-18T00:00:00</nrg3:validFrom>
 					<nrg3:model>LP-H8T5OIUGL5</nrg3:model>
 					<nrg3:yearOfInstallation>2022</nrg3:yearOfInstallation>
 					<nrg3:numberOfDevices>1</nrg3:numberOfDevices>

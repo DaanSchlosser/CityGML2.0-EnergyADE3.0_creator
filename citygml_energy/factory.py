@@ -19,7 +19,7 @@ To add a new feature type, define a dataclass that inherits from
     class SolarThermalCollector(_AbstractSolarCollector):
         ELEMENT_TAG: ClassVar = (NS_NRG3, "SolarThermalCollector")
         FEATURE_TYPE: ClassVar = "nrg3_SolarThermalCollector"
-        PARENT_FIELD: ClassVar = "devices"
+        PARENT_FIELD: ClassVar = "nrg3_devices"
         ELEMENT_ORDER: ClassVar = (*_SOLAR_COLLECTOR_ORDER, (NS_NRG3, "fluidType"))
         FIELD_MAP: ClassVar = {**_SOLAR_COLLECTOR_FIELD_MAP, "fluid_type": (NS_NRG3, "fluidType")}
 
@@ -36,20 +36,18 @@ Quick usage
 
     from citygml_energy.factory import create_feature, FeatureFactory
 
-    # Single feature
+    # Single feature (CodeValue/MeasureValue use nested objects)
     bldg = create_feature("bldg_Building", {
-        "gml_id":                           "id_building_1",
-        "gml_name":                         "Han Solo's house",
-        "core_creationDate":                "2026-04-04",
-        "bldg_class":                       "1000",
-        "bldg_class_codeSpace":             CS_BUILDING_CLASS,
-        "bldg_yearOfConstruction":          "2020",
-        "nrg3_bdgOwnerName":                "Han Solo",
-        "nrg3_bdgIsProtected":              "false",
-        "nrg3_bdgVolume_value":             "823.30",
-        "nrg3_bdgVolume_uom":               "m3",
-        "nrg3_bdgVolume_type":              "grossVolume",
-        "nrg3_bdgVolume_type_codeSpace":    CS_NRG3_VOLUME_TYPE,
+        "gml_id":                  "id_building_1",
+        "gml_name":                "Han Solo's house",
+        "core_creationDate":       "2026-04-04",
+        "bldg_class":              {"value": "1000", "codeSpace": CS_BUILDING_CLASS},
+        "bldg_yearOfConstruction": "2020",
+        "nrg3_bdgOwnerName":       "Han Solo",
+        "nrg3_bdgIsProtected":     "false",
+        "nrg3_bdgVolume_value":    "823.30",
+        "nrg3_bdgVolume_uom":      "m3",
+        "nrg3_bdgVolume_type":     "grossVolume",
     })
 
     # Batch: use gml_parent_id to link PV → Building
@@ -68,7 +66,7 @@ from __future__ import annotations
 import dataclasses
 import types as _types
 from collections.abc import Callable
-from typing import Any, ClassVar, get_type_hints
+from typing import Any, get_type_hints
 
 from .base import BaseBuilder
 
@@ -91,18 +89,18 @@ from .building import (  # noqa: F401
     Room,
     WallSurface,
     Window,
+    Zone,
+    ZonePart,
 )
-from .building import Zone, ZonePart
 from .core import Address, CityModel
-from .energy_ade import (  # noqa: F401 — importing triggers __init_subclass__
+from .energy_ade import (
     BuildingUnit,
-    ConstantValueSchedule,
     Metadata,
     QualifiedArea,
     QualifiedHeight,
     QualifiedVolume,
 )
-from .namespaces import CS_NRG3_SCHEDULE_TYPE, NS_NRG3, NS_PREFIX_MAP
+from .namespaces import NS_NRG3, NS_PREFIX_MAP
 from .types import CodeValue, MeasureValue, ScaleValue
 
 _METADATA_KEY = (NS_NRG3, "metadata")
@@ -134,29 +132,58 @@ def _bool(v: Any) -> bool | None:
     return str(v).strip().lower() in ("true", "1", "yes")
 
 
-def _code(attrs: dict[str, Any], key: str, cs_key: str | None = None) -> CodeValue | None:
-    val = _str(attrs.get(key))
-    if val is None:
+def _code(attrs: dict[str, Any], key: str) -> CodeValue | None:
+    """Build a :class:`CodeValue` from *attrs[key]*.
+
+    Accepts either a nested object ``{"value": "...", "codeSpace": "..."}``
+    or a plain string (no codeSpace).
+    """
+    raw = attrs.get(key)
+    if raw is None:
         return None
-    cs_lookup = cs_key or f"{key}_codeSpace"
-    cs = _str(attrs.get(cs_lookup))
-    return CodeValue(val, cs)
+    if isinstance(raw, dict):
+        val = _str(raw.get("value"))
+        if val is None:
+            return None
+        return CodeValue(val, _str(raw.get("codeSpace")))
+    val = _str(raw)
+    return CodeValue(val) if val is not None else None
 
 
-def _measure(attrs: dict[str, Any], key: str, uom_key: str | None = None) -> MeasureValue | None:
-    val = _str(attrs.get(key))
-    if val is None:
+def _measure(attrs: dict[str, Any], key: str) -> MeasureValue | None:
+    """Build a :class:`MeasureValue` from *attrs[key]*.
+
+    Accepts either a nested object ``{"value": "...", "uom": "..."}``
+    or a plain string/number (uom defaults to ``""``).
+    """
+    raw = attrs.get(key)
+    if raw is None:
         return None
-    uom_lookup = uom_key or f"{key}_uom"
-    uom = _str(attrs.get(uom_lookup)) or ""
-    return MeasureValue(val, uom)
+    if isinstance(raw, dict):
+        val = _str(raw.get("value"))
+        if val is None:
+            return None
+        return MeasureValue(val, _str(raw.get("uom")) or "")
+    val = _str(raw)
+    return MeasureValue(val, "") if val is not None else None
 
 
 def _scale(attrs: dict[str, Any], key: str) -> ScaleValue | None:
-    val = _str(attrs.get(key))
-    if val is None:
+    """Build a :class:`ScaleValue` from *attrs[key]*.
+
+    Accepts either a nested object ``{"value": "...", "uom": "..."}``
+    or a plain string/number (uom defaults to ``"unit interval"``).
+    """
+    raw = attrs.get(key)
+    if raw is None:
         return None
-    return ScaleValue(val, "unit interval")
+    if isinstance(raw, dict):
+        val = _str(raw.get("value"))
+        if val is None:
+            return None
+        return ScaleValue(val, _str(raw.get("uom")) or "unit interval")
+    val = _str(raw)
+    return ScaleValue(val, "unit interval") if val is not None else None
 
 
 # ---------------------------------------------------------------------------
@@ -210,11 +237,10 @@ def _get_dispatch_plan(cls: type[BaseBuilder]) -> list[tuple[str, str, str | Non
     except Exception:
         hints = {}
 
-    overrides = cls.FLAT_KEY_OVERRIDES
     plan = []
 
     for field_name, (ns, local_name) in cls.FIELD_MAP.items():
-        flat = overrides.get(field_name) or _flat_key(ns, local_name)
+        flat = _flat_key(ns, local_name)
 
         # Metadata assembles from multiple nrg3_metadata_* sub-keys;
         # skip the normal single-key dispatch.
@@ -308,11 +334,15 @@ def _make_qualified[Q: (QualifiedVolume, QualifiedArea, QualifiedHeight)](
     """Generic constructor for QualifiedVolume / QualifiedArea / QualifiedHeight."""
     if _str(attrs.get(f"{prefix}_value")) is None:
         return None
+    val = _str(attrs.get(f"{prefix}_value"))
+    uom = _str(attrs.get(f"{prefix}_uom")) or ""
+    type_val = _str(attrs.get(f"{prefix}_type"))
+    type_cs = _str(attrs.get(f"{prefix}_type_codeSpace"))
     return cls(
         description=_str(attrs.get(f"{prefix}_description")),
         source=_str(attrs.get(f"{prefix}_source")),
-        value=_measure(attrs, f"{prefix}_value", f"{prefix}_uom"),
-        type=_code(attrs, f"{prefix}_type", f"{prefix}_type_codeSpace"),
+        value=MeasureValue(val, uom) if val is not None else None,
+        type=CodeValue(type_val, type_cs) if type_val is not None else None,
     )
 
 
@@ -353,8 +383,6 @@ def _make_qualified_list[Q: (QualifiedVolume, QualifiedArea, QualifiedHeight)](
         idx += 1
 
     return result
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -425,7 +453,7 @@ def building_unit_from_dict(attrs: dict[str, Any]) -> BuildingUnit:
         gml_name=_str(attrs.get("gml_name")),
         creation_date=_str(attrs.get("core_creationDate")),
         termination_date=_str(attrs.get("core_terminationDate")),
-        identifier=_code(attrs, "nrg3_identifier"),
+        nrg3_identifier=_code(attrs, "nrg3_identifier"),
         nrg3_metadata=_make_metadata(attrs),
         areas=_make_qualified_list(QualifiedArea, attrs, "nrg3_area"),
         volumes=_make_qualified_list(QualifiedVolume, attrs, "nrg3_volume"),
@@ -456,28 +484,10 @@ def address_from_dict(attrs: dict[str, Any]) -> Address:
 def zone_from_dict(attrs: dict[str, Any]) -> Zone:
     """Create a :class:`Zone` from flat attributes.
 
-    Supports inline ``nrg3_heatingSetpoint`` / ``nrg3_coolingSetpoint``
-    shorthand: the factory wraps each value in a
-    :class:`ConstantValueSchedule` automatically.
+    Custom constructor because of QualifiedArea/Volume lists.
+    Heating/cooling schedules are attached as child features
+    (e.g. ``nrg3_ConstantValueSchedule``), not inline scalars.
     """
-    gml_id = _str(attrs.get("gml_id")) or ""
-
-    heating_sched = None
-    if _str(attrs.get("nrg3_heatingSetpoint")) is not None:
-        heating_sched = ConstantValueSchedule(
-            gml_id=f"{gml_id}_heating_schedule" if gml_id else None,
-            schedule_type=CodeValue("typicalYear", CS_NRG3_SCHEDULE_TYPE),
-            value=_measure(attrs, "nrg3_heatingSetpoint"),
-        )
-
-    cooling_sched = None
-    if _str(attrs.get("nrg3_coolingSetpoint")) is not None:
-        cooling_sched = ConstantValueSchedule(
-            gml_id=f"{gml_id}_cooling_schedule" if gml_id else None,
-            schedule_type=CodeValue("typicalYear", CS_NRG3_SCHEDULE_TYPE),
-            value=_measure(attrs, "nrg3_coolingSetpoint"),
-        )
-
     return Zone(
         gml_id=_str(attrs.get("gml_id")),
         gml_description=_str(attrs.get("gml_description")),
@@ -496,10 +506,8 @@ def zone_from_dict(attrs: dict[str, Any]) -> Zone:
         is_heated=_bool(attrs.get("nrg3_isHeated")),
         is_mechanically_ventilated=_bool(attrs.get("nrg3_isMechanicallyVentilated")),
         infiltration_rate=_measure(attrs, "nrg3_infiltrationRate"),
-        coincides_with_lod2_hull=_bool(attrs.get("nrg3_coincidesWithLod2Hull")),
-        coincides_with_lod3_hull=_bool(attrs.get("nrg3_coincidesWithLod3Hull")),
-        heating_schedule=heating_sched,
-        cooling_schedule=cooling_sched,
+        coincides_with_lod2_hull=_bool(attrs.get("nrg3_coincidesWithLod2Hull")) or False,
+        coincides_with_lod3_hull=_bool(attrs.get("nrg3_coincidesWithLod3Hull")) or False,
     )
 
 
@@ -526,7 +534,7 @@ def _reg(fme_name: str, fn: Callable[[dict[str, Any]], Any]) -> None:
 # --- Custom from_dict overrides ---
 # Classes with complex construction (QualifiedVolume lists, xAL address,
 # core: vs nrg3: namespace differences, or Zone setpoint → schedule conversion)
-# need manual from_dict. All others use auto_from_dict via FLAT_KEY_OVERRIDES.
+# need manual from_dict. All others use auto_from_dict via FIELD_MAP + type hints.
 _CUSTOM_FROM_DICT: dict[str, Callable[[dict[str, Any]], Any]] = {
     "bldg_Building": building_from_dict,
     "bldg_BuildingPart": building_part_from_dict,
@@ -750,13 +758,14 @@ class FeatureFactory:
     ) -> None:
         self._description = description
         self._name = name
-        self._rows: list[tuple[str, str | None, Any]] = []
+        self._rows: list[tuple[str, str | None, str | None, Any]] = []
 
     def add(self, feature_type: str, attrs: dict[str, Any]) -> FeatureFactory:
         """Queue a feature row for assembly."""
         obj = create_feature(feature_type, attrs)
         parent_id = _str(attrs.get("gml_parent_id"))
-        self._rows.append((feature_type, parent_id, obj))
+        parent_field = _str(attrs.get("gml_parent_field"))
+        self._rows.append((feature_type, parent_id, parent_field, obj))
         return self
 
     def build(self) -> CityModel:
@@ -767,12 +776,12 @@ class FeatureFactory:
         """
         # Index by gml_id for quick lookup
         id_index: dict[str, Any] = {}
-        for ftype, _parent_id, obj in self._rows:
+        for ftype, _parent_id, _parent_field, obj in self._rows:
             if obj.gml_id:
                 id_index[obj.gml_id] = (ftype, obj)
 
         # Attach children to parents
-        for ftype, parent_id, obj in self._rows:
+        for ftype, parent_id, pfield, obj in self._rows:
             if parent_id is None:
                 continue
             parent_entry = id_index.get(parent_id)
@@ -781,14 +790,20 @@ class FeatureFactory:
                     f"gml_parent_id {parent_id!r} not found (referenced by {obj.gml_id!r})"
                 )
             parent_ftype, parent_obj = parent_entry
-            self._attach(ftype, obj, parent_ftype, parent_obj)
+            self._attach(
+                ftype,
+                obj,
+                parent_ftype,
+                parent_obj,
+                parent_field_override=pfield,
+            )
 
         # Collect top-level features
         model = CityModel(
             gml_description=self._description,
             gml_name=self._name,
         )
-        for _ftype, parent_id, obj in self._rows:
+        for _ftype, parent_id, _pfield, obj in self._rows:
             if parent_id is None:
                 model.add(obj)
 
@@ -796,9 +811,20 @@ class FeatureFactory:
 
     # ------------------------------------------------------------------
     @staticmethod
-    def _attach(child_type: str, child: Any, parent_type: str, parent: Any) -> None:
-        """Attach a child feature to its parent using PARENT_FIELD."""
-        parent_field = getattr(type(child), "PARENT_FIELD", "")
+    def _attach(
+        child_type: str,
+        child: Any,
+        parent_type: str,
+        parent: Any,
+        *,
+        parent_field_override: str | None = None,
+    ) -> None:
+        """Attach a child feature to its parent using PARENT_FIELD.
+
+        If *parent_field_override* is given (from ``gml_parent_field`` in the
+        input), it takes precedence over the class-level ``PARENT_FIELD``.
+        """
+        parent_field = parent_field_override or getattr(type(child), "PARENT_FIELD", "")
         if not parent_field:
             raise ValueError(
                 f"Don't know how to attach {child_type!r} to {parent_type!r}: "
