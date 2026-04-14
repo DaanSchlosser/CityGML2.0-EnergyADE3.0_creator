@@ -48,7 +48,7 @@
 					<nrg3:relatedTo>
 						<nrg3:CityObjectRelation>
 							<nrg3:relationType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/RelationTypeValue.xml">installedOn</nrg3:relationType>
-							<nrg3:relatedTo xlink:type="simple"/>
+							<nrg3:relatedTo xlink:type="simple" xlink:href="#id_building_1_RoofSurface2_3"/>
 						</nrg3:CityObjectRelation>
 					</nrg3:relatedTo>
 					<nrg3:model>PV-16-270 PW</nrg3:model>

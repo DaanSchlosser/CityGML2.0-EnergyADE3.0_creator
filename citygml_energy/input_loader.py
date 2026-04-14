@@ -9,9 +9,15 @@ module — no feature-type-specific code lives here.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+
+# XML 1.0 NCName: must start with a letter or '_' and contain only NCNameChar.
+# We use a conservative ASCII subset — the XSD permits Unicode letters/digits,
+# but tooling interoperability is far better with ASCII-only IDs.
+_NCNAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
 
 from .core import CityModel
 from .geometry import apply_construction_mapping, apply_geometry_sources
@@ -49,12 +55,18 @@ class InputFileError(ValueError):
 
 
 def load_feature_collection(path: PathLike) -> dict[str, Any]:
-    """Load and validate a JSON feature collection from *path*."""
+    """Load and validate a JSON feature collection from *path*.
+
+    Returns a fully validated dict with geometry-source paths resolved
+    relative to *path*'s parent directory.
+    """
     input_path = Path(path)
     try:
-        data = json.loads(input_path.read_text(encoding="utf-8"))
+        raw_text = input_path.read_text(encoding="utf-8-sig")
     except FileNotFoundError as exc:
         raise InputFileError(f"Input file not found: {input_path}") from exc
+    try:
+        data = json.loads(raw_text)
     except json.JSONDecodeError as exc:
         raise InputFileError(
             f"Invalid JSON in {input_path} at line {exc.lineno}, column {exc.colno}: {exc.msg}"
@@ -65,8 +77,7 @@ def load_feature_collection(path: PathLike) -> dict[str, Any]:
         source=str(input_path),
         base_path=input_path.parent,
     )
-    _normalize_geometry_source_paths(data, input_path.parent)
-    return data
+    return _resolve_geometry_source_paths(data, input_path.parent)
 
 
 def validate_feature_collection(
@@ -116,9 +127,7 @@ def validate_feature_collection(
         _validate_feature(feature, index, source)
         gml_id = feature["id"].strip()
         if gml_id in feature_ids:
-            raise InputFileError(
-                f"{source}: features[{index}].id duplicates {gml_id!r}"
-            )
+            raise InputFileError(f"{source}: features[{index}].id duplicates {gml_id!r}")
         feature_ids.add(gml_id)
         feature_types_by_id[gml_id] = feature["type"]
 
@@ -149,16 +158,31 @@ def validate_feature_collection(
             base_path=Path(base_path) if base_path is not None else None,
         )
 
+    if "construction_mapping" in data:
+        _validate_construction_mapping(data["construction_mapping"], source=source)
+
 
 def build_city_model_from_feature_collection(
     data: dict[str, Any],
     *,
     base_path: PathLike | None = None,
+    _already_validated: bool = False,
 ) -> CityModel:
-    """Build a CityModel from validated feature collection data."""
-    validate_feature_collection(data, base_path=base_path)
-    if base_path is not None:
-        _normalize_geometry_source_paths(data, Path(base_path))
+    """Build a CityModel from feature collection data.
+
+    Validates *data* unless ``_already_validated`` is set (used by
+    :func:`load_city_model_from_feature_collection` to avoid re-validating
+    the same dict twice). When *base_path* is given, geometry-source paths
+    are resolved relative to it.
+    """
+    if not _already_validated:
+        validate_feature_collection(
+            data,
+            source=str(base_path) if base_path is not None else "input",
+            base_path=base_path,
+        )
+        if base_path is not None:
+            data = _resolve_geometry_source_paths(data, Path(base_path))
 
     city_model_meta = data["city_model"]
     model = CityModel(
@@ -166,50 +190,49 @@ def build_city_model_from_feature_collection(
         gml_name=city_model_meta.get("name"),
     )
 
-    # Build all xsdata objects from feature definitions
+    # Two-phase build: first construct every object and index by id, then
+    # attach children / promote roots. The split is required because a
+    # parent may appear after its child in the features list.
     id_index: dict[str, Any] = {}
-    rows: list[tuple[str | None, str | None, Any]] = []
+    built: list[tuple[str | None, str | None, Any]] = []
 
-    for feature in data["features"]:
-        type_string = feature["type"]
-        cls = resolve_class(type_string)
-
-        # Extract attribute data (everything except meta keys)
+    for index, feature in enumerate(data["features"]):
+        cls = resolve_class(feature["type"])
         attrs = {k: v for k, v in feature.items() if k not in _FEATURE_META_KEYS}
-
-        # "id" in the JSON maps to "id" on the xsdata class (gml:id attribute)
-        obj = build_from_dict(cls, attrs)
-
-        parent_id = feature.get("parent")
-        parent_field = feature.get("parent_field")
-        rows.append((parent_id, parent_field, obj))
-
+        try:
+            obj = build_from_dict(cls, attrs)
+        except (TypeError, ValueError) as exc:
+            raise InputFileError(
+                f"features[{index}] (id={feature.get('id')!r}, "
+                f"type={feature.get('type')!r}): {exc}"
+            ) from exc
+        built.append((feature.get("parent"), feature.get("parent_field"), obj))
         gml_id = feature.get("id")
         if gml_id:
             id_index[gml_id] = obj
 
-    # Attach children to parents
-    for parent_id, parent_field, obj in rows:
+    for parent_id, parent_field, obj in built:
         if parent_id is None:
+            model.add(obj)
             continue
         parent_obj = id_index.get(parent_id)
         if parent_obj is None:
             raise InputFileError(
-                f"parent {parent_id!r} not found "
-                f"(referenced by {getattr(obj, 'id', '?')!r})"
+                f"parent {parent_id!r} not found (referenced by {getattr(obj, 'id', '?')!r})"
             )
         attach_child(parent_obj, obj, field_hint=parent_field)
-
-    # Add top-level features as cityObjectMembers
-    for parent_id, _parent_field, obj in rows:
-        if parent_id is None:
-            model.add(obj)
 
     # Apply geometry
     raw_origin = data.get("coordinate_origin")
     if raw_origin is not None:
-        if not isinstance(raw_origin, list) or len(raw_origin) != 3:
-            raise InputFileError("coordinate_origin must be an array of 3 numbers [x, y, z]")
+        if (
+            not isinstance(raw_origin, list)
+            or len(raw_origin) != 3
+            or any(isinstance(v, bool) or not isinstance(v, (int, float)) for v in raw_origin)
+        ):
+            raise InputFileError(
+                f"coordinate_origin must be an array of 3 numbers [x, y, z] (got {raw_origin!r})"
+            )
         origin = (float(raw_origin[0]), float(raw_origin[1]), float(raw_origin[2]))
     else:
         origin = (0.0, 0.0, 0.0)
@@ -227,7 +250,9 @@ def load_city_model_from_feature_collection(path: PathLike) -> CityModel:
     """Load, validate, and build a CityModel from a JSON feature file."""
     input_path = Path(path)
     data = load_feature_collection(input_path)
-    return build_city_model_from_feature_collection(data, base_path=input_path.parent)
+    return build_city_model_from_feature_collection(
+        data, base_path=input_path.parent, _already_validated=True
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -254,14 +279,16 @@ def _validate_feature(
     try:
         resolve_class(type_string)
     except ValueError as exc:
-        raise InputFileError(
-            f"{source}: features[{index}].type: {exc}"
-        ) from exc
+        raise InputFileError(f"{source}: features[{index}].type: {exc}") from exc
 
     gml_id = feature.get("id")
     if not isinstance(gml_id, str) or not gml_id.strip():
+        raise InputFileError(f"{source}: features[{index}].id must be a non-empty string")
+    if not _NCNAME_RE.match(gml_id):
         raise InputFileError(
-            f"{source}: features[{index}].id must be a non-empty string"
+            f"{source}: features[{index}].id {gml_id!r} is not a valid XML NCName "
+            f"(must start with a letter or '_' and contain only letters, digits, "
+            f"'.', '-', or '_'; no spaces or colons)"
         )
 
 
@@ -293,39 +320,46 @@ def _validate_geometry_source(
     if not isinstance(path_value, str) or not path_value.strip():
         raise InputFileError(f"{source}: geometry_sources[{index}].path must be a non-empty string")
 
+    if base_path is None and not Path(path_value).is_absolute():
+        raise InputFileError(
+            f"{source}: geometry_sources[{index}].path is relative ({path_value!r}) "
+            f"but no base_path was provided to resolve it against"
+        )
+
     is_zonepart_type = source_type.startswith("step-zonepart-")
 
     if is_zonepart_type:
-        target_zone_part_id = geometry_source.get("target_zone_part_id")
-        if not isinstance(target_zone_part_id, str) or not target_zone_part_id.strip():
-            raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_zone_part_id must be a non-empty string"
-            )
-        if target_zone_part_id not in feature_ids:
-            raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_zone_part_id references missing id {target_zone_part_id!r}"
-            )
+        _validate_geometry_target(
+            geometry_source,
+            field_name="target_zone_part_id",
+            expected_type="nrg3:ZonePart",
+            index=index,
+            source=source,
+            feature_ids=feature_ids,
+            feature_types_by_id=feature_types_by_id,
+            required=True,
+        )
     else:
-        target_building_id = geometry_source.get("target_building_id")
-        if not isinstance(target_building_id, str) or not target_building_id.strip():
-            raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_building_id must be a non-empty string"
-            )
-        if target_building_id not in feature_ids:
-            raise InputFileError(
-                f"{source}: geometry_sources[{index}].target_building_id references missing id {target_building_id!r}"
-            )
-
-        target_pv_id = geometry_source.get("target_pv_id")
-        if target_pv_id is not None:
-            if not isinstance(target_pv_id, str) or not target_pv_id.strip():
-                raise InputFileError(
-                    f"{source}: geometry_sources[{index}].target_pv_id must be a non-empty string when provided"
-                )
-            if target_pv_id not in feature_ids:
-                raise InputFileError(
-                    f"{source}: geometry_sources[{index}].target_pv_id references missing id {target_pv_id!r}"
-                )
+        _validate_geometry_target(
+            geometry_source,
+            field_name="target_building_id",
+            expected_type="bldg:Building",
+            index=index,
+            source=source,
+            feature_ids=feature_ids,
+            feature_types_by_id=feature_types_by_id,
+            required=True,
+        )
+        _validate_geometry_target(
+            geometry_source,
+            field_name="target_pv_id",
+            expected_type="nrg3:PhotovoltaicCollector",
+            index=index,
+            source=source,
+            feature_ids=feature_ids,
+            feature_types_by_id=feature_types_by_id,
+            required=False,
+        )
 
     if base_path is not None:
         resolved_path = _resolve_geometry_source_path(path_value, base_path)
@@ -335,15 +369,103 @@ def _validate_geometry_source(
             )
 
 
-def _normalize_geometry_source_paths(data: dict[str, Any], base_path: Path) -> None:
+def _validate_geometry_target(
+    geometry_source: dict[str, Any],
+    *,
+    field_name: str,
+    expected_type: str,
+    index: int,
+    source: str,
+    feature_ids: set[str],
+    feature_types_by_id: Mapping[str, str],
+    required: bool,
+) -> None:
+    """Check that ``field_name`` references a feature of ``expected_type``."""
+    target_id = geometry_source.get(field_name)
+    if target_id is None:
+        if required:
+            raise InputFileError(
+                f"{source}: geometry_sources[{index}].{field_name} must be a non-empty string"
+            )
+        return
+    if not isinstance(target_id, str) or not target_id.strip():
+        raise InputFileError(
+            f"{source}: geometry_sources[{index}].{field_name} must be a non-empty string"
+            + ("" if required else " when provided")
+        )
+    if target_id not in feature_ids:
+        raise InputFileError(
+            f"{source}: geometry_sources[{index}].{field_name} references missing id "
+            f"{target_id!r}"
+        )
+    actual_type = feature_types_by_id.get(target_id)
+    if actual_type != expected_type:
+        raise InputFileError(
+            f"{source}: geometry_sources[{index}].{field_name} expects a feature of type "
+            f"{expected_type!r} but {target_id!r} is {actual_type!r}"
+        )
+
+
+_ALLOWED_CONSTRUCTION_MAPPING_KEYS = {"by_type", "by_id"}
+
+
+def _validate_construction_mapping(mapping: Any, *, source: str) -> None:
+    if not isinstance(mapping, dict):
+        raise InputFileError(f"{source}: construction_mapping must be an object")
+
+    unexpected = sorted(set(mapping) - _ALLOWED_CONSTRUCTION_MAPPING_KEYS)
+    if unexpected:
+        raise InputFileError(
+            f"{source}: construction_mapping has unexpected key(s): {', '.join(unexpected)}"
+        )
+
+    for sub_key in _ALLOWED_CONSTRUCTION_MAPPING_KEYS:
+        if sub_key not in mapping:
+            continue
+        sub = mapping[sub_key]
+        if not isinstance(sub, dict):
+            raise InputFileError(
+                f"{source}: construction_mapping.{sub_key} must be an object"
+            )
+        for k, v in sub.items():
+            if not isinstance(k, str) or not k.strip():
+                raise InputFileError(
+                    f"{source}: construction_mapping.{sub_key} keys must be non-empty strings"
+                )
+            if not isinstance(v, str) or not v.strip():
+                raise InputFileError(
+                    f"{source}: construction_mapping.{sub_key}[{k!r}] must be a non-empty string"
+                )
+
+
+def _resolve_geometry_source_paths(
+    data: dict[str, Any], base_path: Path
+) -> dict[str, Any]:
+    """Return a shallow copy of *data* with geometry-source paths resolved.
+
+    The input dict is left unmodified — both ``geometry_sources`` and each
+    individual source dict are copied before mutation.
+    """
     geometry_sources = data.get("geometry_sources")
     if not isinstance(geometry_sources, list):
-        return
+        return data
 
+    resolved_sources: list[Any] = []
     for geometry_source in geometry_sources:
-        path_value = geometry_source.get("path")
-        if isinstance(path_value, str) and path_value.strip():
-            geometry_source["path"] = str(_resolve_geometry_source_path(path_value, base_path))
+        if isinstance(geometry_source, dict):
+            path_value = geometry_source.get("path")
+            if isinstance(path_value, str) and path_value.strip():
+                source_copy = dict(geometry_source)
+                source_copy["path"] = str(
+                    _resolve_geometry_source_path(path_value, base_path)
+                )
+                resolved_sources.append(source_copy)
+                continue
+        resolved_sources.append(geometry_source)
+
+    new_data = dict(data)
+    new_data["geometry_sources"] = resolved_sources
+    return new_data
 
 
 def _resolve_geometry_source_path(path_value: str, base_path: Path) -> Path:

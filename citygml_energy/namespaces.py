@@ -37,7 +37,7 @@ NS_XSI = "http://www.w3.org/2001/XMLSchema-instance"
 # Ordered namespace map -- xmlns declarations on the root element.
 # Order matches the reference files exactly (alphabetical by prefix).
 # ---------------------------------------------------------------------------
-NSMAP = OrderedDict(
+NSMAP: OrderedDict[str, str] = OrderedDict(
     [
         ("app", NS_APP),
         ("bldg", NS_BLDG),

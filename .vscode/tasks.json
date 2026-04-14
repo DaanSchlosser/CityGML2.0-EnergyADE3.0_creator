@@ -34,19 +34,6 @@
         "panel": "shared"
       },
       "problemMatcher": []
-    },
-    {
-      "label": "Regenerate Input Schema",
-      "type": "process",
-      "command": "${config:python.defaultInterpreterPath}",
-      "args": [
-        "tools/generate_input_schema.py"
-      ],
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
-      "problemMatcher": []
     }
   ]
 }

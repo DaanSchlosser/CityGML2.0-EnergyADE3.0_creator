@@ -9,6 +9,7 @@ the xsdata bindings (which are generated from the XSD).
 from __future__ import annotations
 
 import dataclasses
+import enum
 import types
 import typing
 from functools import lru_cache
@@ -64,9 +65,7 @@ def resolve_class(type_string: str) -> type:
     if cls is None:
         raise ValueError(
             f"Unknown type {type_string!r}. "
-            f"Available types ({len(registry)}): "
-            + ", ".join(sorted(registry)[:30])
-            + " ..."
+            f"Available types ({len(registry)}): " + ", ".join(sorted(registry)[:30]) + " ..."
         )
     return cls
 
@@ -122,14 +121,10 @@ def _get_fields(cls: type) -> dict[str, FieldInfo]:
 @lru_cache(maxsize=1024)
 def _get_xml_name_map(cls: type) -> dict[str, FieldInfo]:
     """Field info for *cls*, keyed by **XML element/attribute name**."""
-    return {
-        info.xml_name: info
-        for info in _get_fields(cls).values()
-        if info.xml_name is not None
-    }
+    return {info.xml_name: info for info in _get_fields(cls).values() if info.xml_name is not None}
 
 
-def _unwrap_hint(hint: Any) -> tuple[bool, type]:
+def _unwrap_hint(hint: Any) -> tuple[bool, type[Any]]:
     """Unwrap ``list[X]``, ``X | None``, etc. to ``(is_list, inner_type)``."""
     origin = getattr(hint, "__origin__", None)
     args = getattr(hint, "__args__", ())
@@ -139,7 +134,7 @@ def _unwrap_hint(hint: Any) -> tuple[bool, type]:
         if args:
             _, inner = _unwrap_hint(args[0])
             return True, inner
-        return True, Any
+        return True, object
 
     # Union / X | None  (Python 3.10+ uses types.UnionType)
     if origin is Union or isinstance(hint, types.UnionType):
@@ -150,7 +145,7 @@ def _unwrap_hint(hint: Any) -> tuple[bool, type]:
     if isinstance(hint, type):
         return False, hint
 
-    return False, Any
+    return False, object
 
 
 def _resolve_field(cls: type, key: str) -> FieldInfo | None:
@@ -170,14 +165,31 @@ def _coerce(target: type, raw: Any) -> Any:
     """Coerce a raw JSON value to *target* xsdata type."""
     if raw is None:
         return None
+
+    # bool is a subclass of int — check it before the isinstance fast-path so
+    # that True/False are not accepted where an int or float is expected.
+    if target is bool:
+        if isinstance(raw, str):
+            return raw.lower() in ("true", "1", "yes")
+        return bool(raw)
+    if target in (int, float) and isinstance(raw, bool):
+        raise TypeError(
+            f"Cannot coerce bool {raw!r} to {target.__name__}: "
+            f"refusing implicit bool→numeric conversion"
+        )
+
     if isinstance(raw, target):
         return raw
 
+    # --- Enums (xsdata generates these for XSD enumerations) ---
+    if isinstance(target, type) and issubclass(target, enum.Enum):
+        return _coerce_enum(target, raw)
+
     # --- xsdata date/time types from strings ---
-    if target is XmlPeriod and isinstance(raw, (str, int)):
+    if target is XmlPeriod and isinstance(raw, (str, int)) and not isinstance(raw, bool):
         return XmlPeriod(str(raw))
     if target is XmlDate and isinstance(raw, str):
-        return _parse_xml_date(raw)
+        return XmlDate.from_string(raw)
     if target is XmlDateTime and isinstance(raw, str):
         return XmlDateTime.from_string(raw)
     if target is XmlTime and isinstance(raw, str):
@@ -186,16 +198,18 @@ def _coerce(target: type, raw: Any) -> Any:
         return XmlDuration(raw)
 
     # --- Primitives ---
+    # Reject containers explicitly: ``str({"a": 1})`` would otherwise produce
+    # ``"{'a': 1}"`` and silently emit nonsense XML content.
     if target is str:
+        if isinstance(raw, (dict, list)):
+            raise TypeError(
+                f"Cannot coerce {type(raw).__name__} to str: expected a scalar value"
+            )
         return str(raw)
     if target is float:
         return float(raw)
     if target is int:
         return int(raw)
-    if target is bool:
-        if isinstance(raw, str):
-            return raw.lower() in ("true", "1", "yes")
-        return bool(raw)
 
     # --- Dict → dataclass (recursive) ---
     if isinstance(raw, dict) and dataclasses.is_dataclass(target):
@@ -210,7 +224,36 @@ def _coerce(target: type, raw: Any) -> Any:
     if target is list and isinstance(raw, list):
         return raw
 
-    return raw
+    # Refuse to silently pass through values whose shape doesn't match the
+    # declared field type — this surfaces JSON typos at build time instead
+    # of producing malformed XML at serialization time.
+    target_name = getattr(target, "__name__", repr(target))
+    raise TypeError(
+        f"Cannot coerce {type(raw).__name__} {raw!r} to {target_name}: "
+        f"no conversion rule applies"
+    )
+
+
+def _coerce_enum(cls: type[enum.Enum], raw: Any) -> enum.Enum:
+    """Coerce *raw* to a member of the xsdata-generated ``Enum`` *cls*.
+
+    Accepts the enum's wire value (``XmlEnumValue``), its Python member name,
+    or the raw underlying value. Raises ``ValueError`` listing valid options
+    when no match is found, so JSON typos surface with actionable detail.
+    """
+    if isinstance(raw, cls):
+        return raw
+    # Match by value (the XML token, e.g. "averageInSucceedingInterval").
+    for member in cls:
+        if member.value == raw:
+            return member
+    # Fall back to member name (e.g. "AVERAGE_IN_SUCCEEDING_INTERVAL").
+    if isinstance(raw, str) and raw in cls.__members__:
+        return cls[raw]
+    valid = ", ".join(repr(m.value) for m in cls)
+    raise ValueError(
+        f"Cannot coerce {raw!r} to {cls.__name__}: expected one of {valid}"
+    )
 
 
 def _scalar_to_dataclass(cls: type, scalar: Any) -> Any:
@@ -228,13 +271,6 @@ def _scalar_to_dataclass(cls: type, scalar: Any) -> Any:
         )
     coerced = _coerce(value_info.inner_type, scalar)
     return cls(value=coerced)
-
-
-def _parse_xml_date(s: str) -> XmlDate:
-    parts = s.split("-")
-    if len(parts) == 3:
-        return XmlDate(int(parts[0]), int(parts[1]), int(parts[2]))
-    raise ValueError(f"Cannot parse date: {s!r}, expected YYYY-MM-DD")
 
 
 # ---------------------------------------------------------------------------
@@ -306,9 +342,7 @@ def attach_child(
     if field_hint is not None:
         info = _resolve_field(parent_type, field_hint)
         if info is None:
-            raise ValueError(
-                f"Field {field_hint!r} not found on {parent_type.__name__}"
-            )
+            raise ValueError(f"Field {field_hint!r} not found on {parent_type.__name__}")
         _do_attach(parent, child, info)
         return
 
