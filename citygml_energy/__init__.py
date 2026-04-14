@@ -1,4 +1,4 @@
-"""CityGML 2.0 + Energy ADE 3.0 generation from JSON/Excel input."""
+"""CityGML 2.0 + Energy ADE 3.0 generation from JSON input."""
 
 from .core import CityModel
 from .generation import (
@@ -12,10 +12,11 @@ from .input_loader import (
     build_city_model_from_feature_collection,
     load_feature_collection,
 )
+
 __all__ = [
-    "CityModel",
     "DEFAULT_INPUT_PATH",
     "DEFAULT_OUTPUT_PATH",
+    "CityModel",
     "InputFileError",
     "build_city_model_from_feature_collection",
     "generate_city_model",

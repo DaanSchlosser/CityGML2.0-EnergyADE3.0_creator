@@ -82,11 +82,11 @@ class _LocalResolver(etree.Resolver):
         # Exact URL match (OGC schemas)
         local = _URL_MAP.get(system_url)
         if local is not None:
-            return self.resolve_filename(str(local), context)
+            return self.resolve_filename(str(local), context)  # pyright: ignore[reportAttributeAccessIssue]
 
         # xAL (namespace URI or OASIS URL)
         if any(hint in system_url for hint in _XAL_HINTS):
-            return self.resolve_filename(str(_XAL_XSD), context)
+            return self.resolve_filename(str(_XAL_XSD), context)  # pyright: ignore[reportAttributeAccessIssue]
 
         return None  # fall through to lxml default (file-relative)
 
@@ -101,7 +101,15 @@ def load_schema() -> etree.XMLSchema:
 
 def validate(gml_path: Path, schema: etree.XMLSchema) -> list[str]:
     """Validate a GML file. Returns a list of error strings (empty = valid)."""
-    doc = etree.parse(str(gml_path))
+    # Harden against XXE / billion-laughs / network-resolved entities when
+    # parsing user-supplied GML input. Validation only needs the document tree.
+    safe_parser = etree.XMLParser(
+        resolve_entities=False,
+        no_network=True,
+        load_dtd=False,
+        huge_tree=False,
+    )
+    doc = etree.parse(str(gml_path), safe_parser)
     schema.validate(doc)
     return [str(e) for e in schema.error_log]
 

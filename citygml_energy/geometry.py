@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import dataclasses
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 from .bindings import (
+    AbstractCityObjectPropertyType,
     BoundarySurfacePropertyType2,
     BoundedBy,
     Building,
@@ -62,22 +65,32 @@ _STEP_ENTITY_RE = re.compile(
 
 Coord3D = tuple[float, float, float]
 
-# Surface name prefix → (xsdata class, field name on BoundarySurfacePropertyType2)
-_SURFACE_NAME_PREFIXES: dict[str, tuple[type[Any], str]] = {
-    "CeilingSurface_": (CeilingSurface2, "ceiling_surface"),
-    "ClosureSurface_": (ClosureSurface2, "closure_surface"),
-    "FloorSurface_": (FloorSurface2, "floor_surface"),
-    "GroundSurface_": (GroundSurface2, "ground_surface"),
-    "OuterCeilingSurface_": (OuterCeilingSurface2, "outer_ceiling_surface"),
-    "OuterFloorSurface_": (OuterFloorSurface2, "outer_floor_surface"),
-    "RoofSurface_": (RoofSurface2, "roof_surface"),
-    "WallSurface_": (WallSurface2, "wall_surface"),
-}
+# Single source of truth for the surface taxonomy.
+# Each entry: (xsdata class, BoundarySurfacePropertyType2 field, short type name).
+# The STEP-import name prefix is "<short_name>_" by convention.
+_SURFACE_TAXONOMY: list[tuple[type[Any], str, str]] = [
+    (CeilingSurface2, "ceiling_surface", "CeilingSurface"),
+    (ClosureSurface2, "closure_surface", "ClosureSurface"),
+    (FloorSurface2, "floor_surface", "FloorSurface"),
+    (GroundSurface2, "ground_surface", "GroundSurface"),
+    (OuterCeilingSurface2, "outer_ceiling_surface", "OuterCeilingSurface"),
+    (OuterFloorSurface2, "outer_floor_surface", "OuterFloorSurface"),
+    (RoofSurface2, "roof_surface", "RoofSurface"),
+    (WallSurface2, "wall_surface", "WallSurface"),
+]
 
-# Opening name prefix → (xsdata class, field name on OpeningPropertyType2)
+# Single source of truth for the opening taxonomy.
+_OPENING_TAXONOMY: list[tuple[type[Any], str, str]] = [
+    (Door2, "door", "Door"),
+    (Window2, "window", "Window"),
+]
+
+# Derived lookups — keep names alphabetised for stable iteration.
+_SURFACE_NAME_PREFIXES: dict[str, tuple[type[Any], str]] = {
+    f"{short}_": (cls, fld) for cls, fld, short in _SURFACE_TAXONOMY
+}
 _OPENING_NAME_PREFIXES: dict[str, tuple[type[Any], str]] = {
-    "Door_": (Door2, "door"),
-    "Window_": (Window2, "window"),
+    f"{short}_": (cls, fld) for cls, fld, short in _OPENING_TAXONOMY
 }
 
 _FEATURE_KIND_SURFACE = "surface"
@@ -166,41 +179,11 @@ def apply_geometry_sources(
         _set_envelope(model, _compute_envelope(all_coordinates))
 
 
-# Surface type class → short name used in construction_mapping.by_type
-_SURFACE_TYPE_NAMES: dict[type[Any], str] = {
-    WallSurface2: "WallSurface",
-    RoofSurface2: "RoofSurface",
-    GroundSurface2: "GroundSurface",
-    CeilingSurface2: "CeilingSurface",
-    ClosureSurface2: "ClosureSurface",
-    FloorSurface2: "FloorSurface",
-    OuterCeilingSurface2: "OuterCeilingSurface",
-    OuterFloorSurface2: "OuterFloorSurface",
-}
+_SURFACE_TYPE_NAMES: dict[type[Any], str] = {cls: short for cls, _, short in _SURFACE_TAXONOMY}
+_OPENING_TYPE_NAMES: dict[type[Any], str] = {cls: short for cls, _, short in _OPENING_TAXONOMY}
 
-_OPENING_TYPE_NAMES: dict[type[Any], str] = {
-    Door2: "Door",
-    Window2: "Window",
-}
-
-# BoundarySurfacePropertyType2 field → surface class
-_BOUNDED_BY_FIELDS: list[tuple[str, type[Any]]] = [
-    (name, cls) for cls, name in [
-        (WallSurface2, "wall_surface"),
-        (RoofSurface2, "roof_surface"),
-        (GroundSurface2, "ground_surface"),
-        (CeilingSurface2, "ceiling_surface"),
-        (ClosureSurface2, "closure_surface"),
-        (FloorSurface2, "floor_surface"),
-        (OuterCeilingSurface2, "outer_ceiling_surface"),
-        (OuterFloorSurface2, "outer_floor_surface"),
-    ]
-]
-
-_OPENING_FIELDS: list[tuple[str, type[Any]]] = [
-    ("door", Door2),
-    ("window", Window2),
-]
+_BOUNDED_BY_FIELDS: list[tuple[str, type[Any]]] = [(fld, cls) for cls, fld, _ in _SURFACE_TAXONOMY]
+_OPENING_FIELDS: list[tuple[str, type[Any]]] = [(fld, cls) for cls, fld, _ in _OPENING_TAXONOMY]
 
 
 def _make_construction_ref(construction_id: str) -> LayeredConstruction2:
@@ -234,7 +217,7 @@ def apply_construction_mapping(
 
         for bounded in building.bounded_by:
             surface, surface_cls = _extract_surface(bounded)
-            if surface is None:
+            if surface is None or surface_cls is None:
                 continue
 
             type_name = _SURFACE_TYPE_NAMES.get(surface_cls)
@@ -251,7 +234,7 @@ def apply_construction_mapping(
             # Process openings on this surface
             for opening_prop in getattr(surface, "opening", []):
                 opening, opening_cls = _extract_opening(opening_prop)
-                if opening is None:
+                if opening is None or opening_cls is None:
                     continue
 
                 opening_type = _OPENING_TYPE_NAMES.get(opening_cls)
@@ -262,9 +245,7 @@ def apply_construction_mapping(
                     opening_constr_id = by_type.get(opening_type)
 
                 if opening_constr_id is not None:
-                    opening.layered_construction.append(
-                        _make_construction_ref(opening_constr_id)
-                    )
+                    opening.layered_construction.append(_make_construction_ref(opening_constr_id))
 
 
 def _extract_surface(
@@ -385,6 +366,10 @@ def _apply_aggregate_building_geometry(
         building.lod0_foot_print = _build_multi_surface(gml_id, all_polygons)
     elif lod_level == 1:
         building.lod1_solid = _build_solid(gml_id, all_polygons)
+    else:
+        raise ValueError(
+            f"Aggregate building geometry only supports LOD 0 or 1, got {lod_level}"
+        )
 
     return all_coordinates
 
@@ -395,28 +380,14 @@ def _set_envelope(model: CityModel, envelope: Envelope) -> None:
 
 
 def _compute_envelope(coordinates: list[Coord3D]) -> Envelope:
-    min_x = min_y = min_z = float("inf")
-    max_x = max_y = max_z = float("-inf")
-    for x, y, z in coordinates:
-        if x < min_x:
-            min_x = x
-        if x > max_x:
-            max_x = x
-        if y < min_y:
-            min_y = y
-        if y > max_y:
-            max_y = y
-        if z < min_z:
-            min_z = z
-        if z > max_z:
-            max_z = z
+    xs, ys, zs = zip(*coordinates, strict=True)
     return Envelope(
         lower_corner=DirectPositionType(
-            value=[min_x, min_y, min_z],
+            value=[min(xs), min(ys), min(zs)],
             srs_dimension=DEFAULT_SRS_DIMENSION,
         ),
         upper_corner=DirectPositionType(
-            value=[max_x, max_y, max_z],
+            value=[max(xs), max(ys), max(zs)],
             srs_dimension=DEFAULT_SRS_DIMENSION,
         ),
         srs_name=DEFAULT_SRS_NAME,
@@ -475,18 +446,10 @@ def _attach_geometry_features(
                     f"Geometry source {source_path} produced a surface without a builder class"
                 )
 
-            type_name = feature.element_cls.__name__
-            counter_key = (target_building_id, type_name)
-            type_counters[counter_key] = type_counters.get(counter_key, 0) + 1
-            gml_id = f"{target_building_id}_{type_name}_{type_counters[counter_key]}"
-
-            multi_surface = _build_multi_surface(
-                f"{gml_id}_lod{lod_level}",
-                feature.polygons,
-            )
+            gml_id = _next_feature_id(type_counters, target_building_id, feature.element_cls)
             surface = feature.element_cls(
                 id=gml_id,
-                **{lod_field: multi_surface},
+                **{lod_field: _build_multi_surface(f"{gml_id}_lod{lod_level}", feature.polygons)},
             )
             building.bounded_by.append(
                 BoundarySurfacePropertyType2(**{feature.field_name: surface})
@@ -523,22 +486,12 @@ def _attach_geometry_features(
 
         parent_surface = surface_data[parent_step_name][0]
 
-        type_name = feature.element_cls.__name__
-        counter_key = (target_building_id, type_name)
-        type_counters[counter_key] = type_counters.get(counter_key, 0) + 1
-        gml_id = f"{target_building_id}_{type_name}_{type_counters[counter_key]}"
-
-        multi_surface = _build_multi_surface(
-            f"{gml_id}_lod{lod_level}",
-            feature.polygons,
-        )
+        gml_id = _next_feature_id(type_counters, target_building_id, feature.element_cls)
         opening_obj = feature.element_cls(
             id=gml_id,
-            **{lod_field: multi_surface},
+            **{lod_field: _build_multi_surface(f"{gml_id}_lod{lod_level}", feature.polygons)},
         )
-        parent_surface.opening.append(
-            OpeningPropertyType2(**{feature.field_name: opening_obj})
-        )
+        parent_surface.opening.append(OpeningPropertyType2(**{feature.field_name: opening_obj}))
 
     if solar_panel_polygons:
         if target_pv_id is None:
@@ -579,19 +532,20 @@ def _attach_geometry_features(
     return all_coordinates
 
 
-def _make_city_object_ref(gml_id: str) -> Any:
-    """Create an AbstractCityObjectPropertyType as an xlink reference.
+def _next_feature_id(
+    counters: dict[tuple[str, str], int],
+    building_id: str,
+    element_cls: type[Any],
+) -> str:
+    """Allocate ``"<building_id>_<TypeName>_<n>"`` and bump the counter."""
+    key = (building_id, element_cls.__name__)
+    counters[key] = counters.get(key, 0) + 1
+    return f"{building_id}_{element_cls.__name__}_{counters[key]}"
 
-    The Energy ADE's AbstractCityObjectPropertyType does not expose xlink
-    attributes directly, so we construct it empty. The reference intent is
-    preserved via the relation_type context. A future schema revision or
-    post-processing step can inject the xlink:href attribute if needed.
-    """
-    from .bindings import AbstractCityObjectPropertyType
 
-    # Create an empty property — the referenced object is identified by
-    # the CityObjectRelation's context rather than an inline xlink.
-    return AbstractCityObjectPropertyType()
+def _make_city_object_ref(gml_id: str) -> AbstractCityObjectPropertyType:
+    """Create an ``AbstractCityObjectPropertyType`` as an ``xlink:href`` reference."""
+    return AbstractCityObjectPropertyType(href=f"#{gml_id}")
 
 
 def _offset_coords(coords: list[Coord3D], origin: Coord3D) -> list[Coord3D]:
@@ -617,8 +571,7 @@ def _parse_step_file(
     entities = _parse_step_entities(path)
     features: list[_ParsedGeometryFeature] = []
 
-    for entity_id in sorted(entities):
-        entity = entities[entity_id]
+    for _entity_id, entity in sorted(entities.items()):
         if entity.entity_type != "SHELL_BASED_SURFACE_MODEL":
             continue
 
@@ -814,23 +767,32 @@ def _parse_step_loop(
     return ring
 
 
+_STEP_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+# Complex (parenthesised) entity instance: ``#N=( TYPE1(...) TYPE2(...) );``.
+# These are valid ISO 10303-21 aggregations (e.g. derived units) but never
+# carry BREP geometry, so we skip them deliberately rather than failing.
+_STEP_COMPLEX_ENTITY_RE = re.compile(r"^#\d+\s*=\s*\(.*\)\s*;$", re.DOTALL)
+
+
 def _parse_step_entities(path: Path) -> dict[int, _StepEntity]:
     entities: dict[int, _StepEntity] = {}
-    in_data_section = False
-    current_parts: list[str] = []
 
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    text = path.read_text(encoding="utf-8-sig")
+    data_start = text.find("DATA;")
+    if data_start == -1:
+        return entities
+    data_end = text.find("ENDSEC;", data_start)
+    if data_end == -1:
+        data_end = len(text)
+    data_section = text[data_start + len("DATA;") : data_end]
+
+    # Strip ISO 10303-21 comments (/* ... */, possibly multi-line) before tokenising.
+    data_section = _STEP_COMMENT_RE.sub(" ", data_section)
+
+    current_parts: list[str] = []
+    for raw_line in data_section.splitlines():
         line = raw_line.strip()
         if not line:
-            continue
-        if line == "DATA;":
-            in_data_section = True
-            continue
-        if not in_data_section:
-            continue
-        if line == "ENDSEC;":
-            break
-        if line.startswith("/*"):
             continue
 
         current_parts.append(line)
@@ -841,7 +803,11 @@ def _parse_step_entities(path: Path) -> dict[int, _StepEntity]:
         current_parts.clear()
         match = _STEP_ENTITY_RE.match(entity_text)
         if match is None:
-            continue
+            if _STEP_COMPLEX_ENTITY_RE.match(entity_text):
+                continue
+            raise ValueError(
+                f"STEP geometry {path} contains an unparseable entity line: {entity_text!r}"
+            )
 
         entity_id = int(match.group("entity_id"))
         entity_type = match.group("entity_type")
@@ -1004,9 +970,7 @@ def _build_multi_surface(
 
     for index, polygon_geometry in enumerate(polygons, start=1):
         polygon_id = f"{gml_id}_poly_{index}"
-        members.append(
-            SurfaceMember(polygon=_build_polygon(polygon_id, polygon_geometry))
-        )
+        members.append(SurfaceMember(polygon=_build_polygon(polygon_id, polygon_geometry)))
 
     return MultiSurfacePropertyType(
         multi_surface=MultiSurface(
@@ -1033,9 +997,7 @@ def _build_solid(
     members: list[SurfaceMember] = []
     for index, polygon_geometry in enumerate(oriented, start=1):
         polygon_id = f"{gml_id}_poly_{index}"
-        members.append(
-            SurfaceMember(polygon=_build_polygon(polygon_id, polygon_geometry))
-        )
+        members.append(SurfaceMember(polygon=_build_polygon(polygon_id, polygon_geometry)))
 
     return SolidPropertyType(
         solid=Solid(
@@ -1063,15 +1025,14 @@ def _build_polygon(
         ),
     )
 
-    interiors: list[Interior] = []
-    for interior_geometry in polygon_geometry.interiors:
-        interiors.append(
-            Interior(
-                linear_ring=LinearRing(
-                    pos_list=PosList(value=_flatten_ring(interior_geometry)),
-                ),
-            )
+    interiors: list[Interior] = [
+        Interior(
+            linear_ring=LinearRing(
+                pos_list=PosList(value=_flatten_ring(interior_geometry)),
+            ),
         )
+        for interior_geometry in polygon_geometry.interiors
+    ]
 
     return Polygon(
         id=polygon_id,
@@ -1318,17 +1279,13 @@ def _search_object(obj: Any, gml_id: str) -> Any | None:
     return _find_in_member(obj, gml_id)
 
 
-_FIELD_NAME_CACHE: dict[type, tuple[str, ...]] = {}
+@cache
+def _get_field_names_for_class(cls: type) -> tuple[str, ...]:
+    """Field names for a dataclass; empty tuple for non-dataclasses."""
+    if dataclasses.is_dataclass(cls):
+        return tuple(f.name for f in dataclasses.fields(cls))
+    return ()
 
 
 def _get_field_names(obj: Any) -> tuple[str, ...]:
-    """Get field names for a dataclass, with caching."""
-    cls = type(obj)
-    if cls not in _FIELD_NAME_CACHE:
-        import dataclasses
-
-        if dataclasses.is_dataclass(cls):
-            _FIELD_NAME_CACHE[cls] = tuple(f.name for f in dataclasses.fields(cls))
-        else:
-            _FIELD_NAME_CACHE[cls] = ()
-    return _FIELD_NAME_CACHE[cls]
+    return _get_field_names_for_class(type(obj))

@@ -92,7 +92,7 @@ def test_building_round_trip(xsd_schema, serializer):
     doc = etree.fromstring(xml_str.encode("UTF-8"))
     xsd_schema.validate(doc)
     errors = [str(e) for e in xsd_schema.error_log]
-    assert not errors, f"XSD validation errors:\n" + "\n".join(errors)
+    assert not errors, "XSD validation errors:\n" + "\n".join(errors)
 
 
 def test_building_has_expected_elements(serializer):

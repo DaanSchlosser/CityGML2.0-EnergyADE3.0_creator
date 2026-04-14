@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 import dataclasses
-from functools import lru_cache
+import typing
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 from .bindings import (
     BoundedBy,
-    CityModel as XsdCityModel,
     CityObjectMember,
     Description,
     DirectPositionType,
     Envelope,
     Name,
+)
+from .bindings import (
+    CityModel as XsdCityModel,
 )
 from .serialization import serialize_to_file, serialize_to_string
 
@@ -42,7 +45,13 @@ class CityModel:
             description=Description(value=gml_description) if gml_description else None,
             name=[Name(value=gml_name)] if gml_name else [],
         )
-        if srs_name and lower_corner and upper_corner:
+        bbox_args = (srs_name, lower_corner, upper_corner)
+        if any(bbox_args) and not all(bbox_args):
+            raise ValueError(
+                "srs_name, lower_corner, and upper_corner must all be provided "
+                "together to set the CityModel bounding box (or all omitted)."
+            )
+        if all(bbox_args):
             self._model.opengis_net_gml_bounded_by = BoundedBy(
                 envelope=Envelope(
                     lower_corner=DirectPositionType(
@@ -120,14 +129,12 @@ class CityModel:
         serialize_to_file(self._model, filepath, indent=indent)
 
 
-@lru_cache(maxsize=None)
+@cache
 def _build_member_type_map() -> dict[type, str]:
     """Build a mapping from concrete types to CityObjectMember field names."""
-    import typing
-
+    hints = typing.get_type_hints(CityObjectMember)
     result: dict[type, str] = {}
     for f in dataclasses.fields(CityObjectMember):
-        hints = typing.get_type_hints(CityObjectMember)
         hint = hints.get(f.name)
         if hint is None:
             continue
@@ -136,9 +143,12 @@ def _build_member_type_map() -> dict[type, str]:
         if args:
             for arg in args:
                 if arg is not type(None):
-                    result[arg] = f.name
+                    # First-registered field wins on type collisions; without
+                    # setdefault, resolution would silently depend on dataclass
+                    # field order.
+                    result.setdefault(arg, f.name)
         elif isinstance(hint, type):
-            result[hint] = f.name
+            result.setdefault(hint, f.name)
     return result
 
 
@@ -152,6 +162,5 @@ def _resolve_member_field(cls: type) -> str:
         if base in type_map:
             return type_map[base]
     raise TypeError(
-        f"Cannot find a CityObjectMember field for {cls.__name__}. "
-        f"Pass field_name= explicitly."
+        f"Cannot find a CityObjectMember field for {cls.__name__}. Pass field_name= explicitly."
     )

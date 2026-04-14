@@ -129,9 +129,7 @@ def test_heating_and_cooling_schedules_on_zone_parts(renodat_root):
 
 def test_energy_resources_attached_to_devices(renodat_root):
     """Input declares 2 Energy resources: one on the EV, one on the PV."""
-    ev_resources = renodat_root.findall(
-        ".//nrg3:EVChargingStation/nrg3:resource/nrg3:Energy", NS
-    )
+    ev_resources = renodat_root.findall(".//nrg3:EVChargingStation/nrg3:resource/nrg3:Energy", NS)
     assert len(ev_resources) == 1
 
     pv_resources = renodat_root.findall(
@@ -189,9 +187,7 @@ def test_geometry_imported_from_step(renodat_root):
 
 def test_pv_has_geometry(renodat_root):
     """The PV collector must have lod3MultiSurface geometry from the STEP import."""
-    pv_geom = renodat_root.findall(
-        ".//nrg3:PhotovoltaicCollector/nrg3:lod3MultiSurface", NS
-    )
+    pv_geom = renodat_root.findall(".//nrg3:PhotovoltaicCollector/nrg3:lod3MultiSurface", NS)
     assert len(pv_geom) == 1
 
 
@@ -246,9 +242,7 @@ def test_no_scientific_notation_in_coordinates(renodat_root):
     for pos_list in renodat_root.findall(".//gml:posList", NS):
         text = pos_list.text or ""
         for token in text.split():
-            assert "e" not in token.lower(), (
-                f"Scientific notation found in coordinates: {token}"
-            )
+            assert "e" not in token.lower(), f"Scientific notation found in coordinates: {token}"
 
 
 # ---------------------------------------------------------------------------

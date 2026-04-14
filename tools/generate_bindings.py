@@ -59,6 +59,7 @@ def _rewrite_schema_locations(content: str, xsd_dir_relative: str) -> str:
     *xsd_dir_relative* is the path from the XSD file's location to the
     staging root (e.g. ``"../"`` for a file one level deep).
     """
+
     def _replacer(match: re.Match[str]) -> str:
         url = match.group(1)
         local = _URL_TO_RELATIVE.get(url)
@@ -116,15 +117,22 @@ def main() -> int:
         print()
 
         cmd = [
-            sys.executable, "-m", "xsdata", "generate",
+            sys.executable,
+            "-m",
+            "xsdata",
+            "generate",
             str(entry_xsd),
-            "--package", OUTPUT_PACKAGE.replace("/", "."),
-            "--structure-style", "single-package",
-            "--docstring-style", "Google",
+            "--package",
+            OUTPUT_PACKAGE.replace("/", "."),
+            "--structure-style",
+            "single-package",
+            "--docstring-style",
+            "Google",
             "--relative-imports",
             "--slots",
             "--no-unnest-classes",
-            "--max-line-length", "100",
+            "--max-line-length",
+            "100",
             "--recursive",
         ]
 

@@ -10,30 +10,13 @@ from xsdata.formats.dataclass.serializers.config import SerializerConfig
 from .namespaces import NSMAP
 
 # Namespace prefix map for xsdata's serializer (prefix → URI).
-NS_MAP: dict[str, str] = dict(NSMAP)
-
-_TAB_CONFIG = SerializerConfig(
-    xml_declaration=True,
-    encoding="UTF-8",
-    indent="\t",
-)
-
-_TAB_SERIALIZER = XmlSerializer(config=_TAB_CONFIG)
-
-
-def _make_serializer(indent: str) -> XmlSerializer:
-    config = SerializerConfig(
-        xml_declaration=True,
-        encoding="UTF-8",
-        indent=indent,
-    )
-    return XmlSerializer(config=config)
+_NS_MAP: dict[str, str] = dict(NSMAP)
 
 
 def serialize_to_string(obj: object, *, indent: str = "\t") -> str:
     """Serialize an xsdata dataclass to an XML string."""
-    ser = _TAB_SERIALIZER if indent == "\t" else _make_serializer(indent)
-    return ser.render(obj, ns_map=NS_MAP)
+    config = SerializerConfig(xml_declaration=True, encoding="UTF-8", indent=indent)
+    return XmlSerializer(config=config).render(obj, ns_map=_NS_MAP)
 
 
 def serialize_to_file(obj: object, path: str | Path, *, indent: str = "\t") -> None:
