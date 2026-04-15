@@ -96,11 +96,7 @@
       "creation_date": "2026-04-04",
       "type_value": {"value": "residents", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml"},
       "number_of_occupants": 6,
-      "average_diet_type": {"value": "omnivorous", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/DietTypeValue.xml"},
-      "heat_dissipation": {"value": 80, "uom": "W"},
-      "heat_dissipation_convective_fraction": {"value": 0.3, "uom": ""},
-      "heat_dissipation_latent_fraction": {"value": 0.2, "uom": ""},
-      "heat_dissipation_radiant_fraction": {"value": 0.5, "uom": ""}
+      "heat_dissipation": {"value": 80, "uom": "W"}
     },
     {
       "type": "nrg3:EVChargingStation",
@@ -110,7 +106,6 @@
       "name": ["EVHUB Laadpaal Type 2"],
       "creation_date": "2026-04-04",
       "model": "LP-H8T5OIUGL5",
-      "identifier": [{"value": "LP-H8T5OIUGL5", "code_space": "https://www.elektramat.nl/evhub-laadpaal-type-2-32a-3-7-22kw-met-laadkabel-8-meter-zwart-lp-h8t5oiugl5/"}],
       "year_of_installation": 2022,
       "valid_from": "2022-07-18T00:00:00",
       "number_of_devices": 1,
