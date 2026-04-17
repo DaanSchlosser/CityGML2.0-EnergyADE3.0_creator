@@ -53,11 +53,24 @@ _URL_TO_RELATIVE: dict[str, str] = {
 }
 
 
-def _rewrite_schema_locations(content: str, xsd_dir_relative: str) -> str:
+# Matches absolute URIs that need remapping to a local XSD copy.
+# Relative schemaLocation values (e.g. "./building.xsd") are left alone.
+_ABSOLUTE_URI_RE = re.compile(r"^(?:https?://|urn:)")
+
+
+def _rewrite_schema_locations(
+    content: str,
+    xsd_dir_relative: str,
+    unmapped: set[str],
+) -> str:
     """Rewrite schemaLocation URLs to local relative paths.
 
     *xsd_dir_relative* is the path from the XSD file's location to the
     staging root (e.g. ``"../"`` for a file one level deep).
+
+    Any absolute URI that is not in :data:`_URL_TO_RELATIVE` is added to
+    *unmapped* so the caller can fail loudly instead of silently leaving a
+    remote URL in the staged schema (which xsdata would then try to fetch).
     """
 
     def _replacer(match: re.Match[str]) -> str:
@@ -65,6 +78,8 @@ def _rewrite_schema_locations(content: str, xsd_dir_relative: str) -> str:
         local = _URL_TO_RELATIVE.get(url)
         if local is not None:
             return f'schemaLocation="{xsd_dir_relative}{local}"'
+        if _ABSOLUTE_URI_RE.match(url):
+            unmapped.add(url)
         return match.group(0)
 
     return re.sub(r'schemaLocation="([^"]+)"', _replacer, content)
@@ -74,6 +89,10 @@ def _stage_schemas(staging_dir: Path) -> Path:
     """Copy all XSD files to *staging_dir* with URLs rewritten to local paths.
 
     Returns the path to the patched Energy ADE XSD (the entry point).
+
+    Raises :class:`RuntimeError` if any XSD imports an absolute URI that is
+    not registered in :data:`_URL_TO_RELATIVE`; add a mapping entry (and the
+    corresponding file under ``xsd/``) so the build stays offline.
     """
     # Copy XSD files into staging root (flat structure matching _URL_TO_RELATIVE paths)
     shutil.copytree(_XSD_ROOT / "gml", staging_dir / "gml")
@@ -83,6 +102,8 @@ def _stage_schemas(staging_dir: Path) -> Path:
     (staging_dir / "energy").mkdir()
     shutil.copy2(_ENERGY_XSD, staging_dir / "energy" / _ENERGY_XSD.name)
 
+    unmapped: set[str] = set()
+
     # Rewrite all XSD files under staging_dir
     for xsd_file in staging_dir.rglob("*.xsd"):
         rel_to_staging = xsd_file.parent.relative_to(staging_dir)
@@ -91,9 +112,18 @@ def _stage_schemas(staging_dir: Path) -> Path:
         prefix = "../" * depth
 
         content = xsd_file.read_text(encoding="utf-8")
-        rewritten = _rewrite_schema_locations(content, prefix)
+        rewritten = _rewrite_schema_locations(content, prefix, unmapped)
         if rewritten != content:
             xsd_file.write_text(rewritten, encoding="utf-8")
+
+    if unmapped:
+        raise RuntimeError(
+            "Staged XSDs reference absolute schemaLocation URIs that are not "
+            "mapped to a local file in tools/generate_bindings.py "
+            "(_URL_TO_RELATIVE). xsdata would try to fetch these over the "
+            "network; add a local copy under xsd/ and a mapping entry:\n  - "
+            + "\n  - ".join(sorted(unmapped))
+        )
 
     return staging_dir / "energy" / _ENERGY_XSD.name
 
@@ -101,10 +131,15 @@ def _stage_schemas(staging_dir: Path) -> Path:
 def main() -> int:
     import tempfile
 
+    # With --structure-style single-package and --package citygml_energy.bindings,
+    # xsdata writes a single file citygml_energy/bindings.py. Earlier layouts used
+    # a package directory; clean both forms so stale output never lingers.
+    output_file = REPO_ROOT / "citygml_energy" / "bindings.py"
     output_dir = REPO_ROOT / OUTPUT_PACKAGE
 
-    # Clean previous output
-    if output_dir.exists():
+    if output_file.exists() and output_file.is_file():
+        output_file.unlink()
+    if output_dir.exists() and output_dir.is_dir():
         shutil.rmtree(output_dir)
 
     with tempfile.TemporaryDirectory(prefix="xsdata_staging_") as tmpdir:

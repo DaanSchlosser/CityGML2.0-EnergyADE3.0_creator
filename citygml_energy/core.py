@@ -9,15 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from .bindings import (
-    BoundedBy,
-    CityObjectMember,
-    Description,
-    DirectPositionType,
-    Envelope,
-    Name,
+    CityModel as XsdCityModel,
 )
 from .bindings import (
-    CityModel as XsdCityModel,
+    CityObjectMember,
+    Description,
+    Name,
 )
 from .serialization import serialize_to_file, serialize_to_string
 
@@ -25,8 +22,11 @@ from .serialization import serialize_to_file, serialize_to_string
 class CityModel:
     """Convenience wrapper around the xsdata-generated ``CityModelType``.
 
-    Provides a builder-style ``add()`` API and ``write()`` / ``to_string()``
-    for easy serialization.
+    Provides a builder-style :meth:`add` API and :meth:`write` /
+    :meth:`to_string` for serialization. The bounding envelope is written
+    by :func:`citygml_energy.geometry.apply_geometry_sources` — this
+    wrapper does not accept bbox arguments because any value set at
+    construction would be overwritten as soon as STEP geometry is applied.
     """
 
     def __init__(
@@ -35,35 +35,12 @@ class CityModel:
         gml_id: str | None = None,
         gml_description: str | None = None,
         gml_name: str | None = None,
-        srs_name: str | None = None,
-        srs_dimension: int = 3,
-        lower_corner: list[float] | None = None,
-        upper_corner: list[float] | None = None,
     ) -> None:
         self._model = XsdCityModel(
             id=gml_id,
             description=Description(value=gml_description) if gml_description else None,
             name=[Name(value=gml_name)] if gml_name else [],
         )
-        bbox_args = (srs_name, lower_corner, upper_corner)
-        if any(bbox_args) and not all(bbox_args):
-            raise ValueError(
-                "srs_name, lower_corner, and upper_corner must all be provided "
-                "together to set the CityModel bounding box (or all omitted)."
-            )
-        if all(bbox_args):
-            self._model.opengis_net_gml_bounded_by = BoundedBy(
-                envelope=Envelope(
-                    lower_corner=DirectPositionType(
-                        value=lower_corner, srs_dimension=srs_dimension
-                    ),
-                    upper_corner=DirectPositionType(
-                        value=upper_corner, srs_dimension=srs_dimension
-                    ),
-                    srs_name=srs_name,
-                    srs_dimension=srs_dimension,
-                ),
-            )
 
     @property
     def xsd(self) -> XsdCityModel:

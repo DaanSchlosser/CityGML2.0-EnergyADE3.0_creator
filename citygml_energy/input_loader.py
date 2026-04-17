@@ -14,16 +14,22 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from .core import CityModel
+from .geometry import (
+    GEOMETRY_SOURCE_SPECS,
+    SUPPORTED_GEOMETRY_SOURCE_TYPES,
+    apply_construction_mapping,
+    apply_geometry_sources,
+)
+from .mapping import attach_child, build_from_dict, resolve_class
+from .namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
+
+PathLike = str | Path
+
 # XML 1.0 NCName: must start with a letter or '_' and contain only NCNameChar.
 # We use a conservative ASCII subset — the XSD permits Unicode letters/digits,
 # but tooling interoperability is far better with ASCII-only IDs.
 _NCNAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
-
-from .core import CityModel
-from .geometry import apply_construction_mapping, apply_geometry_sources
-from .mapping import attach_child, build_from_dict, resolve_class
-
-PathLike = str | Path
 
 # Keys that live at the feature level, not passed to build_from_dict.
 _FEATURE_META_KEYS = frozenset({"type", "parent", "parent_field"})
@@ -36,18 +42,22 @@ _ALLOWED_TOP_LEVEL_KEYS = {
     "geometry_sources",
     "coordinate_origin",
     "construction_mapping",
+    "srs_name",
+    "srs_dimension",
 }
 _ALLOWED_CITY_MODEL_KEYS = {"description", "name"}
-_ALLOWED_GEOMETRY_SOURCE_KEYS = {
-    "type",
-    "path",
-    "target_building_id",
-    "target_pv_id",
-    "target_zone_part_id",
-}
-_ALLOWED_GEOMETRY_SOURCE_TYPES = {f"step-renodat-lod{n}" for n in range(5)} | {
-    f"step-zonepart-lod{n}" for n in range(4)
-}
+
+# Union of ``target_*`` fields across every registered geometry-source spec,
+# so adding a new spec that references a new target field is automatically
+# accepted by the validator — the spec is the single source of truth.
+_ALLOWED_GEOMETRY_SOURCE_KEYS: frozenset[str] = frozenset(
+    {"type", "path"}
+    | {
+        field_name
+        for spec in GEOMETRY_SOURCE_SPECS.values()
+        for field_name in spec.target_fields
+    }
+)
 
 
 class InputFileError(ValueError):
@@ -161,6 +171,22 @@ def validate_feature_collection(
     if "construction_mapping" in data:
         _validate_construction_mapping(data["construction_mapping"], source=source)
 
+    if "srs_name" in data:
+        srs_name = data["srs_name"]
+        if not isinstance(srs_name, str) or not srs_name.strip():
+            raise InputFileError(f"{source}: srs_name must be a non-empty string when provided")
+
+    if "srs_dimension" in data:
+        srs_dimension = data["srs_dimension"]
+        if (
+            isinstance(srs_dimension, bool)
+            or not isinstance(srs_dimension, int)
+            or srs_dimension not in (2, 3)
+        ):
+            raise InputFileError(
+                f"{source}: srs_dimension must be 2 or 3 when provided (got {srs_dimension!r})"
+            )
+
 
 def build_city_model_from_feature_collection(
     data: dict[str, Any],
@@ -237,7 +263,16 @@ def build_city_model_from_feature_collection(
     else:
         origin = (0.0, 0.0, 0.0)
 
-    apply_geometry_sources(model, data.get("geometry_sources", []), origin=origin)
+    srs_name = data.get("srs_name", DEFAULT_SRS_NAME)
+    srs_dimension = data.get("srs_dimension", DEFAULT_SRS_DIMENSION)
+
+    apply_geometry_sources(
+        model,
+        data.get("geometry_sources", []),
+        origin=origin,
+        srs_name=srs_name,
+        srs_dimension=srs_dimension,
+    )
 
     construction_mapping = data.get("construction_mapping")
     if construction_mapping is not None:
@@ -307,18 +342,22 @@ def _validate_geometry_source(
     unexpected_keys = sorted(set(geometry_source) - _ALLOWED_GEOMETRY_SOURCE_KEYS)
     if unexpected_keys:
         raise InputFileError(
-            f"{source}: geometry_sources[{index}] has unexpected key(s): {', '.join(unexpected_keys)}"
+            f"{source}: geometry_sources[{index}] has unexpected key(s): "
+            f"{', '.join(unexpected_keys)}"
         )
 
     source_type = geometry_source.get("type")
-    if not isinstance(source_type, str) or source_type not in _ALLOWED_GEOMETRY_SOURCE_TYPES:
+    if not isinstance(source_type, str) or source_type not in SUPPORTED_GEOMETRY_SOURCE_TYPES:
         raise InputFileError(
-            f"{source}: geometry_sources[{index}].type must be one of: {', '.join(sorted(_ALLOWED_GEOMETRY_SOURCE_TYPES))}"
+            f"{source}: geometry_sources[{index}].type must be one of: "
+            + ", ".join(sorted(SUPPORTED_GEOMETRY_SOURCE_TYPES))
         )
 
     path_value = geometry_source.get("path")
     if not isinstance(path_value, str) or not path_value.strip():
-        raise InputFileError(f"{source}: geometry_sources[{index}].path must be a non-empty string")
+        raise InputFileError(
+            f"{source}: geometry_sources[{index}].path must be a non-empty string"
+        )
 
     if base_path is None and not Path(path_value).is_absolute():
         raise InputFileError(
@@ -326,39 +365,29 @@ def _validate_geometry_source(
             f"but no base_path was provided to resolve it against"
         )
 
-    is_zonepart_type = source_type.startswith("step-zonepart-")
+    # Drive target validation from the spec so new source types (or new
+    # target fields on existing ones) need no loader changes.
+    spec = GEOMETRY_SOURCE_SPECS[source_type]
+    for field_name, target_spec in spec.target_fields.items():
+        _validate_geometry_target(
+            geometry_source,
+            field_name=field_name,
+            expected_type=target_spec.xsd_type,
+            index=index,
+            source=source,
+            feature_ids=feature_ids,
+            feature_types_by_id=feature_types_by_id,
+            required=target_spec.required,
+        )
 
-    if is_zonepart_type:
-        _validate_geometry_target(
-            geometry_source,
-            field_name="target_zone_part_id",
-            expected_type="nrg3:ZonePart",
-            index=index,
-            source=source,
-            feature_ids=feature_ids,
-            feature_types_by_id=feature_types_by_id,
-            required=True,
-        )
-    else:
-        _validate_geometry_target(
-            geometry_source,
-            field_name="target_building_id",
-            expected_type="bldg:Building",
-            index=index,
-            source=source,
-            feature_ids=feature_ids,
-            feature_types_by_id=feature_types_by_id,
-            required=True,
-        )
-        _validate_geometry_target(
-            geometry_source,
-            field_name="target_pv_id",
-            expected_type="nrg3:PhotovoltaicCollector",
-            index=index,
-            source=source,
-            feature_ids=feature_ids,
-            feature_types_by_id=feature_types_by_id,
-            required=False,
+    # Reject target-like keys that this spec doesn't declare — prevents
+    # typos like `target_pv_id` on a zonepart source being silently ignored.
+    target_like = {k for k in geometry_source if k.startswith("target_")}
+    unknown_targets = sorted(target_like - set(spec.target_fields))
+    if unknown_targets:
+        raise InputFileError(
+            f"{source}: geometry_sources[{index}] has target key(s) not valid for "
+            f"type {source_type!r}: {', '.join(unknown_targets)}"
         )
 
     if base_path is not None:

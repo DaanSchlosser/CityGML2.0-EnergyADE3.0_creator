@@ -12,6 +12,8 @@ import dataclasses
 import enum
 import types
 import typing
+import warnings
+from collections.abc import Iterator
 from functools import lru_cache
 from typing import Any, Union
 
@@ -29,8 +31,17 @@ _URI_TO_PREFIX: dict[str, str] = {uri: prefix for prefix, uri in NSMAP.items()}
 
 @lru_cache(maxsize=1)
 def _build_class_registry() -> dict[str, type]:
-    """Build ``{"prefix:ElementName": cls}`` from all xsdata element classes."""
+    """Build ``{"prefix:ElementName": cls}`` from all xsdata element classes.
+
+    Element classes whose namespace URI is not registered in
+    :data:`citygml_energy.namespaces.NSMAP` are omitted from the registry and
+    cannot be resolved from JSON input. A warning is raised listing the
+    missing URIs so that regenerating bindings from a new XSD — which may
+    introduce new namespaces — fails loudly instead of silently dropping
+    element types.
+    """
     registry: dict[str, type] = {}
+    unknown_namespaces: set[str] = set()
     for attr_name in dir(bindings):
         cls = getattr(bindings, attr_name)
         if not (isinstance(cls, type) and dataclasses.is_dataclass(cls)):
@@ -45,12 +56,23 @@ def _build_class_registry() -> dict[str, type]:
             continue
         prefix = _URI_TO_PREFIX.get(ns)
         if prefix is None:
+            unknown_namespaces.add(ns)
             continue
         xml_name = getattr(meta, "name", None) or attr_name
         key = f"{prefix}:{xml_name}"
         # First registered class wins (stable iteration order).
         if key not in registry:
             registry[key] = cls
+
+    if unknown_namespaces:
+        warnings.warn(
+            "xsdata bindings contain element classes in namespaces that are "
+            "not registered in citygml_energy.namespaces.NSMAP; those classes "
+            "cannot be resolved from JSON input. Add a prefix for: "
+            + ", ".join(sorted(unknown_namespaces)),
+            stacklevel=2,
+        )
+
     return registry
 
 
@@ -93,8 +115,13 @@ class FieldInfo:
 
 
 @lru_cache(maxsize=1024)
-def _get_fields(cls: type) -> dict[str, FieldInfo]:
-    """Field info for *cls*, keyed by **Python** field name."""
+def get_fields(cls: type) -> dict[str, FieldInfo]:
+    """Field info for *cls*, keyed by **Python** field name.
+
+    Public entry point for generic introspection of xsdata dataclasses.
+    Non-dataclass inputs return an empty dict so callers can use the result
+    unconditionally.
+    """
     if not dataclasses.is_dataclass(cls):
         return {}
     hints = typing.get_type_hints(cls)
@@ -121,7 +148,7 @@ def _get_fields(cls: type) -> dict[str, FieldInfo]:
 @lru_cache(maxsize=1024)
 def _get_xml_name_map(cls: type) -> dict[str, FieldInfo]:
     """Field info for *cls*, keyed by **XML element/attribute name**."""
-    return {info.xml_name: info for info in _get_fields(cls).values() if info.xml_name is not None}
+    return {info.xml_name: info for info in get_fields(cls).values() if info.xml_name is not None}
 
 
 def _unwrap_hint(hint: Any) -> tuple[bool, type[Any]]:
@@ -150,7 +177,7 @@ def _unwrap_hint(hint: Any) -> tuple[bool, type[Any]]:
 
 def _resolve_field(cls: type, key: str) -> FieldInfo | None:
     """Find a field on *cls* by Python name or XML name."""
-    info = _get_fields(cls).get(key)
+    info = get_fields(cls).get(key)
     if info is not None:
         return info
     return _get_xml_name_map(cls).get(key)
@@ -262,7 +289,7 @@ def _scalar_to_dataclass(cls: type, scalar: Any) -> Any:
     Works for ``CodeType("x")``, ``Name("text")``,
     ``BdgIsProtected(True)``, ``BdgOwnerName("name")``, etc.
     """
-    fields = _get_fields(cls)
+    fields = get_fields(cls)
     value_info = fields.get("value")
     if value_info is None:
         raise TypeError(
@@ -291,7 +318,7 @@ def build_from_dict(cls: type, data: dict[str, Any]) -> Any:
     if not dataclasses.is_dataclass(cls):
         raise TypeError(f"{cls.__name__} is not a dataclass")
 
-    fields_map = _get_fields(cls)
+    fields_map = get_fields(cls)
     kwargs: dict[str, Any] = {}
 
     for key, raw_value in data.items():
@@ -384,7 +411,7 @@ def _find_attachment_candidates(
     over generic base-class matches.  Fields whose wrapper matches only
     via ``object`` (e.g. ``any_element``) are excluded.
     """
-    parent_fields = _get_fields(parent_type)
+    parent_fields = get_fields(parent_type)
     scored: list[tuple[int, FieldInfo, str | None]] = []
 
     for info in parent_fields.values():
@@ -402,7 +429,7 @@ def _find_attachment_candidates(
         if isinstance(info.inner_type, type) and dataclasses.is_dataclass(info.inner_type):
             best_dist: int | None = None
             best_wf: str | None = None
-            for wf in _get_fields(info.inner_type).values():
+            for wf in get_fields(info.inner_type).values():
                 if wf.is_attribute:
                     continue
                 if not isinstance(wf.inner_type, type):
@@ -456,7 +483,7 @@ def _do_attach(parent: Any, child: Any, info: FieldInfo) -> None:
 
     # Try wrapping
     if isinstance(info.inner_type, type) and dataclasses.is_dataclass(info.inner_type):
-        wrapper_fields = _get_fields(info.inner_type)
+        wrapper_fields = get_fields(info.inner_type)
         for wf in wrapper_fields.values():
             if wf.is_attribute:
                 continue
@@ -476,3 +503,53 @@ def _set_or_append(parent: Any, info: FieldInfo, value: Any) -> None:
         getattr(parent, info.name).append(value)
     else:
         setattr(parent, info.name, value)
+
+
+# ---------------------------------------------------------------------------
+# Generic traversal — walk already-built xsdata trees
+# ---------------------------------------------------------------------------
+
+
+def iter_instances(root: Any) -> Iterator[Any]:
+    """Yield every dataclass instance reachable from *root* (DFS, cycle-safe).
+
+    Descends into list fields and into single dataclass-typed fields. Skips
+    scalars, strings, enums, and xsdata date/time types (which carry values,
+    not further structure). Each instance is yielded at most once; cycles are
+    handled by identity.
+    """
+    seen: set[int] = set()
+    stack: list[Any] = [root]
+    while stack:
+        obj = stack.pop()
+        if obj is None or isinstance(obj, type) or not dataclasses.is_dataclass(obj):
+            continue
+        oid = id(obj)
+        if oid in seen:
+            continue
+        seen.add(oid)
+        yield obj
+        for f in dataclasses.fields(obj):
+            value = getattr(obj, f.name, None)
+            if value is None:
+                continue
+            if isinstance(value, list):
+                stack.extend(
+                    item
+                    for item in value
+                    if not isinstance(item, type) and dataclasses.is_dataclass(item)
+                )
+            elif dataclasses.is_dataclass(value) and not isinstance(value, type):
+                stack.append(value)
+
+
+def find_by_id(root: Any, gml_id: str) -> Any | None:
+    """Return the first dataclass instance under *root* whose ``id`` is *gml_id*.
+
+    ``id`` is the xsdata-generated attribute for the XML ``gml:id``. Works on
+    any xsdata tree — agnostic to which XSD the bindings were generated from.
+    """
+    for obj in iter_instances(root):
+        if getattr(obj, "id", None) == gml_id:
+            return obj
+    return None
