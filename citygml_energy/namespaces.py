@@ -77,6 +77,15 @@ def qn(prefix: str, local: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# CRS defaults
+# ---------------------------------------------------------------------------
+# Default CRS written onto gml:Envelope, gml:MultiSurface, and gml:Solid.
+# Compound CRS: RD New (EPSG:28992) for horizontal + NAP (EPSG:5109) for height.
+DEFAULT_SRS_NAME = "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109"
+DEFAULT_SRS_DIMENSION = 3
+
+
+# ---------------------------------------------------------------------------
 # Codespace URL constants
 # ---------------------------------------------------------------------------
 # CityGML 2.0 building codelists

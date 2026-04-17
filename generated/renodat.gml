@@ -425,7 +425,6 @@
 							<nrg3:source codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml">powerGrid</nrg3:source>
 						</nrg3:Energy>
 					</nrg3:resource>
-					<nrg3:identifier codeSpace="https://www.elektramat.nl/evhub-laadpaal-type-2-32a-3-7-22kw-met-laadkabel-8-meter-zwart-lp-h8t5oiugl5/">LP-H8T5OIUGL5</nrg3:identifier>
 					<nrg3:model>LP-H8T5OIUGL5</nrg3:model>
 					<nrg3:yearOfInstallation>2022</nrg3:yearOfInstallation>
 					<nrg3:numberOfDevices>1</nrg3:numberOfDevices>
@@ -1628,11 +1627,7 @@
 					<nrg3:creationDate>2026-04-04</nrg3:creationDate>
 					<nrg3:type codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml">residents</nrg3:type>
 					<nrg3:numberOfOccupants>6</nrg3:numberOfOccupants>
-					<nrg3:averageDietType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/DietTypeValue.xml">omnivorous</nrg3:averageDietType>
 					<nrg3:heatDissipation uom="W">80.0</nrg3:heatDissipation>
-					<nrg3:heatDissipationConvectiveFraction uom="">0.3</nrg3:heatDissipationConvectiveFraction>
-					<nrg3:heatDissipationLatentFraction uom="">0.2</nrg3:heatDissipationLatentFraction>
-					<nrg3:heatDissipationRadiantFraction uom="">0.5</nrg3:heatDissipationRadiantFraction>
 				</nrg3:Occupants>
 			</nrg3:occupiedBy>
 			<nrg3:bdgType codeSpace="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingTypeValue.xml">singleFamilyHouse</nrg3:bdgType>
