@@ -1,0 +1,434 @@
+"""Construct xsdata ``Building``, ``Address``, ``BuildingUnit`` and EPC objects.
+
+Isolating xsdata construction from the pipeline orchestrator keeps
+``pipeline.py`` readable and makes these builders independently unit-
+testable: each helper returns a fully-populated dataclass that can be
+XSD-validated in a handful of lines.
+
+Every xsdata class is resolved through
+:func:`citygml_energy.mapping.resolve_class` so regenerating bindings
+cannot break this module unless XSD element names themselves change.
+"""
+
+from __future__ import annotations
+
+from functools import cache
+from typing import Any
+
+from .._gml_builders import build_multi_surface, build_solid
+from .._step import GeometryPolygon
+from ..bindings import Name
+from ..mapping import get_fields, resolve_class
+from ..namespaces import (
+    CS_BUILDING_FUNCTION,
+    DEFAULT_SRS_DIMENSION,
+    DEFAULT_SRS_NAME,
+)
+from ..schema_types import (
+    ADDRESS,
+    BUILDING,
+    BUILDING_UNIT,
+    CITYGML_SURFACE_TYPES,
+    ENERGY_PERFORMANCE_CERTIFICATE,
+    XAL_ADDRESS_DETAILS,
+    XAL_LOCALITY,
+    XAL_POSTAL_CODE,
+    XAL_THOROUGHFARE,
+    XAL_THOROUGHFARE_NUMBER,
+)
+from .address_match import ResolvedAddress
+from .cityjson_parse import ParsedBuilding, SemanticPolygon
+from .fetchers.eponline import EnergyLabel
+
+__all__ = [
+    "EnergyLabel",
+    "build_address",
+    "build_building",
+    "build_building_unit",
+]
+
+
+# ---------------------------------------------------------------------------
+# Class-registry accessors — cached via functools
+# ---------------------------------------------------------------------------
+
+
+@cache
+def _cls(xsd_name: str) -> type:
+    return resolve_class(xsd_name)
+
+
+@cache
+def _direct(class_name: str) -> type:
+    """Lookup a non-element class by its Python name from the bindings module.
+
+    Needed for things like ``ThoroughfareNameType`` which is used as a
+    field type but never registered as an XSD-qualified element.
+    """
+    from citygml_energy import bindings
+
+    cls = getattr(bindings, class_name, None)
+    if cls is None:
+        raise ValueError(f"No xsdata class named {class_name!r} in bindings")
+    return cls
+
+
+def _inner_type(parent_cls: type, field_name: str) -> type | None:
+    """Return the unwrapped inner type of ``parent_cls.field_name`` or ``None``."""
+    info = get_fields(parent_cls).get(field_name)
+    if info is None or not isinstance(info.inner_type, type):
+        return None
+    return info.inner_type
+
+
+# ---------------------------------------------------------------------------
+# Building
+# ---------------------------------------------------------------------------
+
+
+def build_building(
+    parsed: ParsedBuilding,
+    *,
+    gml_id_prefix: str = "",
+    lods: tuple[int, ...] = (0, 1, 2),
+    srs_name: str = DEFAULT_SRS_NAME,
+    srs_dimension: int = DEFAULT_SRS_DIMENSION,
+) -> Any:
+    """Build a ``bldg:Building`` from a parsed 3DBAG Pand.
+
+    LoD 0 → ``lod0FootPrint`` (MultiSurface).
+    LoD 1 → ``lod1Solid`` (CompositeSurface shell).
+    LoD 2 → ``boundedBy`` with ``bldg:GroundSurface``, ``bldg:WallSurface``,
+             and ``bldg:RoofSurface`` elements, each carrying its own
+             ``lod2MultiSurface``.  Polygons without a recognised semantic
+             type are assigned to WallSurface.
+    """
+    gml_id = _safe_gml_id(gml_id_prefix, "pand", parsed.pand_id)
+    building_cls = _cls(BUILDING)
+    building = building_cls(id=gml_id, name=[Name(value=parsed.pand_id)])
+
+    _apply_building_attributes(building, parsed.attributes)
+
+    if 0 in lods and parsed.geometries.get("0"):
+        polygons_lod0 = _unwrap_polygons(parsed.geometries["0"])
+        building.lod0_foot_print = build_multi_surface(
+            f"{gml_id}_lod0",
+            polygons_lod0,
+            srs_name=srs_name,
+            srs_dimension=srs_dimension,
+        )
+
+    if 1 in lods and parsed.geometries.get("1"):
+        polygons_lod1 = _unwrap_polygons(parsed.geometries["1"])
+        building.lod1_solid = build_solid(
+            f"{gml_id}_lod1",
+            polygons_lod1,
+            srs_name=srs_name,
+            srs_dimension=srs_dimension,
+        )
+
+    if 2 in lods and parsed.geometries.get("2"):
+        _attach_lod2_thematic_surfaces(
+            building,
+            parsed.geometries["2"],
+            gml_id=gml_id,
+            srs_name=srs_name,
+            srs_dimension=srs_dimension,
+        )
+
+    return building
+
+
+def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
+    """Write commonly-useful 3DBAG attributes onto the building."""
+    year = _as_int(attrs.get("oorspronkelijkbouwjaar"))
+    if year is not None:
+        from xsdata.models.datatype import XmlPeriod
+
+        building.year_of_construction = XmlPeriod(f"{year:04d}")
+
+    # ``gebruiksdoel`` is a VBO attribute, not a Pand one; only set when
+    # a caller has bubbled it up to the parsed attributes dict.
+    function = attrs.get("gebruiksdoel") or attrs.get("function")
+    if function:
+        code_cls = _direct("CodeType")
+        building.function.append(
+            code_cls(value=str(function), code_space=CS_BUILDING_FUNCTION)
+        )
+
+
+# ---------------------------------------------------------------------------
+# LoD 2 thematic surface helpers
+# ---------------------------------------------------------------------------
+
+# Surface-type dispatch is centralised in schema_types so the city-scale and
+# RenoDAT pipelines share a single source of truth for CityGML thematic
+# surfaces.
+_SURFACE_TYPES = CITYGML_SURFACE_TYPES
+_FALLBACK_SURFACE = "WallSurface"
+
+
+def _unwrap_polygons(semantic_polygons: list[SemanticPolygon]) -> list[GeometryPolygon]:
+    return [sp.polygon for sp in semantic_polygons]
+
+
+def _attach_lod2_thematic_surfaces(
+    building: Any,
+    semantic_polygons: list[SemanticPolygon],
+    *,
+    gml_id: str,
+    srs_name: str,
+    srs_dimension: int,
+) -> None:
+    """Group *semantic_polygons* by surface type and attach as ``bldg:boundedBy``.
+
+    Each recognised surface type (GroundSurface, WallSurface, RoofSurface)
+    gets one ``bldg:boundedBy`` element whose inner surface carries a single
+    ``bldg:lod2MultiSurface`` containing all polygons of that type.
+    Polygons with an unrecognised or missing type fall back to WallSurface.
+    """
+    groups: dict[str, list[GeometryPolygon]] = {}
+    for sp in semantic_polygons:
+        key = sp.surface_type if sp.surface_type in _SURFACE_TYPES else _FALLBACK_SURFACE
+        groups.setdefault(key, []).append(sp.polygon)
+
+    if not groups:
+        return
+
+    wrapper_cls = _inner_type(type(building), "bounded_by")
+    if wrapper_cls is None:
+        return
+
+    for surf_type, polygons in groups.items():
+        xsd_name, field_name = _SURFACE_TYPES[surf_type]
+        surf_cls = _cls(xsd_name)
+        surf_id = f"{gml_id}_{surf_type.lower()}"
+        surf = surf_cls(id=surf_id)
+        surf.lod2_multi_surface = build_multi_surface(
+            f"{surf_id}_ms",
+            polygons,
+            srs_name=srs_name,
+            srs_dimension=srs_dimension,
+        )
+        building.bounded_by.append(wrapper_cls(**{field_name: surf}))
+
+
+# ---------------------------------------------------------------------------
+# BuildingUnit + attached Address + EPC
+# ---------------------------------------------------------------------------
+
+
+def build_building_unit(
+    resolved: ResolvedAddress,
+    *,
+    gml_id_prefix: str = "",
+    city_name: str = "",
+) -> Any:
+    """Build an ``nrg3:BuildingUnit`` for one VBO.
+
+    The VBO's address is attached via ``bldg:address``; the EP-online
+    energy label (when matched) is attached via
+    ``nrg3:energyPerformanceCertificate``. The mandatory
+    ``nrg3:type`` element is filled with the first ``gebruiksdoel``
+    value (``woonfunctie``, ``kantoorfunctie``, …).
+    """
+    unit_cls = _cls(BUILDING_UNIT)
+    code_cls = _direct("CodeType")
+
+    gml_id = _safe_gml_id(gml_id_prefix, "bu", resolved.vbo.identificatie)
+    gebruiksdoel = (resolved.vbo.gebruiksdoel or ["other"])[0]
+    unit = unit_cls(
+        id=gml_id,
+        type_value=code_cls(value=gebruiksdoel),
+    )
+
+    address = build_address(resolved, gml_id_prefix=gml_id_prefix, city_name=city_name)
+    if address is not None:
+        address_prop_cls = _inner_type(unit_cls, "address")
+        if address_prop_cls is not None:
+            unit.address.append(address_prop_cls(address=address))
+
+    epc = _build_epc(resolved, gml_id_prefix=gml_id_prefix)
+    if epc is not None:
+        epc_prop_cls = _inner_type(unit_cls, "energy_performance_certificate")
+        if epc_prop_cls is not None:
+            unit.energy_performance_certificate.append(
+                epc_prop_cls(energy_performance_certificate=epc)
+            )
+
+    return unit
+
+
+def attach_building_units_to_building(
+    building: Any,
+    addresses: list[ResolvedAddress],
+    *,
+    gml_id_prefix: str = "",
+    city_name: str = "",
+) -> None:
+    """Wrap each resolved VBO in a ``BuildingUnit2`` and attach to *building*."""
+    if not addresses:
+        return
+    wrapper_cls = _inner_type(type(building), "building_unit")
+    if wrapper_cls is None:
+        return
+    for resolved in addresses:
+        unit = build_building_unit(resolved, gml_id_prefix=gml_id_prefix, city_name=city_name)
+        building.building_unit.append(wrapper_cls(building_unit=unit))
+
+
+# ---------------------------------------------------------------------------
+# core:Address (xAL-flavoured)
+# ---------------------------------------------------------------------------
+
+
+def build_address(
+    resolved: ResolvedAddress,
+    *,
+    gml_id_prefix: str = "",
+    city_name: str = "",
+) -> Any | None:
+    """Build a ``core:Address`` for *resolved* or ``None`` when unusable.
+
+    Structure (xAL-inside-core):
+
+    .. code-block:: text
+
+        core:Address
+          core:xalAddress
+            xAL:AddressDetails
+              xAL:Locality (type="city")
+                xAL:LocalityName ("Delft")
+                xAL:Thoroughfare
+                  xAL:ThoroughfareNumber ("42")
+                  xAL:ThoroughfareName   ("Mekelweg")
+                xAL:PostalCode
+                  xAL:PostalCodeNumber   ("2628CD")
+    """
+    street = resolved.street.strip()
+    postcode = resolved.postcode.strip()
+    huisnummer = resolved.huisnummer
+    if not street or huisnummer is None:
+        return None
+
+    address_cls = _cls(ADDRESS)
+    xal_prop_cls = _inner_type(address_cls, "xal_address")
+    if xal_prop_cls is None:
+        return None
+
+    number_text = _assemble_number(resolved)
+    locality = _build_locality(
+        street=street,
+        number_text=number_text,
+        postcode=postcode,
+        city_name=city_name,
+    )
+    details_cls = _cls(XAL_ADDRESS_DETAILS)
+    address_details = details_cls(locality=locality)
+
+    address = address_cls(
+        id=_safe_gml_id(gml_id_prefix, "addr", resolved.vbo.identificatie),
+        xal_address=xal_prop_cls(address_details=address_details),
+    )
+    return address
+
+
+def _build_locality(*, street: str, number_text: str, postcode: str, city_name: str = "") -> Any:
+    locality_cls = _cls(XAL_LOCALITY)
+    locality_name_cls = locality_cls.LocalityName
+    thoroughfare_cls = _cls(XAL_THOROUGHFARE)
+    thoroughfare_name_cls = _direct("ThoroughfareNameType")
+    thoroughfare_number_cls = _cls(XAL_THOROUGHFARE_NUMBER)
+    postal_code_cls = _cls(XAL_POSTAL_CODE)
+    postal_code_number_cls = postal_code_cls.PostalCodeNumber
+
+    thoroughfare = thoroughfare_cls(
+        thoroughfare_number=[thoroughfare_number_cls(content=[number_text])],
+        thoroughfare_name=[thoroughfare_name_cls(content=[street])],
+    )
+
+    postal_code = (
+        postal_code_cls(postal_code_number=[postal_code_number_cls(content=[postcode])])
+        if postcode
+        else None
+    )
+
+    return locality_cls(
+        locality_name=[locality_name_cls(content=[city_name])],
+        thoroughfare=thoroughfare,
+        postal_code=postal_code,
+    )
+
+
+def _assemble_number(resolved: ResolvedAddress) -> str:
+    parts = [str(resolved.huisnummer)]
+    if resolved.huisletter:
+        parts.append(resolved.huisletter)
+    if resolved.toevoeging:
+        parts.append(f"-{resolved.toevoeging}")
+    return "".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# EnergyPerformanceCertificate
+# ---------------------------------------------------------------------------
+
+
+def _build_epc(
+    resolved: ResolvedAddress,
+    *,
+    gml_id_prefix: str,
+) -> Any | None:
+    label = resolved.energy_label
+    if label is None or label.energieklasse is None:
+        # EPC.label is xs:string and required — skip when we have no letter.
+        return None
+
+    from xsdata.models.datatype import XmlDateTime
+
+    epc_cls = _cls(ENERGY_PERFORMANCE_CERTIFICATE)
+    code_cls = _direct("CodeType")
+
+    epc = epc_cls(
+        id=_safe_gml_id(gml_id_prefix, "epc", resolved.vbo.identificatie),
+        type_value=code_cls(value="EP-online"),
+        label=label.energieklasse,
+    )
+    if label.registratiedatum is not None:
+        epc.valid_from = XmlDateTime.from_string(
+            f"{label.registratiedatum.isoformat()}T00:00:00"
+        )
+    if label.geldig_tot is not None:
+        epc.valid_to = XmlDateTime.from_string(
+            f"{label.geldig_tot.isoformat()}T00:00:00"
+        )
+    return epc
+
+
+# ---------------------------------------------------------------------------
+# Internal utilities
+# ---------------------------------------------------------------------------
+
+
+def _safe_gml_id(user_prefix: str, kind: str, source_id: str) -> str:
+    """Return a valid XML ``xs:ID`` string.
+
+    BAG identificaties are purely numeric — invalid as ``xs:ID`` which
+    requires the first character to be a letter or underscore. We
+    always prepend a semantic prefix (``pand``, ``bu``, ``addr``,
+    ``epc``) so the final id is both valid and self-describing. The
+    optional caller prefix is layered on top for multi-city merges.
+    """
+    core = f"{kind}_{source_id}"
+    if user_prefix:
+        return f"{user_prefix}_{core}"
+    return core
+
+
+def _as_int(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None

@@ -29,3 +29,7 @@ Desktop.ini
 
 # Claude Code
 .claude/
+
+# Secrets
+.env
+/.cache

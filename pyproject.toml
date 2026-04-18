@@ -14,6 +14,14 @@ dev = [
     "lxml-stubs>=0.5",
     "xsdata[cli,lxml]>=24.0",
 ]
+# City-scale workflow — BAG / 3DBAG / EP-online fetch + CityJSON parsing.
+# Optional because the per-building RenoDAT pipeline does not need them.
+city = [
+    "requests>=2.32",
+    "shapely>=2.0",
+    "python-dotenv>=1.0",
+    "flatgeobuf>=0.1",
+]
 
 # ── Ruff ────────────────────────────────────────────────────────────────
 [tool.ruff]

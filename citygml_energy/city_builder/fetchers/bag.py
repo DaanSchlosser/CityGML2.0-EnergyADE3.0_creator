@@ -1,0 +1,244 @@
+"""BAG fetchers — Pand and Verblijfsobject.
+
+Query strategy: request each layer with a bounding-box filter and
+paginate. If a page is suspiciously close to the WFS ``startIndex``
+ceiling (PDOK caps server-side at ~50 k) we subdivide the bbox into
+four quadrants and recurse. This is the same approach proven in
+``VdB_Optoppen2/01_wfs_import.py``; reimplemented here with a narrower
+API (only the layers we need) and without geopandas.
+
+The PDOK BAG WFS v2.0 exposes: ``bag:pand``, ``bag:verblijfsobject``,
+``bag:ligplaats``, ``bag:standplaats``, ``bag:woonplaats``. There are no
+``nummeraanduiding`` or ``openbareruimte`` layers — those are joined into
+each VBO by the WFS so address data (postcode, huisnummer, street) is
+available directly on the VBO feature.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from ..http import CachedSession
+
+BAG_WFS_URL = "https://service.pdok.nl/lv/bag/wfs/v2_0"
+BAG_PAGE_SIZE = 1000
+# PDOK's GetFeature hard-caps around 50 000; subdivide when we cross this
+# threshold on a single bbox. Very generous so small cities never bother.
+BAG_SUBDIVIDE_THRESHOLD = 40_000
+
+
+@dataclass(frozen=True)
+class Pand:
+    """A BAG Pand (building polygon + status + construction year)."""
+
+    identificatie: str
+    bouwjaar: int | None
+    status: str | None
+    properties: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class Verblijfsobject:
+    """A BAG Verblijfsobject (VBO) — an addressable unit inside a Pand.
+
+    Address fields (postcode, huisnummer, etc.) are populated directly
+    from the PDOK WFS VBO feature: the WFS joins Nummeraanduiding and
+    OpenbareRuimte into each VBO response, so no separate fetches are
+    required.
+    """
+
+    identificatie: str
+    pand_identificatie: str
+    gebruiksdoel: list[str]
+    oppervlakte: float | None
+    status: str | None
+    postcode: str | None
+    huisnummer: int | None
+    huisletter: str | None
+    toevoeging: str | None
+    openbare_ruimte_naam: str | None
+    properties: dict[str, Any]
+
+
+Bbox = tuple[float, float, float, float]
+
+
+# ---------------------------------------------------------------------------
+# Public fetchers
+# ---------------------------------------------------------------------------
+
+
+def fetch_panden(
+    session: CachedSession,
+    *,
+    bbox: Bbox,
+    cbs_code: str | None = None,
+) -> list[Pand]:
+    """Return every Pand whose centroid lies inside *bbox*.
+
+    *cbs_code* (if given) filters to BAG ``identificatie`` values that
+    start with that code — exactly the BAG convention for the 4-digit
+    municipality prefix.
+    """
+    records = _fetch_layer(session, "bag:pand", bbox=bbox)
+    panden: list[Pand] = []
+    for feature in records:
+        props = feature.get("properties") or {}
+        identificatie = str(props.get("identificatie") or "").strip()
+        if not identificatie:
+            continue
+        if cbs_code and not identificatie.startswith(cbs_code):
+            continue
+        panden.append(
+            Pand(
+                identificatie=identificatie,
+                bouwjaar=_as_int(props.get("bouwjaar") or props.get("oorspronkelijkBouwjaar")),
+                status=_optional_str(props.get("status")),
+                properties=props,
+            )
+        )
+    return panden
+
+
+def fetch_verblijfsobjecten(
+    session: CachedSession,
+    *,
+    bbox: Bbox,
+    cbs_code: str | None = None,
+) -> list[Verblijfsobject]:
+    """Return every VBO whose centroid lies inside *bbox*.
+
+    Address fields (postcode, huisnummer, street name) are read directly
+    from the WFS feature — the PDOK BAG WFS already joins Nummeraanduiding
+    and OpenbareRuimte into each VBO response.
+    """
+    records = _fetch_layer(session, "bag:verblijfsobject", bbox=bbox)
+    vbos: list[Verblijfsobject] = []
+    for feature in records:
+        props = feature.get("properties") or {}
+        identificatie = str(props.get("identificatie") or "").strip()
+        # BAG WFS can return a comma-separated list when a VBO spans multiple
+        # panden (e.g. a flat above a garage registered as two panden). Take
+        # the first — it is the primary registration pand.
+        pand_id_raw = str(
+            props.get("pandidentificatie")
+            or props.get("pand_identificatie")
+            or ""
+        ).strip()
+        pand_id = pand_id_raw.split(",")[0].strip()
+        if not identificatie or not pand_id:
+            continue
+        if cbs_code and not identificatie.startswith(cbs_code):
+            continue
+        gebruiksdoel = props.get("gebruiksdoel") or []
+        if isinstance(gebruiksdoel, str):
+            gebruiksdoel = [gebruiksdoel]
+        vbos.append(
+            Verblijfsobject(
+                identificatie=identificatie,
+                pand_identificatie=pand_id,
+                gebruiksdoel=[str(g) for g in gebruiksdoel],
+                oppervlakte=_as_float(props.get("oppervlakte")),
+                status=_optional_str(props.get("status")),
+                postcode=_optional_str(props.get("postcode")),
+                huisnummer=_as_int(props.get("huisnummer")),
+                huisletter=_optional_str(props.get("huisletter")),
+                toevoeging=_optional_str(
+                    props.get("toevoeging") or props.get("huisnummertoevoeging")
+                ),
+                openbare_ruimte_naam=_optional_str(props.get("openbare_ruimte")),
+                properties=props,
+            )
+        )
+    return vbos
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _fetch_layer(
+    session: CachedSession,
+    layer: str,
+    *,
+    bbox: Bbox,
+    _depth: int = 0,
+) -> list[dict[str, Any]]:
+    """Paginate through every feature in *layer* inside *bbox*.
+
+    Subdivides when a single bbox exceeds the PDOK startIndex soft limit.
+    """
+    features: list[dict[str, Any]] = []
+    start = 0
+    while True:
+        params = {
+            "service": "WFS",
+            "version": "2.0.0",
+            "request": "GetFeature",
+            "typeNames": layer,
+            "outputFormat": "application/json",
+            "srsName": "EPSG:28992",
+            "count": BAG_PAGE_SIZE,
+            "startIndex": start,
+            "bbox": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]},EPSG:28992",
+        }
+        page = session.get_json(
+            BAG_WFS_URL,
+            params=params,
+            cache_key=f"{layer}_{int(bbox[0])}_{int(bbox[1])}_{int(bbox[2])}_{int(bbox[3])}_{start}",
+        )
+        batch = page.get("features") or []
+        features.extend(batch)
+        if len(batch) < BAG_PAGE_SIZE:
+            return features
+        start += BAG_PAGE_SIZE
+        if start >= BAG_SUBDIVIDE_THRESHOLD and _depth < 6:
+            return _subdivide(session, layer, bbox, depth=_depth + 1)
+
+
+def _subdivide(
+    session: CachedSession,
+    layer: str,
+    bbox: Bbox,
+    *,
+    depth: int,
+) -> list[dict[str, Any]]:
+    (minx, miny, maxx, maxy) = bbox
+    midx = (minx + maxx) / 2
+    midy = (miny + maxy) / 2
+    quadrants: list[Bbox] = [
+        (minx, miny, midx, midy),
+        (midx, miny, maxx, midy),
+        (minx, midy, midx, maxy),
+        (midx, midy, maxx, maxy),
+    ]
+    out: list[dict[str, Any]] = []
+    for q in quadrants:
+        out.extend(_fetch_layer(session, layer, bbox=q, _depth=depth))
+    return out
+
+
+def _as_int(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_str(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    return str(value).strip() or None

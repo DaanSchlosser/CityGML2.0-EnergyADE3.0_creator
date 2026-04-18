@@ -1,0 +1,17 @@
+{
+  "$schema": "../schemas/city_input.schema.json",
+  "schema_version": "city-1",
+  "municipality": "Delft",
+  "lods": [0, 1, 2],
+  "include_addresses": true,
+  "include_energy_labels": true,
+  "ep_online_api_key_file": "../.secrets/ep_online.key",
+  "cache_dir": "../.cache/citygml_energy_city",
+  "output": "../generated/delft.gml",
+  "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
+  "srs_dimension": 3,
+  "city_model": {
+    "name": "Delft",
+    "description": "CityGML 2.0 + Energy ADE 3.0 model built from BAG + 3DBAG + EP-online."
+  }
+}
