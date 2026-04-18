@@ -19,6 +19,7 @@ from .._gml_builders import build_envelope
 from .._step import Coord3D
 from ..core import CityModel
 from .address_match import ResolvedAddress, match_addresses
+from .appearance import append_energy_label_appearance
 from .builders import attach_building_units_to_building, build_building
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 from .config import CityBuildConfig, CityBuildError, load_city_config
@@ -80,9 +81,9 @@ def build_city_model(
         )
         print(f"[city-builder] {len(vbos)} verblijfsobjecten")
 
-        energy_labels = _maybe_fetch_energy_labels(session, config)
+        energy_labels = _maybe_fetch_energy_labels(session, config, vbos=vbos)
         if energy_labels is not None:
-            print(f"[city-builder] {len(energy_labels)} EP-online labels loaded")
+            print(f"[city-builder] {len(energy_labels)} EP-online labels matched")
 
         resolved_per_pand = match_addresses(
             vbos=vbos,
@@ -121,7 +122,17 @@ def build_city_model(
 def _maybe_fetch_energy_labels(
     session: CachedSession,
     config: CityBuildConfig,
+    *,
+    vbos: list[bag_fetchers.Verblijfsobject],
 ) -> list[eponline_fetchers.EnergyLabel] | None:
+    """Fetch only the EP-online labels that could possibly match *vbos*.
+
+    The 5 M-row EP-online mutation file dwarfs the ~10³ addresses inside
+    a typical city-builder BBOX. Passing the VBO-derived id / address-key
+    sets into the fetcher lets the CSV parser drop non-matching rows
+    immediately — the pipeline sees the ~matching subset and never has
+    to materialise the rest.
+    """
     if not config.include_energy_labels:
         return None
     api_key = config.ep_online_api_key
@@ -129,7 +140,43 @@ def _maybe_fetch_energy_labels(
         raise CityBuildError(
             "include_energy_labels=true but ep_online_api_key_file did not yield a token"
         )
-    return eponline_fetchers.fetch_energy_labels(session, api_key=api_key)
+
+    wanted_ids = {v.identificatie for v in vbos}
+    wanted_keys = {
+        _vbo_address_key(v)
+        for v in vbos
+        if v.postcode is not None and v.huisnummer is not None
+    }
+    return eponline_fetchers.fetch_energy_labels(
+        session,
+        api_key=api_key,
+        wanted_ids=wanted_ids,
+        wanted_keys=wanted_keys,
+    )
+
+
+def _vbo_address_key(
+    vbo: bag_fetchers.Verblijfsobject,
+) -> tuple[str, int, str | None, str | None]:
+    """Return the same normalised key used by :mod:`address_match`.
+
+    Duplicating the helper here (rather than importing from
+    ``address_match``) keeps the fetcher filter-set free of anything
+    that isn't the identity of an address, which is all EP-online's
+    CSV rows expose.
+    """
+    postcode = (vbo.postcode or "").replace(" ", "").upper()
+    huisnummer = vbo.huisnummer or 0
+    huisletter = _strip_upper(vbo.huisletter)
+    toevoeging = _strip_upper(vbo.toevoeging)
+    return (postcode, huisnummer, huisletter, toevoeging)
+
+
+def _strip_upper(value: str | None) -> str | None:
+    if value is None:
+        return None
+    trimmed = value.strip().upper()
+    return trimmed or None
 
 
 def _fetch_parsed_buildings(
@@ -182,6 +229,7 @@ def _assemble_city_model(
     )
 
     all_coords: list[Coord3D] = []
+    building_label_pairs: list[tuple[Any, list[ResolvedAddress]]] = []
     for pand in panden:
         parsed = parsed_by_id.get(pand.identificatie)
         if parsed is None:
@@ -195,14 +243,20 @@ def _assemble_city_model(
             srs_name=config.srs_name,
             srs_dimension=config.srs_dimension,
         )
+        resolved_for_pand = resolved_per_pand.get(pand.identificatie, [])
         attach_building_units_to_building(
             building,
-            resolved_per_pand.get(pand.identificatie, []),
+            resolved_for_pand,
             gml_id_prefix=config.gml_id_prefix,
             city_name=config.municipality,
+            srs_name=config.srs_name,
+            srs_dimension=config.srs_dimension,
         )
         model.add(building)
+        building_label_pairs.append((building, resolved_for_pand))
         _collect_coordinates(parsed, all_coords)
+
+    append_energy_label_appearance(model, building_label_pairs)
 
     if all_coords:
         model.set_envelope(

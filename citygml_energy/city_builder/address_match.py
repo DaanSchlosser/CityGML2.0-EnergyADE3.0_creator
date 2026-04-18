@@ -45,6 +45,10 @@ class ResolvedAddress:
     def toevoeging(self) -> str | None:
         return self.vbo.toevoeging
 
+    @property
+    def point(self) -> tuple[float, float] | None:
+        return self.vbo.point
+
 
 def match_addresses(
     *,
@@ -64,12 +68,22 @@ def match_addresses(
     VBOs that lack a postcode or huisnummer are silently dropped — they
     cannot produce a valid CityGML ``bldg:address``.
     """
-    labels_by_vbo_id, labels_by_key = _index_labels(energy_labels or [])
+    # Only the VBOs that can match are addressable; dropping the rest up
+    # front means we can build a *tight* wanted-key set for the label
+    # filter. With 5M+ labels and ~500 VBOs, that filter turns the label
+    # scan from "index everything" to "keep ~0.01% of rows".
+    matchable = [v for v in vbos if v.postcode is not None and v.huisnummer is not None]
+    wanted_ids = {v.identificatie for v in matchable}
+    wanted_keys = {_address_key_from_vbo(v) for v in matchable}
+
+    labels_by_vbo_id, labels_by_key = _index_labels(
+        energy_labels or [],
+        wanted_ids=wanted_ids,
+        wanted_keys=wanted_keys,
+    )
 
     grouped: dict[str, list[ResolvedAddress]] = {}
-    for vbo in vbos:
-        if vbo.postcode is None or vbo.huisnummer is None:
-            continue
+    for vbo in matchable:
         label = (
             labels_by_vbo_id.get(vbo.identificatie)
             or labels_by_key.get(_address_key_from_vbo(vbo))
@@ -87,6 +101,9 @@ def match_addresses(
 
 def _index_labels(
     labels: list[EnergyLabel],
+    *,
+    wanted_ids: set[str],
+    wanted_keys: set[tuple[str, int, str | None, str | None]],
 ) -> tuple[
     dict[str, EnergyLabel],
     dict[tuple[str, int, str | None, str | None], EnergyLabel],
@@ -97,6 +114,12 @@ def _index_labels(
     corrections). We keep the one with the newest ``registratiedatum``,
     falling back to ``opnamedatum``.
 
+    Only labels whose ``bag_verblijfsobject_id`` matches *wanted_ids* or
+    whose address-key matches *wanted_keys* are retained. This membership
+    test turns what was a full 5M-row indexing pass into a filter —
+    critical for the city-pipeline case where the BBOX covers a few
+    hundred VBOs out of the national mutation file.
+
     ``by_vbo_id`` is keyed by ``BAGVerblijfsobjectID`` (EP-online v5+).
     ``by_address_key`` is the ``(postcode, huisnummer, huisletter,
     toevoeging)`` fallback for older labels without a BAG id.
@@ -104,15 +127,26 @@ def _index_labels(
     by_vbo_id: dict[str, EnergyLabel] = {}
     by_address_key: dict[tuple[str, int, str | None, str | None], EnergyLabel] = {}
     for label in labels:
-        ts = _label_timestamp(label)
-        if label.bag_verblijfsobject_id:
-            incumbent = by_vbo_id.get(label.bag_verblijfsobject_id)
-            if incumbent is None or ts >= _label_timestamp(incumbent):
-                by_vbo_id[label.bag_verblijfsobject_id] = label
+        vbo_id = label.bag_verblijfsobject_id
+        hit_id = vbo_id is not None and vbo_id in wanted_ids
         key = label.address_key()
-        incumbent_key = by_address_key.get(key)
-        if incumbent_key is None or ts >= _label_timestamp(incumbent_key):
-            by_address_key[key] = label
+        hit_key = key in wanted_keys
+        if not hit_id and not hit_key:
+            continue
+
+        # A label can be relevant via both indices — e.g. one VBO matches
+        # by BAG id and a different VBO with the same address-key matches
+        # by key. Mirror the original behaviour and update both indices
+        # independently.
+        ts = _label_timestamp(label)
+        if hit_id:
+            incumbent = by_vbo_id.get(vbo_id)
+            if incumbent is None or ts >= _label_timestamp(incumbent):
+                by_vbo_id[vbo_id] = label
+        if hit_key:
+            incumbent_key = by_address_key.get(key)
+            if incumbent_key is None or ts >= _label_timestamp(incumbent_key):
+                by_address_key[key] = label
     return by_vbo_id, by_address_key
 
 

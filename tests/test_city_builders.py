@@ -36,7 +36,10 @@ def _parsed() -> ParsedBuilding:
     )
 
 
-def _vbo(street: str = "Mekelweg") -> Verblijfsobject:
+def _vbo(
+    street: str = "Mekelweg",
+    point: tuple[float, float] | None = None,
+) -> Verblijfsobject:
     return Verblijfsobject(
         identificatie="0503010000000042",
         pand_identificatie="0503100000000001",
@@ -48,6 +51,7 @@ def _vbo(street: str = "Mekelweg") -> Verblijfsobject:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam=street,
+        point=point,
         properties={},
     )
 
@@ -65,15 +69,6 @@ def _resolved(energy: str | None = None, street: str = "Mekelweg") -> ResolvedAd
             registratiedatum=date(2024, 1, 1),
             opnamedatum=None,
             geldig_tot=date(2034, 1, 1),
-            energieindex=None,
-            primaire_fossiele_energie=None,
-            aandeel_hernieuwbare_energie=None,
-            berekende_co2_emissie=None,
-            gebouwtype="Woonfunctie",
-            gebouwsubtype="EGW",
-            gebruiksoppervlakte_thermische_zone=None,
-            compactheid=None,
-            raw={},
         )
     return ResolvedAddress(vbo=_vbo(street=street), energy_label=label)
 

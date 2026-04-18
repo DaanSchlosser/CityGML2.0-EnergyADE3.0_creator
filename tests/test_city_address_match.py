@@ -16,6 +16,7 @@ def _vbo(
     postcode: str = "1000AA",
     huisnummer: int = 1,
     street: str = "Mekelweg",
+    point: tuple[float, float] | None = None,
 ) -> Verblijfsobject:
     return Verblijfsobject(
         identificatie=identificatie,
@@ -28,6 +29,7 @@ def _vbo(
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam=street,
+        point=point,
         properties={},
     )
 
@@ -48,15 +50,6 @@ def _label(
         registratiedatum=registratie,
         opnamedatum=None,
         geldig_tot=None,
-        energieindex=None,
-        primaire_fossiele_energie=None,
-        aandeel_hernieuwbare_energie=None,
-        berekende_co2_emissie=None,
-        gebouwtype=None,
-        gebouwsubtype=None,
-        gebruiksoppervlakte_thermische_zone=None,
-        compactheid=None,
-        raw={},
     )
 
 
@@ -83,6 +76,7 @@ def test_vbo_without_postcode_is_dropped() -> None:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        point=None,
         properties={},
     )
     assert match_addresses(vbos=[vbo]) == {}
@@ -100,6 +94,7 @@ def test_vbo_without_huisnummer_is_dropped() -> None:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        point=None,
         properties={},
     )
     assert match_addresses(vbos=[vbo]) == {}

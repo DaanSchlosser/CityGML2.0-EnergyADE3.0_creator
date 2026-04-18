@@ -2,7 +2,7 @@
   "$schema": "../schemas/city_input.schema.json",
   "schema_version": "city-1",
   "municipality": "Delft",
-  "bbox": [84700, 446400, 85100, 446800],
+  "bbox": [84700, 446600, 85100, 447000],
   "lods": [0, 1, 2],
   "include_addresses": true,
   "include_energy_labels": true,
@@ -11,7 +11,7 @@
   "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5709",
   "srs_dimension": 3,
   "city_model": {
-    "name": "TU Delft campus",
-    "description": "All BAG panden within the TU Delft campus bbox, with EP-online energy labels."
+    "name": "Delft Wippolder (residential)",
+    "description": "BAG panden in a residential slice of Delft's Wippolder district (just north of the TU Delft campus), with EP-online energy labels."
   }
 }

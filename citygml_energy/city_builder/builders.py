@@ -15,12 +15,13 @@ from __future__ import annotations
 from functools import cache
 from typing import Any
 
-from .._gml_builders import build_multi_surface, build_solid
+from .._gml_builders import build_multi_point, build_multi_surface, build_solid
 from .._step import GeometryPolygon
 from ..bindings import Name
 from ..mapping import get_fields, resolve_class
 from ..namespaces import (
     CS_BUILDING_FUNCTION,
+    CS_NRG3_EPC_TYPE,
     DEFAULT_SRS_DIMENSION,
     DEFAULT_SRS_NAME,
 )
@@ -223,6 +224,8 @@ def build_building_unit(
     *,
     gml_id_prefix: str = "",
     city_name: str = "",
+    srs_name: str = DEFAULT_SRS_NAME,
+    srs_dimension: int = DEFAULT_SRS_DIMENSION,
 ) -> Any:
     """Build an ``nrg3:BuildingUnit`` for one VBO.
 
@@ -231,6 +234,10 @@ def build_building_unit(
     ``nrg3:energyPerformanceCertificate``. The mandatory
     ``nrg3:type`` element is filled with the first ``gebruiksdoel``
     value (``woonfunctie``, ``kantoorfunctie``, …).
+
+    ``srs_name`` / ``srs_dimension`` are passed through to
+    :func:`build_address` for the VBO ``geometriePunt`` (``core:Address/
+    core:multiPoint``).
     """
     unit_cls = _cls(BUILDING_UNIT)
     code_cls = _direct("CodeType")
@@ -242,7 +249,13 @@ def build_building_unit(
         type_value=code_cls(value=gebruiksdoel),
     )
 
-    address = build_address(resolved, gml_id_prefix=gml_id_prefix, city_name=city_name)
+    address = build_address(
+        resolved,
+        gml_id_prefix=gml_id_prefix,
+        city_name=city_name,
+        srs_name=srs_name,
+        srs_dimension=srs_dimension,
+    )
     if address is not None:
         address_prop_cls = _inner_type(unit_cls, "address")
         if address_prop_cls is not None:
@@ -265,6 +278,8 @@ def attach_building_units_to_building(
     *,
     gml_id_prefix: str = "",
     city_name: str = "",
+    srs_name: str = DEFAULT_SRS_NAME,
+    srs_dimension: int = DEFAULT_SRS_DIMENSION,
 ) -> None:
     """Wrap each resolved VBO in a ``BuildingUnit2`` and attach to *building*."""
     if not addresses:
@@ -273,7 +288,13 @@ def attach_building_units_to_building(
     if wrapper_cls is None:
         return
     for resolved in addresses:
-        unit = build_building_unit(resolved, gml_id_prefix=gml_id_prefix, city_name=city_name)
+        unit = build_building_unit(
+            resolved,
+            gml_id_prefix=gml_id_prefix,
+            city_name=city_name,
+            srs_name=srs_name,
+            srs_dimension=srs_dimension,
+        )
         building.building_unit.append(wrapper_cls(building_unit=unit))
 
 
@@ -287,10 +308,13 @@ def build_address(
     *,
     gml_id_prefix: str = "",
     city_name: str = "",
+    srs_name: str = DEFAULT_SRS_NAME,
+    srs_dimension: int = DEFAULT_SRS_DIMENSION,
 ) -> Any | None:
     """Build a ``core:Address`` for *resolved* or ``None`` when unusable.
 
-    Structure (xAL-inside-core):
+    Structure (xAL-inside-core, plus optional ``multiPoint`` for the
+    VBO location point):
 
     .. code-block:: text
 
@@ -304,6 +328,17 @@ def build_address(
                   xAL:ThoroughfareName   ("Mekelweg")
                 xAL:PostalCode
                   xAL:PostalCodeNumber   ("2628CD")
+          core:multiPoint   (present when resolved.point is not None)
+            gml:MultiPoint
+              gml:pointMember/gml:Point/gml:pos   (VBO geometriePunt)
+
+    The ``core:multiPoint`` element is typed ``gml:MultiPointPropertyType``
+    and documented in the XSD as "locating the entrance(s)". BAG's
+    ``geometriePunt`` is the authoritative address-locating point for a
+    VBO — it always lies within the parent Pand but is not guaranteed
+    to be at the entrance. That semantic mismatch is documentation-level
+    only: the schema constraint is just "a MultiPoint", and every
+    Dutch BAG→CityGML converter populates this element the same way.
     """
     street = resolved.street.strip()
     postcode = resolved.postcode.strip()
@@ -326,9 +361,20 @@ def build_address(
     details_cls = _cls(XAL_ADDRESS_DETAILS)
     address_details = details_cls(locality=locality)
 
+    address_id = _safe_gml_id(gml_id_prefix, "addr", resolved.vbo.identificatie)
+    multi_point = None
+    if resolved.point is not None:
+        multi_point = build_multi_point(
+            f"{address_id}_mp",
+            [resolved.point],
+            srs_name=srs_name,
+            srs_dimension=srs_dimension,
+        )
+
     address = address_cls(
-        id=_safe_gml_id(gml_id_prefix, "addr", resolved.vbo.identificatie),
+        id=address_id,
         xal_address=xal_prop_cls(address_details=address_details),
+        multi_point=multi_point,
     )
     return address
 
@@ -391,7 +437,7 @@ def _build_epc(
 
     epc = epc_cls(
         id=_safe_gml_id(gml_id_prefix, "epc", resolved.vbo.identificatie),
-        type_value=code_cls(value="EP-online"),
+        type_value=code_cls(value="EP-online", code_space=CS_NRG3_EPC_TYPE),
         label=label.energieklasse,
     )
     if label.registratiedatum is not None:
