@@ -19,50 +19,40 @@ from typing import Any, Union
 
 from xsdata.models.datatype import XmlDate, XmlDateTime, XmlDuration, XmlPeriod, XmlTime
 
-from . import bindings
-from .namespaces import NSMAP
+from .namespaces import NS_PREFIX_MAP, iter_binding_classes
 
 # ---------------------------------------------------------------------------
 # Class registry — map "prefix:ElementName" → xsdata class
 # ---------------------------------------------------------------------------
 
-_URI_TO_PREFIX: dict[str, str] = {uri: prefix for prefix, uri in NSMAP.items()}
-
 
 @lru_cache(maxsize=1)
 def _build_class_registry() -> dict[str, type]:
-    """Build ``{"prefix:ElementName": cls}`` from all xsdata element classes.
+    """Build ``{"prefix:ElementName": cls}`` from every xsdata element class.
 
-    Element classes whose namespace URI is not registered in
-    :data:`citygml_energy.namespaces.NSMAP` are omitted from the registry and
-    cannot be resolved from JSON input. A warning is raised listing the
-    missing URIs so that regenerating bindings from a new XSD — which may
-    introduce new namespaces — fails loudly instead of silently dropping
-    element types.
+    Only element classes (``Meta.namespace`` set) are registered; type-only
+    classes (``Meta.target_namespace`` without ``namespace``) are skipped
+    because they cannot appear as the root of an XML element and so are
+    never referenced by a user's ``"prefix:Name"`` type string.
+
+    The ``dir(bindings)`` walk itself happens in
+    :func:`citygml_energy.namespaces.iter_binding_classes`; this function
+    only filters and keys its output. Unregistered URIs are collected and
+    surfaced as a warning so a schema regeneration that introduced a new
+    namespace fails loudly instead of silently dropping element types.
     """
     registry: dict[str, type] = {}
     unknown_namespaces: set[str] = set()
-    for attr_name in dir(bindings):
-        cls = getattr(bindings, attr_name)
-        if not (isinstance(cls, type) and dataclasses.is_dataclass(cls)):
+    for info in iter_binding_classes():
+        if not info.is_element:
             continue
-        meta = getattr(cls, "Meta", None)
-        if meta is None:
-            continue
-        # Element classes have Meta.namespace; type-only classes have
-        # Meta.target_namespace instead.
-        ns = getattr(meta, "namespace", None)
-        if ns is None:
-            continue
-        prefix = _URI_TO_PREFIX.get(ns)
+        prefix = NS_PREFIX_MAP.get(info.namespace)
         if prefix is None:
-            unknown_namespaces.add(ns)
+            unknown_namespaces.add(info.namespace)
             continue
-        xml_name = getattr(meta, "name", None) or attr_name
-        key = f"{prefix}:{xml_name}"
+        key = f"{prefix}:{info.xml_name}"
         # First registered class wins (stable iteration order).
-        if key not in registry:
-            registry[key] = cls
+        registry.setdefault(key, info.cls)
 
     if unknown_namespaces:
         warnings.warn(

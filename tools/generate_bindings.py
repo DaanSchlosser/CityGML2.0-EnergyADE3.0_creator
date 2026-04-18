@@ -1,139 +1,255 @@
-"""Generate xsdata Python bindings from the CityGML 2.0 + Energy ADE 3.0 XSD schemas.
+"""Generate xsdata Python bindings from every XSD tree shipped in the repo.
 
-Creates a temporary copy of all XSD files with remote schemaLocation URLs rewritten
-to local relative paths, then runs xsdata code generation.
+Stages all XSDs found on disk, rewrites their ``schemaLocation`` URLs to
+local relative paths via namespace-based auto-discovery, then invokes
+xsdata code generation with the discovered ADE entry points.
 
-Usage:
+Usage::
+
     python tools/generate_bindings.py
+
+Adding a new ADE (``ScenarioADE``, updated ``EnergyADE`` release, …):
+
+1. Drop the ADE's XSD tree under the repo (``<AdeName>/xsd/...`` beside the
+   existing ``Energy_ADE-3.0beta8/``, or inline under ``xsd/``). The tool
+   discovers every ``*.xsd`` under :data:`_STAGED_ROOTS` automatically —
+   no registration needed.
+2. Rerun this tool. Any schemaLocation URL it cannot map to a local file
+   is reported with the offending file and URL, so drift fails loudly
+   instead of triggering a silent network fetch from xsdata.
+3. If the new ADE defines a fresh XML namespace, add a prefix entry in
+   ``schemas/namespace_prefixes.json`` — the ``NSMAP`` discovery in
+   :mod:`citygml_energy.namespaces` warns at import time until that is
+   done.
+
+No hand-maintained URL → local-path table is needed; the mapping is
+derived every run by indexing each local ``*.xsd`` file by its declared
+``targetNamespace``.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+
+from lxml import etree
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PACKAGE = "citygml_energy/bindings"
 
-# ── Source XSD locations ─────────────────────────────────────────────────────
-_XSD_ROOT = REPO_ROOT / "xsd"
-_ENERGY_XSD = REPO_ROOT / "Energy_ADE-3.0beta8" / "xsd" / "Energy_ADE_3.0_beta8.xsd"
+# ── XSD trees staged for binding generation ─────────────────────────────────
+# Every directory listed here is copied verbatim into the temp staging area.
+# Add a line when a new ADE tree appears; the file-level auto-discovery
+# takes care of the URL-rewriting.
+_STAGED_ROOTS: tuple[Path, ...] = (
+    REPO_ROOT / "xsd",
+    REPO_ROOT / "Energy_ADE-3.0beta8",
+)
 
-# ── URL → local relative path mapping ───────────────────────────────────────
-# Keys: URLs that appear in schemaLocation attributes.
-# Values: path relative to the temp staging directory root.
-_URL_TO_RELATIVE: dict[str, str] = {
-    # GML 3.1.1
-    "http://schemas.opengis.net/gml/3.1.1/base/gml.xsd": "gml/3.1.1/base/gml.xsd",
-    # GML SMIL
-    "http://schemas.opengis.net/gml/3.1.1/smil/smil20.xsd": "gml/3.1.1/smil/smil20.xsd",
-    "http://schemas.opengis.net/gml/3.1.1/smil/smil20-language.xsd": "gml/3.1.1/smil/smil20-language.xsd",
-    # xlink
-    "http://www.w3.org/1999/xlink.xsd": "xlink/xlink.xsd",
-    # CityGML 2.0
-    "http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd": "citygml/2.0/cityGMLBase.xsd",
-    "http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd": "citygml/2.0/appearance.xsd",
-    "http://schemas.opengis.net/citygml/bridge/2.0/bridge.xsd": "citygml/2.0/bridge.xsd",
-    "http://schemas.opengis.net/citygml/building/2.0/building.xsd": "citygml/2.0/building.xsd",
-    "http://schemas.opengis.net/citygml/cityfurniture/2.0/cityFurniture.xsd": "citygml/2.0/cityFurniture.xsd",
-    "http://schemas.opengis.net/citygml/cityobjectgroup/2.0/cityObjectGroup.xsd": "citygml/2.0/cityObjectGroup.xsd",
-    "http://schemas.opengis.net/citygml/generics/2.0/generics.xsd": "citygml/2.0/generics.xsd",
-    "http://schemas.opengis.net/citygml/landuse/2.0/landUse.xsd": "citygml/2.0/landUse.xsd",
-    "http://schemas.opengis.net/citygml/relief/2.0/relief.xsd": "citygml/2.0/relief.xsd",
-    "http://schemas.opengis.net/citygml/transportation/2.0/transportation.xsd": "citygml/2.0/transportation.xsd",
-    "http://schemas.opengis.net/citygml/tunnel/2.0/tunnel.xsd": "citygml/2.0/tunnel.xsd",
-    "http://schemas.opengis.net/citygml/vegetation/2.0/vegetation.xsd": "citygml/2.0/vegetation.xsd",
-    "http://schemas.opengis.net/citygml/waterbody/2.0/waterBody.xsd": "citygml/2.0/waterBody.xsd",
-    "http://schemas.opengis.net/citygml/texturedsurface/2.0/texturedSurface.xsd": "citygml/2.0/texturedSurface.xsd",
-    # xAL (OASIS)
-    "urn:oasis:names:tc:ciq:xsdschema:xAL:2.0": "xAL.xsd",
-}
+# ── Entry points xsdata consumes ────────────────────────────────────────────
+# Relative to the staging root. xsdata walks imports transitively from
+# these files; every other staged XSD is reachable indirectly.
+_ENTRY_XSDS: tuple[Path, ...] = (
+    REPO_ROOT / "Energy_ADE-3.0beta8" / "xsd" / "Energy_ADE_3.0_beta8.xsd",
+)
 
-
-# Matches absolute URIs that need remapping to a local XSD copy.
-# Relative schemaLocation values (e.g. "./building.xsd") are left alone.
+# ── Schema-location URL pattern ─────────────────────────────────────────────
+# Absolute URIs (http(s)://..., urn:...) need remapping; relative values
+# (``./foo.xsd``, ``../bar.xsd``) already work in-place and are left alone.
 _ABSOLUTE_URI_RE = re.compile(r"^(?:https?://|urn:)")
+_SCHEMA_LOCATION_RE = re.compile(r'schemaLocation="([^"]+)"')
+
+# URLs that xsdata resolves internally without fetching. The W3C XML
+# bootstrap schema (``xml:id``, ``xml:lang``, ``xml:space``) is special-
+# cased by every XML toolchain, so leaving the ``<xs:import>`` pointing at
+# the canonical URL is correct: xsdata's builtin resolver picks it up and
+# no network call happens.
+_BOOTSTRAP_URLS: frozenset[str] = frozenset({
+    "http://www.w3.org/2001/xml.xsd",
+})
+
+# XML-Schema element names used when walking imports/includes.
+_XS_NS = "http://www.w3.org/2001/XMLSchema"
+_XS_IMPORT = f"{{{_XS_NS}}}import"
+_XS_INCLUDE = f"{{{_XS_NS}}}include"
 
 
-def _rewrite_schema_locations(
-    content: str,
-    xsd_dir_relative: str,
-    unmapped: set[str],
-) -> str:
-    """Rewrite schemaLocation URLs to local relative paths.
+# ---------------------------------------------------------------------------
+# Local XSD discovery
+# ---------------------------------------------------------------------------
 
-    *xsd_dir_relative* is the path from the XSD file's location to the
-    staging root (e.g. ``"../"`` for a file one level deep).
 
-    Any absolute URI that is not in :data:`_URL_TO_RELATIVE` is added to
-    *unmapped* so the caller can fail loudly instead of silently leaving a
-    remote URL in the staged schema (which xsdata would then try to fetch).
+def _parse_staged_xsds(staging_dir: Path) -> dict[Path, etree._ElementTree]:
+    """Parse every ``*.xsd`` under *staging_dir* exactly once.
+
+    The resulting cache is reused for namespace indexing *and* for
+    schemaLocation rewriting so each file is read and parsed only once
+    even across the 50+ XSDs staged by a full CityGML + Energy-ADE run.
     """
-
-    def _replacer(match: re.Match[str]) -> str:
-        url = match.group(1)
-        local = _URL_TO_RELATIVE.get(url)
-        if local is not None:
-            return f'schemaLocation="{xsd_dir_relative}{local}"'
-        if _ABSOLUTE_URI_RE.match(url):
-            unmapped.add(url)
-        return match.group(0)
-
-    return re.sub(r'schemaLocation="([^"]+)"', _replacer, content)
+    parsed: dict[Path, etree._ElementTree] = {}
+    for xsd in staging_dir.rglob("*.xsd"):
+        try:
+            parsed[xsd] = etree.parse(str(xsd))
+        except etree.XMLSyntaxError:
+            continue
+    return parsed
 
 
-def _stage_schemas(staging_dir: Path) -> Path:
-    """Copy all XSD files to *staging_dir* with URLs rewritten to local paths.
+def _index_local_xsds(
+    parsed: dict[Path, etree._ElementTree],
+) -> dict[str, dict[str, Path]]:
+    """Build ``{namespace: {basename: absolute_path}}`` for every parsed XSD.
 
-    Returns the path to the patched Energy ADE XSD (the entry point).
-
-    Raises :class:`RuntimeError` if any XSD imports an absolute URI that is
-    not registered in :data:`_URL_TO_RELATIVE`; add a mapping entry (and the
-    corresponding file under ``xsd/``) so the build stays offline.
+    A basename-level index is kept so that XSDs sharing a namespace
+    (e.g. every file under ``gml/3.1.1/base/``) can still be resolved
+    unambiguously from the URL's basename.
     """
-    # Copy XSD files into staging root (flat structure matching _URL_TO_RELATIVE paths)
-    shutil.copytree(_XSD_ROOT / "gml", staging_dir / "gml")
-    shutil.copytree(_XSD_ROOT / "citygml", staging_dir / "citygml")
-    shutil.copytree(_XSD_ROOT / "xlink", staging_dir / "xlink")
-    shutil.copy2(_XSD_ROOT / "xAL.xsd", staging_dir / "xAL.xsd")
-    (staging_dir / "energy").mkdir()
-    shutil.copy2(_ENERGY_XSD, staging_dir / "energy" / _ENERGY_XSD.name)
+    index: dict[str, dict[str, Path]] = {}
+    for xsd, tree in parsed.items():
+        namespace = tree.getroot().get("targetNamespace")
+        if namespace is None:
+            continue
+        index.setdefault(namespace, {})[xsd.name] = xsd
+    return index
 
-    unmapped: set[str] = set()
 
-    # Rewrite all XSD files under staging_dir
-    for xsd_file in staging_dir.rglob("*.xsd"):
-        rel_to_staging = xsd_file.parent.relative_to(staging_dir)
-        # How many levels deep is this file? We need "../" for each level.
-        depth = len(rel_to_staging.parts)
-        prefix = "../" * depth
+def _resolve_schema_location(
+    index: dict[str, dict[str, Path]],
+    namespace: str,
+    url: str,
+) -> Path | None:
+    """Return the staged file *url* should point at, or ``None`` if unmappable.
 
-        content = xsd_file.read_text(encoding="utf-8")
-        rewritten = _rewrite_schema_locations(content, prefix, unmapped)
-        if rewritten != content:
-            xsd_file.write_text(rewritten, encoding="utf-8")
+    *namespace* is the ``namespace`` attribute on the enclosing
+    ``<xs:import>`` — empty string when the reference is an
+    ``<xs:include>`` (same-namespace reference, inherited from the
+    enclosing schema).
+    """
+    bucket = index.get(namespace)
+    if not bucket:
+        return None
+    # URN schemes carry no path; rely on the namespace-scoped lookup.
+    basename = url.rsplit("/", 1)[-1] if "/" in url else None
+    if basename and basename in bucket:
+        return bucket[basename]
+    if len(bucket) == 1:
+        return next(iter(bucket.values()))
+    return None
+
+
+# ---------------------------------------------------------------------------
+# schemaLocation rewriting
+# ---------------------------------------------------------------------------
+
+
+def _rewrite_one_file(
+    xsd_path: Path,
+    tree: etree._ElementTree,
+    index: dict[str, dict[str, Path]],
+    unmapped: list[tuple[Path, str]],
+) -> None:
+    """Rewrite every absolute schemaLocation URL in *xsd_path* in place.
+
+    Uses the pre-parsed *tree* to harvest each ``<xs:import>`` /
+    ``<xs:include>``'s namespace attribute, resolves the target to a
+    staged file via *index*, and performs a text-level substitution so
+    whitespace/formatting survive unchanged.
+    """
+    root = tree.getroot()
+    own_namespace = root.get("targetNamespace") or ""
+
+    url_to_local: dict[str, Path] = {}
+    for elem in root.iter(_XS_IMPORT, _XS_INCLUDE):
+        url = elem.get("schemaLocation")
+        if url is None or not _ABSOLUTE_URI_RE.match(url):
+            continue
+        if url in _BOOTSTRAP_URLS:
+            continue
+        # xs:include inherits the enclosing schema's namespace; xs:import
+        # declares the foreign namespace it targets.
+        ns = elem.get("namespace") if elem.tag == _XS_IMPORT else own_namespace
+        target = _resolve_schema_location(index, ns or "", url)
+        if target is None:
+            unmapped.append((xsd_path, url))
+            continue
+        url_to_local[url] = target
+
+    if not url_to_local:
+        return
+
+    xsd_dir = xsd_path.parent
+    url_to_relative = {
+        url: Path(os.path.relpath(target, xsd_dir)).as_posix()
+        for url, target in url_to_local.items()
+    }
+
+    text = xsd_path.read_text(encoding="utf-8")
+    rewritten = _SCHEMA_LOCATION_RE.sub(
+        lambda m: f'schemaLocation="{url_to_relative.get(m.group(1), m.group(1))}"',
+        text,
+    )
+    if rewritten != text:
+        xsd_path.write_text(rewritten, encoding="utf-8")
+
+
+def _stage_schemas(staging_dir: Path) -> list[Path]:
+    """Copy every tree in :data:`_STAGED_ROOTS` into *staging_dir* and patch.
+
+    Returns the list of staged entry-point XSDs — the paths xsdata should
+    receive on its command line. Raises :class:`RuntimeError` if any
+    schemaLocation URL cannot be resolved; the caller is expected to treat
+    that as a fatal misconfiguration (missing local XSD, stale URL, or
+    newly-added ADE whose imports were not dropped on disk yet).
+    """
+    for source_root in _STAGED_ROOTS:
+        if not source_root.exists():
+            raise RuntimeError(
+                f"Configured XSD root does not exist: {source_root}. "
+                "Check _STAGED_ROOTS in tools/generate_bindings.py."
+            )
+        destination = staging_dir / source_root.name
+        shutil.copytree(source_root, destination)
+
+    parsed = _parse_staged_xsds(staging_dir)
+    index = _index_local_xsds(parsed)
+
+    unmapped: list[tuple[Path, str]] = []
+    for xsd, tree in parsed.items():
+        _rewrite_one_file(xsd, tree, index, unmapped)
 
     if unmapped:
+        lines = [f"  - {xsd.relative_to(staging_dir)}: {url}" for xsd, url in unmapped]
         raise RuntimeError(
-            "Staged XSDs reference absolute schemaLocation URIs that are not "
-            "mapped to a local file in tools/generate_bindings.py "
-            "(_URL_TO_RELATIVE). xsdata would try to fetch these over the "
-            "network; add a local copy under xsd/ and a mapping entry:\n  - "
-            + "\n  - ".join(sorted(unmapped))
+            "Unresolved schemaLocation URLs in staged XSDs. xsdata would "
+            "try to fetch these over the network, which the binding build "
+            "forbids. Add a local copy under one of _STAGED_ROOTS in "
+            "tools/generate_bindings.py and ensure its targetNamespace "
+            "matches the import:\n" + "\n".join(lines)
         )
 
-    return staging_dir / "energy" / _ENERGY_XSD.name
+    print(f"Discovered {len(index)} namespace(s) across staged XSDs:")
+    for namespace in sorted(index):
+        print(f"  - {namespace} ({len(index[namespace])} file(s))")
+    print()
+
+    return [staging_dir / entry.relative_to(REPO_ROOT) for entry in _ENTRY_XSDS]
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 
 def main() -> int:
-    import tempfile
-
-    # With --structure-style single-package and --package citygml_energy.bindings,
-    # xsdata writes a single file citygml_energy/bindings.py. Earlier layouts used
-    # a package directory; clean both forms so stale output never lingers.
+    # With ``--structure-style single-package`` and ``--package
+    # citygml_energy.bindings`` xsdata writes a single file
+    # ``citygml_energy/bindings.py``. Earlier layouts used a package
+    # directory; clean both forms so stale output never lingers.
     output_file = REPO_ROOT / "citygml_energy" / "bindings.py"
     output_dir = REPO_ROOT / OUTPUT_PACKAGE
 
@@ -144,10 +260,10 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="xsdata_staging_") as tmpdir:
         staging = Path(tmpdir)
-        entry_xsd = _stage_schemas(staging)
+        entry_xsds = _stage_schemas(staging)
 
         print(f"Staged XSD schemas in: {staging}")
-        print(f"Entry XSD: {entry_xsd}")
+        print(f"Entry XSDs: {[str(p) for p in entry_xsds]}")
         print(f"Output package: {OUTPUT_PACKAGE}")
         print()
 
@@ -156,7 +272,7 @@ def main() -> int:
             "-m",
             "xsdata",
             "generate",
-            str(entry_xsd),
+            *[str(p) for p in entry_xsds],
             "--package",
             OUTPUT_PACKAGE.replace("/", "."),
             "--structure-style",

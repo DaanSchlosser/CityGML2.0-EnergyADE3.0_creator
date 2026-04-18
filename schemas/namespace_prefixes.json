@@ -1,0 +1,37 @@
+{
+    "$schema_hint": "Map XML namespace URI -> preferred prefix. The NSMAP built at import time (citygml_energy.namespaces) is the union of namespaces discovered from the xsdata bindings and the wire-only URIs listed under 'extra_uris' (namespaces that need an xmlns declaration on the root element but carry no bindings classes, e.g. xsi, schematron, profile). Adding a new ADE: (1) regenerate bindings via tools/generate_bindings.py, (2) add any newly-discovered URI to 'prefixes' below. Prefixes are a human convention and cannot be recovered from XSD, so this file is the single source of truth for them.",
+    "prefixes": {
+        "http://www.opengis.net/citygml/appearance/2.0": "app",
+        "http://www.opengis.net/citygml/bridge/2.0": "brid",
+        "http://www.opengis.net/citygml/building/2.0": "bldg",
+        "http://www.opengis.net/citygml/2.0": "core",
+        "http://www.opengis.net/citygml/cityfurniture/2.0": "frn",
+        "http://www.opengis.net/citygml/cityobjectgroup/2.0": "grp",
+        "http://www.opengis.net/citygml/generics/2.0": "gen",
+        "http://www.opengis.net/citygml/landuse/2.0": "luse",
+        "http://www.opengis.net/citygml/profiles/base/2.0": "pbase",
+        "http://www.opengis.net/citygml/relief/2.0": "dem",
+        "http://www.opengis.net/citygml/texturedsurface/2.0": "tex",
+        "http://www.opengis.net/citygml/transportation/2.0": "tran",
+        "http://www.opengis.net/citygml/tunnel/2.0": "tun",
+        "http://www.opengis.net/citygml/vegetation/2.0": "veg",
+        "http://www.opengis.net/citygml/waterbody/2.0": "wtr",
+        "http://www.opengis.net/gml": "gml",
+        "http://www.w3.org/1999/xlink": "xlink",
+        "http://www.w3.org/2001/SMIL20/": "smil20",
+        "http://www.w3.org/2001/SMIL20/Language": "smil20lang",
+        "http://www.w3.org/2001/XMLSchema-instance": "xsi",
+        "http://www.ascc.net/xml/schematron": "sch",
+        "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0": "nrg3",
+        "urn:oasis:names:tc:ciq:xsdschema:xAL:2.0": "xAL"
+    },
+    "extra_uris": [
+        "http://www.opengis.net/citygml/profiles/base/2.0",
+        "http://www.opengis.net/citygml/texturedsurface/2.0",
+        "http://www.ascc.net/xml/schematron",
+        "http://www.w3.org/2001/XMLSchema-instance"
+    ],
+    "codespace_bases": {
+        "nrg3": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+    }
+}
