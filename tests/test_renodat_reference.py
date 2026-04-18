@@ -103,19 +103,24 @@ def test_occupants_attached_to_building(renodat_root):
     assert len(occupants) == 1
 
 
-def test_zone_with_three_zone_parts(renodat_root):
-    """Input declares 1 Zone with 3 ZoneParts."""
+def test_zone_with_two_heated_zone_parts(renodat_root):
+    """Input declares 1 Zone with 2 conditioned ZoneParts.
+
+    The attic ZonePart was removed from the input because it is neither
+    heated nor cooled — the EnergyADE model does not require listing
+    unconditioned spaces.
+    """
     zones = renodat_root.findall(".//bldg:Building/nrg3:zone//nrg3:Zone", NS)
     assert len(zones) == 1
 
     zone_parts = zones[0].findall("nrg3:zonePart/nrg3:ZonePart", NS)
-    assert len(zone_parts) == 3
+    assert len(zone_parts) == 2
 
 
 def test_heating_and_cooling_schedules_on_zone_parts(renodat_root):
-    """Zone parts 1 and 2 each have a heating and cooling schedule; zone part 3 has none."""
+    """Both conditioned zone parts carry a heating and a cooling schedule."""
     zone_parts = renodat_root.findall(".//nrg3:Zone/nrg3:zonePart/nrg3:ZonePart", NS)
-    assert len(zone_parts) == 3
+    assert len(zone_parts) == 2
 
     parts_with_heating = [
         zp for zp in zone_parts if zp.find("nrg3:heatingSchedule", NS) is not None
@@ -148,21 +153,48 @@ def test_monthly_time_series_on_pv_energy(renodat_root):
     assert len(ts) == 1
 
 
-def test_pv_has_installed_on_relation(renodat_root):
-    """The PV collector has an installedOn relation to a roof surface."""
+def test_pv_has_two_installed_on_relations_from_json(renodat_root):
+    """PV panel array spans two roofs; both relations originate from the JSON.
+
+    The input's ``installed_on: ["RoofSurface_01", "RoofSurface_02"]`` is
+    resolved after geometry attachment, producing two ``CityObjectRelation``
+    entries — one xlink:href per target roof — with ``relationType="installedOn"``.
+    Geometry alone no longer drives these (every PV panel's STEP layer has
+    ``|parent=RoofSurface_02``, so a geometry-derived approach would emit
+    only one relation). The two distinct hrefs prove the JSON path is live.
+    """
     relations = renodat_root.findall(
         ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
     )
-    assert len(relations) >= 1
-    rel_type = relations[0].find("nrg3:relationType", NS)
-    assert rel_type is not None and rel_type.text == "installedOn"
+    assert len(relations) == 2
 
-    # xsdata's generated AbstractCityObjectPropertyType doesn't expose xlink:href
-    # attributes, so the relatedTo child element is present but the href target
-    # cannot be set.  Verify the element exists; href support requires a
-    # custom xsdata extension or post-processing step.
-    related_to = relations[0].find("nrg3:relatedTo", NS)
-    assert related_to is not None
+    for rel in relations:
+        rt = rel.find("nrg3:relationType", NS)
+        assert rt is not None and rt.text == "installedOn"
+
+    hrefs = {
+        rel.find("nrg3:relatedTo", NS).get("{http://www.w3.org/1999/xlink}href")
+        for rel in relations
+    }
+    assert len(hrefs) == 2, f"expected two distinct href targets, got {hrefs}"
+    assert all(h and h.startswith("#") for h in hrefs)
+
+
+def test_pv_installed_on_resolves_to_real_roof_surfaces(renodat_root):
+    """Every installedOn href must point to an existing RoofSurface element."""
+    roof_ids = {
+        roof.get("{http://www.opengis.net/gml}id")
+        for roof in renodat_root.findall(".//bldg:boundedBy/bldg:RoofSurface", NS)
+    }
+    relations = renodat_root.findall(
+        ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
+    )
+    for rel in relations:
+        href = rel.find("nrg3:relatedTo", NS).get("{http://www.w3.org/1999/xlink}href")
+        assert href.lstrip("#") in roof_ids, (
+            f"installedOn href {href!r} does not resolve to any RoofSurface; "
+            f"available: {sorted(roof_ids)}"
+        )
 
 
 def test_geometry_imported_from_step(renodat_root):
@@ -179,16 +211,38 @@ def test_geometry_imported_from_step(renodat_root):
     bounded = building.findall("bldg:boundedBy", NS)
     assert len(bounded) > 0
 
-    # Zone parts have lod3Solid from STEP files
+    # Zone parts have lod3Solid from STEP files (attic ZonePart was removed
+    # from the input because it is unconditioned).
     zone_parts = renodat_root.findall(".//nrg3:ZonePart", NS)
     parts_with_solid = [zp for zp in zone_parts if zp.find("nrg3:lod3Solid", NS) is not None]
-    assert len(parts_with_solid) == 3
+    assert len(parts_with_solid) == 2
 
 
-def test_pv_has_geometry(renodat_root):
-    """The PV collector must have lod3MultiSurface geometry from the STEP import."""
-    pv_geom = renodat_root.findall(".//nrg3:PhotovoltaicCollector/nrg3:lod3MultiSurface", NS)
-    assert len(pv_geom) == 1
+def test_pv_has_lod2_and_lod3_geometry(renodat_root):
+    """The PV collector carries geometry at both LoD 2 and LoD 3.
+
+    LoD 2 is the aggregated "whole array" surface (one polygon) — exported
+    from Rhino as a single unnamed shell. LoD 3 is the individually-panelled
+    representation (one polygon per physical panel). Both arrive via STEP
+    imports and both attach to the same PhotovoltaicCollector, so a reader
+    that understands only one LoD still sees the array.
+    """
+    pv = renodat_root.find(".//nrg3:PhotovoltaicCollector", NS)
+    assert pv is not None
+
+    lod2 = pv.find("nrg3:lod2MultiSurface", NS)
+    assert lod2 is not None, "PV must carry lod2MultiSurface (aggregated array)"
+    lod2_polys = lod2.findall(".//gml:Polygon", NS)
+    assert len(lod2_polys) == 1, (
+        f"LoD 2 PV must be a single aggregated polygon, got {len(lod2_polys)}"
+    )
+
+    lod3 = pv.find("nrg3:lod3MultiSurface", NS)
+    assert lod3 is not None, "PV must carry lod3MultiSurface (per-panel array)"
+    lod3_polys = lod3.findall(".//gml:Polygon", NS)
+    assert len(lod3_polys) == 36, (
+        f"LoD 3 PV must carry one polygon per panel (36), got {len(lod3_polys)}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -274,6 +328,28 @@ def test_renodat_input_rejects_missing_geometry_source_file():
     invalid_data["geometry_sources"][0]["path"] = "../does_not_exist.stp"
 
     with pytest.raises(InputFileError, match="does not exist"):
+        build_city_model_from_feature_collection(
+            invalid_data,
+            base_path=Path(INPUT).parent,
+        )
+
+
+def test_renodat_input_rejects_unresolved_installed_on():
+    """``installed_on`` referencing a nonexistent surface must fail loudly.
+
+    Silent no-op would let JSON typos slip past as missing relations that
+    nobody notices until a downstream consumer complains.
+    """
+    data = load_feature_collection(INPUT)
+    invalid_data = deepcopy(data)
+    for feature in invalid_data["features"]:
+        if feature.get("id") == "pv_panel_1":
+            feature["installed_on"] = ["RoofSurface_99"]
+            break
+    else:
+        pytest.fail("pv_panel_1 not in fixture")
+
+    with pytest.raises(InputFileError, match="RoofSurface_99"):
         build_city_model_from_feature_collection(
             invalid_data,
             base_path=Path(INPUT).parent,

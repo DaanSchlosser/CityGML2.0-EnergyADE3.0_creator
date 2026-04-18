@@ -21,11 +21,10 @@
   "geometry_sources": [
     {"type": "step-renodat-lod0", "path": "Owner-Occupier1_LOD0_STEP.stp", "target_building_id": "id_building_1"},
     {"type": "step-renodat-lod1", "path": "Owner-Occupier1_LOD1_STEP.stp", "target_building_id": "id_building_1"},
-    {"type": "step-renodat-lod2", "path": "Owner-Occupier1_LOD2_STEP.stp", "target_building_id": "id_building_1"},
+    {"type": "step-renodat-lod2", "path": "Owner-Occupier1_LOD2_STEP.stp", "target_building_id": "id_building_1", "target_pv_id": "pv_panel_1"},
     {"type": "step-renodat-lod3", "path": "Owner-Occupier1_LOD3_STEP.stp", "target_building_id": "id_building_1", "target_pv_id": "pv_panel_1"},
     {"type": "step-zonepart-lod3", "path": "Owner-Occupier1_ZonePart1_STEP.stp", "target_zone_part_id": "zone_part_1"},
-    {"type": "step-zonepart-lod3", "path": "Owner-Occupier1_ZonePart2_STEP.stp", "target_zone_part_id": "zone_part_2"},
-    {"type": "step-zonepart-lod3", "path": "Owner-Occupier1_ZonePart3_STEP.stp", "target_zone_part_id": "zone_part_3"}
+    {"type": "step-zonepart-lod3", "path": "Owner-Occupier1_ZonePart2_STEP.stp", "target_zone_part_id": "zone_part_2"}
   ],
   "features": [
     {
@@ -34,12 +33,18 @@
       "name": ["Han Solo's House"],
       "creation_date": "2026-04-04",
       "identifier": [{"value": "0000000000000001", "code_space": "https://example.invalid/bag"}],
-      "metadata": [{"author": "Daan Schlosser", "acquisition_method": "measurement", "owner": "Han Solo"}],
+      "metadata": [{
+        "author": "Daan Schlosser",
+        "acquisition_method": "measurement",
+        "owner": "Han Solo",
+        "quality_description": "Gross floor area disagrees between BAG register (122.0 m2) and the measured 3D model (119.6 m2); both values are retained as separate QualifiedArea entries so downstream tooling can pick the provenance it trusts.",
+        "source": "BAG + RenoDAT measurement survey"
+      }],
       "class_value": {"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"},
       "function": [{"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml"}],
       "usage": [{"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml"}],
       "year_of_construction": "2020",
-      "roof_type": {"value": "1030", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml"},
+      "roof_type": {"value": "1130", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml"},
       "storeys_above_ground": 3,
       "storeys_below_ground": 0,
       "bdg_is_protected": [false],
@@ -47,11 +52,47 @@
       "bdg_owner_name": ["Han Solo"],
       "bdg_ownership_type": [{"value": "occupantPrivateOwner", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml"}],
       "bdg_type": [{"value": "singleFamilyHouse", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingTypeValue.xml"}],
+      "bdg_area": [
+        {
+          "qualified_area": {
+            "description": "Gross floor area as registered in the Dutch BAG (Basisregistratie Adressen en Gebouwen).",
+            "source": "BAG (oppervlakteverblijfsobject, VBO 0000000000000001)",
+            "value": {"value": 122.0, "uom": "m2"},
+            "type_value": {"value": "grossFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
+          }
+        },
+        {
+          "qualified_area": {
+            "description": "Gross floor area derived from the RenoDAT 3D measurement model (outer-wall envelope, including internal walls).",
+            "source": "3D model (LOD3 STEP geometry)",
+            "value": {"value": 119.6, "uom": "m2"},
+            "type_value": {"value": "grossFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
+          }
+        },
+        {
+          "qualified_area": {
+            "description": "Net (usable) floor area from the RenoDAT 3D measurement model (inside-face of outer walls, minus internal walls).",
+            "source": "3D model (LOD3 STEP geometry)",
+            "value": {"value": 104.2, "uom": "m2"},
+            "type_value": {"value": "netFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
+          }
+        }
+      ],
+      "bdg_height": [
+        {
+          "qualified_height": {
+            "description": "Building height measured from ground-floor level to highest roof point.",
+            "source": "3D model (LOD3 STEP geometry)",
+            "value": {"value": 8.75, "uom": "m"},
+            "type_value": {"value": "maxHeightAboveGround", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeightTypeValue.xml"}
+          }
+        }
+      ],
       "bdg_volume": [
         {
           "qualified_volume": {
-            "description": "Building's gross volume of 3D model",
-            "source": "3D model",
+            "description": "Building's gross volume derived from the 3D model.",
+            "source": "3D model (LOD3 STEP geometry)",
             "value": {"value": 823.30, "uom": "m3"},
             "type_value": {"value": "grossVolume", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/VolumeTypeValue.xml"}
           }
@@ -70,7 +111,8 @@
       "installed_power": {"value": 9720, "uom": "W"},
       "azimuth": {"value": 235.65, "uom": "deg"},
       "inclination": {"value": 44.51, "uom": "deg"},
-      "cell_type": {"value": "unknown", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml"}
+      "cell_type": {"value": "unknown", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml"},
+      "installed_on": ["RoofSurface_01", "RoofSurface_02"]
     },
     {
       "type": "nrg3:HeatPump",
@@ -83,7 +125,7 @@
       "identifier": [{"value": "F1255 PC", "code_space": "https://www.nibe.eu/nl-nl/producten/warmtepompen/water-water-warmtepompen/f1255-pc"}],
       "number_of_devices": 1,
       "installed_power": {"value": 6000, "uom": "W"},
-      "heat_source": {"value": "waterSource", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceTypeValue.xml"},
+      "heat_source": {"value": "waterSource", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
       "cop_source_temperature": {"value": 24, "uom": "degC"},
       "cop_operation_temperature": {"value": 31, "uom": "degC"}
     },
@@ -213,18 +255,6 @@
       "id": "zone_part_2_cooling_schedule",
       "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
       "value": {"value": 24, "uom": "\u00b0C"}
-    },
-    {
-      "type": "nrg3:ZonePart",
-      "parent": "zone_1",
-      "id": "zone_part_3",
-      "description": "Attic / second floor, not heated or cooled",
-      "name": ["Attic"],
-      "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
-      "is_heated": false,
-      "is_cooled": false,
-      "coincides_with_lod2_hull": false,
-      "coincides_with_lod3_hull": false
     },
     {
       "type": "nrg3:MonthlyTimeSeries",

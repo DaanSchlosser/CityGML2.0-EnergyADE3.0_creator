@@ -43,6 +43,23 @@ from citygml_energy.bindings import (
     ZonePart,
     ZonePartPropertyType,
 )
+from citygml_energy.namespaces import (
+    CS_BUILDING_CLASS,
+    CS_BUILDING_FUNCTION,
+    CS_BUILDING_ROOFTYPE,
+    CS_NRG3_BUILDING_TYPE,
+    CS_NRG3_CELL_TYPE,
+    CS_NRG3_CURRENT_USE,
+    CS_NRG3_ENERGY_END_USE,
+    CS_NRG3_ENERGY_TYPE,
+    CS_NRG3_EPC_TYPE,
+    CS_NRG3_EV_SPEED_LEVEL,
+    CS_NRG3_EV_STATION_TYPE,
+    CS_NRG3_HEAT_SOURCE,
+    CS_NRG3_OCCUPANTS_TYPE,
+    CS_NRG3_RESOURCE_OPERATION_TYPE,
+    CS_NRG3_SCHEDULE_TYPE,
+)
 from citygml_energy.serialization import serialize_to_string
 from tools.validate_xsd import load_schema
 
@@ -74,23 +91,12 @@ def test_building_validates(xsd_schema):
     building = Building(
         id="bldg_1",
         name=[Name(value="Test house")],
-        class_value=CodeType(
-            value="1000",
-            code_space="http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml",
-        ),
-        function=[
-            CodeType(
-                value="1000",
-                code_space="http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml",
-            )
-        ],
+        class_value=CodeType(value="1000", code_space=CS_BUILDING_CLASS),
+        function=[CodeType(value="1000", code_space=CS_BUILDING_FUNCTION)],
         year_of_construction=XmlPeriod("2020"),
         storeys_above_ground=2,
         storeys_below_ground=0,
-        roof_type=CodeType(
-            value="1030",
-            code_space="https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml",
-        ),
+        roof_type=CodeType(value="1030", code_space=CS_BUILDING_ROOFTYPE),
     )
     model = CityModel(city_object_member=[CityObjectMember(building=building)])
     _validate(model, xsd_schema)
@@ -106,10 +112,7 @@ def test_pv_collector_validates(xsd_schema):
         installed_power=MeasureType(value=9720, uom="W"),
         azimuth=AngleType(value=235.65, uom="deg"),
         inclination=AngleType(value=44.51, uom="deg"),
-        cell_type=CodeType(
-            value="monocrystalline",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml",
-        ),
+        cell_type=CodeType(value="monocrystalline", code_space=CS_NRG3_CELL_TYPE),
     )
     building = Building(
         id="bldg_1",
@@ -124,10 +127,7 @@ def test_heat_pump_validates(xsd_schema):
         id="hp_1",
         model="NIBE F1255 PC",
         installed_power=MeasureType(value=6000, uom="W"),
-        heat_source=CodeType(
-            value="waterSource",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceTypeValue.xml",
-        ),
+        heat_source=CodeType(value="waterSource", code_space=CS_NRG3_HEAT_SOURCE),
         cop_source_temperature=MeasureType(value=24, uom="degC"),
         cop_operation_temperature=MeasureType(value=31, uom="degC"),
     )
@@ -142,14 +142,8 @@ def test_heat_pump_validates(xsd_schema):
 def test_ev_charging_station_validates(xsd_schema):
     ev = EvchargingStation(
         id="ev_1",
-        type_value=CodeType(
-            value="AC",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml",
-        ),
-        charging_speed_level=CodeType(
-            value="Level 2",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingSpeedLevelValue.xml",
-        ),
+        type_value=CodeType(value="AC", code_space=CS_NRG3_EV_STATION_TYPE),
+        charging_speed_level=CodeType(value="Level 2", code_space=CS_NRG3_EV_SPEED_LEVEL),
         has_load_management=True,
     )
     building = Building(
@@ -163,10 +157,7 @@ def test_ev_charging_station_validates(xsd_schema):
 def test_occupants_validates(xsd_schema):
     occ = Occupants(
         id="occ_1",
-        type_value=CodeType(
-            value="residents",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml",
-        ),
+        type_value=CodeType(value="residents", code_space=CS_NRG3_OCCUPANTS_TYPE),
         number_of_occupants=4,
         heat_dissipation=MeasureType(value=80, uom="W"),
     )
@@ -181,10 +172,7 @@ def test_occupants_validates(xsd_schema):
 def test_epc_validates(xsd_schema):
     epc = EnergyPerformanceCertificate1(
         id="epc_1",
-        type_value=CodeType(
-            value="EPC-NL",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EPCTypeValue.xml",
-        ),
+        type_value=CodeType(value="EPC-NL", code_space=CS_NRG3_EPC_TYPE),
         label="A",
         value=MeasureType(value=50, uom="kWh/(m^2*a)"),
     )
@@ -201,10 +189,7 @@ def test_epc_validates(xsd_schema):
 def test_building_unit_validates(xsd_schema):
     bu = BuildingUnit1(
         id="bu_1",
-        type_value=CodeType(
-            value="apartment",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingUnitTypeValue.xml",
-        ),
+        type_value=CodeType(value="apartment", code_space=CS_NRG3_BUILDING_TYPE),
         number_of_rooms=3,
         owner_name="Jane Doe",
     )
@@ -219,18 +204,12 @@ def test_building_unit_validates(xsd_schema):
 def test_constant_value_schedule_validates(xsd_schema):
     schedule = ConstantValueSchedule(
         id="sched_1",
-        type_value=CodeType(
-            value="typicalYear",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml",
-        ),
+        type_value=CodeType(value="typicalYear", code_space=CS_NRG3_SCHEDULE_TYPE),
         value=MeasureType(value=22, uom="degC"),
     )
     zone_part = ZonePart(
         id="zp_1",
-        type_value=CodeType(
-            value="residential",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
-        ),
+        type_value=CodeType(value="residential", code_space=CS_NRG3_CURRENT_USE),
         is_heated=True,
         is_cooled=False,
         heating_schedule=AbstractSchedulePropertyType(
@@ -239,10 +218,7 @@ def test_constant_value_schedule_validates(xsd_schema):
     )
     zone = Zone1(
         id="zone_1",
-        type_value=CodeType(
-            value="residential",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml",
-        ),
+        type_value=CodeType(value="residential", code_space=CS_NRG3_CURRENT_USE),
         zone_part=[ZonePartPropertyType(zone_part=zone_part)],
     )
     building = Building(
@@ -256,27 +232,15 @@ def test_constant_value_schedule_validates(xsd_schema):
 def test_energy_resource_validates(xsd_schema):
     energy = Energy(
         id="energy_1",
-        operation_type=CodeType(
-            value="demands",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml",
-        ),
+        operation_type=CodeType(value="demands", code_space=CS_NRG3_RESOURCE_OPERATION_TYPE),
         is_amount_normalized=False,
-        type_value=CodeType(
-            value="finalEnergy",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml",
-        ),
-        end_use=CodeType(
-            value="mobility",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml",
-        ),
+        type_value=CodeType(value="finalEnergy", code_space=CS_NRG3_ENERGY_TYPE),
+        end_use=CodeType(value="mobility", code_space=CS_NRG3_ENERGY_END_USE),
         amount=MeasureType(value=1.125, uom="MWh/a"),
     )
     ev = EvchargingStation(
         id="ev_1",
-        type_value=CodeType(
-            value="AC",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml",
-        ),
+        type_value=CodeType(value="AC", code_space=CS_NRG3_EV_STATION_TYPE),
         resource=[Resource(energy=energy)],
     )
     building = Building(
@@ -314,24 +278,15 @@ def test_window_on_wall_validates(xsd_schema):
 def test_multiple_devices_validate(xsd_schema):
     pv = PhotovoltaicCollector(
         id="pv_1",
-        cell_type=CodeType(
-            value="monocrystalline",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml",
-        ),
+        cell_type=CodeType(value="monocrystalline", code_space=CS_NRG3_CELL_TYPE),
     )
     hp = HeatPump(
         id="hp_1",
-        heat_source=CodeType(
-            value="airSource",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceTypeValue.xml",
-        ),
+        heat_source=CodeType(value="airSource", code_space=CS_NRG3_HEAT_SOURCE),
     )
     ev = EvchargingStation(
         id="ev_1",
-        type_value=CodeType(
-            value="AC",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml",
-        ),
+        type_value=CodeType(value="AC", code_space=CS_NRG3_EV_STATION_TYPE),
     )
     building = Building(
         id="bldg_1",
@@ -370,29 +325,17 @@ def test_monthly_time_series_validates(xsd_schema):
     )
     energy = Energy(
         id="energy_1",
-        operation_type=CodeType(
-            value="produces",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml",
-        ),
+        operation_type=CodeType(value="produces", code_space=CS_NRG3_RESOURCE_OPERATION_TYPE),
         is_amount_normalized=False,
-        type_value=CodeType(
-            value="finalEnergy",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml",
-        ),
-        end_use=CodeType(
-            value="electricalAppliances",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml",
-        ),
+        type_value=CodeType(value="finalEnergy", code_space=CS_NRG3_ENERGY_TYPE),
+        end_use=CodeType(value="electricalAppliances", code_space=CS_NRG3_ENERGY_END_USE),
         time_dependent_amount=AbstractTimeSeriesPropertyType(
             monthly_time_series=ts,
         ),
     )
     pv = PhotovoltaicCollector(
         id="pv_1",
-        cell_type=CodeType(
-            value="monocrystalline",
-            code_space="http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml",
-        ),
+        cell_type=CodeType(value="monocrystalline", code_space=CS_NRG3_CELL_TYPE),
         resource=[Resource(energy=energy)],
     )
     building = Building(

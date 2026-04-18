@@ -19,6 +19,7 @@ from .geometry import (
     GEOMETRY_SOURCE_SPECS,
     SUPPORTED_GEOMETRY_SOURCE_TYPES,
     apply_construction_mapping,
+    apply_device_relations,
     apply_geometry_sources,
 )
 from .mapping import attach_child, build_from_dict, resolve_class
@@ -32,7 +33,7 @@ PathLike = str | Path
 _NCNAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
 
 # Keys that live at the feature level, not passed to build_from_dict.
-_FEATURE_META_KEYS = frozenset({"type", "parent", "parent_field"})
+_FEATURE_META_KEYS = frozenset({"type", "parent", "parent_field", "installed_on"})
 
 _ALLOWED_TOP_LEVEL_KEYS = {
     "$schema",
@@ -221,6 +222,10 @@ def build_city_model_from_feature_collection(
     # parent may appear after its child in the features list.
     id_index: dict[str, Any] = {}
     built: list[tuple[str | None, str | None, Any]] = []
+    # Device-to-surface relations declared on feature dicts via the
+    # pseudo-field ``installed_on``. Deferred until after geometry apply
+    # because the referenced surface gml:ids don't exist yet.
+    device_relations: dict[str, list[str]] = {}
 
     for index, feature in enumerate(data["features"]):
         cls = resolve_class(feature["type"])
@@ -236,6 +241,17 @@ def build_city_model_from_feature_collection(
         gml_id = feature.get("id")
         if gml_id:
             id_index[gml_id] = obj
+            installed_on = feature.get("installed_on")
+            if installed_on:
+                if not (
+                    isinstance(installed_on, list)
+                    and all(isinstance(t, str) and t for t in installed_on)
+                ):
+                    raise InputFileError(
+                        f"features[{index}] (id={gml_id!r}): 'installed_on' must be a "
+                        f"non-empty list of strings, got {installed_on!r}"
+                    )
+                device_relations[gml_id] = list(installed_on)
 
     for parent_id, parent_field, obj in built:
         if parent_id is None:
@@ -273,6 +289,14 @@ def build_city_model_from_feature_collection(
         srs_name=srs_name,
         srs_dimension=srs_dimension,
     )
+
+    # Device-to-surface relations resolve against the surface_name_index
+    # populated during apply_geometry_sources, so they must run *after*
+    # geometry attachment.
+    try:
+        apply_device_relations(model, device_relations)
+    except ValueError as exc:
+        raise InputFileError(str(exc)) from exc
 
     construction_mapping = data.get("construction_mapping")
     if construction_mapping is not None:

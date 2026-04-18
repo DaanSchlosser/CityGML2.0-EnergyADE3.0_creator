@@ -203,6 +203,18 @@ def build_schema() -> dict[str, Any]:
                                 "Only needed when auto-discovery is ambiguous."
                             ),
                         },
+                        "installed_on": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {"type": "string", "minLength": 1},
+                            "description": (
+                                "Device-to-surface relations. Each entry is a STEP "
+                                "layer name (e.g. 'RoofSurface_02') or any gml:id "
+                                "present in the model; the loader emits one "
+                                "nrg3:CityObjectRelation with relationType='installedOn' "
+                                "per entry, resolving the target after geometry apply."
+                            ),
+                        },
                     },
                 },
             },
