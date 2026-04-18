@@ -45,6 +45,11 @@ class StepShell:
     authors typically encode semantics there (``WallSurface_3``,
     ``Window_2|parent=WallSurface_3``). *parent_name* is populated from a
     ``|parent=...`` suffix if present; otherwise ``None``.
+
+    The geometric parent linkage is a *geometry* concern — "this opening
+    is a hole in this wall". Semantic device-to-surface relations
+    (``installedOn``, etc.) are carried in the input JSON, not derived
+    from STEP layer names.
     """
 
     object_name: str

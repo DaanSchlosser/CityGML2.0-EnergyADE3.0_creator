@@ -14,12 +14,15 @@ XSD-agnostic by design:
 
 * No concrete xsdata class (``Building``, ``WallSurface2``,
   ``BoundarySurfacePropertyType2``, ...) is imported at module scope. Target
-  types are resolved by XSD-qualified name (``"bldg:Building"``) through
-  :func:`citygml_energy.mapping.resolve_class`, and the surface / opening
-  taxonomies are auto-discovered from the generated dataclass metadata on
-  the ``bounded_by`` and ``opening`` wrappers. Regenerating the bindings
-  from a modified XSD — new surface classes, renamed dedup suffixes,
-  extended Energy-ADE variants — is therefore picked up automatically.
+  types are resolved by XSD-qualified name through
+  :func:`citygml_energy.mapping.resolve_class`, with the qualified names
+  pulled from :mod:`citygml_energy.schema_types` so every schema-bound
+  string literal in the pipeline lives in one reviewable place. Surface
+  and opening taxonomies are auto-discovered from the generated dataclass
+  metadata on the ``bounded_by`` and ``opening`` wrappers. Regenerating
+  the bindings from a modified XSD — new surface classes, renamed dedup
+  suffixes, extended Energy-ADE variants — is therefore picked up
+  automatically.
 * Only GML primitives (``Polygon``, ``MultiSurface``, ``Solid``,
   ``Envelope``, ``PosList`` ...) are imported up-front; those are GML
   3.1.1 wire types that would need to stay stable for any CityGML-derived
@@ -47,53 +50,116 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
+from ._gml_builders import (
+    build_envelope,
+    build_multi_surface,
+    build_solid,
+    open_ring,
+)
 from ._step import (
     Coord3D,
     GeometryPolygon,
     StepShell,
     parse_all_polygons,
     parse_named_shells,
-    points_close,
 )
 from .bindings import (
     AbstractCityObjectPropertyType,
-    BoundedBy,
     CityObjectRelation,
     CodeType,
-    CompositeSurface,
-    DirectPositionType,
     Envelope,
-    Exterior,
-    Interior,
-    LayeredConstruction2,
-    LinearRing,
-    MultiSurface,
-    MultiSurfacePropertyType,
-    Polygon,
-    PosList,
     RelatedTo,
-    Solid,
-    SolidPropertyType,
-    SurfaceMember,
-    SurfacePropertyType,
 )
 from .core import CityModel
-from .mapping import find_by_id, get_fields, iter_instances, resolve_class
+from .mapping import get_fields, iter_instances, resolve_class
 from .namespaces import (
     CS_NRG3_RELATION_TYPE,
     DEFAULT_SRS_DIMENSION,
     DEFAULT_SRS_NAME,
 )
+from .schema_types import (
+    BUILDING,
+    LAYERED_CONSTRUCTION,
+    PHOTOVOLTAIC_COLLECTOR,
+    ZONE_PART,
+)
 
 # ---------------------------------------------------------------------------
-# STEP layer naming convention (RenoDAT)
+# STEP layer naming convention (RenoDAT default — overridable per source)
 # ---------------------------------------------------------------------------
 _LOD_PREFIX_RE = re.compile(r"^lod\d+(?:\.\d+)?_", re.IGNORECASE)
-_SOLAR_PANEL_PREFIX = "SolarPanelSurface_"
+DEFAULT_SOLAR_PANEL_PREFIX = "SolarPanelSurface_"
+DEFAULT_INSTALLED_ON_RELATION = "installedOn"
 
 _FEATURE_KIND_SURFACE = "surface"
 _FEATURE_KIND_OPENING = "opening"
 _FEATURE_KIND_SOLAR = "solar"
+
+
+# ---------------------------------------------------------------------------
+# Per-invocation rendering context
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _RenderContext:
+    """Bundle of per-run configuration and shared caches.
+
+    Built once by :func:`apply_geometry_sources` and threaded through the
+    handlers, so deeply-nested helpers don't accumulate long parameter
+    lists. ``feature_index`` is built up front from the existing model
+    tree (``gml:id → object``), giving handlers O(1) lookups instead of
+    one DFS per target reference. ``surface_name_index`` maps the STEP
+    layer name of every attached boundary surface (e.g. ``"RoofSurface_01"``)
+    to the auto-assigned ``gml:id`` — this is the bridge that lets the
+    JSON input declare relations (``installed_on``) against stable
+    author-facing names without having to know the generated id layout.
+    """
+
+    origin: Coord3D
+    srs_name: str
+    srs_dimension: int
+    type_counters: dict[tuple[str, str], int]
+    feature_index: dict[str, Any]
+    surface_name_index: dict[str, str]
+
+    def require_feature(self, gml_id: str, expected_type: type[Any]) -> Any:
+        """Return the indexed feature for *gml_id*, asserting its xsdata class."""
+        match = self.feature_index.get(gml_id)
+        if match is None:
+            raise ValueError(f"Feature {gml_id!r} was not found in the generated city model")
+        if not isinstance(match, expected_type):
+            raise ValueError(
+                f"Feature {gml_id!r} exists but is not a {expected_type.__name__} "
+                f"(found {type(match).__name__})"
+            )
+        return match
+
+    def next_gml_id(self, prefix: str, element_cls: type[Any]) -> str:
+        """Allocate ``"<prefix>_<TypeName>_<n>"`` and bump the counter."""
+        key = (prefix, element_cls.__name__)
+        self.type_counters[key] = self.type_counters.get(key, 0) + 1
+        return f"{prefix}_{element_cls.__name__}_{self.type_counters[key]}"
+
+
+@dataclass(frozen=True)
+class _SurfaceRecord:
+    """A bounded_by surface that has been attached to a building."""
+
+    surface: Any
+    polygons: list[GeometryPolygon]
+    gml_id: str
+
+
+@dataclass
+class _AttachmentBuckets:
+    """Intermediate state collected while walking classified STEP features."""
+
+    surface_data: dict[str, _SurfaceRecord]
+    pending_openings: list[_ClassifiedFeature]
+    solar_polygons: list[GeometryPolygon]
+    solar_roof_parents: set[str]
+    all_coordinates: list[Coord3D]
 
 
 # ---------------------------------------------------------------------------
@@ -105,9 +171,11 @@ _FEATURE_KIND_SOLAR = "solar"
 class TargetFieldSpec:
     """A feature-ID reference that a geometry source may carry.
 
-    *xsd_type* is the XSD-qualified element name (e.g. ``"bldg:Building"``);
-    it is resolved through :func:`citygml_energy.mapping.resolve_class` at
-    application time so nothing is coupled to a specific xsdata class.
+    *xsd_type* is the XSD-qualified element name; see
+    :mod:`citygml_energy.schema_types` for the central set of constants.
+    Resolution through :func:`citygml_energy.mapping.resolve_class` at
+    application time means nothing here is coupled to a specific xsdata
+    class or to a specific bindings revision.
     """
 
     xsd_type: str
@@ -118,27 +186,29 @@ class TargetFieldSpec:
 class GeometrySourceSpec:
     """Contract for one JSON ``geometry_sources[*]`` type.
 
-    The input loader uses the :attr:`target_fields` mapping to validate
-    each source; :func:`apply_geometry_sources` uses :attr:`handler` to
-    know which routine to dispatch to.
+    The input loader uses :attr:`target_fields` to validate each source;
+    :func:`apply_geometry_sources` uses :attr:`handler` to know which
+    routine to dispatch to. :attr:`solar_panel_prefix` lets non-RenoDAT
+    callers rename the STEP layer prefix that triggers solar-panel
+    handling. Device-to-surface ``installedOn`` relations are declared
+    in the JSON input, not derived from STEP naming —
+    see :func:`apply_device_relations`.
     """
 
     source_type: str
     lod_level: int
     target_fields: dict[str, TargetFieldSpec]
-    primary_target_field: str
     handler: str
+    solar_panel_prefix: str = DEFAULT_SOLAR_PANEL_PREFIX
 
     def required_fields(self) -> tuple[str, ...]:
+        """Required ``target_*`` field names for JSON-schema ``required``."""
         return tuple(name for name, spec in self.target_fields.items() if spec.required)
 
-    def optional_fields(self) -> tuple[str, ...]:
-        return tuple(name for name, spec in self.target_fields.items() if not spec.required)
 
-
-_BUILDING_TARGET = TargetFieldSpec(xsd_type="bldg:Building", required=True)
-_PV_TARGET = TargetFieldSpec(xsd_type="nrg3:PhotovoltaicCollector", required=False)
-_ZONEPART_TARGET = TargetFieldSpec(xsd_type="nrg3:ZonePart", required=True)
+_BUILDING_TARGET = TargetFieldSpec(xsd_type=BUILDING, required=True)
+_PV_TARGET = TargetFieldSpec(xsd_type=PHOTOVOLTAIC_COLLECTOR, required=False)
+_ZONEPART_TARGET = TargetFieldSpec(xsd_type=ZONE_PART, required=True)
 
 
 def _build_source_specs() -> dict[str, GeometrySourceSpec]:
@@ -151,7 +221,6 @@ def _build_source_specs() -> dict[str, GeometrySourceSpec]:
                 "target_building_id": _BUILDING_TARGET,
                 "target_pv_id": _PV_TARGET,
             },
-            primary_target_field="target_building_id",
             handler="building",
         )
     for lod in range(4):
@@ -161,7 +230,6 @@ def _build_source_specs() -> dict[str, GeometrySourceSpec]:
             target_fields={
                 "target_zone_part_id": _ZONEPART_TARGET,
             },
-            primary_target_field="target_zone_part_id",
             handler="zonepart",
         )
     return specs
@@ -214,11 +282,14 @@ def _discover_property_map(wrapper_cls: type) -> dict[str, _PropertyEntry]:
     return entries
 
 
+@cache
 def _discover_wrapper(parent_cls: type, list_field: str) -> type | None:
     """Return the property-type wrapper for a list field on *parent_cls*.
 
     Example: ``_discover_wrapper(Building, "bounded_by")`` →
-    ``BoundarySurfacePropertyType2``.
+    ``BoundarySurfacePropertyType2``. Cached because we call it repeatedly
+    with the same ``(surface_class, "opening")`` pairs during classification
+    and attachment.
     """
     info = get_fields(parent_cls).get(list_field)
     if info is None or not info.is_list:
@@ -264,12 +335,21 @@ def apply_geometry_sources(
     expressed in real-world coordinates. *srs_name* and *srs_dimension*
     are written verbatim onto every produced ``gml:MultiSurface`` /
     ``gml:Solid`` and onto the computed ``gml:Envelope``.
-    """
-    all_coordinates: list[Coord3D] = []
 
-    # Shared counters across sources so surfaces produced at different
-    # LOD levels for the same building get unique gml:ids.
-    type_counters: dict[tuple[str, str], int] = {}
+    Features are indexed by ``gml:id`` once up front, so each source
+    resolves its targets (Building, ZonePart, PhotovoltaicCollector) in
+    O(1) regardless of how many sources the caller passes.
+    """
+    ctx = _RenderContext(
+        origin=origin,
+        srs_name=srs_name,
+        srs_dimension=srs_dimension,
+        type_counters={},
+        feature_index=_index_features(model),
+        surface_name_index=model.surface_name_index,
+    )
+
+    all_coordinates: list[Coord3D] = []
 
     for source in geometry_sources:
         source_type = source.get("type")
@@ -279,26 +359,9 @@ def apply_geometry_sources(
 
         step_path = Path(str(source["path"]))
         if spec.handler == "building":
-            coords = _apply_building_source(
-                model,
-                spec=spec,
-                step_path=step_path,
-                source=source,
-                type_counters=type_counters,
-                origin=origin,
-                srs_name=srs_name,
-                srs_dimension=srs_dimension,
-            )
+            coords = _apply_building_source(ctx, spec=spec, step_path=step_path, source=source)
         elif spec.handler == "zonepart":
-            coords = _apply_zonepart_source(
-                model,
-                spec=spec,
-                step_path=step_path,
-                source=source,
-                origin=origin,
-                srs_name=srs_name,
-                srs_dimension=srs_dimension,
-            )
+            coords = _apply_zonepart_source(ctx, spec=spec, step_path=step_path, source=source)
         else:
             raise RuntimeError(
                 f"GeometrySourceSpec {spec.source_type!r} has unknown handler {spec.handler!r}"
@@ -308,8 +371,89 @@ def apply_geometry_sources(
     if all_coordinates:
         _set_envelope(
             model,
-            _compute_envelope(all_coordinates, srs_name=srs_name, srs_dimension=srs_dimension),
+            build_envelope(all_coordinates, srs_name=srs_name, srs_dimension=srs_dimension),
         )
+
+
+def _index_features(model: CityModel) -> dict[str, Any]:
+    """Build ``{gml:id → object}`` for every indexable feature under *model*."""
+    index: dict[str, Any] = {}
+    for obj in iter_instances(model.xsd):
+        gml_id = getattr(obj, "id", None)
+        if isinstance(gml_id, str) and gml_id:
+            # First occurrence wins. XSD requires ids to be unique, so
+            # collisions would surface at serialization; we don't second-guess
+            # the input here.
+            index.setdefault(gml_id, obj)
+    return index
+
+
+def apply_device_relations(
+    model: CityModel,
+    device_relations: dict[str, list[str]],
+    *,
+    relation_type: str = DEFAULT_INSTALLED_ON_RELATION,
+) -> None:
+    """Emit ``nrg3:CityObjectRelation`` entries from JSON-declared targets.
+
+    *device_relations* maps a device's ``gml:id`` (e.g. ``"pv_panel_1"``)
+    to a list of surface references. Each reference is first looked up in
+    :attr:`CityModel.surface_name_index` (so author-facing STEP layer
+    names like ``"RoofSurface_01"`` work), then falls back to the
+    gml:id-keyed feature index — meaning JSON may cite any indexable
+    ``gml:id`` directly too.
+
+    Unresolved references raise :class:`ValueError` to fail loudly rather
+    than emit a dangling xlink:href. Devices that are themselves
+    unresolved also raise, because a silent no-op here would make typos
+    in the JSON invisible until someone checks the GML by hand.
+
+    The default *relation_type* is ``installedOn`` (the EnergyADE 3.0
+    codelist value for device-on-surface placement); callers needing
+    other relation semantics pass a different code.
+    """
+    if not device_relations:
+        return
+
+    feature_index = _index_features(model)
+    surface_name_index = model.surface_name_index
+
+    for device_id, targets in device_relations.items():
+        device = feature_index.get(device_id)
+        if device is None:
+            raise ValueError(
+                f"apply_device_relations: device {device_id!r} not found in model; "
+                f"installed_on references an unknown feature id"
+            )
+        if not hasattr(device, "related_to"):
+            raise ValueError(
+                f"apply_device_relations: feature {device_id!r} "
+                f"({type(device).__name__}) has no 'related_to' field — "
+                f"the XSD does not permit ADE relations on this type"
+            )
+
+        for target_ref in targets:
+            target_gml_id = surface_name_index.get(target_ref) or (
+                target_ref if target_ref in feature_index else None
+            )
+            if target_gml_id is None:
+                known = ", ".join(sorted(surface_name_index)) or "(none attached yet)"
+                raise ValueError(
+                    f"apply_device_relations: target {target_ref!r} for "
+                    f"{device_id!r} could not be resolved to any attached "
+                    f"surface or indexed gml:id. Known STEP surface names: {known}"
+                )
+            device.related_to.append(
+                RelatedTo(
+                    city_object_relation=CityObjectRelation(
+                        relation_type=CodeType(
+                            value=relation_type,
+                            code_space=CS_NRG3_RELATION_TYPE,
+                        ),
+                        related_to=_make_city_object_ref(target_gml_id),
+                    ),
+                )
+            )
 
 
 def apply_construction_mapping(
@@ -349,16 +493,13 @@ def apply_construction_mapping(
 
 
 def _apply_building_source(
-    model: CityModel,
+    ctx: _RenderContext,
     *,
     spec: GeometrySourceSpec,
     step_path: Path,
     source: dict[str, Any],
-    type_counters: dict[tuple[str, str], int],
-    origin: Coord3D,
-    srs_name: str,
-    srs_dimension: int,
 ) -> list[Coord3D]:
+    """Handle one ``step-renodat-lod{0..4}`` source."""
     target_building_id = str(source["target_building_id"])
     target_pv_id = (
         str(source["target_pv_id"]) if source.get("target_pv_id") is not None else None
@@ -366,17 +507,14 @@ def _apply_building_source(
 
     if spec.lod_level <= 1:
         return _apply_aggregate_building_geometry(
-            model,
+            ctx,
             step_path=step_path,
             target_building_id=target_building_id,
             lod_level=spec.lod_level,
-            origin=origin,
-            srs_name=srs_name,
-            srs_dimension=srs_dimension,
         )
 
-    building_cls = resolve_class("bldg:Building")
-    building = _require_feature(model, target_building_id, building_cls)
+    building_cls = resolve_class(BUILDING)
+    building = ctx.require_feature(target_building_id, building_cls)
 
     surface_wrapper = _discover_wrapper(building_cls, "bounded_by")
     if surface_wrapper is None:
@@ -385,79 +523,110 @@ def _apply_building_source(
         )
     surface_map = _discover_property_map(surface_wrapper)
 
-    shells = parse_named_shells(step_path, origin=origin)
-    features = [_classify_shell(step_path, shell, surface_map) for shell in shells]
+    shells = parse_named_shells(step_path, origin=ctx.origin)
+    # When the source declares a target_pv_id, any shell that does not
+    # match the surface / opening taxonomies falls through to the solar
+    # bucket. This accommodates aggregated LoD 2 / LoD 1 PV
+    # representations (a single unnamed "shell_1" in Rhino = the whole
+    # array) without loosening classification on sources that do not
+    # target a PV collector.
+    pv_target_declared = source.get("target_pv_id") is not None
+    features = [
+        _classify_shell(
+            step_path,
+            shell,
+            surface_map,
+            spec.solar_panel_prefix,
+            pv_target_declared=pv_target_declared,
+        )
+        for shell in shells
+    ]
 
-    return _attach_building_features(
-        building=building,
+    buckets = _process_classified_features(
+        ctx,
         features=features,
+        building=building,
         surface_wrapper=surface_wrapper,
-        source_path=step_path,
         target_building_id=target_building_id,
+        lod_level=spec.lod_level,
+        source_path=step_path,
+    )
+
+    _attach_pending_openings(
+        ctx,
+        buckets=buckets,
+        target_building_id=target_building_id,
+        lod_level=spec.lod_level,
+        source_path=step_path,
+    )
+
+    _attach_solar_panels(
+        ctx,
+        buckets=buckets,
         target_pv_id=target_pv_id,
         lod_level=spec.lod_level,
-        type_counters=type_counters,
-        srs_name=srs_name,
-        srs_dimension=srs_dimension,
-        model=model,
+        source_path=step_path,
     )
+
+    return buckets.all_coordinates
 
 
 def _apply_zonepart_source(
-    model: CityModel,
+    ctx: _RenderContext,
     *,
     spec: GeometrySourceSpec,
     step_path: Path,
     source: dict[str, Any],
-    origin: Coord3D,
-    srs_name: str,
-    srs_dimension: int,
 ) -> list[Coord3D]:
+    """Handle one ``step-zonepart-lod{0..3}`` source."""
     target_zone_part_id = str(source["target_zone_part_id"])
-    polygons, all_coordinates = parse_all_polygons(step_path, origin=origin)
+    polygons, all_coordinates = parse_all_polygons(step_path, origin=ctx.origin)
     if not polygons:
         raise ValueError(f"STEP geometry {step_path} contains no polygon geometry")
 
-    zone_cls = resolve_class("nrg3:ZonePart")
-    zone = _require_feature(model, target_zone_part_id, zone_cls)
+    zone_cls = resolve_class(ZONE_PART)
+    zone = ctx.require_feature(target_zone_part_id, zone_cls)
     gml_id = f"{target_zone_part_id}_lod{spec.lod_level}"
 
     if spec.lod_level == 0:
-        zone.lod0_multi_surface = _build_multi_surface(
-            gml_id, polygons, srs_name=srs_name, srs_dimension=srs_dimension
+        zone.lod0_multi_surface = build_multi_surface(
+            gml_id, polygons, srs_name=ctx.srs_name, srs_dimension=ctx.srs_dimension
         )
     else:
-        solid = _build_solid(gml_id, polygons, srs_name=srs_name, srs_dimension=srs_dimension)
-        setattr(zone, f"lod{spec.lod_level}_solid", solid)
+        setattr(
+            zone,
+            f"lod{spec.lod_level}_solid",
+            build_solid(
+                gml_id, polygons, srs_name=ctx.srs_name, srs_dimension=ctx.srs_dimension
+            ),
+        )
 
     return all_coordinates
 
 
 def _apply_aggregate_building_geometry(
-    model: CityModel,
+    ctx: _RenderContext,
     *,
     step_path: Path,
     target_building_id: str,
     lod_level: int,
-    origin: Coord3D,
-    srs_name: str,
-    srs_dimension: int,
 ) -> list[Coord3D]:
-    polygons, all_coordinates = parse_all_polygons(step_path, origin=origin)
+    """LOD 0/1 aggregate attachment — footprint or block solid on a Building."""
+    polygons, all_coordinates = parse_all_polygons(step_path, origin=ctx.origin)
     if not polygons:
         raise ValueError(f"STEP geometry {step_path} contains no polygon geometry")
 
-    building_cls = resolve_class("bldg:Building")
-    building = _require_feature(model, target_building_id, building_cls)
+    building_cls = resolve_class(BUILDING)
+    building = ctx.require_feature(target_building_id, building_cls)
     gml_id = f"{target_building_id}_lod{lod_level}"
 
     if lod_level == 0:
-        building.lod0_foot_print = _build_multi_surface(
-            gml_id, polygons, srs_name=srs_name, srs_dimension=srs_dimension
+        building.lod0_foot_print = build_multi_surface(
+            gml_id, polygons, srs_name=ctx.srs_name, srs_dimension=ctx.srs_dimension
         )
     elif lod_level == 1:
-        building.lod1_solid = _build_solid(
-            gml_id, polygons, srs_name=srs_name, srs_dimension=srs_dimension
+        building.lod1_solid = build_solid(
+            gml_id, polygons, srs_name=ctx.srs_name, srs_dimension=ctx.srs_dimension
         )
     else:
         raise ValueError(
@@ -476,11 +645,22 @@ def _classify_shell(
     path: Path,
     shell: StepShell,
     surface_map: dict[str, _PropertyEntry],
+    solar_panel_prefix: str,
+    *,
+    pv_target_declared: bool = False,
 ) -> _ClassifiedFeature:
-    """Classify one STEP shell against the parent's surface taxonomy."""
+    """Classify one STEP shell against the parent's surface taxonomy.
+
+    When *pv_target_declared* is True (the enclosing source declared a
+    ``target_pv_id``), shells that do not match the surface / opening
+    taxonomies fall through to the solar bucket. This accommodates
+    aggregated-array LoD exports where Rhino emits a single unnamed
+    ``shell_1`` for the whole PV field instead of N named
+    ``SolarPanelSurface_*`` panels.
+    """
     classified_name = _strip_lod_prefix(shell.object_name)
 
-    if classified_name.startswith(_SOLAR_PANEL_PREFIX):
+    if classified_name.startswith(solar_panel_prefix):
         return _ClassifiedFeature(
             object_name=shell.object_name,
             parent_name=shell.parent_name,
@@ -518,11 +698,25 @@ def _classify_shell(
                 )
         break  # opening wrapper is uniform across surface siblings
 
+    # Fallthrough for "source declared a PV target but this shell has no
+    # solar / surface / opening name match" — treat it as solar. The
+    # opt-in via *pv_target_declared* keeps typos on non-PV sources
+    # failing loudly; on a source that *is* the PV export, unnamed
+    # shells are what Rhino produces by default and we accept them.
+    if pv_target_declared:
+        return _ClassifiedFeature(
+            object_name=shell.object_name,
+            parent_name=shell.parent_name,
+            kind=_FEATURE_KIND_SOLAR,
+            entry=None,
+            polygons=shell.polygons,
+        )
+
     known = sorted(surface_map)
     raise ValueError(
         f"STEP geometry {path} contains unsupported shell name {shell.object_name!r}. "
         f"Known surface types: {', '.join(known)}; solar layer prefix: "
-        f"{_SOLAR_PANEL_PREFIX!r}"
+        f"{solar_panel_prefix!r}"
     )
 
 
@@ -531,96 +725,136 @@ def _classify_shell(
 # ---------------------------------------------------------------------------
 
 
-def _attach_building_features(
+def _process_classified_features(
+    ctx: _RenderContext,
     *,
-    model: CityModel,
-    building: Any,
     features: list[_ClassifiedFeature],
+    building: Any,
     surface_wrapper: type,
-    source_path: Path,
     target_building_id: str,
-    target_pv_id: str | None,
     lod_level: int,
-    type_counters: dict[tuple[str, str], int],
-    srs_name: str,
-    srs_dimension: int,
-) -> list[Coord3D]:
-    lod_field = f"lod{lod_level}_multi_surface"
+    source_path: Path,
+) -> _AttachmentBuckets:
+    """Walk classified STEP features, attaching surfaces and collecting the rest.
 
-    # step_name → (surface_instance, polygons, gml_id)
-    surface_data: dict[str, tuple[Any, list[GeometryPolygon], str]] = {}
-    pending_openings: list[_ClassifiedFeature] = []
-    solar_panel_polygons: list[GeometryPolygon] = []
-    solar_panel_roof_parents: set[str] = set()
-    all_coordinates: list[Coord3D] = []
+    Surfaces become children of *building* immediately so they are visible
+    to subsequent opening-matching; openings and solar panels are queued
+    for the dedicated helpers below. Every exterior and interior vertex
+    seen along the way contributes to the envelope bounding box.
+    """
+    buckets = _AttachmentBuckets(
+        surface_data={},
+        pending_openings=[],
+        solar_polygons=[],
+        solar_roof_parents=set(),
+        all_coordinates=[],
+    )
+    lod_field = f"lod{lod_level}_multi_surface"
 
     for feature in features:
         if not feature.polygons:
             continue
 
         for polygon in feature.polygons:
-            all_coordinates.extend(polygon.exterior)
+            buckets.all_coordinates.extend(polygon.exterior)
             for interior in polygon.interiors:
-                all_coordinates.extend(interior)
+                buckets.all_coordinates.extend(interior)
 
         if feature.kind == _FEATURE_KIND_SOLAR:
-            solar_panel_polygons.extend(feature.polygons)
+            buckets.solar_polygons.extend(feature.polygons)
             if feature.parent_name:
-                solar_panel_roof_parents.add(feature.parent_name)
+                buckets.solar_roof_parents.add(feature.parent_name)
             continue
 
         if feature.kind == _FEATURE_KIND_SURFACE:
             assert feature.entry is not None
-            gml_id = _next_feature_id(
-                type_counters, target_building_id, feature.entry.element_cls
+            _attach_surface(
+                ctx,
+                feature=feature,
+                building=building,
+                surface_wrapper=surface_wrapper,
+                lod_field=lod_field,
+                lod_level=lod_level,
+                target_building_id=target_building_id,
+                buckets=buckets,
             )
-            surface = feature.entry.element_cls(
-                id=gml_id,
-                **{
-                    lod_field: _build_multi_surface(
-                        f"{gml_id}_lod{lod_level}",
-                        feature.polygons,
-                        srs_name=srs_name,
-                        srs_dimension=srs_dimension,
-                    )
-                },
-            )
-            building.bounded_by.append(
-                surface_wrapper(**{feature.entry.field_name: surface})
-            )
-            surface_data[feature.object_name] = (surface, feature.polygons, gml_id)
             continue
 
         if feature.kind == _FEATURE_KIND_OPENING:
-            pending_openings.append(feature)
+            buckets.pending_openings.append(feature)
             continue
 
         raise ValueError(
             f"Geometry source {source_path} produced unsupported feature kind {feature.kind!r}"
         )
 
-    # Match openings to parent surfaces by interior-ring geometry.
-    for feature in pending_openings:
+    return buckets
+
+
+def _attach_surface(
+    ctx: _RenderContext,
+    *,
+    feature: _ClassifiedFeature,
+    building: Any,
+    surface_wrapper: type,
+    lod_field: str,
+    lod_level: int,
+    target_building_id: str,
+    buckets: _AttachmentBuckets,
+) -> None:
+    """Build one boundary surface, append it to ``building.bounded_by``."""
+    assert feature.entry is not None
+    gml_id = ctx.next_gml_id(target_building_id, feature.entry.element_cls)
+    surface = feature.entry.element_cls(
+        id=gml_id,
+        **{
+            lod_field: build_multi_surface(
+                f"{gml_id}_lod{lod_level}",
+                feature.polygons,
+                srs_name=ctx.srs_name,
+                srs_dimension=ctx.srs_dimension,
+            )
+        },
+    )
+    building.bounded_by.append(surface_wrapper(**{feature.entry.field_name: surface}))
+    buckets.surface_data[feature.object_name] = _SurfaceRecord(
+        surface=surface, polygons=feature.polygons, gml_id=gml_id
+    )
+    # Expose STEP-name ↔ gml:id mapping on the model-wide index so JSON-
+    # declared relations (installed_on, …) can resolve against author-
+    # facing STEP layer names instead of auto-generated gml:ids.
+    ctx.surface_name_index[feature.object_name] = gml_id
+
+
+def _attach_pending_openings(
+    ctx: _RenderContext,
+    *,
+    buckets: _AttachmentBuckets,
+    target_building_id: str,
+    lod_level: int,
+    source_path: Path,
+) -> None:
+    """Match each opening to a parent surface (interior-ring overlap) and attach."""
+    lod_field = f"lod{lod_level}_multi_surface"
+    for feature in buckets.pending_openings:
         assert feature.entry is not None
-        parent_step_name = _match_opening_to_parent(feature, surface_data)
+        parent_step_name = _match_opening_to_parent(feature, buckets.surface_data)
         if parent_step_name is None:
             raise ValueError(
                 f"Opening in {source_path} could not be matched to any parent "
                 f"surface by interior-ring geometry"
             )
-        parent_surface = surface_data[parent_step_name][0]
+        parent_surface = buckets.surface_data[parent_step_name].surface
 
-        gml_id = _next_feature_id(
-            type_counters, target_building_id, feature.entry.element_cls
-        )
+        gml_id = ctx.next_gml_id(target_building_id, feature.entry.element_cls)
         opening_obj = feature.entry.element_cls(
             id=gml_id,
             **{
-                lod_field: _build_multi_surface(
+                lod_field: build_multi_surface(
                     f"{gml_id}_lod{lod_level}",
                     feature.polygons,
-                    srs_name=srs_name,
-                    srs_dimension=srs_dimension,
+                    srs_name=ctx.srs_name,
+                    srs_dimension=ctx.srs_dimension,
                 )
             },
         )
@@ -634,68 +868,67 @@ def _attach_building_features(
             opening_wrapper(**{feature.entry.field_name: opening_obj})
         )
 
-    if solar_panel_polygons:
-        if target_pv_id is None:
+
+def _attach_solar_panels(
+    ctx: _RenderContext,
+    *,
+    buckets: _AttachmentBuckets,
+    target_pv_id: str | None,
+    lod_level: int,
+    source_path: Path,
+) -> None:
+    """Attach solar-panel polygons to the PV collector as ``lodNMultiSurface``.
+
+    Device-to-surface relations (``installedOn`` etc.) are *metadata*
+    and belong in the JSON input — see :func:`apply_device_relations` —
+    so this function deliberately no longer derives them from STEP layer
+    names. The geometric ``|parent=RoofSurface_…`` link is still parsed
+    for opening-to-wall matching; it just no longer drives ADE relations.
+    """
+    if not buckets.solar_polygons:
+        if target_pv_id is not None:
             raise ValueError(
-                f"Geometry source {source_path} contains solar panel faces but no "
-                f"target_pv_id was configured"
+                f"Geometry source {source_path} configured target_pv_id={target_pv_id!r} "
+                f"but no solar panel faces were found"
             )
+        return
 
-        pv_cls = resolve_class("nrg3:PhotovoltaicCollector")
-        pv_collector = _require_feature(model, target_pv_id, pv_cls)
-        setattr(
-            pv_collector,
-            lod_field,
-            _build_multi_surface(
-                f"{target_pv_id}_lod{lod_level}",
-                solar_panel_polygons,
-                srs_name=srs_name,
-                srs_dimension=srs_dimension,
-            ),
-        )
-
-        for roof_step_name in sorted(solar_panel_roof_parents):
-            entry = surface_data.get(roof_step_name)
-            if entry is not None:
-                pv_collector.related_to.append(
-                    RelatedTo(
-                        city_object_relation=CityObjectRelation(
-                            relation_type=CodeType(
-                                value="installedOn",
-                                code_space=CS_NRG3_RELATION_TYPE,
-                            ),
-                            related_to=_make_city_object_ref(entry[2]),
-                        ),
-                    )
-                )
-    elif target_pv_id is not None:
+    if target_pv_id is None:
         raise ValueError(
-            f"Geometry source {source_path} configured target_pv_id={target_pv_id!r} "
-            f"but no solar panel faces were found"
+            f"Geometry source {source_path} contains solar panel faces but no "
+            f"target_pv_id was configured"
         )
 
-    return all_coordinates
-
-
-def _next_feature_id(
-    counters: dict[tuple[str, str], int],
-    building_id: str,
-    element_cls: type[Any],
-) -> str:
-    """Allocate ``"<building_id>_<TypeName>_<n>"`` and bump the counter."""
-    key = (building_id, element_cls.__name__)
-    counters[key] = counters.get(key, 0) + 1
-    return f"{building_id}_{element_cls.__name__}_{counters[key]}"
+    pv_cls = resolve_class(PHOTOVOLTAIC_COLLECTOR)
+    pv_collector = ctx.require_feature(target_pv_id, pv_cls)
+    lod_field = f"lod{lod_level}_multi_surface"
+    setattr(
+        pv_collector,
+        lod_field,
+        build_multi_surface(
+            f"{target_pv_id}_lod{lod_level}",
+            buckets.solar_polygons,
+            srs_name=ctx.srs_name,
+            srs_dimension=ctx.srs_dimension,
+        ),
+    )
 
 
 def _match_opening_to_parent(
     opening: _ClassifiedFeature,
-    surface_data: dict[str, tuple[Any, list[GeometryPolygon], str]],
+    surface_data: dict[str, _SurfaceRecord],
 ) -> str | None:
-    """Return the STEP name of the surface whose interior ring matches *opening*."""
+    """Return the STEP name of the surface whose interior ring matches *opening*.
+
+    Openings are linked to surfaces geometrically: Rhino exports a window as
+    a separate shell and punches its outline into the parent wall as an
+    interior (hole) ring. We match by comparing the opening's exterior
+    vertices to every surface's interior rings; the shared-edge floating-
+    point noise is absorbed by rounding (:func:`_ring_vertex_key`).
+    """
     opening_keys = {_ring_vertex_key(p.exterior) for p in opening.polygons}
-    for step_name, (_, polygons, _) in surface_data.items():
-        for polygon in polygons:
+    for step_name, record in surface_data.items():
+        for polygon in record.polygons:
             for interior in polygon.interiors:
                 if _ring_vertex_key(interior) in opening_keys:
                     return step_name
@@ -713,14 +946,8 @@ def _ring_vertex_key(
     """
     return frozenset(
         (round(v[0], precision), round(v[1], precision), round(v[2], precision))
-        for v in _open_ring(ring)
+        for v in open_ring(ring)
     )
-
-
-def _open_ring(ring: list[Coord3D]) -> list[Coord3D]:
-    if len(ring) > 1 and points_close(ring[0], ring[-1]):
-        return ring[:-1]
-    return ring
 
 
 def _strip_lod_prefix(name: str) -> str:
@@ -734,26 +961,7 @@ def _strip_lod_prefix(name: str) -> str:
 
 
 def _set_envelope(model: CityModel, envelope: Envelope) -> None:
-    model.xsd.opengis_net_gml_bounded_by = BoundedBy(envelope=envelope)
-
-
-def _compute_envelope(
-    coordinates: list[Coord3D],
-    *,
-    srs_name: str,
-    srs_dimension: int,
-) -> Envelope:
-    xs, ys, zs = zip(*coordinates, strict=True)
-    return Envelope(
-        lower_corner=DirectPositionType(
-            value=[min(xs), min(ys), min(zs)], srs_dimension=srs_dimension
-        ),
-        upper_corner=DirectPositionType(
-            value=[max(xs), max(ys), max(zs)], srs_dimension=srs_dimension
-        ),
-        srs_name=srs_name,
-        srs_dimension=srs_dimension,
-    )
+    model.set_envelope(envelope)
 
 
 # ---------------------------------------------------------------------------
@@ -761,14 +969,28 @@ def _compute_envelope(
 # ---------------------------------------------------------------------------
 
 
-def _make_construction_ref(construction_id: str) -> LayeredConstruction2:
-    return LayeredConstruction2(href=f"#{construction_id}")
+@cache
+def _layered_construction_ref_cls() -> type:
+    """Resolve the ``nrg3:layeredConstruction`` property-type wrapper once."""
+    return resolve_class(LAYERED_CONSTRUCTION)
+
+
+def _make_construction_ref(construction_id: str) -> Any:
+    """Build an xlink:href wrapper pointing at a LayeredConstruction library entry."""
+    return _layered_construction_ref_cls()(href=f"#{construction_id}")
 
 
 def _layered_construction_list(obj: Any) -> list[Any] | None:
-    """Return the ``layered_construction`` list on *obj* if present."""
+    """Return the ``layered_construction`` list on *obj* if present.
+
+    Also verifies the list's element type matches the
+    ``nrg3:layeredConstruction`` wrapper — the field name alone isn't
+    enough because unrelated xsdata classes could theoretically reuse it.
+    """
     info = get_fields(type(obj)).get("layered_construction")
     if info is None or not info.is_list:
+        return None
+    if info.inner_type is not _layered_construction_ref_cls():
         return None
     value = getattr(obj, "layered_construction", None)
     return value if isinstance(value, list) else None
@@ -801,233 +1023,13 @@ def _xsd_type_name(cls: type) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def _require_feature(model: CityModel, gml_id: str, expected_type: type[Any]) -> Any:
-    """Locate a feature by ``gml:id`` and assert its xsdata class."""
-    match = find_by_id(model.xsd, gml_id)
-    if match is None:
-        raise ValueError(f"Feature {gml_id!r} was not found in the generated city model")
-    if not isinstance(match, expected_type):
-        raise ValueError(f"Feature {gml_id!r} exists but is not a {expected_type.__name__}")
-    return match
-
-
 def _make_city_object_ref(gml_id: str) -> AbstractCityObjectPropertyType:
     return AbstractCityObjectPropertyType(href=f"#{gml_id}")
 
 
-# ---------------------------------------------------------------------------
-# GML geometry builders
-# ---------------------------------------------------------------------------
-
-
-def _build_multi_surface(
-    gml_id: str,
-    polygons: list[GeometryPolygon],
-    *,
-    srs_name: str,
-    srs_dimension: int,
-) -> MultiSurfacePropertyType:
-    members: list[SurfaceMember] = []
-    for index, polygon_geometry in enumerate(polygons, start=1):
-        polygon_id = f"{gml_id}_poly_{index}"
-        members.append(SurfaceMember(polygon=_build_polygon(polygon_id, polygon_geometry)))
-
-    return MultiSurfacePropertyType(
-        multi_surface=MultiSurface(
-            id=gml_id,
-            srs_name_attribute=srs_name,
-            srs_dimension=srs_dimension,
-            surface_member=members,
-        ),
-    )
-
-
-def _build_solid(
-    gml_id: str,
-    polygons: list[GeometryPolygon],
-    *,
-    srs_name: str,
-    srs_dimension: int,
-) -> SolidPropertyType:
-    """Build a ``gml:Solid`` whose exterior shell is a ``CompositeSurface``.
-
-    Polygons are re-oriented outward before assembly: shared surfaces
-    between adjacent zones often arrive with inward-facing normals
-    because they were authored from the neighbouring zone's perspective.
-    """
-    oriented = _orient_solid_polygons(polygons)
-
-    members: list[SurfaceMember] = []
-    for index, polygon_geometry in enumerate(oriented, start=1):
-        polygon_id = f"{gml_id}_poly_{index}"
-        members.append(SurfaceMember(polygon=_build_polygon(polygon_id, polygon_geometry)))
-
-    return SolidPropertyType(
-        solid=Solid(
-            id=gml_id,
-            srs_name_attribute=srs_name,
-            srs_dimension=srs_dimension,
-            exterior=SurfacePropertyType(
-                composite_surface=CompositeSurface(
-                    id=f"{gml_id}_shell",
-                    surface_member=members,
-                ),
-            ),
-        ),
-    )
-
-
-def _build_polygon(polygon_id: str, polygon_geometry: GeometryPolygon) -> Polygon:
-    exterior = Exterior(
-        linear_ring=LinearRing(
-            pos_list=PosList(value=_flatten_ring(polygon_geometry.exterior)),
-        ),
-    )
-    interiors: list[Interior] = [
-        Interior(
-            linear_ring=LinearRing(
-                pos_list=PosList(value=_flatten_ring(interior_geometry)),
-            ),
-        )
-        for interior_geometry in polygon_geometry.interiors
-    ]
-    return Polygon(id=polygon_id, exterior=exterior, interior=interiors)
-
-
-def _flatten_ring(ring: list[Coord3D]) -> list[float]:
-    """Close a ring (first == last) and flatten into ``gml:posList`` floats."""
-    if not ring:
-        raise ValueError("Geometry rings must contain at least one coordinate")
-    coordinates = list(ring)
-    if not points_close(coordinates[0], coordinates[-1]):
-        coordinates.append(coordinates[0])
-    return [value for coord in coordinates for value in coord]
-
-
-def _orient_solid_polygons(polygons: list[GeometryPolygon]) -> list[GeometryPolygon]:
-    """Ensure exterior-ring normals point outward from the solid's centroid."""
-    exterior_vertices = [_open_ring(polygon.exterior) for polygon in polygons]
-
-    all_vertices = [v for ring in exterior_vertices for v in ring]
-    if not all_vertices:
-        return polygons
-
-    centroid = _mean_point(all_vertices)
-
-    oriented: list[GeometryPolygon] = []
-    for polygon, vertices in zip(polygons, exterior_vertices, strict=True):
-        normal = _newell_normal(vertices)
-        center = _mean_point(vertices)
-        dot = (
-            normal[0] * (center[0] - centroid[0])
-            + normal[1] * (center[1] - centroid[1])
-            + normal[2] * (center[2] - centroid[2])
-        )
-        if dot < 0:
-            oriented.append(
-                GeometryPolygon(
-                    exterior=list(reversed(polygon.exterior)),
-                    interiors=[list(reversed(i)) for i in polygon.interiors],
-                )
-            )
-        else:
-            oriented.append(polygon)
-
-    return oriented
-
-
-def _newell_normal(vertices: list[Coord3D]) -> Coord3D:
-    nx, ny, nz = 0.0, 0.0, 0.0
-    count = len(vertices)
-    for i in range(count):
-        curr = vertices[i]
-        nxt = vertices[(i + 1) % count]
-        nx += (curr[1] - nxt[1]) * (curr[2] + nxt[2])
-        ny += (curr[2] - nxt[2]) * (curr[0] + nxt[0])
-        nz += (curr[0] - nxt[0]) * (curr[1] + nxt[1])
-    return (nx, ny, nz)
-
-
-def _mean_point(points: list[Coord3D]) -> Coord3D:
-    n = len(points)
-    return (
-        sum(p[0] for p in points) / n,
-        sum(p[1] for p in points) / n,
-        sum(p[2] for p in points) / n,
-    )
-
-
-# Legacy aliases — the previous geometry module exposed these lower-level
-# entry points; keep them importable so external scripts continue to work.
-def apply_step_geometry(
-    model: CityModel,
-    *,
-    step_path: Path,
-    target_building_id: str,
-    target_pv_id: str | None,
-    lod_level: int = 3,
-    type_counters: dict[tuple[str, str], int] | None = None,
-    origin: Coord3D = (0.0, 0.0, 0.0),
-    srs_name: str = DEFAULT_SRS_NAME,
-    srs_dimension: int = DEFAULT_SRS_DIMENSION,
-) -> list[Coord3D]:
-    """Attach STEP-derived geometry to an existing building.
-
-    Thin wrapper around :func:`apply_geometry_sources`' building handler,
-    kept for backward compatibility with pre-refactor callers.
-    """
-    spec = GEOMETRY_SOURCE_SPECS.get(f"step-renodat-lod{lod_level}")
-    if spec is None:
-        raise ValueError(f"No geometry-source spec registered for LOD {lod_level}")
-    source = {
-        "type": spec.source_type,
-        "path": str(step_path),
-        "target_building_id": target_building_id,
-        "target_pv_id": target_pv_id,
-    }
-    return _apply_building_source(
-        model,
-        spec=spec,
-        step_path=step_path,
-        source=source,
-        type_counters=type_counters if type_counters is not None else {},
-        origin=origin,
-        srs_name=srs_name,
-        srs_dimension=srs_dimension,
-    )
-
-
-def apply_step_zonepart_geometry(
-    model: CityModel,
-    *,
-    step_path: Path,
-    target_zone_part_id: str,
-    lod_level: int = 0,
-    origin: Coord3D = (0.0, 0.0, 0.0),
-    srs_name: str = DEFAULT_SRS_NAME,
-    srs_dimension: int = DEFAULT_SRS_DIMENSION,
-) -> list[Coord3D]:
-    """Attach STEP-derived volume geometry to a ZonePart."""
-    spec = GEOMETRY_SOURCE_SPECS.get(f"step-zonepart-lod{lod_level}")
-    if spec is None:
-        raise ValueError(f"No geometry-source spec registered for zonepart LOD {lod_level}")
-    source = {
-        "type": spec.source_type,
-        "path": str(step_path),
-        "target_zone_part_id": target_zone_part_id,
-    }
-    return _apply_zonepart_source(
-        model,
-        spec=spec,
-        step_path=step_path,
-        source=source,
-        origin=origin,
-        srs_name=srs_name,
-        srs_dimension=srs_dimension,
-    )
-
-
 __all__ = [
+    "DEFAULT_INSTALLED_ON_RELATION",
+    "DEFAULT_SOLAR_PANEL_PREFIX",
     "DEFAULT_SRS_DIMENSION",
     "DEFAULT_SRS_NAME",
     "GEOMETRY_SOURCE_SPECS",
@@ -1035,7 +1037,6 @@ __all__ = [
     "GeometrySourceSpec",
     "TargetFieldSpec",
     "apply_construction_mapping",
+    "apply_device_relations",
     "apply_geometry_sources",
-    "apply_step_geometry",
-    "apply_step_zonepart_geometry",
 ]
