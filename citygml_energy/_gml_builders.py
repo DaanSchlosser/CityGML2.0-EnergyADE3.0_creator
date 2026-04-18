@@ -27,9 +27,14 @@ from .bindings import (
     Exterior,
     Interior,
     LinearRing,
+    MultiPoint,
+    MultiPointPropertyType,
     MultiSurface,
     MultiSurfacePropertyType,
+    Point,
+    PointMember,
     Polygon,
+    Pos,
     PosList,
     Solid,
     SolidPropertyType,
@@ -39,6 +44,7 @@ from .bindings import (
 
 __all__ = [
     "build_envelope",
+    "build_multi_point",
     "build_multi_surface",
     "build_polygon",
     "build_solid",
@@ -133,6 +139,51 @@ def build_polygon(polygon_id: str, polygon_geometry: GeometryPolygon) -> Polygon
         for interior_geometry in polygon_geometry.interiors
     ]
     return Polygon(id=polygon_id, exterior=exterior, interior=interiors)
+
+
+def build_multi_point(
+    gml_id: str,
+    points: list[tuple[float, ...]],
+    *,
+    srs_name: str,
+    srs_dimension: int,
+) -> MultiPointPropertyType:
+    """Build a ``gml:MultiPoint`` wrapped in its property type.
+
+    Each point becomes one ``gml:Point`` wrapped in a ``gml:pointMember``.
+    Every point's coordinate list is padded to *srs_dimension* with zeros
+    when shorter — BAG's VBO ``geometriePunt`` is 2D, but the enclosing
+    CityGML file typically carries a 3D compound CRS; writing ``z = 0``
+    keeps the per-element ``srsDimension`` consistent with the file-level
+    CRS and avoids a mixed-dimension MultiPoint (which the GML 3.1.1
+    spec permits but many readers reject).
+
+    Each member ``gml:Point`` gets id ``"{gml_id}_pt_{index}"`` (1-based)
+    so every point is individually addressable (appearance targeting,
+    cross-document links, etc.).
+    """
+    members = []
+    for index, coords in enumerate(points, start=1):
+        padded = list(coords) + [0.0] * max(0, srs_dimension - len(coords))
+        padded = padded[:srs_dimension]
+        members.append(
+            PointMember(
+                point=Point(
+                    id=f"{gml_id}_pt_{index}",
+                    srs_name_attribute=srs_name,
+                    srs_dimension=srs_dimension,
+                    pos=Pos(value=padded, srs_dimension=srs_dimension),
+                ),
+            )
+        )
+    return MultiPointPropertyType(
+        multi_point=MultiPoint(
+            id=gml_id,
+            srs_name_attribute=srs_name,
+            srs_dimension=srs_dimension,
+            point_member=members,
+        ),
+    )
 
 
 def build_envelope(

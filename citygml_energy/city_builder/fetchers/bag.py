@@ -46,6 +46,15 @@ class Verblijfsobject:
     from the PDOK WFS VBO feature: the WFS joins Nummeraanduiding and
     OpenbareRuimte into each VBO response, so no separate fetches are
     required.
+
+    ``point`` is the BAG ``geometriePunt`` — BAG's authoritative
+    address-locating point for this VBO (``(x, y)`` in RD New /
+    EPSG:28992). It always lies within the parent Pand but is *not*
+    guaranteed to be the entrance; CityGML's ``core:Address/multiPoint``
+    XSD annotation recommends entrance points but does not constrain the
+    MultiPoint semantically, so BAG's verblijfsobjectpunt is a valid
+    and standard fill for it. ``None`` when the WFS feature arrived
+    without a geometry (rare but possible for legacy records).
     """
 
     identificatie: str
@@ -58,6 +67,7 @@ class Verblijfsobject:
     huisletter: str | None
     toevoeging: str | None
     openbare_ruimte_naam: str | None
+    point: tuple[float, float] | None
     properties: dict[str, Any]
 
 
@@ -148,6 +158,7 @@ def fetch_verblijfsobjecten(
                     props.get("toevoeging") or props.get("huisnummertoevoeging")
                 ),
                 openbare_ruimte_naam=_optional_str(props.get("openbare_ruimte")),
+                point=_extract_point(feature.get("geometry")),
                 properties=props,
             )
         )
@@ -218,6 +229,27 @@ def _subdivide(
     for q in quadrants:
         out.extend(_fetch_layer(session, layer, bbox=q, _depth=depth))
     return out
+
+
+def _extract_point(geometry: Any) -> tuple[float, float] | None:
+    """Return the ``(x, y)`` of a GeoJSON Point geometry, or ``None``.
+
+    PDOK BAG WFS returns VBO geometries as GeoJSON ``Point`` features
+    (EPSG:28992 when ``srsName=EPSG:28992`` is requested). Non-Point
+    geometries and missing/malformed features are ignored — the caller
+    treats ``None`` as "no point available for this VBO".
+    """
+    if not isinstance(geometry, dict):
+        return None
+    if geometry.get("type") != "Point":
+        return None
+    coords = geometry.get("coordinates")
+    if not isinstance(coords, (list, tuple)) or len(coords) < 2:
+        return None
+    try:
+        return (float(coords[0]), float(coords[1]))
+    except (TypeError, ValueError):
+        return None
 
 
 def _as_int(value: Any) -> int | None:

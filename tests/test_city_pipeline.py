@@ -134,6 +134,7 @@ def _fixture_vbo() -> Verblijfsobject:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        point=(85000.0, 446500.0),
         properties={},
     )
 
@@ -149,15 +150,6 @@ def _fixture_label() -> EnergyLabel:
         registratiedatum=date(2024, 1, 1),
         opnamedatum=None,
         geldig_tot=date(2034, 1, 1),
-        energieindex=0.85,
-        primaire_fossiele_energie=None,
-        aandeel_hernieuwbare_energie=None,
-        berekende_co2_emissie=None,
-        gebouwtype="Woonfunctie",
-        gebouwsubtype="EGW",
-        gebruiksoppervlakte_thermische_zone=None,
-        compactheid=None,
-        raw={},
     )
 
 
@@ -206,7 +198,7 @@ def mocked_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         eponline_fetchers,
         "fetch_energy_labels",
-        lambda session, *, api_key: [_fixture_label()],
+        lambda session, *, api_key, wanted_ids=None, wanted_keys=None: [_fixture_label()],
     )
     # Bypass the 3DBAG + shapely chain entirely so the test does not
     # need shapely installed. Patching _fetch_parsed_buildings replaces

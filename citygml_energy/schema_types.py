@@ -31,6 +31,19 @@ WALL_SURFACE = "bldg:WallSurface"
 ROOF_SURFACE = "bldg:RoofSurface"
 
 # ---------------------------------------------------------------------------
+# CityGML 2.0 — Appearance
+# ---------------------------------------------------------------------------
+APPEARANCE = "app:Appearance"
+X3D_MATERIAL = "app:X3DMaterial"
+
+# ---------------------------------------------------------------------------
+# GML 3.1.1 — Point / MultiPoint
+# ---------------------------------------------------------------------------
+GML_POINT = "gml:Point"
+GML_MULTI_POINT = "gml:MultiPoint"
+GML_POINT_MEMBER = "gml:pointMember"
+
+# ---------------------------------------------------------------------------
 # xAL (address detail vocabulary embedded under core:Address)
 # ---------------------------------------------------------------------------
 XAL_ADDRESS_DETAILS = "xAL:AddressDetails"

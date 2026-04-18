@@ -147,16 +147,19 @@ class CachedSession:
         params: dict[str, Any] | None,
         cache_key: str | None,
     ) -> Path | None:
+        """Map a request to its on-disk cache path (or ``None`` to skip).
+
+        The cache identity is the *cache_key* alone — method/url/params
+        are deliberately excluded. All callers derive their cache_key
+        from the stable facet of the request (``bag:pand``-per-bbox,
+        ``3dbag_<tile>``, ``ep_online_bundle``, …) so that a rotating
+        signed URL or a reordered query string does not defeat caching.
+        The human-readable key serves as the filename prefix; a short
+        digest of the key disambiguates on filesystems that are
+        case-insensitive or that would clash on truncation.
+        """
         if not self.use_cache or cache_key is None:
             return None
-        # Key files with a human-readable prefix for easier debugging, plus a
-        # hash of the full request so two similar URLs don't collide.
-        digest = hashlib.sha256(
-            json.dumps(
-                {"method": method, "url": url, "params": params or {}, "key": cache_key},
-                sort_keys=True,
-                default=str,
-            ).encode("utf-8"),
-        ).hexdigest()[:16]
+        digest = hashlib.sha256(cache_key.encode("utf-8")).hexdigest()[:16]
         safe_key = "".join(c if c.isalnum() or c in "._-" else "_" for c in cache_key)[:60]
         return self.cache_dir / f"{safe_key}.{digest}.bin"

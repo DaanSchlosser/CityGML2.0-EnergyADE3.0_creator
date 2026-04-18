@@ -1,27 +1,38 @@
 """Fetch and normalise EP-online energy labels (bulk ``Mutatiebestand`` CSV).
 
 EP-online (RVO) publishes the complete register of Dutch energy labels
-as a ZIP-compressed CSV. The download URL rotates; step 1 is a GET to
-the ``DownloadInfo`` endpoint (which returns the real download URL
-plus metadata), step 2 downloads the ZIP and unpacks the single CSV
-inside. Access requires an API token sent via the
-``Authorization`` header.
+as a ZIP-compressed CSV (~1 GB uncompressed, ~5 M rows). The download
+URL rotates per vintage, so step 1 is a GET to the ``DownloadInfo``
+endpoint (which returns the real download URL plus metadata), step 2
+downloads the ZIP and unpacks the single CSV inside. Access requires an
+API token sent via the ``Authorization`` header.
 
-The CSV uses Dutch conventions — semicolon separators, comma decimal
-points, YYYYMMDD dates, Dutch column names. We normalise into a list
-of :class:`EnergyLabel` records with snake_case fields that downstream
-code can join on.
+The CSV uses Dutch conventions — semicolon separators, YYYYMMDD dates,
+Dutch column names. We normalise into :class:`EnergyLabel` records with
+snake_case fields that downstream code can join on.
+
+**Filter-on-parse is the fast path.** The city pipeline only cares about
+labels that match the VBOs inside a BBOX (usually a few hundred rows out
+of 5 M). :func:`fetch_energy_labels` accepts ``wanted_ids`` and
+``wanted_keys`` sets and :func:`parse_csv` drops every non-matching row
+before materialising a dataclass — no 5 M-row list, no multi-GB pickle,
+no O(N) post-scan. Passing no filter falls back to the full parse,
+which is what tests and scripts that want the whole register rely on.
+
+:class:`EnergyLabel` is deliberately minimal: only the fields that end
+up in the CityGML output (``energieklasse`` → EPC label + colour,
+``registratiedatum`` / ``geldig_tot`` → ``validFrom`` / ``validTo``,
+``opnamedatum`` → duplicate-row ordering) plus the address keys.
 """
 
 from __future__ import annotations
 
 import csv
-import hashlib
 import io
 import json
-import pickle
 import re
 import zipfile
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -33,14 +44,38 @@ DOWNLOAD_INFO_URL = (
     "?fileType=csv&xmlVersion=4"
 )
 
+AddressKey = tuple[str, int, str | None, str | None]
+
+
 _HUISNUMMER_RE = re.compile(
     r"^\s*(\d{1,5})\s*[- ]*\s*([A-Za-z])?\s*[- ]*\s*([A-Za-z0-9]{1,4})?\s*$"
 )
 
+# Required CSV columns. ``DictReader`` was ~2x slower than a positional
+# ``csv.reader`` on the 5 M-row file: we pay the column-name lookup once
+# per header and then index every row by integer. Aliases accommodate
+# EP-online version drift.
+_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
+    "postcode": ("Postcode",),
+    "huisnummer": ("Huisnummer",),
+    "huisletter": ("Huisletter",),
+    "toevoeging": ("Huisnummertoevoeging",),
+    "bag_vbo_id": ("BAGVerblijfsobjectID",),
+    "energieklasse": ("Energieklasse",),
+    "registratiedatum": ("Registratiedatum",),
+    "opnamedatum": ("Opnamedatum",),
+    "geldig_tot": ("GeldigTot",),
+}
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, slots=True)
 class EnergyLabel:
-    """One EP-online energy-label record, normalised to Python types."""
+    """One EP-online energy-label record, normalised to Python types.
+
+    Intentionally minimal — see module docstring. Every attribute here
+    is consumed by :mod:`address_match` (joining to BAG) or
+    :mod:`builders` (populating ``nrg3:EnergyPerformanceCertificate``).
+    """
 
     postcode: str
     huisnummer: int
@@ -51,17 +86,8 @@ class EnergyLabel:
     registratiedatum: date | None
     opnamedatum: date | None
     geldig_tot: date | None
-    energieindex: float | None
-    primaire_fossiele_energie: float | None
-    aandeel_hernieuwbare_energie: float | None
-    berekende_co2_emissie: float | None
-    gebouwtype: str | None
-    gebouwsubtype: str | None
-    gebruiksoppervlakte_thermische_zone: float | None
-    compactheid: float | None
-    raw: dict[str, str]
 
-    def address_key(self) -> tuple[str, int, str | None, str | None]:
+    def address_key(self) -> AddressKey:
         """Return the ``(postcode, huisnummer, huisletter, toevoeging)`` tuple.
 
         The postcode is normalised to all-uppercase without internal
@@ -80,18 +106,29 @@ class EnergyLabel:
 # ---------------------------------------------------------------------------
 
 
-def fetch_energy_labels(session: CachedSession, *, api_key: str) -> list[EnergyLabel]:
-    """Return every label in the current EP-online mutation file.
+def fetch_energy_labels(
+    session: CachedSession,
+    *,
+    api_key: str,
+    wanted_ids: Iterable[str] | None = None,
+    wanted_keys: Iterable[AddressKey] | None = None,
+) -> list[EnergyLabel]:
+    """Return the EP-online labels from the current mutation file.
 
-    Fetches the ZIP (cached), unpacks the single CSV inside, and
-    normalises every row. Rows without a parseable ``(postcode,
-    huisnummer)`` are skipped — they are malformed in the source data
-    and cannot be matched to a BAG address.
+    Fetches the ZIP (cached by ``"ep_online_bundle"``), unpacks the single
+    CSV inside, and normalises every matching row. Rows without a
+    parseable ``(postcode, huisnummer)`` are skipped.
 
-    **Cache note**: the ZIP body and the parsed label list are both cached
-    indefinitely on disk. Delete ``<cache_dir>/ep_online_bundle.*.bin``
-    (and the matching ``ep_online_parsed.*.pkl``) to force a full refresh
-    when a new EP-online vintage is published.
+    When *wanted_ids* or *wanted_keys* is given, every CSV row that
+    fails both membership tests is dropped before any dataclass is
+    allocated — this is what makes 5 M-row parses affordable in the
+    city pipeline. Pass ``None`` (the default) to parse every row; this
+    is the path used by tests and scripts that want the full register.
+
+    The ZIP body is cached indefinitely; there is deliberately no
+    parsed-label pickle. A pickle for 5 M labels is half a gig on disk
+    and tens of seconds of load time per run; filter-on-parse beats both
+    reading the pickle and rewriting it on URL rotation.
     """
     # DownloadInfo is intentionally NOT cached: the download URL rotates with
     # each vintage publication. Caching it would serve stale URLs indefinitely.
@@ -104,48 +141,47 @@ def fetch_energy_labels(session: CachedSession, *, api_key: str) -> list[EnergyL
     if not download_url:
         raise ValueError("EP-online DownloadInfo response is missing downloadUrl")
 
-    # Use a pickle cache for parsed labels keyed by download URL so that
-    # subsequent runs skip the expensive 5M-row CSV parse entirely.
-    url_digest = hashlib.sha256(str(download_url).encode()).hexdigest()[:16]
-    parsed_cache = session.cache_dir / f"ep_online_parsed.{url_digest}.pkl"
-    if session.use_cache and parsed_cache.exists():
-        return pickle.loads(parsed_cache.read_bytes())
-
-    # The ZIP itself is cached keyed by "ep_online_bundle" so a new vintage
-    # (new URL) automatically triggers a fresh download.
     zip_bytes = session.get_bytes(
         str(download_url),
         cache_key="ep_online_bundle",
     )
     csv_text = _extract_csv_from_zip(zip_bytes)
-    labels = parse_csv(csv_text)
-
-    if session.use_cache:
-        parsed_cache.write_bytes(pickle.dumps(labels, protocol=pickle.HIGHEST_PROTOCOL))
-
-    return labels
+    return parse_csv(csv_text, wanted_ids=wanted_ids, wanted_keys=wanted_keys)
 
 
-def parse_csv(csv_text: str) -> list[EnergyLabel]:
+def parse_csv(
+    csv_text: str,
+    *,
+    wanted_ids: Iterable[str] | None = None,
+    wanted_keys: Iterable[AddressKey] | None = None,
+) -> list[EnergyLabel]:
     """Parse the raw EP-online CSV into :class:`EnergyLabel` records.
 
-    Exposed separately so tests can construct their own fixture CSV
-    without going near the network layer.
+    When *wanted_ids* or *wanted_keys* is given, rows that match neither
+    filter are discarded before any parsing work beyond reading the
+    positional cells required to test membership. This is much cheaper
+    than constructing the dataclass and filtering afterward because the
+    CSV contains ~5 M rows and typical callers want ~10³.
+
+    Uses a positional :func:`csv.reader` (not :class:`csv.DictReader`)
+    with column indices resolved once from the header row: ``DictReader``
+    allocates a dict per row, which alone accounted for >50% of the parse
+    time on the production CSV.
     """
-    reader = csv.DictReader(io.StringIO(csv_text), delimiter=";")
-    rows: list[EnergyLabel] = []
-    for raw_row in reader:
-        # csv.DictReader assigns None as the key for overflow columns (more
-        # values than headers). Skip those entries to avoid downstream errors.
-        row = {
-            k.strip(): (v.strip() if v else "")
-            for k, v in raw_row.items()
-            if k is not None
-        }
-        parsed = _row_to_label(row)
-        if parsed is not None:
-            rows.append(parsed)
-    return rows
+    reader = csv.reader(io.StringIO(csv_text), delimiter=";")
+    try:
+        header = next(reader)
+    except StopIteration:
+        return []
+
+    idx = _resolve_column_indices(header)
+    id_set = frozenset(wanted_ids) if wanted_ids is not None else None
+    key_set = frozenset(wanted_keys) if wanted_keys is not None else None
+
+    return [
+        label
+        for label in _iter_matching_rows(reader, idx, id_set=id_set, key_set=key_set)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -153,52 +189,103 @@ def parse_csv(csv_text: str) -> list[EnergyLabel]:
 # ---------------------------------------------------------------------------
 
 
-def _row_to_label(row: dict[str, str]) -> EnergyLabel | None:
-    postcode = _normalise_postcode(row.get("Postcode", ""))
-    if not postcode:
-        return None
+def _resolve_column_indices(header: list[str]) -> dict[str, int]:
+    """Map each required logical name → its positional index in *header*.
 
-    huisnummer_raw = row.get("Huisnummer", "").strip()
-    huisletter_raw = row.get("Huisletter", "").strip() or None
-    toevoeging_raw = row.get("Huisnummertoevoeging", "").strip() or None
-    huisnummer, huisletter, toevoeging = _split_huisnummer(
-        huisnummer_raw, huisletter_raw, toevoeging_raw
-    )
-    if huisnummer is None:
-        return None
+    Raises :class:`KeyError` if postcode/huisnummer are missing (we
+    cannot match anything without them); other columns are silently
+    assigned ``-1`` so :func:`_row_to_label` treats them as absent.
+    """
+    normalised = {h.strip(): i for i, h in enumerate(header)}
+    resolved: dict[str, int] = {}
+    for logical, aliases in _COLUMN_ALIASES.items():
+        idx = next((normalised[a] for a in aliases if a in normalised), -1)
+        if idx == -1 and logical in ("postcode", "huisnummer"):
+            raise KeyError(
+                f"EP-online CSV is missing the {aliases!r} column — "
+                f"cannot match labels to addresses."
+            )
+        resolved[logical] = idx
+    return resolved
 
-    bag_vbo_raw = row.get("BAGVerblijfsobjectID", "").strip()
-    return EnergyLabel(
-        postcode=postcode,
-        huisnummer=huisnummer,
-        huisletter=huisletter,
-        toevoeging=toevoeging,
-        bag_verblijfsobject_id=bag_vbo_raw or None,
-        energieklasse=_optional(row.get("Energieklasse")),
-        registratiedatum=_parse_yyyymmdd(row.get("Registratiedatum", "")),
-        opnamedatum=_parse_yyyymmdd(row.get("Opnamedatum", "")),
-        geldig_tot=_parse_yyyymmdd(row.get("GeldigTot", "")),
-        # Column names from EP-online v5 CSV (as of 2026-04):
-        energieindex=_parse_dutch_float(row.get("EnergieIndex", "") or row.get("Energieindex", "")),
-        primaire_fossiele_energie=_parse_dutch_float(
-            row.get("PrimaireFossieleEnergie", "") or row.get("Energiebehoefte", "")
-        ),
-        aandeel_hernieuwbare_energie=_parse_dutch_float(
-            row.get("AandeelHernieuwbareEnergie", "")
-        ),
-        berekende_co2_emissie=_parse_dutch_float(
-            row.get("BerekendeCO2Emissie", "") or row.get("BerekendeCo2Emissie", "")
-        ),
-        gebouwtype=_optional(row.get("Gebouwtype") or row.get("GebouwType")),
-        gebouwsubtype=_optional(row.get("GebouwSubtype") or row.get("Gebouwsubtype")),
-        gebruiksoppervlakte_thermische_zone=_parse_dutch_float(
-            row.get("GebruiksoppervlakteThermischeZone", "")
-            or row.get("GebruiksoppervlaktethermischeZone", "")
-            or row.get("GebruiksOppervlakteThermischeZone", "")
-        ),
-        compactheid=_parse_dutch_float(row.get("Compactheid", "")),
-        raw=row,
-    )
+
+def _iter_matching_rows(
+    reader: Iterable[list[str]],
+    idx: dict[str, int],
+    *,
+    id_set: frozenset[str] | None,
+    key_set: frozenset[AddressKey] | None,
+) -> Iterable[EnergyLabel]:
+    """Yield only the :class:`EnergyLabel` rows matching one of the filters.
+
+    Hot loop — written for speed. We pull the column indices into locals
+    (attribute lookup on a dict is cheaper in a hot loop when the dict
+    itself is a module-level reference, but locals beat both), test the
+    cheap ``bag_verblijfsobject_id`` membership first when an id filter
+    is active, and only fall through to the composite address-key test
+    on a miss. If *both* filters are ``None``, we short-circuit the
+    membership check entirely and emit every parseable row.
+    """
+    unfiltered = id_set is None and key_set is None
+
+    # Pull index lookups out of the hot loop.
+    i_pc = idx["postcode"]
+    i_nr = idx["huisnummer"]
+    i_hl = idx["huisletter"]
+    i_tv = idx["toevoeging"]
+    i_vbo = idx["bag_vbo_id"]
+    i_klas = idx["energieklasse"]
+    i_reg = idx["registratiedatum"]
+    i_opn = idx["opnamedatum"]
+    i_geld = idx["geldig_tot"]
+
+    for row in reader:
+        row_len = len(row)
+        postcode_raw = row[i_pc] if 0 <= i_pc < row_len else ""
+        postcode = _normalise_postcode(postcode_raw)
+        if not postcode:
+            continue
+
+        huisnummer_raw = row[i_nr] if 0 <= i_nr < row_len else ""
+        huisletter_raw = (row[i_hl].strip() if 0 <= i_hl < row_len else "") or None
+        toevoeging_raw = (row[i_tv].strip() if 0 <= i_tv < row_len else "") or None
+        huisnummer, huisletter, toevoeging = _split_huisnummer(
+            huisnummer_raw, huisletter_raw, toevoeging_raw
+        )
+        if huisnummer is None:
+            continue
+
+        bag_id = (row[i_vbo].strip() if 0 <= i_vbo < row_len else "") or None
+
+        if not unfiltered:
+            hit_id = id_set is not None and bag_id is not None and bag_id in id_set
+            if not hit_id:
+                candidate_key: AddressKey = (
+                    postcode,
+                    huisnummer,
+                    _normalise_letter_or_toevoeging(huisletter),
+                    _normalise_letter_or_toevoeging(toevoeging),
+                )
+                if key_set is None or candidate_key not in key_set:
+                    continue
+
+        yield EnergyLabel(
+            postcode=postcode,
+            huisnummer=huisnummer,
+            huisletter=huisletter,
+            toevoeging=toevoeging,
+            bag_verblijfsobject_id=bag_id,
+            energieklasse=(row[i_klas].strip() if 0 <= i_klas < row_len else "") or None,
+            registratiedatum=_parse_yyyymmdd(
+                row[i_reg] if 0 <= i_reg < row_len else ""
+            ),
+            opnamedatum=_parse_yyyymmdd(
+                row[i_opn] if 0 <= i_opn < row_len else ""
+            ),
+            geldig_tot=_parse_yyyymmdd(
+                row[i_geld] if 0 <= i_geld < row_len else ""
+            ),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -256,22 +343,6 @@ def _parse_yyyymmdd(raw: str) -> date | None:
         return date(int(text[0:4]), int(text[4:6]), int(text[6:8]))
     except ValueError:
         return None
-
-
-def _parse_dutch_float(raw: str) -> float | None:
-    text = (raw or "").strip()
-    if not text:
-        return None
-    try:
-        return float(text.replace(",", "."))
-    except ValueError:
-        return None
-
-
-def _optional(raw: Any) -> str | None:
-    if raw in (None, ""):
-        return None
-    return str(raw).strip() or None
 
 
 def _extract_csv_from_zip(zip_bytes: bytes) -> str:
