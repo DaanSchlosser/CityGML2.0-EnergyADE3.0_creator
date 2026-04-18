@@ -62,8 +62,16 @@ python examples/create_renodat.py --input inputs/renodat_input.json --output gen
 ```
 
 Requirements: Python 3.12+ and `lxml >= 5.0`. Dev extras add `pytest`,
-`ruff`, `xsdata[cli,lxml]`, and `lxml-stubs`. All declared in
-[pyproject.toml](pyproject.toml).
+`ruff`, `xsdata[cli,lxml]`, and `lxml-stubs`. For the city-scale
+workflow (§12), the `city` extras add `requests`, `shapely` and
+`python-dotenv`. All declared in [pyproject.toml](pyproject.toml).
+
+Two parallel input pipelines live in this repo:
+
+| Workflow | Input format | What it does |
+|---|---|---|
+| **Per-building** (RenoDAT) | `schema_version: 2` JSON + Rhino STEP files | Hand-curated detailed Energy-ADE dataset per building (zones, schedules, devices, layered constructions). See §3–§9. |
+| **City-scale** | `schema_version: "city-1"` JSON | Downloads BAG + 3DBAG + EP-online for a whole Dutch municipality and assembles one GML file. See §12. |
 
 ---
 
@@ -618,3 +626,125 @@ round-tripped through the loader and validated against the XSD:
 Any other class defined in `bindings.py` can be added to the input
 without code changes — the loader resolves it dynamically by
 `prefix:ElementName`.
+
+---
+
+## 12. City-scale workflow
+
+A completely separate input pipeline in
+[`citygml_energy/city_builder/`](citygml_energy/city_builder/) produces a
+CityGML + Energy ADE file for an entire Dutch municipality by combining:
+
+- **BAG** (PDOK WFS `bag:pand` + `bag:verblijfsobject` +
+  `bag:nummeraanduiding` + `bag:openbareruimte`) — authoritative building
+  outlines, VBOs, and postal addresses.
+- **3DBAG** ([data.3dbag.nl](https://data.3dbag.nl)) — per-Pand
+  LoD 0 / 1 / 2 geometries as CityJSON tiles.
+- **EP-online** ([public.ep-online.nl](https://public.ep-online.nl)) —
+  the complete Dutch energy-label register, joined by
+  `(postcode, huisnummer, huisletter, toevoeging)`.
+
+The workflow lives behind its own JSON config
+([`inputs/city_example.json`](inputs/city_example.json)) with a separate
+schema version (`schema_version: "city-1"`). It does **not** use any of
+the code paths in §3–§9 — you can change one without touching the other.
+
+### 12.1 Quick start
+
+```powershell
+python -m pip install -e ".[city]"
+
+# optional: drop a .env next to your config with EP_ONLINE_API_KEY=...
+# the config supports both an explicit ep_online_api_key_file and the env var
+
+python examples/create_city.py --input inputs/city_example.json
+```
+
+The first run fills `cache_dir` with the BAG responses, the 3DBAG tiles,
+and the EP-online ZIP; subsequent runs are near-instant.
+
+### 12.2 Config reference
+
+Every key is optional unless noted:
+
+```jsonc
+{
+  "$schema": "../schemas/city_input.schema.json",
+  "schema_version": "city-1",               // required
+  "municipality": "Delft",                   // required; PDOK name match
+  "bbox": [84000, 445000, 86000, 447000],    // optional EPSG:28992 clip
+  "lods": [0, 1, 2],                         // subset of {0,1,2}
+  "include_addresses": true,
+  "include_energy_labels": true,
+  "ep_online_api_key_file": "../.secrets/ep.key",
+  "cache_dir": "../.cache/citygml_energy_city",
+  "output": "../generated/delft.gml",        // required
+  "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
+  "srs_dimension": 3,
+  "city_model": { "name": "Delft", "description": "..." },
+  "gml_id_prefix": ""                        // optional multi-city merge prefix
+}
+```
+
+`schemas/city_input.schema.json` is generated from the loader by
+[`tools/generate_city_input_schema.py`](tools/generate_city_input_schema.py)
+and drift-checked by `tests/test_city_input_schema.py`.
+
+### 12.3 Output shape per building
+
+For every BAG Pand inside the municipality:
+
+- `bldg:Building` with `gml:id = "pand_<identificatie>"`
+  (`xs:ID` cannot start with a digit, so a semantic prefix is prepended).
+- `yearOfConstruction` from 3DBAG `oorspronkelijkbouwjaar`.
+- `lod0FootPrint` (MultiSurface), `lod1Solid`, `lod2MultiSurface` —
+  filtered by the `lods` config.
+- One `nrg3:BuildingUnit` per BAG VBO
+  (`gml:id = "bu_<vbo_identificatie>"`), each carrying:
+  - `bldg:address` (xAL street + house number + postcode),
+  - `nrg3:energyPerformanceCertificate` when EP-online had a match for
+    `(postcode, huisnummer, huisletter, toevoeging)` — populated with the
+    `label` letter, `valid_from` (registratiedatum), `valid_to`
+    (geldigTot), and EP-online as the `type` code.
+
+Everything validates against the bundled XSD set — the end-to-end test
+`tests/test_city_pipeline.py::test_pipeline_output_validates_against_xsd`
+asserts exactly that against fully-mocked fetchers.
+
+### 12.4 Module layout
+
+```
+citygml_energy/city_builder/
+├── __init__.py            public API
+├── config.py              JSON \u2192 CityBuildConfig + dotenv fallback
+├── http.py                CachedSession: requests + disk cache + retries
+├── cityjson_parse.py      CityJSON tile \u2192 ParsedBuilding (per-Pand LoDs)
+├── address_match.py       VBO \u2194 EP-online join keyed on normalised addr
+├── builders.py            bldg:Building / core:Address / BuildingUnit / EPC
+├── pipeline.py            orchestrator; build_city_model(config)
+└── fetchers/
+    \u251C\u2500\u2500 municipality.py    PDOK bestuurlijkegebieden \u2192 MunicipalityOutline
+    \u251C\u2500\u2500 bag.py             Pand / VBO / Nummeraanduiding / OpenbareRuimte
+    \u251C\u2500\u2500 threedbag.py       tile_index.json + CityJSON downloads
+    \u2514\u2500\u2500 eponline.py        bulk Mutatiebestand CSV (ZIP)
+
+examples/create_city.py    CLI entry point
+tools/generate_city_input_schema.py
+```
+
+### 12.5 Design choices
+
+- **Single config file** — everything a run needs is declared in the
+  JSON; the Python code never needs to change to add a new city,
+  different LoDs, or skip an input source.
+- **Offline testable** — every fetcher is a plain function taking a
+  `CachedSession`. The end-to-end pipeline test monkeypatches them all
+  to fixture data and still asserts XSD validity of the resulting GML.
+- **Schema-agnostic** — all xsdata classes (`bldg:Building`,
+  `core:Address`, `nrg3:BuildingUnit`, `nrg3:EnergyPerformanceCertificate`,
+  the xAL machinery) are resolved by XSD-qualified name through
+  `citygml_energy.mapping.resolve_class`, so regenerating `bindings.py`
+  does not break this pipeline either.
+- **Disk cache is the rate limit** — PDOK and 3DBAG have no API keys
+  and generous throughput; caching in the config-specified directory
+  keeps re-runs fast and considerate.
