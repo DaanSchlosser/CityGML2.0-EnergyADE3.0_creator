@@ -12,12 +12,18 @@ fetchers; tests inject a pre-populated cache dir or monkeypatch
 
 from __future__ import annotations
 
+import hashlib
+import logging
+import os
+import pickle
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .._gml_builders import build_envelope
 from .._step import Coord3D
 from ..core import CityModel
+from .address_key import address_key_from_vbo
 from .address_match import ResolvedAddress, match_addresses
 from .appearance import append_energy_label_appearance
 from .builders import attach_building_units_to_building, build_building
@@ -110,7 +116,7 @@ def build_city_model(
         parsed_by_id=parsed_by_id,
         resolved_per_pand=resolved_per_pand,
     )
-    print(f"[city-builder] Done — {len(model.xsd.city_object_member)} buildings in model")
+    print(f"[city-builder] Done: {len(model.xsd.city_object_member)} buildings in model")
     return model
 
 
@@ -130,8 +136,13 @@ def _maybe_fetch_energy_labels(
     The 5 M-row EP-online mutation file dwarfs the ~10³ addresses inside
     a typical city-builder BBOX. Passing the VBO-derived id / address-key
     sets into the fetcher lets the CSV parser drop non-matching rows
-    immediately — the pipeline sees the ~matching subset and never has
-    to materialise the rest.
+    immediately, so the pipeline sees only the matching subset.
+
+    A second caching layer persists the *filtered* label list to disk
+    keyed by ``(wanted_keys, wanted_ids, ep-online-ZIP-vintage)``. Cache
+    entries invalidate automatically when EP-online publishes a new
+    mutation ZIP because the ZIP's on-disk size/mtime participate in
+    the cache key.
     """
     if not config.include_energy_labels:
         return None
@@ -143,40 +154,117 @@ def _maybe_fetch_energy_labels(
 
     wanted_ids = {v.identificatie for v in vbos}
     wanted_keys = {
-        _vbo_address_key(v)
+        address_key_from_vbo(v)
         for v in vbos
         if v.postcode is not None and v.huisnummer is not None
     }
-    return eponline_fetchers.fetch_energy_labels(
+
+    wanted_digest = _wanted_sets_digest(wanted_ids, wanted_keys)
+    cache_path = _filtered_labels_cache_path(session, wanted_digest)
+    if cache_path is not None and cache_path.exists():
+        labels = _try_load_filtered_labels(cache_path)
+        if labels is not None:
+            print(f"[city-builder] EP-online labels loaded from filter cache ({cache_path.name})")
+            return labels
+
+    labels = eponline_fetchers.fetch_energy_labels(
         session,
         api_key=api_key,
         wanted_ids=wanted_ids,
         wanted_keys=wanted_keys,
     )
 
+    # Re-resolve the cache path. On first run the ZIP didn't exist yet
+    # when we computed the digest above; now it does, so we can store the
+    # filtered result under a vintage-aware key.
+    cache_path = _filtered_labels_cache_path(session, wanted_digest)
+    if cache_path is not None:
+        _try_save_filtered_labels(cache_path, labels)
 
-def _vbo_address_key(
-    vbo: bag_fetchers.Verblijfsobject,
-) -> tuple[str, int, str | None, str | None]:
-    """Return the same normalised key used by :mod:`address_match`.
+    return labels
 
-    Duplicating the helper here (rather than importing from
-    ``address_match``) keeps the fetcher filter-set free of anything
-    that isn't the identity of an address, which is all EP-online's
-    CSV rows expose.
+
+_EP_ONLINE_ZIP_GLOB = "ep_online_bundle.*.bin"
+
+
+def _wanted_sets_digest(
+    wanted_ids: set[str],
+    wanted_keys: set[tuple[str, int, str | None, str | None]],
+) -> str:
+    """Stable SHA-256 digest of the two filter sets (order-independent)."""
+    h = hashlib.sha256()
+    for vbo_id in sorted(wanted_ids):
+        h.update(vbo_id.encode("utf-8"))
+        h.update(b"\x00")
+    h.update(b"\x01")  # boundary marker between the two sets
+    for key in sorted(wanted_keys, key=lambda k: (k[0], k[1], k[2] or "", k[3] or "")):
+        h.update(f"{key[0]}|{key[1]}|{key[2] or ''}|{key[3] or ''}".encode())
+        h.update(b"\x00")
+    return h.hexdigest()[:24]
+
+
+def _filtered_labels_cache_path(
+    session: CachedSession,
+    wanted_digest: str,
+) -> Path | None:
+    """Return the on-disk pickle path for the filtered label set, or ``None``.
+
+    Composes the EP-online ZIP's on-disk size+mtime into the cache key so
+    a newly-downloaded mutation ZIP invalidates stale filtered caches
+    automatically. Returns ``None`` when on-disk caching is off or the
+    ZIP hasn't been fetched yet (first run): in that case the caller
+    parses the CSV normally and the cache gets populated after fetch.
     """
-    postcode = (vbo.postcode or "").replace(" ", "").upper()
-    huisnummer = vbo.huisnummer or 0
-    huisletter = _strip_upper(vbo.huisletter)
-    toevoeging = _strip_upper(vbo.toevoeging)
-    return (postcode, huisnummer, huisletter, toevoeging)
-
-
-def _strip_upper(value: str | None) -> str | None:
-    if value is None:
+    if not session.use_cache:
         return None
-    trimmed = value.strip().upper()
-    return trimmed or None
+    candidates = list(session.cache_dir.glob(_EP_ONLINE_ZIP_GLOB))
+    if not candidates:
+        return None
+    latest = max(candidates, key=lambda p: p.stat().st_mtime_ns)
+    stat = latest.stat()
+    vintage = f"{latest.name}|{stat.st_size}|{stat.st_mtime_ns}"
+    h = hashlib.sha256()
+    h.update(vintage.encode("utf-8"))
+    h.update(b"\x02")
+    h.update(wanted_digest.encode("ascii"))
+    digest = h.hexdigest()[:24]
+    return session.cache_dir / f"ep_online_filtered.{digest}.pkl"
+
+
+def _try_load_filtered_labels(
+    cache_path: Path,
+) -> list[eponline_fetchers.EnergyLabel] | None:
+    """Load a pickled filtered-label list, returning ``None`` on any failure.
+
+    A corrupt or incompatible pickle just falls through to a full parse.
+    We never raise: cache corruption is always recoverable and should
+    not fail a run.
+    """
+    try:
+        with cache_path.open("rb") as handle:
+            return pickle.load(handle)
+    except (pickle.UnpicklingError, EOFError, ValueError, OSError, AttributeError) as exc:
+        logging.getLogger(__name__).warning(
+            "EP-online filter cache %s unreadable (%s); re-parsing", cache_path.name, exc,
+        )
+        return None
+
+
+def _try_save_filtered_labels(
+    cache_path: Path, labels: list[eponline_fetchers.EnergyLabel],
+) -> None:
+    """Persist *labels* to *cache_path*. Swallow IO errors; caching is best-effort."""
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = cache_path.with_suffix(cache_path.suffix + ".tmp")
+        with tmp.open("wb") as handle:
+            pickle.dump(labels, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        tmp.replace(cache_path)
+    except OSError as exc:
+        logging.getLogger(__name__).warning(
+            "EP-online filter cache write to %s failed (%s); continuing without cache",
+            cache_path.name, exc,
+        )
 
 
 def _fetch_parsed_buildings(
@@ -189,27 +277,29 @@ def _fetch_parsed_buildings(
 
     When *bbox* is provided, the municipality outline is clipped to it
     before the tile query so only tiles that overlap the requested area
-    are downloaded — critical for sub-municipality smoke tests.
+    are downloaded; critical for sub-municipality smoke tests.
+
+    The clipped geometry is used only when the intersection is non-empty
+    and geometrically valid. A degenerate bbox (zero-area, entirely
+    outside the municipality, …) yields an empty or invalid result; we
+    fall back to the full outline in that case so the caller never sees
+    an empty geometry. Real shapely exceptions (invalid input geometry,
+    missing dependency, …) are deliberately **not** suppressed.
     """
     geom = _outline_to_shapely(outline.feature.get("geometry") or {})
     if bbox is not None:
-        import contextlib
-
-        from shapely.errors import ShapelyError
         from shapely.geometry import box as shapely_box
 
-        # Degenerate bbox (e.g. zero-area) → fall back to the full outline.
-        # ImportError is deliberately NOT suppressed: missing shapely must
-        # fail loudly, which _outline_to_shapely already enforces.
-        with contextlib.suppress(ShapelyError, ValueError):
-            geom = geom.intersection(shapely_box(*bbox))
+        clipped = geom.intersection(shapely_box(*bbox))
+        if not clipped.is_empty and clipped.is_valid:
+            geom = clipped
     return threedbag.fetch_buildings_for_outline(session, outline=geom)
 
 
 def _outline_to_shapely(geometry: dict[str, Any]) -> BaseGeometry:
     try:
         from shapely.geometry import shape
-    except ImportError as exc:  # pragma: no cover — optional dep
+    except ImportError as exc:  # pragma: no cover, optional dep
         raise RuntimeError(
             "City build needs shapely; install with: pip install -e .[city]"
         ) from exc
@@ -223,40 +313,56 @@ def _assemble_city_model(
     parsed_by_id: dict[str, ParsedBuilding],
     resolved_per_pand: dict[str, list[ResolvedAddress]],
 ) -> CityModel:
+    """Assemble a :class:`CityModel` from parsed BAG/3DBAG/EP-online inputs.
+
+    The per-pand build (xsdata Building + BuildingUnit + Address +
+    EnergyPerformanceCertificate construction + coordinate collection) is
+    pure-Python CPU work and is embarrassingly parallel across pand. Setting
+    ``CITYGML_ENERGY_ASSEMBLY_WORKERS=<N>`` spreads it across ``N`` worker
+    processes (``multiprocessing.Pool``) rather than running sequentially.
+    Process parallelism is off by default because it only pays off past
+    a few thousand buildings; below that, worker startup + pickle cost
+    exceeds the pure-CPU gain. For full-municipality runs (10k+ panden)
+    the gain scales near-linearly with available cores.
+    """
     model = CityModel(
         gml_description=config.city_model_description,
         gml_name=config.city_model_name,
     )
 
+    workers = _assembly_worker_count(len(panden))
+    if workers > 1:
+        build_results = _build_pand_artifacts_parallel(
+            config=config,
+            panden=panden,
+            parsed_by_id=parsed_by_id,
+            resolved_per_pand=resolved_per_pand,
+            workers=workers,
+        )
+    else:
+        build_results = _build_pand_artifacts_sequential(
+            config=config,
+            panden=panden,
+            parsed_by_id=parsed_by_id,
+            resolved_per_pand=resolved_per_pand,
+        )
+
     all_coords: list[Coord3D] = []
     building_label_pairs: list[tuple[Any, list[ResolvedAddress]]] = []
-    for pand in panden:
-        parsed = parsed_by_id.get(pand.identificatie)
-        if parsed is None:
-            continue
-
-        _merge_attributes(parsed.attributes, pand)
-        building = build_building(
-            parsed,
-            gml_id_prefix=config.gml_id_prefix,
-            lods=config.lods,
-            srs_name=config.srs_name,
-            srs_dimension=config.srs_dimension,
-        )
-        resolved_for_pand = resolved_per_pand.get(pand.identificatie, [])
-        attach_building_units_to_building(
-            building,
-            resolved_for_pand,
-            gml_id_prefix=config.gml_id_prefix,
-            city_name=config.municipality,
-            srs_name=config.srs_name,
-            srs_dimension=config.srs_dimension,
-        )
+    # Capture colorable surface ids as each building is built so the
+    # appearance step doesn't need a second ``iter_instances`` tree walk.
+    targets_by_gml_id: dict[str, list[str]] = {}
+    for building, resolved, targets, coords in build_results:
         model.add(building)
-        building_label_pairs.append((building, resolved_for_pand))
-        _collect_coordinates(parsed, all_coords)
+        building_label_pairs.append((building, resolved))
+        targets_by_gml_id[building.id] = targets
+        all_coords.extend(coords)
 
-    append_energy_label_appearance(model, building_label_pairs)
+    append_energy_label_appearance(
+        model,
+        building_label_pairs,
+        targets_by_gml_id=targets_by_gml_id,
+    )
 
     if all_coords:
         model.set_envelope(
@@ -269,11 +375,174 @@ def _assemble_city_model(
     return model
 
 
+def _assembly_worker_count(n_panden: int) -> int:
+    """Return the effective worker count, respecting the opt-in env var.
+
+    ``CITYGML_ENERGY_ASSEMBLY_WORKERS`` > 1 enables process parallelism.
+    Silently capped at the pand count (no point spawning 16 workers for
+    20 buildings). Returns ``1`` (sequential) on any parsing error so a
+    malformed env var never breaks a run.
+    """
+    raw = os.environ.get("CITYGML_ENERGY_ASSEMBLY_WORKERS", "").strip()
+    if not raw:
+        return 1
+    try:
+        requested = int(raw)
+    except ValueError:
+        return 1
+    if requested < 2 or n_panden < 2:
+        return 1
+    return min(requested, n_panden)
+
+
+# Compact tuple type emitted by the per-pand build step: small, picklable,
+# and exactly what the main process needs to assemble the final CityModel.
+_PandArtifacts = tuple[Any, list[ResolvedAddress], list[str], list[Coord3D]]
+
+
+def _build_pand_artifacts_sequential(
+    *,
+    config: CityBuildConfig,
+    panden: list[bag_fetchers.Pand],
+    parsed_by_id: dict[str, ParsedBuilding],
+    resolved_per_pand: dict[str, list[ResolvedAddress]],
+) -> list[_PandArtifacts]:
+    """Sequentially build the per-pand artifacts. Default path."""
+    results: list[_PandArtifacts] = []
+    for pand in panden:
+        parsed = parsed_by_id.get(pand.identificatie)
+        if parsed is None:
+            continue
+        results.append(
+            _build_pand_artifacts(
+                pand=pand,
+                parsed=parsed,
+                resolved=resolved_per_pand.get(pand.identificatie, []),
+                build_params=_BuildParams.from_config(config),
+            )
+        )
+    return results
+
+
+def _build_pand_artifacts_parallel(
+    *,
+    config: CityBuildConfig,
+    panden: list[bag_fetchers.Pand],
+    parsed_by_id: dict[str, ParsedBuilding],
+    resolved_per_pand: dict[str, list[ResolvedAddress]],
+    workers: int,
+) -> list[_PandArtifacts]:
+    """Run the per-pand build in a ``multiprocessing.Pool``.
+
+    Only panden that have matching 3DBAG geometry are dispatched; the
+    chunk size is tuned so each worker churns through a reasonable batch
+    before hitting the IPC boundary (pickling xsdata Building objects
+    back to the main process is the main ongoing cost in this path).
+    """
+    import multiprocessing
+
+    build_params = _BuildParams.from_config(config)
+    jobs: list[tuple[Any, ...]] = [
+        (pand, parsed_by_id[pand.identificatie], resolved_per_pand.get(pand.identificatie, []), build_params)
+        for pand in panden
+        if pand.identificatie in parsed_by_id
+    ]
+    if not jobs:
+        return []
+
+    # ``chunksize=max(1, len(jobs) // (workers * 4))`` is ``Pool.map``'s
+    # built-in default tuned down slightly. Batching amortises worker
+    # dispatch overhead without losing responsiveness on smaller runs.
+    chunksize = max(1, len(jobs) // (workers * 4))
+    print(f"[city-builder] Assembly worker pool: {workers} processes × {chunksize} panden/chunk")
+    # ``spawn`` is the right start method here: fork-safety with xsdata's
+    # lazy registry and requests sessions is not guaranteed, and ``spawn``
+    # is the Windows default anyway. The child imports ``citygml_energy``
+    # fresh, which warms its bindings cache once per worker.
+    ctx = multiprocessing.get_context("spawn")
+    with ctx.Pool(processes=workers) as pool:
+        return pool.map(_build_pand_worker, jobs, chunksize=chunksize)
+
+
+@dataclass(frozen=True, slots=True)
+class _BuildParams:
+    """Immutable subset of :class:`CityBuildConfig` shared across workers.
+
+    Defined as a frozen dataclass so it pickles cheaply (one flat tuple,
+    no recursion through the full config) and because workers should not
+    be mutating pipeline-level settings by accident.
+    """
+
+    gml_id_prefix: str
+    lods: tuple[int, ...]
+    srs_name: str
+    srs_dimension: int
+    municipality: str
+
+    @classmethod
+    def from_config(cls, config: CityBuildConfig) -> _BuildParams:
+        return cls(
+            gml_id_prefix=config.gml_id_prefix,
+            lods=tuple(config.lods),
+            srs_name=config.srs_name,
+            srs_dimension=config.srs_dimension,
+            municipality=config.municipality,
+        )
+
+
+def _build_pand_worker(
+    job: tuple[bag_fetchers.Pand, ParsedBuilding, list[ResolvedAddress], _BuildParams],
+) -> _PandArtifacts:
+    """Worker entry point: must be module-level to be picklable on spawn."""
+    pand, parsed, resolved, build_params = job
+    return _build_pand_artifacts(
+        pand=pand, parsed=parsed, resolved=resolved, build_params=build_params,
+    )
+
+
+def _build_pand_artifacts(
+    *,
+    pand: bag_fetchers.Pand,
+    parsed: ParsedBuilding,
+    resolved: list[ResolvedAddress],
+    build_params: _BuildParams,
+) -> _PandArtifacts:
+    """Build the xsdata artefacts for one Pand.
+
+    Returned tuple is the minimal slice the main process needs to
+    assemble the city model: the xsdata Building object, the list of
+    matched addresses, the pre-collected appearance target ids, and the
+    flat coordinate sequence used to widen the model envelope. All four
+    values pickle cheaply across the worker-pool boundary.
+    """
+    _merge_attributes(parsed.attributes, pand)
+    targets: list[str] = []
+    building = build_building(
+        parsed,
+        gml_id_prefix=build_params.gml_id_prefix,
+        lods=build_params.lods,
+        srs_name=build_params.srs_name,
+        srs_dimension=build_params.srs_dimension,
+        surface_targets_out=targets,
+    )
+    attach_building_units_to_building(
+        building,
+        resolved,
+        gml_id_prefix=build_params.gml_id_prefix,
+        city_name=build_params.municipality,
+        srs_name=build_params.srs_name,
+        srs_dimension=build_params.srs_dimension,
+    )
+    coords: list[Coord3D] = []
+    _collect_coordinates(parsed, coords)
+    return building, resolved, targets, coords
+
+
 def _merge_attributes(parsed_attrs: dict[str, Any], pand: bag_fetchers.Pand) -> None:
     """Merge BAG Pand attributes into the parsed CityJSON attributes.
 
     3DBAG already carries ``oorspronkelijkbouwjaar`` but BAG sometimes
-    has a newer / corrected value. BAG wins when present — direct
+    has a newer / corrected value. BAG wins when present: direct
     assignment so the BAG value always overwrites the 3DBAG value.
     """
     if pand.bouwjaar is not None:
