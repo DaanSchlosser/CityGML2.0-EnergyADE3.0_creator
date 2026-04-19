@@ -6,7 +6,7 @@ source of truth for addresses; EP-online is joined **into** the VBO
 set and missing labels simply leave the VBO without an EPC record.
 
 Address data (street, postcode, huisnummer) is embedded directly in the
-PDOK BAG WFS VBO response — no separate Nummeraanduiding or
+PDOK BAG WFS VBO response, so no separate Nummeraanduiding or
 OpenbareRuimte fetches are needed.
 """
 
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .address_key import AddressKey, address_key_from_vbo
 from .fetchers.bag import Verblijfsobject
 from .fetchers.eponline import EnergyLabel
 
@@ -55,17 +56,17 @@ def match_addresses(
     vbos: list[Verblijfsobject],
     energy_labels: list[EnergyLabel] | None = None,
 ) -> dict[str, list[ResolvedAddress]]:
-    """Return ``{pand_id: [ResolvedAddress, ...]}`` — VBOs grouped by Pand.
+    """Return ``{pand_id: [ResolvedAddress, ...]}``: VBOs grouped by Pand.
 
     Matching strategy (in priority order):
 
-    1. ``BAGVerblijfsobjectID`` — direct BAG VBO id match. Available in
-       EP-online v5+ CSV; far more reliable than address-key matching and
+    1. ``BAGVerblijfsobjectID``: direct BAG VBO id match. Available in
+       EP-online v5+ CSV, far more reliable than address-key matching and
        covers institutions/university buildings that have irregular addresses.
-    2. ``(postcode, huisnummer, huisletter, toevoeging)`` — address-key
+    2. ``(postcode, huisnummer, huisletter, toevoeging)``: address-key
        fallback for labels that predate the BAG-id enrichment.
 
-    VBOs that lack a postcode or huisnummer are silently dropped — they
+    VBOs that lack a postcode or huisnummer are silently dropped: they
     cannot produce a valid CityGML ``bldg:address``.
     """
     # Only the VBOs that can match are addressable; dropping the rest up
@@ -74,7 +75,7 @@ def match_addresses(
     # scan from "index everything" to "keep ~0.01% of rows".
     matchable = [v for v in vbos if v.postcode is not None and v.huisnummer is not None]
     wanted_ids = {v.identificatie for v in matchable}
-    wanted_keys = {_address_key_from_vbo(v) for v in matchable}
+    wanted_keys = {address_key_from_vbo(v) for v in matchable}
 
     labels_by_vbo_id, labels_by_key = _index_labels(
         energy_labels or [],
@@ -86,7 +87,7 @@ def match_addresses(
     for vbo in matchable:
         label = (
             labels_by_vbo_id.get(vbo.identificatie)
-            or labels_by_key.get(_address_key_from_vbo(vbo))
+            or labels_by_key.get(address_key_from_vbo(vbo))
         )
         grouped.setdefault(vbo.pand_identificatie, []).append(
             ResolvedAddress(vbo=vbo, energy_label=label)
@@ -103,12 +104,9 @@ def _index_labels(
     labels: list[EnergyLabel],
     *,
     wanted_ids: set[str],
-    wanted_keys: set[tuple[str, int, str | None, str | None]],
-) -> tuple[
-    dict[str, EnergyLabel],
-    dict[tuple[str, int, str | None, str | None], EnergyLabel],
-]:
-    """Return ``(by_vbo_id, by_address_key)`` — most recent label per key.
+    wanted_keys: set[AddressKey],
+) -> tuple[dict[str, EnergyLabel], dict[AddressKey, EnergyLabel]]:
+    """Return ``(by_vbo_id, by_address_key)``: most recent label per key.
 
     EP-online can ship multiple labels for one address (re-registration,
     corrections). We keep the one with the newest ``registratiedatum``,
@@ -116,8 +114,8 @@ def _index_labels(
 
     Only labels whose ``bag_verblijfsobject_id`` matches *wanted_ids* or
     whose address-key matches *wanted_keys* are retained. This membership
-    test turns what was a full 5M-row indexing pass into a filter —
-    critical for the city-pipeline case where the BBOX covers a few
+    test turns what was a full 5M-row indexing pass into a filter, which
+    is critical for the city-pipeline case where the BBOX covers a few
     hundred VBOs out of the national mutation file.
 
     ``by_vbo_id`` is keyed by ``BAGVerblijfsobjectID`` (EP-online v5+).
@@ -125,7 +123,7 @@ def _index_labels(
     toevoeging)`` fallback for older labels without a BAG id.
     """
     by_vbo_id: dict[str, EnergyLabel] = {}
-    by_address_key: dict[tuple[str, int, str | None, str | None], EnergyLabel] = {}
+    by_address_key: dict[AddressKey, EnergyLabel] = {}
     for label in labels:
         vbo_id = label.bag_verblijfsobject_id
         hit_id = vbo_id is not None and vbo_id in wanted_ids
@@ -134,7 +132,7 @@ def _index_labels(
         if not hit_id and not hit_key:
             continue
 
-        # A label can be relevant via both indices — e.g. one VBO matches
+        # A label can be relevant via both indices, e.g. one VBO matches
         # by BAG id and a different VBO with the same address-key matches
         # by key. Mirror the original behaviour and update both indices
         # independently.
@@ -151,7 +149,7 @@ def _index_labels(
 
 
 def _label_timestamp(label: EnergyLabel) -> tuple[int, int, int]:
-    """Ordering key — ``(registratiedatum, opnamedatum, reg != None)``."""
+    """Ordering key: ``(registratiedatum, opnamedatum, reg != None)``."""
     reg = label.registratiedatum
     opname = label.opnamedatum
     return (
@@ -159,20 +157,3 @@ def _label_timestamp(label: EnergyLabel) -> tuple[int, int, int]:
         opname.toordinal() if opname else 0,
         1 if reg else 0,
     )
-
-
-def _address_key_from_vbo(
-    vbo: Verblijfsobject,
-) -> tuple[str, int, str | None, str | None]:
-    postcode = (vbo.postcode or "").replace(" ", "").upper()
-    huisnummer = vbo.huisnummer or 0
-    huisletter = _strip_upper(vbo.huisletter)
-    toevoeging = _strip_upper(vbo.toevoeging)
-    return (postcode, huisnummer, huisletter, toevoeging)
-
-
-def _strip_upper(value: str | None) -> str | None:
-    if value is None:
-        return None
-    trimmed = value.strip().upper()
-    return trimmed or None
