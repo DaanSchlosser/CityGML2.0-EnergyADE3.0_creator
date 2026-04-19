@@ -1,4 +1,4 @@
-"""CityGML Appearance builder — paints buildings by averaged EPC label.
+"""CityGML Appearance builder: paints buildings by averaged EPC label.
 
 Produces a single ``app:Appearance`` (theme ``"energyLabel"``) attached
 to the :class:`CityModel` via ``app:appearanceMember``. The appearance
@@ -8,7 +8,7 @@ letter, and each group becomes the ``<app:target>`` list of one
 material. Buildings without any energy label are colored grey (the
 fallback for :func:`epc_score.label_to_rgb`).
 
-Targeting rule — we target every ``gml:MultiSurface`` and
+Targeting rule: we target every ``gml:MultiSurface`` and
 ``gml:CompositeSurface`` id found under each building:
 
 * LoD 0 → the ``gml:MultiSurface`` inside ``bldg:lod0FootPrint``.
@@ -17,7 +17,7 @@ Targeting rule — we target every ``gml:MultiSurface`` and
   ``bldg:lod2MultiSurface``.
 
 The CityGML 2.0 Appearance XSD annotates ``app:target`` as accepting
-"gml:MultiSurface or descendants of gml:AbstractSurfaceType" — both of
+"gml:MultiSurface or descendants of gml:AbstractSurfaceType", and both of
 those GML classes satisfy that constraint.
 """
 
@@ -42,11 +42,6 @@ __all__ = [
 ENERGY_LABEL_THEME = "energyLabel"
 
 
-@cache
-def _cls(xsd_name: str) -> type:
-    return resolve_class(xsd_name)
-
-
 def collect_surface_target_ids(building: Any) -> list[str]:
     """Return ``#<gml:id>`` references for every colorable surface under *building*.
 
@@ -65,6 +60,8 @@ def collect_surface_target_ids(building: Any) -> list[str]:
 def append_energy_label_appearance(
     city_model: Any,
     building_label_pairs: list[tuple[Any, list[ResolvedAddress]]],
+    *,
+    targets_by_gml_id: dict[str, list[str]] | None = None,
 ) -> None:
     """Attach one ``app:Appearance`` grouping *buildings* by averaged EPC color.
 
@@ -74,6 +71,13 @@ def append_energy_label_appearance(
     the resulting letter drives the building's color. Buildings without
     any matched label render grey.
 
+    *targets_by_gml_id* lets callers hand in the colorable surface ids
+    they already collected while building each object (keyed by
+    ``building.id``). When present, the dict is consulted first and we
+    skip the :func:`iter_instances` walk entirely. Callers that do not
+    pre-collect (e.g. most tests) pass ``None`` and the walking path
+    is used.
+
     A no-op when there are no buildings or no colorable surfaces.
     """
     if not building_label_pairs:
@@ -82,7 +86,7 @@ def append_energy_label_appearance(
     # Group surface-id targets by the averaged letter (None = unknown).
     targets_by_letter: dict[str | None, list[str]] = {}
     for building, resolved in building_label_pairs:
-        surface_targets = collect_surface_target_ids(building)
+        surface_targets = _resolve_surface_targets(building, targets_by_gml_id)
         if not surface_targets:
             continue
         letter = average_labels(
@@ -95,8 +99,8 @@ def append_energy_label_appearance(
     if not targets_by_letter:
         return
 
-    appearance_cls = _cls(APPEARANCE)
-    material_cls = _cls(X3D_MATERIAL)
+    appearance_cls = resolve_class(APPEARANCE)
+    material_cls = resolve_class(X3D_MATERIAL)
     surface_data_inner = _surface_data_property_type(appearance_cls)
 
     materials = [
@@ -122,18 +126,39 @@ def append_energy_label_appearance(
 # ---------------------------------------------------------------------------
 
 
+def _resolve_surface_targets(
+    building: Any,
+    targets_by_gml_id: dict[str, list[str]] | None,
+) -> list[str]:
+    """Return pre-collected appearance targets when available, else walk.
+
+    Looking ``building.id`` up in the pipeline-supplied dict costs O(1)
+    and skips the :func:`iter_instances` traversal that
+    :func:`collect_surface_target_ids` would otherwise run per building.
+    The walking path remains the fallback for callers (mainly tests)
+    that construct buildings without tracking ids.
+    """
+    if targets_by_gml_id is not None:
+        gml_id = getattr(building, "id", None)
+        if gml_id is not None and gml_id in targets_by_gml_id:
+            return targets_by_gml_id[gml_id]
+    return collect_surface_target_ids(building)
+
+
+@cache
 def _surface_data_property_type(appearance_cls: type) -> type:
     """Resolve the inner class of ``AppearanceType.surface_data_member``.
 
     We introspect the field rather than import ``SurfaceDataPropertyType``
     directly so xsdata bindings regenerations that rename the property
-    type don't silently break this module — the single failure path is
-    a clear field-lookup error at call time.
+    type don't silently break this module: the single failure path is
+    a clear field-lookup error at call time. Cached because the answer
+    is a pure function of the binding class.
     """
     info = get_fields(appearance_cls).get("surface_data_member")
     if info is None or not isinstance(info.inner_type, type):
         raise RuntimeError(
-            "AppearanceType has no 'surface_data_member' list field — "
+            "AppearanceType has no 'surface_data_member' list field; "
             "bindings may have been regenerated against a different XSD."
         )
     return info.inner_type
@@ -147,7 +172,7 @@ _LETTER_ORDER_INDEX: dict[str, int] = {
 def _sorted_letters(
     by_letter: dict[str | None, list[str]],
 ) -> list[tuple[str | None, list[str]]]:
-    """Deterministic ordering: known letters best → worst, unknown last."""
+    """Deterministic ordering: known letters best to worst, unknown last."""
     return sorted(
         by_letter.items(),
         key=lambda kv: (1, 0) if kv[0] is None else (0, _LETTER_ORDER_INDEX.get(kv[0], 999)),

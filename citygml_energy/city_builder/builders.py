@@ -17,7 +17,7 @@ from typing import Any
 
 from .._gml_builders import build_multi_point, build_multi_surface, build_solid
 from .._step import GeometryPolygon
-from ..bindings import Name
+from ..bindings import CodeType, Name, ThoroughfareNameType
 from ..mapping import get_fields, resolve_class
 from ..namespaces import (
     CS_BUILDING_FUNCTION,
@@ -49,33 +49,13 @@ __all__ = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Class-registry accessors — cached via functools
-# ---------------------------------------------------------------------------
-
-
 @cache
-def _cls(xsd_name: str) -> type:
-    return resolve_class(xsd_name)
-
-
-@cache
-def _direct(class_name: str) -> type:
-    """Lookup a non-element class by its Python name from the bindings module.
-
-    Needed for things like ``ThoroughfareNameType`` which is used as a
-    field type but never registered as an XSD-qualified element.
-    """
-    from citygml_energy import bindings
-
-    cls = getattr(bindings, class_name, None)
-    if cls is None:
-        raise ValueError(f"No xsdata class named {class_name!r} in bindings")
-    return cls
-
-
 def _inner_type(parent_cls: type, field_name: str) -> type | None:
-    """Return the unwrapped inner type of ``parent_cls.field_name`` or ``None``."""
+    """Return the unwrapped inner type of ``parent_cls.field_name`` or ``None``.
+
+    Memoised by ``(parent_cls, field_name)``: the answer is a pure
+    function of the binding class and never varies across runs.
+    """
     info = get_fields(parent_cls).get(field_name)
     if info is None or not isinstance(info.inner_type, type):
         return None
@@ -94,6 +74,7 @@ def build_building(
     lods: tuple[int, ...] = (0, 1, 2),
     srs_name: str = DEFAULT_SRS_NAME,
     srs_dimension: int = DEFAULT_SRS_DIMENSION,
+    surface_targets_out: list[str] | None = None,
 ) -> Any:
     """Build a ``bldg:Building`` from a parsed 3DBAG Pand.
 
@@ -103,9 +84,16 @@ def build_building(
              and ``bldg:RoofSurface`` elements, each carrying its own
              ``lod2MultiSurface``.  Polygons without a recognised semantic
              type are assigned to WallSurface.
+
+    When *surface_targets_out* is supplied, each colorable surface id
+    created here (``#{gml_id}_lod0``, ``#{gml_id}_lod1_shell``, and one
+    per LoD 2 thematic surface) is appended to it. The pipeline uses
+    this to avoid a per-building :func:`iter_instances` walk when
+    building the ``app:Appearance`` (see
+    :func:`citygml_energy.city_builder.appearance.append_energy_label_appearance`).
     """
     gml_id = _safe_gml_id(gml_id_prefix, "pand", parsed.pand_id)
-    building_cls = _cls(BUILDING)
+    building_cls = resolve_class(BUILDING)
     building = building_cls(id=gml_id, name=[Name(value=parsed.pand_id)])
 
     _apply_building_attributes(building, parsed.attributes)
@@ -118,6 +106,8 @@ def build_building(
             srs_name=srs_name,
             srs_dimension=srs_dimension,
         )
+        if surface_targets_out is not None:
+            surface_targets_out.append(f"#{gml_id}_lod0")
 
     if 1 in lods and parsed.geometries.get("1"):
         polygons_lod1 = _unwrap_polygons(parsed.geometries["1"])
@@ -127,6 +117,8 @@ def build_building(
             srs_name=srs_name,
             srs_dimension=srs_dimension,
         )
+        if surface_targets_out is not None:
+            surface_targets_out.append(f"#{gml_id}_lod1_shell")
 
     if 2 in lods and parsed.geometries.get("2"):
         _attach_lod2_thematic_surfaces(
@@ -135,6 +127,7 @@ def build_building(
             gml_id=gml_id,
             srs_name=srs_name,
             srs_dimension=srs_dimension,
+            surface_targets_out=surface_targets_out,
         )
 
     return building
@@ -152,9 +145,8 @@ def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
     # a caller has bubbled it up to the parsed attributes dict.
     function = attrs.get("gebruiksdoel") or attrs.get("function")
     if function:
-        code_cls = _direct("CodeType")
         building.function.append(
-            code_cls(value=str(function), code_space=CS_BUILDING_FUNCTION)
+            CodeType(value=str(function), code_space=CS_BUILDING_FUNCTION)
         )
 
 
@@ -180,6 +172,7 @@ def _attach_lod2_thematic_surfaces(
     gml_id: str,
     srs_name: str,
     srs_dimension: int,
+    surface_targets_out: list[str] | None = None,
 ) -> None:
     """Group *semantic_polygons* by surface type and attach as ``bldg:boundedBy``.
 
@@ -187,6 +180,10 @@ def _attach_lod2_thematic_surfaces(
     gets one ``bldg:boundedBy`` element whose inner surface carries a single
     ``bldg:lod2MultiSurface`` containing all polygons of that type.
     Polygons with an unrecognised or missing type fall back to WallSurface.
+
+    When *surface_targets_out* is supplied, every ``lod2_multi_surface`` id
+    created here is appended to it so the pipeline can build the
+    ``app:Appearance`` targets without an extra tree walk.
     """
     groups: dict[str, list[GeometryPolygon]] = {}
     for sp in semantic_polygons:
@@ -202,7 +199,7 @@ def _attach_lod2_thematic_surfaces(
 
     for surf_type, polygons in groups.items():
         xsd_name, field_name = _SURFACE_TYPES[surf_type]
-        surf_cls = _cls(xsd_name)
+        surf_cls = resolve_class(xsd_name)
         surf_id = f"{gml_id}_{surf_type.lower()}"
         surf = surf_cls(id=surf_id)
         surf.lod2_multi_surface = build_multi_surface(
@@ -212,6 +209,8 @@ def _attach_lod2_thematic_surfaces(
             srs_dimension=srs_dimension,
         )
         building.bounded_by.append(wrapper_cls(**{field_name: surf}))
+        if surface_targets_out is not None:
+            surface_targets_out.append(f"#{surf_id}_ms")
 
 
 # ---------------------------------------------------------------------------
@@ -239,14 +238,13 @@ def build_building_unit(
     :func:`build_address` for the VBO ``geometriePunt`` (``core:Address/
     core:multiPoint``).
     """
-    unit_cls = _cls(BUILDING_UNIT)
-    code_cls = _direct("CodeType")
+    unit_cls = resolve_class(BUILDING_UNIT)
 
     gml_id = _safe_gml_id(gml_id_prefix, "bu", resolved.vbo.identificatie)
     gebruiksdoel = (resolved.vbo.gebruiksdoel or ["other"])[0]
     unit = unit_cls(
         id=gml_id,
-        type_value=code_cls(value=gebruiksdoel),
+        type_value=CodeType(value=gebruiksdoel),
     )
 
     address = build_address(
@@ -335,10 +333,10 @@ def build_address(
     The ``core:multiPoint`` element is typed ``gml:MultiPointPropertyType``
     and documented in the XSD as "locating the entrance(s)". BAG's
     ``geometriePunt`` is the authoritative address-locating point for a
-    VBO — it always lies within the parent Pand but is not guaranteed
+    VBO; it always lies within the parent Pand but is not guaranteed
     to be at the entrance. That semantic mismatch is documentation-level
     only: the schema constraint is just "a MultiPoint", and every
-    Dutch BAG→CityGML converter populates this element the same way.
+    Dutch BAG-to-CityGML converter populates this element the same way.
     """
     street = resolved.street.strip()
     postcode = resolved.postcode.strip()
@@ -346,7 +344,7 @@ def build_address(
     if not street or huisnummer is None:
         return None
 
-    address_cls = _cls(ADDRESS)
+    address_cls = resolve_class(ADDRESS)
     xal_prop_cls = _inner_type(address_cls, "xal_address")
     if xal_prop_cls is None:
         return None
@@ -358,7 +356,7 @@ def build_address(
         postcode=postcode,
         city_name=city_name,
     )
-    details_cls = _cls(XAL_ADDRESS_DETAILS)
+    details_cls = resolve_class(XAL_ADDRESS_DETAILS)
     address_details = details_cls(locality=locality)
 
     address_id = _safe_gml_id(gml_id_prefix, "addr", resolved.vbo.identificatie)
@@ -380,17 +378,16 @@ def build_address(
 
 
 def _build_locality(*, street: str, number_text: str, postcode: str, city_name: str = "") -> Any:
-    locality_cls = _cls(XAL_LOCALITY)
+    locality_cls = resolve_class(XAL_LOCALITY)
     locality_name_cls = locality_cls.LocalityName
-    thoroughfare_cls = _cls(XAL_THOROUGHFARE)
-    thoroughfare_name_cls = _direct("ThoroughfareNameType")
-    thoroughfare_number_cls = _cls(XAL_THOROUGHFARE_NUMBER)
-    postal_code_cls = _cls(XAL_POSTAL_CODE)
+    thoroughfare_cls = resolve_class(XAL_THOROUGHFARE)
+    thoroughfare_number_cls = resolve_class(XAL_THOROUGHFARE_NUMBER)
+    postal_code_cls = resolve_class(XAL_POSTAL_CODE)
     postal_code_number_cls = postal_code_cls.PostalCodeNumber
 
     thoroughfare = thoroughfare_cls(
         thoroughfare_number=[thoroughfare_number_cls(content=[number_text])],
-        thoroughfare_name=[thoroughfare_name_cls(content=[street])],
+        thoroughfare_name=[ThoroughfareNameType(content=[street])],
     )
 
     postal_code = (
@@ -427,17 +424,16 @@ def _build_epc(
 ) -> Any | None:
     label = resolved.energy_label
     if label is None or label.energieklasse is None:
-        # EPC.label is xs:string and required — skip when we have no letter.
+        # EPC.label is xs:string and required, so skip when we have no letter.
         return None
 
     from xsdata.models.datatype import XmlDateTime
 
-    epc_cls = _cls(ENERGY_PERFORMANCE_CERTIFICATE)
-    code_cls = _direct("CodeType")
+    epc_cls = resolve_class(ENERGY_PERFORMANCE_CERTIFICATE)
 
     epc = epc_cls(
         id=_safe_gml_id(gml_id_prefix, "epc", resolved.vbo.identificatie),
-        type_value=code_cls(value="EP-online", code_space=CS_NRG3_EPC_TYPE),
+        type_value=CodeType(value="EP-online", code_space=CS_NRG3_EPC_TYPE),
         label=label.energieklasse,
     )
     if label.registratiedatum is not None:
@@ -459,8 +455,8 @@ def _build_epc(
 def _safe_gml_id(user_prefix: str, kind: str, source_id: str) -> str:
     """Return a valid XML ``xs:ID`` string.
 
-    BAG identificaties are purely numeric — invalid as ``xs:ID`` which
-    requires the first character to be a letter or underscore. We
+    BAG identificaties are purely numeric, which is invalid as ``xs:ID``
+    (it requires the first character to be a letter or underscore). We
     always prepend a semantic prefix (``pand``, ``bu``, ``addr``,
     ``epc``) so the final id is both valid and self-describing. The
     optional caller prefix is layered on top for multi-city merges.
