@@ -5,7 +5,6 @@
   "lods": [0, 1, 2],
   "include_addresses": true,
   "include_energy_labels": true,
-  "ep_online_api_key_file": "../.secrets/ep_online.key",
   "cache_dir": "../.cache/citygml_energy_city",
   "output": "../generated/delft.gml",
   "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",

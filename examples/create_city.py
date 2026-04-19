@@ -14,8 +14,8 @@ Network endpoints used:
 * PDOK BAG WFS: Pand / VBO (address fields embedded in VBO response)
 * ``data.3dbag.nl``: LoD 0/1/2 CityJSON tiles
 * ``public.ep-online.nl``: energy-label bulk mutatiebestand (needs an
-  API token; store it next to the input JSON and reference it via
-  ``ep_online_api_key_file``)
+  API token; set ``EP_ONLINE_API_KEY`` in ``.env`` at project root or
+  reference via ``ep_online_api_key_file`` in the config)
 
 The first run populates the cache directory configured in the JSON;
 subsequent runs are near-instant as long as the cache stays on disk.
