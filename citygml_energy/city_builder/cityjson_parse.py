@@ -4,16 +4,16 @@ The 3DBAG dataset publishes each tile as a CityJSON file where every
 ``BuildingPart`` carries (up to) three geometries tagged ``lod`` ``0``
 ``1.2`` and ``2.2``. We want:
 
-* **LoD 0** — the 2D footprint, published as a ``MultiSurface`` (one
+* **LoD 0**: the 2D footprint, published as a ``MultiSurface`` (one
   polygon in practice). We map it onto ``bldg:lod0FootPrint``.
-* **LoD 1.2** — the prismatic block, a ``Solid``. Maps to ``bldg:lod1Solid``.
-* **LoD 2.2** — the roof-shape model, a ``Solid`` with semantic
+* **LoD 1.2**: the prismatic block, a ``Solid``. Maps to ``bldg:lod1Solid``.
+* **LoD 2.2**: the roof-shape model, a ``Solid`` with semantic
   ``RoofSurface`` / ``WallSurface`` / ``GroundSurface`` surfaces. We
   parse the per-face semantics from ``geometry.semantics`` and preserve
   them in :class:`SemanticPolygon` so the builder can emit proper
   ``bldg:boundedBy`` thematic surfaces.
 
-This module is **pure parser** — it never touches the xsdata bindings
+This module is **pure parser**: it never touches the xsdata bindings
 and depends only on standard-library types, so it's trivial to unit-
 test against fixtures.
 """
@@ -34,27 +34,37 @@ _LOD_ALIAS: dict[str, str] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SemanticPolygon:
     """A geometry polygon annotated with its CityGML thematic surface type.
 
     ``surface_type`` is one of ``"GroundSurface"``, ``"WallSurface"``,
     ``"RoofSurface"`` when the source CityJSON carries ``semantics``, or
     ``None`` when no semantic information was available.
+
+    ``slots=True`` avoids the 48-byte instance ``__dict__``. With
+    70 k+ instances per Delft-scale city build (2286 buildings × up to
+    3 LoDs × ~10 polygons), the memory and allocation savings are
+    directly visible in the parse path.
     """
 
     polygon: GeometryPolygon
     surface_type: str | None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ParsedBuilding:
     """Per-Pand geometry extracted from a CityJSON tile.
+
+    ``slots=True`` for the same reason as :class:`SemanticPolygon`: one
+    instance per building makes the per-attribute dict nothing but
+    overhead. Pickling remains well-supported on slotted frozen
+    dataclasses, which matters for the on-disk 3DBAG parsed-tile cache.
 
     Attributes:
         pand_id: the BAG identificatie (``attributes.identificatie``).
         attributes: the raw CityObject attribute dict.
-        geometries: ``{"0": [...], "1": [...], "2": [...]}`` — each
+        geometries: ``{"0": [...], "1": [...], "2": [...]}``, where each
             value is a list of :class:`SemanticPolygon`. Missing LoDs
             simply don't appear.
     """
