@@ -10,7 +10,7 @@ from citygml_energy.city_builder.cityjson_parse import (
 
 
 def _minimal_tile() -> dict:
-    """One Building with two BuildingParts — LoD0 MultiSurface + LoD2.2 Solid.
+    """One Building with two BuildingParts: LoD0 MultiSurface + LoD2.2 Solid.
 
     Vertices are stored as pre-transformed floats (transform = identity)
     so the test reads like a human-authored CityJSON sample.

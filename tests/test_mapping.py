@@ -1,7 +1,7 @@
 """Unit tests for the schema-agnostic plumbing in :mod:`citygml_energy.mapping`.
 
 These tests exercise the pieces that the rest of the pipeline depends on
-without going through the full pipeline — so a regression in e.g.
+without going through the full pipeline, so a regression in e.g.
 ``iter_instances`` surfaces as a focused failure instead of as a muddy
 end-to-end breakage.
 """
@@ -136,7 +136,7 @@ def test_find_by_id_returns_none_when_missing() -> None:
 
 
 def test_find_by_id_ignores_non_string_id_attributes() -> None:
-    # xsdata sometimes has ``id`` fields that aren't a gml:id — find_by_id
+    # xsdata sometimes has ``id`` fields that aren't a gml:id; find_by_id
     # must match on string equality only and skip None / other types.
     model = _make_tiny_model()
     assert find_by_id(model, "") is None

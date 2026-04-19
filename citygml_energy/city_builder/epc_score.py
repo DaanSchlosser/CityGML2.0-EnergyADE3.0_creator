@@ -4,10 +4,7 @@ This module converts Dutch/EU energy-label letters (``A+++++`` … ``G``)
 into (a) a numeric score used for aggregating multiple labels on one
 building and (b) an RGB color used by the CityGML Appearance builder.
 
-The numeric mapping mirrors the reference implementation in
-``VdB_Optoppen_lokaal/exporting_sql_tables/2. export_aangrenzende_
-dakdelen_woningcorporaties_excel.py`` (``label_to_kwh`` /
-``kwh_to_avg_label``): each letter maps to a representative primary
+Numeric mapping: each letter maps to a representative primary
 fossil-energy use (kWh/m²/yr), labels are averaged by taking the simple
 arithmetic mean of those kWh values, and the mean is then snapped back
 to a letter via a fixed threshold table.
@@ -15,7 +12,7 @@ to a letter via a fixed threshold table.
 The color palette is the EU energy-label graphic scale (Regulation
 2017/1369, extended upward with RVO's ``A++++`` / ``A+++++`` tints and
 downward with grey for "no label"). The EU Regulation does not specify
-RGB values directly — the printed reference is CMYK. The hex values
+RGB values directly: the printed reference is CMYK. The hex values
 below are the de-facto digital rendering used across Dutch tools
 (EP-online, RVO "Uitgebreid Energielabel" graphics). They are isolated
 in :data:`LABEL_HEX` so a swap to a different authoritative palette is
@@ -36,11 +33,10 @@ __all__ = [
 
 
 # ---------------------------------------------------------------------------
-# Letter ↔ kWh mapping (from VdB reference script, `label_to_kwh`)
+# Letter to kWh mapping
 # ---------------------------------------------------------------------------
 # Each letter is represented by the midpoint of its BENG-1 band (primary
-# fossil energy use in kWh/m²/yr). Values copied verbatim from the
-# reference script so this pipeline produces identical numeric scores.
+# fossil energy use in kWh/m²/yr).
 LABEL_TO_KWH: dict[str, float] = {
     "A+++++": -10.0,
     "A++++": 25.0,
@@ -56,8 +52,7 @@ LABEL_TO_KWH: dict[str, float] = {
     "G": 450.0,
 }
 
-# Reverse thresholds: kWh mean → letter. Upper exclusive bounds, in order.
-# Copied verbatim from `kwh_to_avg_label` in the reference script.
+# Reverse thresholds: kWh mean to letter. Upper exclusive bounds, in order.
 _KWH_THRESHOLDS: tuple[tuple[float, str], ...] = (
     (0.0, "A+++++"),
     (50.0, "A++++"),
@@ -102,9 +97,9 @@ LABEL_HEX: dict[str | None, str] = {
 def normalize_label(raw: str | None) -> str | None:
     """Return *raw* stripped and upper-cased, or ``None`` for empty input.
 
-    Mirrors the reference script's ``normalize_label``. Labels in EP-online
-    CSVs arrive with inconsistent case (``"a+"``, ``"A+"``) and trailing
-    whitespace; this collapses both so lookups never miss due to casing.
+    Labels in EP-online CSVs arrive with inconsistent case (``"a+"``,
+    ``"A+"``) and trailing whitespace; this collapses both so lookups
+    never miss due to casing.
     """
     if raw is None:
         return None
@@ -116,10 +111,10 @@ def average_labels(labels: Iterable[str | None]) -> str | None:
     """Mean EPC label across *labels*, or ``None`` if none are recognised.
 
     Each input is normalised, mapped to its kWh value, averaged (simple
-    arithmetic mean — no area/occupant weighting, matching the reference
-    script), then mapped back to a letter via ``_KWH_THRESHOLDS``.
-    Unrecognised entries (``None`` or labels not in :data:`LABEL_TO_KWH`)
-    are dropped; the mean is taken over the rest.
+    arithmetic mean, no area/occupant weighting), then mapped back to a
+    letter via ``_KWH_THRESHOLDS``. Unrecognised entries (``None`` or
+    labels not in :data:`LABEL_TO_KWH`) are dropped; the mean is taken
+    over the rest.
     """
     kwh_values: list[float] = []
     for label in labels:

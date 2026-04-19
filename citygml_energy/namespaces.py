@@ -12,7 +12,7 @@ Adding a new ADE (``ScenarioADE``, updated ``EnergyADE`` version, …):
 2. If bindings introduce a new namespace URI, add a line under ``prefixes``
    in ``schemas/namespace_prefixes.json``. The module emits a warning at
    import time listing any URI it could not resolve to a prefix, so drift
-   is visible — never silent.
+   is visible, never silent.
 
 Prefixes are a human convention and cannot be recovered from XSD alone;
 the JSON file is therefore the single source of truth for them.
@@ -44,7 +44,7 @@ class PrefixConfig:
     """Prefix / wire-namespace / codespace metadata loaded from the JSON config.
 
     A single frozen record keeps the three concerns visibly distinct at the
-    call site — callers access ``cfg.prefixes`` etc. instead of unpacking a
+    call site: callers access ``cfg.prefixes`` etc. instead of unpacking a
     positional tuple whose shape has to be remembered.
     """
 
@@ -65,7 +65,7 @@ def _load_prefix_config() -> PrefixConfig:
 
 
 # ---------------------------------------------------------------------------
-# Binding introspection — single source of truth for "what's in the bindings"
+# Binding introspection: single source of truth for "what's in the bindings"
 # ---------------------------------------------------------------------------
 
 
@@ -92,7 +92,7 @@ def iter_binding_classes() -> tuple[BindingClassInfo, ...]:
     Cached: the bindings module is immutable once imported.
 
     Used by this module (for :data:`NSMAP` discovery) and by
-    :func:`citygml_energy.mapping._build_class_registry` — any other
+    :func:`citygml_energy.mapping._build_class_registry`. Any other
     consumer that needs to reflect over the bindings should route through
     here rather than rewalking ``dir(bindings)``.
     """
@@ -179,7 +179,7 @@ def qn(prefix: str, local: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# CRS defaults — written onto gml:Envelope, gml:MultiSurface, gml:Solid.
+# CRS defaults, written onto gml:Envelope, gml:MultiSurface, gml:Solid.
 # ---------------------------------------------------------------------------
 # Compound CRS: RD New (EPSG:28992) horizontal + NAP (EPSG:5109) vertical.
 DEFAULT_SRS_NAME = "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109"
@@ -221,7 +221,7 @@ def _nrg3_cs_base() -> str:
     except KeyError as err:
         raise RuntimeError(
             "schemas/namespace_prefixes.json is missing "
-            "codespace_bases.nrg3 — cannot build Energy-ADE codespace URLs"
+            "codespace_bases.nrg3, cannot build Energy-ADE codespace URLs"
         ) from err
 
 

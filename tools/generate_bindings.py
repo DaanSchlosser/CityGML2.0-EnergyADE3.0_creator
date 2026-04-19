@@ -12,13 +12,13 @@ Adding a new ADE (``ScenarioADE``, updated ``EnergyADE`` release, …):
 
 1. Drop the ADE's XSD tree under the repo (``<AdeName>/xsd/...`` beside the
    existing ``Energy_ADE-3.0beta8/``, or inline under ``xsd/``). The tool
-   discovers every ``*.xsd`` under :data:`_STAGED_ROOTS` automatically —
+   discovers every ``*.xsd`` under :data:`_STAGED_ROOTS` automatically;
    no registration needed.
 2. Rerun this tool. Any schemaLocation URL it cannot map to a local file
    is reported with the offending file and URL, so drift fails loudly
    instead of triggering a silent network fetch from xsdata.
 3. If the new ADE defines a fresh XML namespace, add a prefix entry in
-   ``schemas/namespace_prefixes.json`` — the ``NSMAP`` discovery in
+   ``schemas/namespace_prefixes.json``: the ``NSMAP`` discovery in
    :mod:`citygml_energy.namespaces` warns at import time until that is
    done.
 
@@ -126,8 +126,8 @@ def _resolve_schema_location(
     """Return the staged file *url* should point at, or ``None`` if unmappable.
 
     *namespace* is the ``namespace`` attribute on the enclosing
-    ``<xs:import>`` — empty string when the reference is an
-    ``<xs:include>`` (same-namespace reference, inherited from the
+    ``<xs:import>`` (empty string when the reference is an
+    ``<xs:include>``, a same-namespace reference inherited from the
     enclosing schema).
     """
     bucket = index.get(namespace)
@@ -200,8 +200,8 @@ def _rewrite_one_file(
 def _stage_schemas(staging_dir: Path) -> list[Path]:
     """Copy every tree in :data:`_STAGED_ROOTS` into *staging_dir* and patch.
 
-    Returns the list of staged entry-point XSDs — the paths xsdata should
-    receive on its command line. Raises :class:`RuntimeError` if any
+    Returns the list of staged entry-point XSDs (the paths xsdata should
+    receive on its command line). Raises :class:`RuntimeError` if any
     schemaLocation URL cannot be resolved; the caller is expected to treat
     that as a fatal misconfiguration (missing local XSD, stale URL, or
     newly-added ADE whose imports were not dropped on disk yet).

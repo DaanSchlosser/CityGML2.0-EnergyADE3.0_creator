@@ -203,7 +203,7 @@ def mocked_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     # Bypass the 3DBAG + shapely chain entirely so the test does not
     # need shapely installed. Patching _fetch_parsed_buildings replaces
     # outline conversion, bbox clipping, and the threedbag HTTP fetcher
-    # with one fixture return — previously the test monkeypatched those
+    # with one fixture return; previously the test monkeypatched those
     # helpers individually and relied on the pipeline's defensive
     # exception handler to absorb the dict-vs-shapely mismatch.
     monkeypatch.setattr(

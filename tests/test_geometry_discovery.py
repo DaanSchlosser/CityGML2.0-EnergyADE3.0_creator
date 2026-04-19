@@ -23,7 +23,7 @@ from citygml_energy.geometry import (
 def test_discover_wrapper_returns_boundary_surface_property_type_for_building() -> None:
     wrapper = _discover_wrapper(Building, "bounded_by")
     assert wrapper is not None
-    # xsdata dedup suffix — name is stable even if the "2" migrates.
+    # xsdata dedup suffix: name is stable even if the "2" migrates.
     assert wrapper.__name__.startswith("BoundarySurfacePropertyType")
 
 
@@ -124,7 +124,7 @@ def test_window_type_is_not_returned_as_opening_entry() -> None:
 
 
 # ---------------------------------------------------------------------------
-# XSD-agnosticism guard — verifies no schema-specific class leaks into imports
+# XSD-agnosticism guard: verifies no schema-specific class leaks into imports
 # ---------------------------------------------------------------------------
 
 
@@ -135,7 +135,7 @@ def test_geometry_module_does_not_import_schema_specific_classes() -> None:
     ``CodeType``, ...) and abstract wrappers (``AbstractCityObjectPropertyType``,
     ``LayeredConstruction2``, ``RelatedTo``, ``CityObjectRelation``,
     ``BoundedBy``). Every concrete surface / opening / target class must
-    come via :func:`citygml_energy.mapping.resolve_class` — if someone
+    come via :func:`citygml_energy.mapping.resolve_class`. If someone
     reintroduces ``from .bindings import WallSurface2`` this fails.
     """
     import ast

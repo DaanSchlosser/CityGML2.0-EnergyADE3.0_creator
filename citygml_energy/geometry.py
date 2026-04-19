@@ -20,8 +20,8 @@ XSD-agnostic by design:
   string literal in the pipeline lives in one reviewable place. Surface
   and opening taxonomies are auto-discovered from the generated dataclass
   metadata on the ``bounded_by`` and ``opening`` wrappers. Regenerating
-  the bindings from a modified XSD — new surface classes, renamed dedup
-  suffixes, extended Energy-ADE variants — is therefore picked up
+  the bindings from a modified XSD (new surface classes, renamed dedup
+  suffixes, extended Energy-ADE variants) is therefore picked up
   automatically.
 * Only GML primitives (``Polygon``, ``MultiSurface``, ``Solid``,
   ``Envelope``, ``PosList`` ...) are imported up-front; those are GML
@@ -34,7 +34,7 @@ Domain knowledge still encoded here:
   ``SolarPanelSurface_1``, optional ``lod3_`` prefix, ``|parent=...``
   suffix). This is the RenoDAT authoring convention and is expressed as
   configuration (:data:`_SOLAR_PANEL_PREFIX`, :func:`_strip_lod_prefix`).
-* The set of supported JSON geometry-source types — see
+* The set of supported JSON geometry-source types: see
   :data:`GEOMETRY_SOURCE_SPECS`. Adding a new source type only requires
   registering a spec; the input loader and the JSON-schema generator both
   consume this registry.
@@ -85,7 +85,7 @@ from .schema_types import (
 )
 
 # ---------------------------------------------------------------------------
-# STEP layer naming convention (RenoDAT default — overridable per source)
+# STEP layer naming convention (RenoDAT default, overridable per source)
 # ---------------------------------------------------------------------------
 _LOD_PREFIX_RE = re.compile(r"^lod\d+(?:\.\d+)?_", re.IGNORECASE)
 DEFAULT_SOLAR_PANEL_PREFIX = "SolarPanelSurface_"
@@ -111,7 +111,7 @@ class _RenderContext:
     tree (``gml:id → object``), giving handlers O(1) lookups instead of
     one DFS per target reference. ``surface_name_index`` maps the STEP
     layer name of every attached boundary surface (e.g. ``"RoofSurface_01"``)
-    to the auto-assigned ``gml:id`` — this is the bridge that lets the
+    to the auto-assigned ``gml:id``. This is the bridge that lets the
     JSON input declare relations (``installed_on``) against stable
     author-facing names without having to know the generated id layout.
     """
@@ -163,7 +163,7 @@ class _AttachmentBuckets:
 
 
 # ---------------------------------------------------------------------------
-# Geometry-source specs — single source of truth for JSON dispatch
+# Geometry-source specs: single source of truth for JSON dispatch
 # ---------------------------------------------------------------------------
 
 
@@ -191,8 +191,8 @@ class GeometrySourceSpec:
     routine to dispatch to. :attr:`solar_panel_prefix` lets non-RenoDAT
     callers rename the STEP layer prefix that triggers solar-panel
     handling. Device-to-surface ``installedOn`` relations are declared
-    in the JSON input, not derived from STEP naming —
-    see :func:`apply_device_relations`.
+    in the JSON input, not derived from STEP naming
+    (see :func:`apply_device_relations`).
     """
 
     source_type: str
@@ -239,11 +239,11 @@ GEOMETRY_SOURCE_SPECS: dict[str, GeometrySourceSpec] = _build_source_specs()
 """Registry keyed by ``source_type`` (e.g. ``"step-renodat-lod3"``)."""
 
 SUPPORTED_GEOMETRY_SOURCE_TYPES: frozenset[str] = frozenset(GEOMETRY_SOURCE_SPECS)
-"""Public allowlist consumed by the input loader — derived from the specs."""
+"""Public allowlist consumed by the input loader; derived from the specs."""
 
 
 # ---------------------------------------------------------------------------
-# Auto-discovery — derive the surface / opening taxonomy from bindings
+# Auto-discovery: derive the surface / opening taxonomy from bindings
 # ---------------------------------------------------------------------------
 
 
@@ -400,7 +400,7 @@ def apply_device_relations(
     to a list of surface references. Each reference is first looked up in
     :attr:`CityModel.surface_name_index` (so author-facing STEP layer
     names like ``"RoofSurface_01"`` work), then falls back to the
-    gml:id-keyed feature index — meaning JSON may cite any indexable
+    gml:id-keyed feature index, meaning JSON may cite any indexable
     ``gml:id`` directly too.
 
     Unresolved references raise :class:`ValueError` to fail loudly rather
@@ -428,7 +428,7 @@ def apply_device_relations(
         if not hasattr(device, "related_to"):
             raise ValueError(
                 f"apply_device_relations: feature {device_id!r} "
-                f"({type(device).__name__}) has no 'related_to' field — "
+                f"({type(device).__name__}) has no 'related_to' field; "
                 f"the XSD does not permit ADE relations on this type"
             )
 
@@ -611,7 +611,7 @@ def _apply_aggregate_building_geometry(
     target_building_id: str,
     lod_level: int,
 ) -> list[Coord3D]:
-    """LOD 0/1 aggregate attachment — footprint or block solid on a Building."""
+    """LOD 0/1 aggregate attachment: footprint or block solid on a Building."""
     polygons, all_coordinates = parse_all_polygons(step_path, origin=ctx.origin)
     if not polygons:
         raise ValueError(f"STEP geometry {step_path} contains no polygon geometry")
@@ -637,7 +637,7 @@ def _apply_aggregate_building_geometry(
 
 
 # ---------------------------------------------------------------------------
-# Shell classification — STEP layer name → parent-wrapper entry
+# Shell classification: STEP layer name → parent-wrapper entry
 # ---------------------------------------------------------------------------
 
 
@@ -679,7 +679,7 @@ def _classify_shell(
                 polygons=shell.polygons,
             )
 
-    # Openings — discover opening map by peeking at any surface class's
+    # Openings: discover opening map by peeking at any surface class's
     # ``opening`` field. All surface classes in the same wrapper share the
     # same opening wrapper type, so we grab the first one.
     for entry in surface_map.values():
@@ -699,7 +699,7 @@ def _classify_shell(
         break  # opening wrapper is uniform across surface siblings
 
     # Fallthrough for "source declared a PV target but this shell has no
-    # solar / surface / opening name match" — treat it as solar. The
+    # solar / surface / opening name match": treat it as solar. The
     # opt-in via *pv_target_declared* keeps typos on non-PV sources
     # failing loudly; on a source that *is* the PV export, unnamed
     # shells are what Rhino produces by default and we accept them.
@@ -721,7 +721,7 @@ def _classify_shell(
 
 
 # ---------------------------------------------------------------------------
-# Attach features to a Building — LOD 2..4 path
+# Attach features to a Building: LOD 2..4 path
 # ---------------------------------------------------------------------------
 
 
@@ -880,7 +880,7 @@ def _attach_solar_panels(
     """Attach solar-panel polygons to the PV collector as ``lodNMultiSurface``.
 
     Device-to-surface relations (``installedOn`` etc.) are *metadata*
-    and belong in the JSON input — see :func:`apply_device_relations` —
+    and belong in the JSON input (see :func:`apply_device_relations`),
     so this function deliberately no longer derives them from STEP layer
     names. The geometric ``|parent=RoofSurface_…`` link is still parsed
     for opening-to-wall matching; it just no longer drives ADE relations.
@@ -984,7 +984,7 @@ def _layered_construction_list(obj: Any) -> list[Any] | None:
     """Return the ``layered_construction`` list on *obj* if present.
 
     Also verifies the list's element type matches the
-    ``nrg3:layeredConstruction`` wrapper — the field name alone isn't
+    ``nrg3:layeredConstruction`` wrapper. The field name alone isn't
     enough because unrelated xsdata classes could theoretically reuse it.
     """
     info = get_fields(type(obj)).get("layered_construction")

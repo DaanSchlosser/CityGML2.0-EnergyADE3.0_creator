@@ -4,15 +4,15 @@ Two claims matter:
 
 * Staging the shipped XSD trees leaves no absolute ``schemaLocation``
   URL unresolved (other than the documented ``xml.xsd`` bootstrap).
-  This is the end-to-end integration check — if the claim fails, binding
+  This is the end-to-end integration check: if the claim fails, binding
   generation would trigger a network fetch that the offline build forbids.
 
 * ``_resolve_schema_location`` disambiguates correctly inside a
   multi-file namespace bucket (``gml`` has 29 siblings, matched by URL
-  basename) and returns ``None`` for namespaces that nobody ships —
-  fail-loud rather than silently resolving to a wrong file.
+  basename) and returns ``None`` for namespaces that nobody ships,
+  failing loudly rather than silently resolving to a wrong file.
 
-Staging runs once per module via fixture — it walks 50+ XSDs and
+Staging runs once per module via fixture; it walks 50+ XSDs and
 rewrites schemaLocations for each, so repeating it per test was wasteful.
 """
 
@@ -84,7 +84,7 @@ def test_resolve_disambiguates_inside_a_multi_file_namespace(
         resolved = gb._resolve_schema_location(ns_index, gml_ns, url)
         assert resolved is not None, f"Failed to resolve {url}"
         assert resolved.name == filename, (
-            f"Expected {filename}, resolved to {resolved.name} — basename "
+            f"Expected {filename}, resolved to {resolved.name}; basename "
             "disambiguation is broken"
         )
 

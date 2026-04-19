@@ -60,7 +60,7 @@ def test_open_ring_always_returns_a_new_list() -> None:
     unclosed = [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)]
     result = open_ring(unclosed)
     assert result == unclosed
-    assert result is not unclosed  # still a fresh list — prevents mutation leakage
+    assert result is not unclosed  # still a fresh list (prevents mutation leakage)
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ def _unit_cube_polygons() -> list[GeometryPolygon]:
 
 def test_orient_solid_polygons_flips_inward_facing_faces() -> None:
     cube = _unit_cube_polygons()
-    # Reverse one face — simulating an inward-facing shared wall.
+    # Reverse one face to simulate an inward-facing shared wall.
     cube[0] = GeometryPolygon(exterior=list(reversed(cube[0].exterior)))
     oriented = orient_solid_polygons(cube)
 

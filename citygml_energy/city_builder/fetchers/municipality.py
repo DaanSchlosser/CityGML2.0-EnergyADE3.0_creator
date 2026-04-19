@@ -1,6 +1,5 @@
 """Lookup a Dutch municipality outline from PDOK ``bestuurlijkegebieden``.
 
-The endpoint is the same WFS that the ``VdB_Optoppen2`` reference uses.
 We request the whole ``Gemeentegebied`` layer paginated, filter by
 case-insensitive name match, and return the first matching feature as a
 GeoJSON dict plus a (minx, miny, maxx, maxy) bounding box in EPSG:28992.

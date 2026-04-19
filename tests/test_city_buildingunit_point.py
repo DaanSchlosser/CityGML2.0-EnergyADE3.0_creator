@@ -79,7 +79,7 @@ def test_extract_point_rejects_non_point_geometries() -> None:
 
 
 # ---------------------------------------------------------------------------
-# build_address — multiPoint attachment
+# build_address: multiPoint attachment
 # ---------------------------------------------------------------------------
 
 

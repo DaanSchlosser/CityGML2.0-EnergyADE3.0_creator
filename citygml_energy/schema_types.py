@@ -4,8 +4,8 @@ Regenerating bindings from updated XSD files is the primary mechanism for
 schema change: xsdata re-derives every dataclass, and downstream modules
 (:mod:`mapping`, :mod:`geometry`, :mod:`city_builder`) pick up the new
 shapes through reflection. This module is the tiny remaining surface
-where the source code has to *name* an element — geometry attachment,
-city-scale builders, construction mapping — and has to be edited only
+where the source code has to *name* an element (geometry attachment,
+city-scale builders, construction mapping). It only needs to be edited
 when element names themselves change (new ADE version, different vendor,
 different CityGML edition).
 
@@ -18,12 +18,12 @@ specific bindings revision.
 from __future__ import annotations
 
 # ---------------------------------------------------------------------------
-# CityGML 2.0 — Core
+# CityGML 2.0: Core
 # ---------------------------------------------------------------------------
 ADDRESS = "core:Address"
 
 # ---------------------------------------------------------------------------
-# CityGML 2.0 — Building
+# CityGML 2.0: Building
 # ---------------------------------------------------------------------------
 BUILDING = "bldg:Building"
 GROUND_SURFACE = "bldg:GroundSurface"
@@ -31,13 +31,13 @@ WALL_SURFACE = "bldg:WallSurface"
 ROOF_SURFACE = "bldg:RoofSurface"
 
 # ---------------------------------------------------------------------------
-# CityGML 2.0 — Appearance
+# CityGML 2.0: Appearance
 # ---------------------------------------------------------------------------
 APPEARANCE = "app:Appearance"
 X3D_MATERIAL = "app:X3DMaterial"
 
 # ---------------------------------------------------------------------------
-# GML 3.1.1 — Point / MultiPoint
+# GML 3.1.1: Point / MultiPoint
 # ---------------------------------------------------------------------------
 GML_POINT = "gml:Point"
 GML_MULTI_POINT = "gml:MultiPoint"
@@ -66,10 +66,10 @@ LAYERED_CONSTRUCTION = "nrg3:layeredConstruction"
 # ---------------------------------------------------------------------------
 # Maps the CityGML/CityJSON surface-type string to its XSD-qualified element
 # name. The second member of each tuple is the Python field name on the
-# ``bldg:boundedBy`` wrapper that carries this surface type — xsdata derives
+# ``bldg:boundedBy`` wrapper that carries this surface type. xsdata derives
 # these from XSD element-ref names (e.g. ``<element ref="bldg:WallSurface"/>``
-# → ``wall_surface``). If the wrapper field is ever renamed by xsdata, this
-# constant is the single place to update.
+# becomes ``wall_surface``). If the wrapper field is ever renamed by xsdata,
+# this constant is the single place to update.
 CITYGML_SURFACE_TYPES: dict[str, tuple[str, str]] = {
     "GroundSurface": (GROUND_SURFACE, "ground_surface"),
     "WallSurface": (WALL_SURFACE, "wall_surface"),

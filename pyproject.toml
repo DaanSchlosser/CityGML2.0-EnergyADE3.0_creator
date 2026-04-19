@@ -1,7 +1,7 @@
 [project]
 name = "citygml-energy"
 version = "0.5.0"
-description = "CityGML 2.0 + Energy ADE 3.0 creator — generate standards-compliant GML from flat JSON input."
+description = "CityGML 2.0 + Energy ADE 3.0 creator: generate standards-compliant GML from flat JSON input."
 requires-python = ">=3.12"
 dependencies = [
     "lxml>=5.0",
@@ -14,13 +14,23 @@ dev = [
     "lxml-stubs>=0.5",
     "xsdata[cli,lxml]>=24.0",
 ]
-# City-scale workflow — BAG / 3DBAG / EP-online fetch + CityJSON parsing.
+# City-scale workflow: BAG / 3DBAG / EP-online fetch + CityJSON parsing.
 # Optional because the per-building RenoDAT pipeline does not need them.
 city = [
     "requests>=2.32",
     "shapely>=2.0",
     "python-dotenv>=1.0",
     "flatgeobuf>=0.1",
+    # orjson is optional; absence falls back to stdlib json transparently
+    # (see citygml_energy.city_builder.http.loads_json). Including it in the
+    # default ``[city]`` set gives the 3× CityJSON-parse speedup out of the box.
+    "orjson>=3.9",
+]
+# Faster EP-online CSV filtering via the columnar parser. Keeps the base
+# ``[city]`` install lean; enable when you want the sub-second filtered
+# parse path in eponline.py (see _parse_labels_with_polars).
+city-fast = [
+    "polars>=0.20",
 ]
 
 # ── Ruff ────────────────────────────────────────────────────────────────
@@ -53,9 +63,9 @@ select = [
 ]
 ignore = [
     "E501",    # line length handled by formatter
-    "SIM108",  # ternary — readability preference
+    "SIM108",  # ternary, readability preference
     "TC001",   # runtime-evaluated dataclass annotations need real imports
-    "TC003",   # same — Mapping etc. used in signatures at runtime
+    "TC003",   # same as TC001; Mapping etc. used in signatures at runtime
     "RUF005",  # tuple concatenation is the established pattern in this codebase
     "PERF203", # try/except in loop is intentional in parser code
 ]
@@ -94,7 +104,7 @@ root = "tools"
 
 # Restrict analysis to first-party source. Without this, Pylance/Pyright walks
 # the bundled KITModelViewer Python distribution, the .venv, and any reference
-# data dirs — producing tens of thousands of irrelevant diagnostics in the
+# data dirs, producing tens of thousands of irrelevant diagnostics in the
 # VSCode sidebar.
 include = [
     "citygml_energy",
