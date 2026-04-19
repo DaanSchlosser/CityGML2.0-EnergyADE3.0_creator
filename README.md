@@ -45,7 +45,7 @@ python -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 
-# generate the GML file
+# generate the GML file (per-building pipeline)
 python examples/create_renodat.py
 
 # validate it against the bundled XSDs (offline)
@@ -54,6 +54,11 @@ python tools/validate_xsd.py generated/renodat.gml
 # run the test suite
 python -m pytest -q
 ```
+
+**Python version:** This project requires Python 3.12+. The setup
+script enforces this via [pyproject.toml](pyproject.toml).
+If `python -m venv` fails with a version mismatch, verify your active
+Python: `python --version` (must be ≥ 3.12).
 
 Custom paths:
 
@@ -64,7 +69,9 @@ python examples/create_renodat.py --input inputs/renodat_input.json --output gen
 Requirements: Python 3.12+ and `lxml >= 5.0`. Dev extras add `pytest`,
 `ruff`, `xsdata[cli,lxml]`, and `lxml-stubs`. For the city-scale
 workflow (§12), the `city` extras add `requests`, `shapely`,
-`python-dotenv`, and `flatgeobuf`. All declared in [pyproject.toml](pyproject.toml).
+`python-dotenv`, `flatgeobuf`, and `orjson` (for faster CityJSON
+parsing). An optional `city-fast` extra adds `polars` for sub-second
+EP-online CSV filtering. All declared in [pyproject.toml](pyproject.toml).
 
 Two parallel input pipelines live in this repo:
 
@@ -78,7 +85,7 @@ Two parallel input pipelines live in this repo:
 ## 3. The input file
 
 Everything the generator needs lives in a single JSON document
-([inputs/renodat_input.json](inputs/renodat_input.json)). It has six
+([inputs/renodat_input.json](inputs/renodat_input.json)). It has eight
 top-level keys (plus an optional `$schema`):
 
 ```jsonc
@@ -155,6 +162,17 @@ Field-by-field semantics:
   for VS Code autocomplete and inline validation while editing. The
   canonical [inputs/renodat_input.json](inputs/renodat_input.json) does
   not currently set it; add it manually if you want editor assistance.
+- **`srs_name`** *(optional, defaults to
+  `urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109`)*: the CRS URN
+  written onto every produced `gml:Envelope`, `gml:MultiSurface`, and
+  `gml:Solid`.
+- **`srs_dimension`** *(optional, defaults to `3`)*: coordinate
+  dimension (2 or 3).
+
+**Secrets management:** The per-building pipeline does not require API
+keys. The `ep_online_api_key` is only needed for the city-scale workflow
+(§12) and is managed via the `.env` file at project root; see §12.1 for
+details.
 
 ---
 ## 4. Pipeline overview
@@ -230,7 +248,8 @@ what each one does and why it lives where it does.
 
 3. **`build_city_model_from_feature_collection(data)`** at
    [input_loader.py:192](citygml_energy/input_loader.py#L192). The
-   orchestrator. Creates an empty `CityModel(gml_name, gml_description)`
+   orchestrator. Creates an empty `CityModel(gml_name=...,
+   gml_description=...)` (keyword-only; see §6.5 for full signature)
    and runs a **two-phase build**:
 
    - **Phase 1 (build objects).** For every feature, calls
@@ -302,7 +321,7 @@ builder classes with explicit `ELEMENT_ORDER` tuples and field-map dicts.
 They drifted out of sync with the XSD and were painful to extend. The
 current codebase generates all bindings from the official XSDs via xsdata,
 eliminating manual element-order bugs and giving full schema coverage. The
-trade-off is real: `bindings.py` is ~84k lines, IDE indexing on it is
+trade-off is real: `bindings.py` is ~78k lines, IDE indexing on it is
 slow, debugging into generated code is tedious, and binding regeneration
 becomes a build step. We accept that cost.
 
@@ -550,7 +569,7 @@ namespace is TU Delft's hosted beta8 variant
 Central module of XSD-qualified element names (`"prefix:LocalName"`)
 referenced directly in Python: for example, `BUILDING = "bldg:Building"`,
 `WALL_SURFACE = "bldg:WallSurface"`, `APPEARANCE = "app:Appearance"`,
-`POS_LIST = "gml:posList"`. Everything is resolved through
+`GML_POINT = "gml:Point"`. Everything is resolved through
 `mapping.resolve_class` at call time, so no xsdata class is imported at
 module scope. This is the tiny remaining surface that has to be
 touched when an element is renamed across an ADE / CityGML edition;
@@ -751,6 +770,7 @@ citygml_energy/                Core package
 ├── geometry.py                STEP → xsdata attachment, auto-discovered taxonomy
 ├── _step.py                   ISO 10303-21 parser (xsdata-independent)
 ├── _gml_builders.py           Pure gml:Polygon / MultiSurface / Solid / Envelope builders
+├── _xsdata_patches.py         Runtime patches for xsdata edge cases
 ├── schema_types.py            Central XSD-qualified element-name constants
 ├── serialization.py           XmlSerializer wrapper with NSMAP and tab indent
 ├── namespaces.py              NSMAP built from bindings + schemas/namespace_prefixes.json
@@ -764,7 +784,8 @@ tools/
 ├── generate_bindings.py       Regenerate bindings.py from XSD (auto-discovered URL map)
 ├── generate_input_schema.py   Regenerate the per-building JSON input schema
 ├── generate_city_input_schema.py   Regenerate the city-scale JSON input schema
-└── validate_xsd.py            Offline XSD validation
+├── validate_xsd.py            Offline XSD validation
+└── bench.py                   Benchmarking utilities
 
 inputs/
 ├── renodat_input.json         Canonical per-building data (§3)
@@ -781,7 +802,7 @@ xsd/                            CityGML 2.0 + GML 3.1.1 + xLink + xAL (offline c
 Energy_ADE-3.0beta8/            Authoritative Energy ADE 3.0 beta8 XSD + Alderaan reference
 
 tests/                          Per-building, city-scale, and infra test modules (see §8)
-generated/                      Pipeline output (git-ignored)
+generated/                      Pipeline output (in .gitignore, but reference GMLs are tracked)
 ```
 
 > The KIT FZKViewer install directory (`KITModelViewer_V7.5_Build-3636/`)
@@ -835,11 +856,22 @@ the code paths in §3–§9, so you can change one without touching the other.
 ```powershell
 python -m pip install -e ".[city]"
 
-# optional: drop a .env next to your config with EP_ONLINE_API_KEY=...
-# the config supports both an explicit ep_online_api_key_file and the env var
-
+# optional: set EP_ONLINE_API_KEY in .env at project root if you want energy labels
+# (the config will fall back to this env var automatically)
 python examples/create_city.py --input inputs/city_example.json
 ```
+
+**Environment setup for EP-online:** If `inputs/city_example.json` has
+`include_energy_labels: true`, the pipeline will attempt to fetch energy
+labels from the EP-online register. To enable this:
+
+1. Create `.env` in the project root directory (it's already git-ignored).
+2. Add your API key: `EP_ONLINE_API_KEY=<your_key_here>`.
+3. The config will auto-detect and use it; no code changes needed.
+
+Without a valid API key the pipeline raises a `CityBuildError` when
+`include_energy_labels` is `true`. To skip energy labels entirely, set
+`"include_energy_labels": false` in the config.
 
 The first run fills `cache_dir` with the BAG responses, the 3DBAG
 FlatGeoBuf tile index + CityJSON tiles, and the EP-online mutatiebestand
@@ -859,8 +891,7 @@ Every key is optional unless noted:
   "bbox": [84000, 445000, 86000, 447000],    // optional EPSG:28992 clip
   "lods": [0, 1, 2],                         // subset of {0,1,2}
   "include_addresses": true,
-  "include_energy_labels": true,
-  "ep_online_api_key_file": "../.secrets/ep.key",
+  "include_energy_labels": true,             // requires EP_ONLINE_API_KEY in .env or env var
   "cache_dir": "../.cache/citygml_energy_city",
   "output": "../generated/delft.gml",        // required
   "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
@@ -869,6 +900,13 @@ Every key is optional unless noted:
   "gml_id_prefix": ""                        // optional multi-city merge prefix
 }
 ```
+
+**API key management:** **Recommended:** Set `EP_ONLINE_API_KEY`
+in `.env` at the project root (it is git-ignored by default); the loader
+automatically detects and uses it when `include_energy_labels: true`.
+For backwards compatibility, an explicit `ep_online_api_key_file` parameter
+is still supported if you prefer to store the key in a separate file
+referenced from the config.
 
 `gml_id_prefix` is currently reserved for a future disambiguation
 scheme when multiple cities are merged; BAG `identificatie` is
@@ -920,6 +958,7 @@ citygml_energy/city_builder/
 ├── config.py              JSON → CityBuildConfig + dotenv fallback
 ├── http.py                CachedSession: requests + disk cache + retries
 ├── cityjson_parse.py      CityJSON tile → ParsedBuilding (per-Pand LoDs)
+├── address_key.py         Address normalisation key for VBO ↔ EP-online join
 ├── address_match.py       VBO ↔ EP-online join keyed on normalised addr
 ├── epc_score.py           Label (A+++++ … G) ↔ kWh/m²/yr ↔ EU-palette RGB
 ├── appearance.py          app:Appearance builder (colors buildings by avg EPC)
