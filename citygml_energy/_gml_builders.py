@@ -6,7 +6,7 @@ that sits between the low-level STEP parser (:mod:`._step`) and the
 schema-aware attachment code (:mod:`.geometry`):
 
 * It knows about GML 3.1.1 wire types (``Polygon``, ``LinearRing``,
-  ``PosList``, ``Envelope``, ``Solid``, ``CompositeSurface``, …) —
+  ``PosList``, ``Envelope``, ``Solid``, ``CompositeSurface``, …);
   these are expected to be stable across any CityGML-derived schema.
 * It does **not** know about CityGML semantics (boundary surfaces,
   openings, solar panels) or JSON input format.
@@ -18,6 +18,9 @@ those are pure 3D-math utilities that deserve focused unit tests.
 """
 
 from __future__ import annotations
+
+from itertools import chain
+from math import inf
 
 from ._step import Coord3D, GeometryPolygon, points_close
 from .bindings import (
@@ -152,7 +155,7 @@ def build_multi_point(
 
     Each point becomes one ``gml:Point`` wrapped in a ``gml:pointMember``.
     Every point's coordinate list is padded to *srs_dimension* with zeros
-    when shorter — BAG's VBO ``geometriePunt`` is 2D, but the enclosing
+    when shorter. BAG's VBO ``geometriePunt`` is 2D, but the enclosing
     CityGML file typically carries a 3D compound CRS; writing ``z = 0``
     keeps the per-element ``srsDimension`` consistent with the file-level
     CRS and avoids a mixed-dimension MultiPoint (which the GML 3.1.1
@@ -192,16 +195,35 @@ def build_envelope(
     srs_name: str,
     srs_dimension: int,
 ) -> Envelope:
-    """Return a ``gml:Envelope`` covering every coordinate in *coordinates*."""
+    """Return a ``gml:Envelope`` covering every coordinate in *coordinates*.
+
+    Single-pass min/max scan. ``zip(*coordinates)`` + per-axis
+    ``min``/``max`` would walk the list four times and materialise
+    three throwaway tuples of length ``N``.
+    """
     if not coordinates:
         raise ValueError("Envelope requires at least one coordinate")
-    xs, ys, zs = zip(*coordinates, strict=True)
+    min_x = min_y = min_z = inf
+    max_x = max_y = max_z = -inf
+    for x, y, z in coordinates:
+        if x < min_x:
+            min_x = x
+        if x > max_x:
+            max_x = x
+        if y < min_y:
+            min_y = y
+        if y > max_y:
+            max_y = y
+        if z < min_z:
+            min_z = z
+        if z > max_z:
+            max_z = z
     return Envelope(
         lower_corner=DirectPositionType(
-            value=[min(xs), min(ys), min(zs)], srs_dimension=srs_dimension
+            value=[min_x, min_y, min_z], srs_dimension=srs_dimension
         ),
         upper_corner=DirectPositionType(
-            value=[max(xs), max(ys), max(zs)], srs_dimension=srs_dimension
+            value=[max_x, max_y, max_z], srs_dimension=srs_dimension
         ),
         srs_name=srs_name,
         srs_dimension=srs_dimension,
@@ -216,15 +238,20 @@ def build_envelope(
 def flatten_ring(ring: list[Coord3D]) -> list[float]:
     """Close a ring (first == last) and flatten into ``gml:posList`` floats.
 
-    A ring with a single vertex is rejected — every GML polygon needs at
+    A ring with a single vertex is rejected: every GML polygon needs at
     least three points plus a closing vertex to be well-formed.
+
+    Uses :func:`itertools.chain.from_iterable` (C-level) to flatten
+    rather than a nested ``[v for c in coords for v in c]``
+    comprehension, which would do tuple unpacking in bytecode per
+    coord.
     """
     if not ring:
         raise ValueError("Geometry rings must contain at least one coordinate")
-    coordinates = list(ring)
-    if not points_close(coordinates[0], coordinates[-1]):
-        coordinates.append(coordinates[0])
-    return [value for coord in coordinates for value in coord]
+    if points_close(ring[0], ring[-1]):
+        return list(chain.from_iterable(ring))
+    # Closed form: append the first point to the tail via chain, no copy.
+    return list(chain.from_iterable(ring)) + list(ring[0])
 
 
 def open_ring(ring: list[Coord3D]) -> list[Coord3D]:

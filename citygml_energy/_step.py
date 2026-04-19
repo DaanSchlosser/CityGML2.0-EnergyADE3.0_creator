@@ -10,13 +10,13 @@ Supported entity types:
 ``SHELL_BASED_SURFACE_MODEL`` with ``OPEN_SHELL``
     The canonical export from Rhino for boundary surfaces. Each top-level
     entity carries a user-facing name (used by callers to classify the
-    polygons it produces — e.g. ``"WallSurface_1"``).
+    polygons it produces, e.g. ``"WallSurface_1"``).
 ``MANIFOLD_SOLID_BREP`` with ``CLOSED_SHELL``
     Used for closed zone volumes (``step-zonepart-lod{1..3}``). The parser
     emits anonymous polygons; callers aggregate them as appropriate.
 
 Complex parenthesised entity instances (``#N=( TYPE1(...) TYPE2(...) )``)
-are skipped because they only carry unit / measure aggregations — never
+are skipped because they only carry unit / measure aggregations, never
 BREP geometry.
 """
 
@@ -46,7 +46,7 @@ class StepShell:
     ``Window_2|parent=WallSurface_3``). *parent_name* is populated from a
     ``|parent=...`` suffix if present; otherwise ``None``.
 
-    The geometric parent linkage is a *geometry* concern — "this opening
+    The geometric parent linkage is a *geometry* concern: "this opening
     is a hole in this wall". Semantic device-to-surface relations
     (``installedOn``, etc.) are carried in the input JSON, not derived
     from STEP layer names.
@@ -72,6 +72,10 @@ _STEP_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 # These are valid ISO 10303-21 aggregations (e.g. derived units) but never
 # carry BREP geometry, so we skip them deliberately rather than failing.
 _STEP_COMPLEX_ENTITY_RE = re.compile(r"^#\d+\s*=\s*\(.*\)\s*;$", re.DOTALL)
+# Only chars that can end a run of literal arg-text in the STEP tokeniser.
+# Used by ``_split_step_args`` to jump over long numeric runs (CARTESIAN_POINT
+# tuples routinely carry 1 000+ chars between special chars) in native code.
+_STEP_ARG_SPECIALS_RE = re.compile(r"[',()]")
 
 
 # ---------------------------------------------------------------------------
@@ -164,9 +168,17 @@ def parse_all_polygons(
 
 
 def points_close(first: Coord3D, second: Coord3D, tolerance: float = 1e-9) -> bool:
-    """Return whether two 3D points agree within *tolerance* on every axis."""
-    return all(
-        abs(a - b) <= tolerance for a, b in zip(first, second, strict=True)
+    """Return whether two 3D points agree within *tolerance* on every axis.
+
+    Direct unpack (rather than ``zip`` + ``all``) because this sits in
+    the ring-closure hot loop; assumes :data:`Coord3D` is a 3-tuple.
+    """
+    x1, y1, z1 = first
+    x2, y2, z2 = second
+    return (
+        abs(x1 - x2) <= tolerance
+        and abs(y1 - y2) <= tolerance
+        and abs(z1 - z2) <= tolerance
     )
 
 
@@ -342,40 +354,67 @@ def _parse_step_loop(
 
 
 def _split_step_args(raw_args: str) -> list[str]:
-    args: list[str] = []
-    current: list[str] = []
-    depth = 0
-    in_string = False
-    index = 0
+    """Split a STEP arg list on top-level commas, respecting strings + nesting.
 
-    while index < len(raw_args):
-        char = raw_args[index]
-        if char == "'":
-            current.append(char)
-            if in_string and index + 1 < len(raw_args) and raw_args[index + 1] == "'":
-                current.append("'")
-                index += 2
+    Uses ``re.Pattern.search`` to jump over long literal runs
+    (``CARTESIAN_POINT`` tuples routinely carry thousands of numeric
+    characters between the next ``,``/``(``/``)``/``'``) rather than
+    iterating character-by-character in Python.
+    """
+    n = len(raw_args)
+    if n == 0:
+        return []
+
+    args: list[str] = []
+    append = args.append
+    specials_search = _STEP_ARG_SPECIALS_RE.search
+    find = raw_args.find
+
+    depth = 0
+    i = 0
+    start = 0  # Beginning of the current top-level segment.
+    in_string = False
+
+    while i < n:
+        if in_string:
+            # Inside a single-quoted literal: skip to the next quote.
+            # STEP escapes an embedded apostrophe as ``''``; treat two
+            # consecutive quotes as data, close the string otherwise.
+            q = find("'", i)
+            if q == -1:
+                # Unterminated string: mirror the old behaviour, which
+                # absorbed everything into the final segment.
+                break
+            if q + 1 < n and raw_args[q + 1] == "'":
+                i = q + 2
                 continue
-            in_string = not in_string
-            index += 1
+            in_string = False
+            i = q + 1
             continue
 
-        if not in_string:
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-            elif char == "," and depth == 0:
-                args.append("".join(current).strip())
-                current.clear()
-                index += 1
-                continue
+        m = specials_search(raw_args, i)
+        if m is None:
+            break
+        i = m.start()
+        char = raw_args[i]
 
-        current.append(char)
-        index += 1
+        if char == "'":
+            in_string = True
+            i += 1
+        elif char == "(":
+            depth += 1
+            i += 1
+        elif char == ")":
+            depth -= 1
+            i += 1
+        else:  # "," is the only remaining special in the class.
+            if depth == 0:
+                append(raw_args[start:i].strip())
+                start = i + 1
+            i += 1
 
-    if current:
-        args.append("".join(current).strip())
+    if start < n:
+        append(raw_args[start:].strip())
 
     return args
 
