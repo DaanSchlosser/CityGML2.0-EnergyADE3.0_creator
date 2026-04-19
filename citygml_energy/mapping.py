@@ -2,7 +2,7 @@
 
 Provides a schema-agnostic way to build xsdata-generated dataclasses from
 nested dicts and to attach children to parents via field introspection.
-No feature-type-specific code lives here — all behaviour is derived from
+No feature-type-specific code lives here; all behaviour is derived from
 the xsdata bindings (which are generated from the XSD).
 """
 
@@ -22,7 +22,7 @@ from xsdata.models.datatype import XmlDate, XmlDateTime, XmlDuration, XmlPeriod,
 from .namespaces import NS_PREFIX_MAP, iter_binding_classes
 
 # ---------------------------------------------------------------------------
-# Class registry — map "prefix:ElementName" → xsdata class
+# Class registry: map "prefix:ElementName" → xsdata class
 # ---------------------------------------------------------------------------
 
 
@@ -174,7 +174,7 @@ def _resolve_field(cls: type, key: str) -> FieldInfo | None:
 
 
 # ---------------------------------------------------------------------------
-# Smart coercion — JSON leaf values → xsdata types
+# Smart coercion: JSON leaf values → xsdata types
 # ---------------------------------------------------------------------------
 
 
@@ -183,8 +183,8 @@ def _coerce(target: type, raw: Any) -> Any:
     if raw is None:
         return None
 
-    # bool is a subclass of int — check it before the isinstance fast-path so
-    # that True/False are not accepted where an int or float is expected.
+    # bool is a subclass of int, so check it before the isinstance fast-path
+    # to make sure True/False are not accepted where an int or float is expected.
     if target is bool:
         if isinstance(raw, str):
             return raw.lower() in ("true", "1", "yes")
@@ -242,7 +242,7 @@ def _coerce(target: type, raw: Any) -> Any:
         return raw
 
     # Refuse to silently pass through values whose shape doesn't match the
-    # declared field type — this surfaces JSON typos at build time instead
+    # declared field type. This surfaces JSON typos at build time instead
     # of producing malformed XML at serialization time.
     target_name = getattr(target, "__name__", repr(target))
     raise TypeError(
@@ -351,7 +351,7 @@ def attach_child(
     (or whose property-type wrapper's inner type) matches the child's class.
 
     Raises :class:`TypeError` when no field matches or when multiple fields
-    match (ambiguous — caller must provide *field_hint*).
+    match (ambiguous: caller must provide *field_hint*).
     """
     child_type = type(child)
     parent_type = type(parent)
@@ -397,7 +397,7 @@ def _find_attachment_candidates(
     ``wrapper_field_name`` is set when the field's type is a property-type
     wrapper with an inner field matching the child.
 
-    Uses MRO distance to rank matches — exact type matches are preferred
+    Uses MRO distance to rank matches: exact type matches are preferred
     over generic base-class matches.  Fields whose wrapper matches only
     via ``object`` (e.g. ``any_element``) are excluded.
     """
@@ -496,8 +496,27 @@ def _set_or_append(parent: Any, info: FieldInfo, value: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Generic traversal — walk already-built xsdata trees
+# Generic traversal: walk already-built xsdata trees
 # ---------------------------------------------------------------------------
+
+
+_FIELD_NAMES_CACHE: dict[type, tuple[str, ...]] = {}
+
+
+def _dataclass_field_names(cls: type) -> tuple[str, ...]:
+    """Return the dataclass field names of *cls*, cached per class.
+
+    ``dataclasses.fields(obj)`` rebuilds a tuple from
+    ``__dataclass_fields__`` on every call; we pay that cost once per
+    class and reuse the result across every instance walked by
+    :func:`iter_instances`.
+    """
+    try:
+        return _FIELD_NAMES_CACHE[cls]
+    except KeyError:
+        names = tuple(f.name for f in dataclasses.fields(cls))
+        _FIELD_NAMES_CACHE[cls] = names
+        return names
 
 
 def iter_instances(root: Any) -> Iterator[Any]:
@@ -508,36 +527,49 @@ def iter_instances(root: Any) -> Iterator[Any]:
     not further structure). Each instance is yielded at most once; cycles are
     handled by identity.
     """
+    # Local aliases for the hot loop.
+    is_dataclass = dataclasses.is_dataclass
+    field_names = _dataclass_field_names
+
     seen: set[int] = set()
+    seen_add = seen.add
     stack: list[Any] = [root]
+    stack_pop = stack.pop
+    stack_extend = stack.extend
+    stack_append = stack.append
+
     while stack:
-        obj = stack.pop()
-        if obj is None or isinstance(obj, type) or not dataclasses.is_dataclass(obj):
+        obj = stack_pop()
+        # Skip non-dataclass instances early: ``is_dataclass`` on a class
+        # (rather than an instance) returns True, so also guard against
+        # type objects (xsdata occasionally has class references in the
+        # tree via forward-ref resolution scaffolding).
+        if obj is None or isinstance(obj, type) or not is_dataclass(obj):
             continue
         oid = id(obj)
         if oid in seen:
             continue
-        seen.add(oid)
+        seen_add(oid)
         yield obj
-        for f in dataclasses.fields(obj):
-            value = getattr(obj, f.name, None)
+        for name in field_names(type(obj)):
+            value = getattr(obj, name, None)
             if value is None:
                 continue
-            if isinstance(value, list):
-                stack.extend(
+            if type(value) is list:
+                stack_extend(
                     item
                     for item in value
-                    if not isinstance(item, type) and dataclasses.is_dataclass(item)
+                    if not isinstance(item, type) and is_dataclass(item)
                 )
-            elif dataclasses.is_dataclass(value) and not isinstance(value, type):
-                stack.append(value)
+            elif is_dataclass(value) and not isinstance(value, type):
+                stack_append(value)
 
 
 def find_by_id(root: Any, gml_id: str) -> Any | None:
     """Return the first dataclass instance under *root* whose ``id`` is *gml_id*.
 
     ``id`` is the xsdata-generated attribute for the XML ``gml:id``. Works on
-    any xsdata tree — agnostic to which XSD the bindings were generated from.
+    any xsdata tree, agnostic to which XSD the bindings were generated from.
     """
     for obj in iter_instances(root):
         if getattr(obj, "id", None) == gml_id:
