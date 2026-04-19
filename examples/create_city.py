@@ -10,10 +10,10 @@ Requires the ``city`` optional extras (``requests`` + ``shapely``)::
 
 Network endpoints used:
 
-* PDOK ``bestuurlijkegebieden`` — municipality outline
-* PDOK BAG WFS — Pand / VBO (address fields embedded in VBO response)
-* ``data.3dbag.nl`` — LoD 0/1/2 CityJSON tiles
-* ``public.ep-online.nl`` — energy-label bulk mutatiebestand (needs an
+* PDOK ``bestuurlijkegebieden``: municipality outline
+* PDOK BAG WFS: Pand / VBO (address fields embedded in VBO response)
+* ``data.3dbag.nl``: LoD 0/1/2 CityJSON tiles
+* ``public.ep-online.nl``: energy-label bulk mutatiebestand (needs an
   API token; store it next to the input JSON and reference it via
   ``ep_online_api_key_file``)
 

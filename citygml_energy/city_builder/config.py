@@ -98,12 +98,12 @@ class CityBuildConfig:
         3. Return ``None`` if neither source yields a value.
 
         Raises :class:`CityBuildError` when the configured file is set
-        but missing — energy labels cannot continue without a token.
+        but missing: energy labels cannot continue without a token.
         """
         if self.ep_online_api_key_file is not None:
             try:
                 return self.ep_online_api_key_file.read_text(encoding="utf-8").strip()
-            except FileNotFoundError as exc:  # pragma: no cover — filesystem path
+            except FileNotFoundError as exc:  # pragma: no cover, filesystem path
                 raise CityBuildError(
                     f"EP-online API key file not found: {self.ep_online_api_key_file}"
                 ) from exc
@@ -202,7 +202,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         )
 
     if include_energy_labels and ep_key_path is None:
-        # Defer failure to :pyattr:`CityBuildConfig.ep_online_api_key` —
+        # Defer failure to :pyattr:`CityBuildConfig.ep_online_api_key`:
         # the env / .env fallback can still supply a token at run time.
         _maybe_load_dotenv(source_path.parent)
         if not (os.environ.get(EP_ONLINE_ENV_VAR) or "").strip():

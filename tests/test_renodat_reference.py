@@ -107,7 +107,7 @@ def test_zone_with_two_heated_zone_parts(renodat_root):
     """Input declares 1 Zone with 2 conditioned ZoneParts.
 
     The attic ZonePart was removed from the input because it is neither
-    heated nor cooled — the EnergyADE model does not require listing
+    heated nor cooled, and the EnergyADE model does not require listing
     unconditioned spaces.
     """
     zones = renodat_root.findall(".//bldg:Building/nrg3:zone//nrg3:Zone", NS)
@@ -158,7 +158,7 @@ def test_pv_has_two_installed_on_relations_from_json(renodat_root):
 
     The input's ``installed_on: ["RoofSurface_01", "RoofSurface_02"]`` is
     resolved after geometry attachment, producing two ``CityObjectRelation``
-    entries — one xlink:href per target roof — with ``relationType="installedOn"``.
+    entries (one xlink:href per target roof) with ``relationType="installedOn"``.
     Geometry alone no longer drives these (every PV panel's STEP layer has
     ``|parent=RoofSurface_02``, so a geometry-derived approach would emit
     only one relation). The two distinct hrefs prove the JSON path is live.
@@ -221,7 +221,7 @@ def test_geometry_imported_from_step(renodat_root):
 def test_pv_has_lod2_and_lod3_geometry(renodat_root):
     """The PV collector carries geometry at both LoD 2 and LoD 3.
 
-    LoD 2 is the aggregated "whole array" surface (one polygon) — exported
+    LoD 2 is the aggregated "whole array" surface (one polygon), exported
     from Rhino as a single unnamed shell. LoD 3 is the individually-panelled
     representation (one polygon per physical panel). Both arrive via STEP
     imports and both attach to the same PhotovoltaicCollector, so a reader

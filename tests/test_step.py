@@ -1,8 +1,8 @@
 """Unit tests for the ISO 10303-21 STEP parser in :mod:`citygml_energy._step`.
 
-Covers the tricky bits — comment stripping, multi-line entities, complex
+Covers the tricky bits (comment stripping, multi-line entities, complex
 entity skipping, quoted-string handling, coordinate offset, origin of
-``SHELL_BASED_SURFACE_MODEL`` vs. ``MANIFOLD_SOLID_BREP`` — without
+``SHELL_BASED_SURFACE_MODEL`` vs. ``MANIFOLD_SOLID_BREP``) without
 depending on Rhino or a full RenoDAT file.
 """
 
@@ -61,7 +61,7 @@ DATA;
 #19=ADVANCED_FACE('face_1',(#18),$,.T.);
 #20=OPEN_SHELL('',(#19));
 #21=SHELL_BASED_SURFACE_MODEL('WallSurface_1',(#20));
-/* complex entity example — ignored because it carries no geometry */
+/* complex entity example, ignored because it carries no geometry */
 #22=( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.) );
 ENDSEC;
 END-ISO-10303-21;
@@ -89,7 +89,7 @@ def test_parse_named_shells_recovers_square(minimal_step_path: Path) -> None:
     assert len(shell.polygons) == 1
 
     polygon = shell.polygons[0]
-    # Ring is closed by the parser — first == last.
+    # Ring is closed by the parser: first == last.
     assert points_close(polygon.exterior[0], polygon.exterior[-1])
     # Drop the closing vertex to compare against the expected corner set.
     corners = {(round(x, 6), round(y, 6), round(z, 6)) for x, y, z in polygon.exterior[:-1]}
@@ -143,7 +143,7 @@ def test_offset_coords_returns_new_list_and_leaves_input_untouched() -> None:
     source = [(0.0, 0.0, 0.0), (1.0, 2.0, 3.0)]
     shifted = offset_coords(source, origin=(10.0, 20.0, 30.0))
     assert shifted == [(10.0, 20.0, 30.0), (11.0, 22.0, 33.0)]
-    # Untouched — offset_coords doesn't mutate.
+    # Untouched: offset_coords doesn't mutate.
     assert source == [(0.0, 0.0, 0.0), (1.0, 2.0, 3.0)]
 
 

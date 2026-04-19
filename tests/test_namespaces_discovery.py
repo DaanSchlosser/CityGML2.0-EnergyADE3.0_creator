@@ -11,7 +11,7 @@ The pipeline's XSD-agnosticism rests on two claims:
    (not a silent drop), so drift is visible.
 
 Narrow, behaviour-focused tests: we don't guard the internals of the
-prefix dict or the implementation of ``qn`` — those are either tautologies
+prefix dict or the implementation of ``qn``; those are either tautologies
 or tests of stdlib behaviour.
 """
 

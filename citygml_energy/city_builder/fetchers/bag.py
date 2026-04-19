@@ -1,15 +1,13 @@
-"""BAG fetchers — Pand and Verblijfsobject.
+"""BAG fetchers: Pand and Verblijfsobject.
 
 Query strategy: request each layer with a bounding-box filter and
 paginate. If a page is suspiciously close to the WFS ``startIndex``
 ceiling (PDOK caps server-side at ~50 k) we subdivide the bbox into
-four quadrants and recurse. This is the same approach proven in
-``VdB_Optoppen2/01_wfs_import.py``; reimplemented here with a narrower
-API (only the layers we need) and without geopandas.
+four quadrants and recurse.
 
 The PDOK BAG WFS v2.0 exposes: ``bag:pand``, ``bag:verblijfsobject``,
 ``bag:ligplaats``, ``bag:standplaats``, ``bag:woonplaats``. There are no
-``nummeraanduiding`` or ``openbareruimte`` layers — those are joined into
+``nummeraanduiding`` or ``openbareruimte`` layers, those are joined into
 each VBO by the WFS so address data (postcode, huisnummer, street) is
 available directly on the VBO feature.
 """
@@ -40,14 +38,14 @@ class Pand:
 
 @dataclass(frozen=True)
 class Verblijfsobject:
-    """A BAG Verblijfsobject (VBO) — an addressable unit inside a Pand.
+    """A BAG Verblijfsobject (VBO): an addressable unit inside a Pand.
 
     Address fields (postcode, huisnummer, etc.) are populated directly
     from the PDOK WFS VBO feature: the WFS joins Nummeraanduiding and
     OpenbareRuimte into each VBO response, so no separate fetches are
     required.
 
-    ``point`` is the BAG ``geometriePunt`` — BAG's authoritative
+    ``point`` is the BAG ``geometriePunt``: BAG's authoritative
     address-locating point for this VBO (``(x, y)`` in RD New /
     EPSG:28992). It always lies within the parent Pand but is *not*
     guaranteed to be the entrance; CityGML's ``core:Address/multiPoint``
@@ -88,7 +86,7 @@ def fetch_panden(
     """Return every Pand whose centroid lies inside *bbox*.
 
     *cbs_code* (if given) filters to BAG ``identificatie`` values that
-    start with that code — exactly the BAG convention for the 4-digit
+    start with that code, exactly the BAG convention for the 4-digit
     municipality prefix.
     """
     records = _fetch_layer(session, "bag:pand", bbox=bbox)
@@ -120,7 +118,7 @@ def fetch_verblijfsobjecten(
     """Return every VBO whose centroid lies inside *bbox*.
 
     Address fields (postcode, huisnummer, street name) are read directly
-    from the WFS feature — the PDOK BAG WFS already joins Nummeraanduiding
+    from the WFS feature: the PDOK BAG WFS already joins Nummeraanduiding
     and OpenbareRuimte into each VBO response.
     """
     records = _fetch_layer(session, "bag:verblijfsobject", bbox=bbox)
@@ -130,11 +128,9 @@ def fetch_verblijfsobjecten(
         identificatie = str(props.get("identificatie") or "").strip()
         # BAG WFS can return a comma-separated list when a VBO spans multiple
         # panden (e.g. a flat above a garage registered as two panden). Take
-        # the first — it is the primary registration pand.
+        # the first; it is the primary registration pand.
         pand_id_raw = str(
-            props.get("pandidentificatie")
-            or props.get("pand_identificatie")
-            or ""
+            props.get("pandidentificatie") or props.get("pand_identificatie") or ""
         ).strip()
         pand_id = pand_id_raw.split(",")[0].strip()
         if not identificatie or not pand_id:
@@ -236,7 +232,7 @@ def _extract_point(geometry: Any) -> tuple[float, float] | None:
 
     PDOK BAG WFS returns VBO geometries as GeoJSON ``Point`` features
     (EPSG:28992 when ``srsName=EPSG:28992`` is requested). Non-Point
-    geometries and missing/malformed features are ignored — the caller
+    geometries and missing/malformed features are ignored: the caller
     treats ``None`` as "no point available for this VBO".
     """
     if not isinstance(geometry, dict):

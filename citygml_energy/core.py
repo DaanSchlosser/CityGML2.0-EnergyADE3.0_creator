@@ -33,9 +33,9 @@ class CityModel:
 
     Provides a builder-style :meth:`add` API and :meth:`write` /
     :meth:`to_string` for serialization. The bounding envelope is written
-    by :func:`citygml_energy.geometry.apply_geometry_sources` — this
-    wrapper does not accept bbox arguments because any value set at
-    construction would be overwritten as soon as STEP geometry is applied.
+    by :func:`citygml_energy.geometry.apply_geometry_sources`, so this
+    wrapper does not accept bbox arguments: any value set at construction
+    would be overwritten as soon as STEP geometry is applied.
     """
 
     def __init__(
@@ -117,7 +117,7 @@ class CityModel:
 
         The xsdata-generated field name that carries this wrapper is a
         disambiguation artifact of how xsdata resolves repeated element
-        names across GML's inheritance chain — not an XSD element name —
+        names across GML's inheritance chain (not an XSD element name),
         so we resolve it by type-matching ``BoundedBy`` against the
         CityModel's fields instead of hardcoding the field name.
         Regenerating the bindings with different xsdata options therefore

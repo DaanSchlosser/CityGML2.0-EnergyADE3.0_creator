@@ -3,7 +3,7 @@
 A Python toolkit for generating standards-compliant CityGML 2.0 files extended
 with the Energy ADE 3.0 (beta8) application domain extension. The project
 reads a single flat-dict JSON input, attaches imported STEP geometry, and
-emits a fully XSD-validated GML file — without any hand-written XML.
+emits a fully XSD-validated GML file, without any hand-written XML.
 
 This document describes the input format, the pipeline, the role of each
 module, and the architectural decisions behind the codebase.
@@ -20,7 +20,7 @@ module, and the architectural decisions behind the codebase.
 The goal is to produce a CityGML + Energy ADE GML file describing a
 real-world building, its geometry, devices (PV panels, heat pumps, EV
 chargers), occupants, thermal zones, schedules, and material/construction
-libraries — from a single curated JSON dataset plus Rhino-exported STEP
+libraries, from a single curated JSON dataset plus Rhino-exported STEP
 geometry.
 
 The reference dataset is **RenoDAT**, a single-family residence in Delft
@@ -117,40 +117,40 @@ top-level keys (plus an optional `$schema`):
 
 Field-by-field semantics:
 
-- **`schema_version`** *(required)* — must be `2`. The loader rejects any
+- **`schema_version`** *(required)*: must be `2`. The loader rejects any
   other value.
-- **`city_model`** *(required)* — `{ "name": ..., "description": ... }`,
+- **`city_model`** *(required)*: `{ "name": ..., "description": ... }`,
   both optional strings.
-- **`features`** *(required)* — every CityGML/Energy ADE object, flat.
+- **`features`** *(required)*: every CityGML/Energy ADE object, flat.
   Each has a `type` (`prefix:ElementName` resolved against the xsdata
   bindings), an `id`, an optional `parent` (parent's gml:id), and an
   optional `parent_field` to disambiguate the attachment point on the
   parent.
-- **`coordinate_origin`** *(optional, defaults to `[0, 0, 0]`)* — XYZ
+- **`coordinate_origin`** *(optional, defaults to `[0, 0, 0]`)*: XYZ
   vector added to every imported STEP point. Geometry is authored in a
   local Rhino frame; this offset places it on the correct RD/NAP
   coordinates.
-- **`geometry_sources`** *(optional)* — list of STEP imports. The `type`
+- **`geometry_sources`** *(optional)*: list of STEP imports. The `type`
   selects the importer mode (see [§6.4](#64-citygml_energygeometry));
   each entry targets a specific feature by gml:id. Two target fields are
   recognized:
   - `step-renodat-lod{0..4}` sources require **`target_building_id`** and
     accept an optional **`target_pv_id`** (used by LOD 3 to attach
     `SolarPanelSurface_*` faces to a `PhotovoltaicCollector`).
-  - `step-zonepart-lod{0..3}` sources require **`target_zone_part_id`** —
+  - `step-zonepart-lod{0..3}` sources require **`target_zone_part_id`**:
     the gml:id of an `nrg3:ZonePart` feature whose boundary surfaces
     will be populated from the STEP file.
 
   Geometry-source paths may be relative (resolved against the JSON's
   parent directory) or absolute, and must point to a file that exists
   at validation time.
-- **`construction_mapping`** *(optional)* — two sub-dicts. `by_type`
+- **`construction_mapping`** *(optional)*: two sub-dicts. `by_type`
   maps a surface/opening class name (`WallSurface`, `Window`, …) to a
   construction `gml:id`; `by_id` maps a specific surface `gml:id` to a
   construction. **`by_id` wins** for any surface it covers; `by_type`
   is the fallback. Both emit `xlink:href`s pointing into the in-document
   `LayeredConstructionLibrary`.
-- **`$schema`** *(optional)* — pointer to
+- **`$schema`** *(optional)*: pointer to
   [schemas/citygml_energy_input.schema.json](schemas/citygml_energy_input.schema.json)
   for VS Code autocomplete and inline validation while editing. The
   canonical [inputs/renodat_input.json](inputs/renodat_input.json) does
@@ -159,15 +159,15 @@ Field-by-field semantics:
 ---
 ## 4. Pipeline overview
 
-The diagram below reflects the actual call tree — see
+The diagram below reflects the actual call tree (see
 [citygml_energy/generation.py](citygml_energy/generation.py) and
 [citygml_energy/input_loader.py](citygml_energy/input_loader.py) for
-the source.
+the source).
 
 ```mermaid
 flowchart TD
     J["inputs/renodat_input.json"]:::input
-    S["inputs/*.stp<br/>(STEP geometry — parsed in stage 4)"]:::input
+    S["inputs/*.stp<br/>(STEP geometry, parsed in stage 4)"]:::input
 
     subgraph Load["<b>load_feature_collection</b> &nbsp;·&nbsp; read + validate"]
         direction TB
@@ -178,8 +178,8 @@ flowchart TD
 
     subgraph Build["<b>build_city_model_from_feature_collection</b> &nbsp;·&nbsp; orchestrator"]
         direction TB
-        P1["<b>Phase 1 — build</b><br/>per feature: resolve_class + build_from_dict<br/>index every object by gml:id"]:::stage
-        P2["<b>Phase 2 — attach</b><br/>no parent → model.add (top-level)<br/>has parent → attach_child (field_hint, type matching)"]:::stage
+        P1["<b>Phase 1 (build)</b><br/>per feature: resolve_class + build_from_dict<br/>index every object by gml:id"]:::stage
+        P2["<b>Phase 2 (attach)</b><br/>no parent → model.add (top-level)<br/>has parent → attach_child (field_hint, type matching)"]:::stage
         G["<b>apply_geometry_sources</b><br/>STEP → polygons + coordinate_origin<br/>→ BoundarySurfaces / Solid / Envelope<br/>populates surface_name_index"]:::stage
         D["<b>apply_device_relations</b><br/>installed_on → CityObjectRelation xlinks<br/>(needs surface_name_index from stage 4)"]:::stage
         C["<b>apply_construction_mapping</b><br/>by_id, then by_type fallback<br/>→ LayeredConstruction xlinks"]:::stage
@@ -211,13 +211,13 @@ Every stage runs offline. No FME, no schema downloads, no XML templates.
 Each node in the diagram corresponds to a single function; here is
 what each one does and why it lives where it does.
 
-1. **`load_feature_collection(path)`** —
+1. **`load_feature_collection(path)`** at
    [input_loader.py:68](citygml_energy/input_loader.py#L68). Reads the
    JSON (UTF-8 with BOM tolerated), runs `validate_feature_collection`,
    and normalizes every `geometry_sources[*].path` against the JSON's
    parent directory. Returns a cleaned, absolute-path dict.
 
-2. **`validate_feature_collection(data)`** —
+2. **`validate_feature_collection(data)`** at
    [input_loader.py:94](citygml_energy/input_loader.py#L94). Rejects
    unknown top-level keys, asserts `schema_version == 2`, checks every
    feature has a valid XML NCName `id` and a `type` that
@@ -228,19 +228,19 @@ what each one does and why it lives where it does.
    STEP file exists on disk. The loader and the applier share the same
    spec registry, so they can never drift.
 
-3. **`build_city_model_from_feature_collection(data)`** —
+3. **`build_city_model_from_feature_collection(data)`** at
    [input_loader.py:192](citygml_energy/input_loader.py#L192). The
    orchestrator. Creates an empty `CityModel(gml_name, gml_description)`
    and runs a **two-phase build**:
 
-   - **Phase 1 — build objects.** For every feature, calls
+   - **Phase 1 (build objects).** For every feature, calls
      `resolve_class("prefix:Local")` to map the type string to an
      xsdata class, then `build_from_dict(cls, attrs)` to build the
      object (nested dataclasses, code values, and xsdata
      date/time/duration/period types are coerced from plain JSON by
      `mapping._coerce`). Every built object is indexed by its `gml:id`,
      and any `installed_on: [...]` hints are collected for stage 5.
-   - **Phase 2 — attach.** Each built object is either appended to
+   - **Phase 2 (attach).** Each built object is either appended to
      `cityObjectMember` (no `parent`) via `CityModel.add`, or passed to
      `attach_child(parent_obj, child, field_hint=parent_field)`, which
      finds the right field on the parent by matching the child's
@@ -248,7 +248,7 @@ what each one does and why it lives where it does.
      wrappers. The two-phase split is required because a parent may
      appear *after* its child in the flat `features` list.
 
-4. **`apply_geometry_sources(model, sources, origin, srs)`** —
+4. **`apply_geometry_sources(model, sources, origin, srs)`** at
    [geometry.py:324](citygml_energy/geometry.py#L324). For each STEP
    source: parses the file via `_step.parse_named_shells` (LoD 3 with
    layer names like `WallSurface_04`, `Window_05`,
@@ -263,28 +263,28 @@ what each one does and why it lives where it does.
    geometry** rather than by layer name. Populates an internal
    `surface_name_index` that stage 5 consumes.
 
-5. **`apply_device_relations(model, device_relations)`** —
+5. **`apply_device_relations(model, device_relations)`** at
    [geometry.py:391](citygml_energy/geometry.py#L391). Resolves any
    `installed_on` hints from phase 1 against the `surface_name_index`
    and emits `nrg3:CityObjectRelation` xlinks (device → surface).
    Deferred until after geometry attachment because the target surface
    `gml:id`s don't exist until then.
 
-6. **`apply_construction_mapping(model, mapping)`** —
+6. **`apply_construction_mapping(model, mapping)`** at
    [geometry.py:459](citygml_energy/geometry.py#L459). Walks the model
    with `mapping.iter_instances`, resolves each boundary surface /
    opening against `by_id` first (wins for anything it covers) then
    `by_type` as fallback, and appends a `LayeredConstruction2` xlink
    into the in-document `LayeredConstructionLibrary`.
 
-7. **`CityModel.write(output_path)`** —
+7. **`CityModel.write(output_path)`** in
    [core.py](citygml_energy/core.py). Serializes via the
    `XmlSerializer` wrapper (NSMAP + tab indent, xsdata's
    `SerializerConfig(indent="\t")`). Called from
-   `generation.generate_gml_file`, *not* from the orchestrator —
+   `generation.generate_gml_file`, *not* from the orchestrator;
    building a model in-memory and writing it are separate concerns.
 
-8. **`tools/validate_xsd.py generated/renodat.gml`** —
+8. **`tools/validate_xsd.py generated/renodat.gml`** in
    [tools/validate_xsd.py](tools/validate_xsd.py). Separate post-hoc
    script. Loads the Energy ADE 3.0 beta8 XSD with an lxml resolver
    that redirects every `http://schemas.opengis.net/...` import to its
@@ -306,9 +306,9 @@ trade-off is real: `bindings.py` is ~84k lines, IDE indexing on it is
 slow, debugging into generated code is tedious, and binding regeneration
 becomes a build step. We accept that cost.
 
-**Bindings-as-schema — no hardcoded XSD classes outside the bindings module.**
-The goal is that regenerating `bindings.py` — adding a surface type,
-renaming a dedup suffix, extending Energy ADE — should require no code
+**Bindings-as-schema: no hardcoded XSD classes outside the bindings module.**
+The goal is that regenerating `bindings.py` (adding a surface type,
+renaming a dedup suffix, extending Energy ADE) should require no code
 changes elsewhere. To get there:
 
 - `citygml_energy.mapping` auto-discovers classes from the bindings and
@@ -329,12 +329,12 @@ changes elsewhere. To get there:
   in `tests/test_input_schema.py` fails CI if the committed file is
   stale.
 - `tools/generate_bindings.py` refuses to run if a staged XSD
-  references an absolute `schemaLocation` URI with no local mapping —
+  references an absolute `schemaLocation` URI with no local mapping,
   so upstream XSD churn becomes a build-time error, not a silent
   network fetch.
 
 **Flat-dict input.** Each feature is a single dict whose keys mirror the
-xsdata field names. The input format is data, not Python — no class
+xsdata field names. The input format is data, not Python: no class
 construction, no nested wrappers, no executable hooks. Project data stays
 editable by domain experts in plain JSON or any tool that emits it.
 
@@ -374,7 +374,7 @@ access, which makes CI deterministic and reproducible long-term.
 
 **KIT viewer compatibility shim.** The bundled viewer ships with Energy
 ADE 2.0 and is incompatible with our 3.0 namespace. The fix is a
-documented one-time XSD swap — see §9.
+documented one-time XSD swap (see §9).
 
 ---
 
@@ -386,7 +386,7 @@ Auto-generated by xsdata from
 [Energy_ADE-3.0beta8/xsd/Energy_ADE_3.0_beta8.xsd](Energy_ADE-3.0beta8/xsd/Energy_ADE_3.0_beta8.xsd)
 plus the CityGML 2.0 + GML 3.1.1 schema set under [xsd/](xsd/). This
 file is the source of truth for every element type, property wrapper,
-code enum, and measure type. **Do not edit by hand** — regenerate via
+code enum, and measure type. **Do not edit by hand**: regenerate via
 [tools/generate_bindings.py](tools/generate_bindings.py) whenever the
 upstream XSDs change.
 
@@ -399,7 +399,7 @@ The heart of the dynamic factory. Four responsibilities:
    dataclass with a `Meta.namespace` by `prefix:Meta.name`. Classes
    whose namespace URI is not registered in
    [`citygml_energy.namespaces.NSMAP`](citygml_energy/namespaces.py)
-   are dropped with a warning naming the missing prefixes — so
+   are dropped with a warning naming the missing prefixes, so
    regenerating bindings from an XSD that introduces a new namespace
    fails loudly instead of silently.
 2. **Field introspection and coercion.** `get_fields()` unwraps
@@ -416,7 +416,7 @@ The heart of the dynamic factory. Four responsibilities:
    `find_by_id(root, gml_id)` walk any xsdata dataclass tree with
    cycle safety. Used by the geometry layer to resolve targets by
    gml:id and by `apply_construction_mapping` to enumerate mapping
-   candidates — neither has schema-specific traversal code.
+   candidates; neither has schema-specific traversal code.
 
 ### 6.3 `citygml_energy.input_loader`
 
@@ -440,21 +440,21 @@ only want to check input validity without building anything.
 
 Three cleanly-separated layers:
 
-- **[`citygml_energy._step`](citygml_energy/_step.py)** — ISO 10303-21
+- **[`citygml_energy._step`](citygml_energy/_step.py)**: ISO 10303-21
   parser. Reads the `DATA;` section of a Rhino-exported `.stp` file,
   reconstructs polygons from `CARTESIAN_POINT` / `POLY_LOOP` /
   `ADVANCED_FACE` records, and exposes `parse_named_shells()` (for
   `SHELL_BASED_SURFACE_MODEL` entities with user-facing layer names)
-  and `parse_all_polygons()` (for `MANIFOLD_SOLID_BREP` — anonymous
+  and `parse_all_polygons()` (for `MANIFOLD_SOLID_BREP`, the anonymous
   closed shells used by zone solids). Deliberately xsdata-independent.
-- **[`citygml_energy._gml_builders`](citygml_energy/_gml_builders.py)**
-  — pure GML primitive builders. Turns coordinate lists into
+- **[`citygml_energy._gml_builders`](citygml_energy/_gml_builders.py)**:
+  pure GML primitive builders. Turns coordinate lists into
   `gml:Polygon` / `gml:MultiSurface` / `gml:Solid` / `gml:Envelope` /
   `gml:MultiPoint` objects; also hosts the ring-orientation and
   Newell-normal helpers used for solid assembly. Knows GML 3.1.1 wire
-  types but nothing about CityGML semantics or JSON input — the stable
+  types but nothing about CityGML semantics or JSON input: the stable
   layer between the STEP parser and the schema-aware attachment code.
-- **[`citygml_energy.geometry`](citygml_energy/geometry.py)** —
+- **[`citygml_energy.geometry`](citygml_energy/geometry.py)**:
   schema-aware attachment. Consumes the STEP primitives and GML
   builders above. Carries no hardcoded surface or opening class
   references: target classes (`bldg:Building`, `nrg3:ZonePart`,
@@ -502,20 +502,20 @@ are written verbatim onto every produced `gml:MultiSurface` /
 
 `CityModel` wraps xsdata's `CityModel` binding class and adds:
 
-- `add(obj, field_name=None)` — append a top-level city object,
+- `add(obj, field_name=None)`: append a top-level city object,
   resolving the right `CityObjectMember` field automatically by type
   (or via an explicit `field_name`),
-- `add_member(member)` — append a pre-built `CityObjectMember`,
-- `write(path)` / `to_string()` — serialize via the project's
+- `add_member(member)`: append a pre-built `CityObjectMember`,
+- `write(path)` / `to_string()`: serialize via the project's
   `XmlSerializer` wrapper (tab-indented),
-- `gml_name` / `gml_description` properties — get/set the model's name
+- `gml_name` / `gml_description` properties: get/set the model's name
   and description,
-- `.xsd` — direct access to the underlying xsdata binding object for
+- `.xsd`: direct access to the underlying xsdata binding object for
   advanced edits.
 
 The `CityModel` constructor accepts `gml_id`, `gml_name`, and
 `gml_description`. The envelope is always populated by
-`apply_geometry_sources()` — it computes the bounding box of every
+`apply_geometry_sources()`, which computes the bounding box of every
 imported STEP coordinate and writes it to `gml:boundedBy` using
 `srs_name` / `srs_dimension` (top-level keys on the JSON input, default
 `urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109` and `3` from
@@ -527,7 +527,7 @@ generated without any `geometry_sources` has no envelope.
 Thin wrapper around
 `xsdata.formats.dataclass.serializers.XmlSerializer`, configured with the
 project namespace map, UTF-8 encoding, and tab indentation (passed via
-xsdata's `SerializerConfig(indent="\t")` — no post-processing). Exposes
+xsdata's `SerializerConfig(indent="\t")`, no post-processing). Exposes
 `serialize_to_string()` and `serialize_to_file()`.
 
 ### 6.7 `citygml_energy.namespaces`
@@ -542,18 +542,18 @@ schematron, `pbase`, `tex`, …) declared in
 Prefixes cannot be recovered from XSD, so that JSON file is the only
 hand-maintained surface; any binding namespace missing from it surfaces
 as an import-time warning naming the unmapped URIs. The Energy ADE
-namespace is TU Delft's hosted beta8 variant:
-`http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0`.
+namespace is TU Delft's hosted beta8 variant
+(`http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0`).
 
 ### 6.8 `citygml_energy.schema_types`
 
 Central module of XSD-qualified element names (`"prefix:LocalName"`)
-referenced directly in Python — e.g. `BUILDING = "bldg:Building"`,
+referenced directly in Python: for example, `BUILDING = "bldg:Building"`,
 `WALL_SURFACE = "bldg:WallSurface"`, `APPEARANCE = "app:Appearance"`,
 `POS_LIST = "gml:posList"`. Everything is resolved through
 `mapping.resolve_class` at call time, so no xsdata class is imported at
 module scope. This is the tiny remaining surface that has to be
-touched when an element is renamed across an ADE / CityGML edition —
+touched when an element is renamed across an ADE / CityGML edition;
 nothing else should spell out schema names in string literals.
 
 ### 6.9 `citygml_energy.generation`
@@ -585,7 +585,7 @@ local relative path, and runs `xsdata generate` with
 `--structure-style single-package --docstring-style Google
 --relative-imports --slots --no-unnest-classes --max-line-length 100
 --recursive`. The URL → local-path table is **derived at runtime** by
-indexing each staged `*.xsd` file by its declared `targetNamespace` —
+indexing each staged `*.xsd` file by its declared `targetNamespace`;
 there is no hand-maintained URL map. Run after any XSD change. If a
 staged XSD references a remote `schemaLocation` that cannot be
 resolved to a local file, the tool aborts with a descriptive error
@@ -595,7 +595,7 @@ loudly instead of triggering a silent network fetch.
 Adding a new ADE is therefore a three-step process: drop its XSD tree
 on disk, add the path to `_STAGED_ROOTS`, rerun the tool. If the new
 ADE introduces a fresh XML namespace, add a prefix entry in
-[schemas/namespace_prefixes.json](schemas/namespace_prefixes.json) —
+[schemas/namespace_prefixes.json](schemas/namespace_prefixes.json):
 `citygml_energy.namespaces` warns at import time until that is done.
 
 ### 7.3 [tools/generate_input_schema.py](tools/generate_input_schema.py)
@@ -624,7 +624,7 @@ and uses an lxml resolver that redirects every
 GML 3.1.1, SMIL, xLink) to its local copy under [xsd/](xsd/), plus an
 xAL fallback to [xsd/xAL.xsd](xsd/xAL.xsd). No network access required.
 The KIT ModelViewer's own schemas are never consulted by the
-validator — they matter only for the §9 viewer-side display fix.
+validator; they matter only for the §9 viewer-side display fix.
 
 ```powershell
 python tools/validate_xsd.py generated/renodat.gml
@@ -639,18 +639,18 @@ by concern:
 
 **Per-building pipeline (RenoDAT)**
 
-- **[test_renodat_reference.py](tests/test_renodat_reference.py)** —
+- **[test_renodat_reference.py](tests/test_renodat_reference.py)**:
   end-to-end test of the canonical pipeline. Asserts (1) **XSD
   validity** of the generated GML against the full schema set and (2)
-  **completeness** — every feature declared in the JSON appears in the
-  serialized XML. The completeness check exists because XSD validation
-  alone cannot detect silently dropped features (nearly every Energy
-  ADE child is `minOccurs=0`). Supplementary assertions cover CRS
-  propagation, coordinate formatting, and loader error handling.
-- **[test_renodat_multisource_metadata.py](tests/test_renodat_multisource_metadata.py)**
-  — exercises the multi-source `QualifiedAttribute` encoding (repeated
+  **completeness**, meaning every feature declared in the JSON appears
+  in the serialized XML. The completeness check exists because XSD
+  validation alone cannot detect silently dropped features (nearly
+  every Energy ADE child is `minOccurs=0`). Supplementary assertions
+  cover CRS propagation, coordinate formatting, and loader error handling.
+- **[test_renodat_multisource_metadata.py](tests/test_renodat_multisource_metadata.py)**:
+  exercises the multi-source `QualifiedAttribute` encoding (repeated
   `bdgArea` / `Height` / `Volume` with source metadata).
-- **[test_factory.py](tests/test_factory.py)** — per-feature-type XSD
+- **[test_factory.py](tests/test_factory.py)**: per-feature-type XSD
   validation. Constructs xsdata objects directly (Building, Device,
   Zone, schedules, EPCs, occupants, …), serializes them, and validates
   against the XSD set. Catches binding-level breakage independently of
@@ -659,24 +659,24 @@ by concern:
 **Schema / bindings / infrastructure**
 
 - **[test_input_schema.py](tests/test_input_schema.py)** /
-  **[test_city_input_schema.py](tests/test_city_input_schema.py)** —
+  **[test_city_input_schema.py](tests/test_city_input_schema.py)**:
   drift checks between the committed JSON schemas under
   [schemas/](schemas/) and the generators in [tools/](tools/).
-- **[test_generate_bindings_staging.py](tests/test_generate_bindings_staging.py)**
-  — verifies the binding-generation staging + URL rewrite (no
+- **[test_generate_bindings_staging.py](tests/test_generate_bindings_staging.py)**:
+  verifies the binding-generation staging + URL rewrite (no
   hand-maintained URL table).
 - **[test_namespaces_discovery.py](tests/test_namespaces_discovery.py)**
   / **[test_mapping.py](tests/test_mapping.py)** /
-  **[test_geometry_discovery.py](tests/test_geometry_discovery.py)** —
-  auto-discovery contracts: `NSMAP` derivation, class resolution,
-  surface/opening taxonomy.
+  **[test_geometry_discovery.py](tests/test_geometry_discovery.py)**:
+  auto-discovery contracts (NSMAP derivation, class resolution,
+  surface/opening taxonomy).
 - **[test_gml_builders.py](tests/test_gml_builders.py)** /
-  **[test_step.py](tests/test_step.py)** — low-level GML primitive
+  **[test_step.py](tests/test_step.py)**: low-level GML primitive
   builders and STEP parser.
 
 **City-scale pipeline**
 
-- **[test_city_pipeline.py](tests/test_city_pipeline.py)** —
+- **[test_city_pipeline.py](tests/test_city_pipeline.py)**:
   end-to-end orchestrator with fully-mocked fetchers, asserting XSD
   validity of the generated city GML.
 - **[test_city_builders.py](tests/test_city_builders.py)**,
@@ -686,7 +686,7 @@ by concern:
   **[test_city_eponline.py](tests/test_city_eponline.py)**,
   **[test_city_appearance.py](tests/test_city_appearance.py)**,
   **[test_epc_score.py](tests/test_epc_score.py)**,
-  **[test_city_config.py](tests/test_city_config.py)** —
+  **[test_city_config.py](tests/test_city_config.py)**:
   component-level tests for each stage of §12.
 
 ---
@@ -700,15 +700,15 @@ bundled with this repo**) ships with an Energy ADE **2.0** schema
 Energy ADE **3.0** namespace
 (`http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0`) will not
 display correctly until you replace that schema in your local viewer
-install. This is a viewer-side display fix only — the generated GML is
-XSD-valid either way; `tools/validate_xsd.py` never consults the
+install. This is a viewer-side display fix only; the generated GML is
+XSD-valid either way, and `tools/validate_xsd.py` never consults the
 viewer's schemas.
 
 **Symptoms:** child element names ("Zone Window 1", "ZoneWallSurface 4")
 shown instead of building names; PV panels invisible; building tree
 garbled.
 
-**Fix** (applied to your own KIT viewer install — the path below is
+**Fix** (applied to your own KIT viewer install; the path below is
 inside the viewer's install directory, not this repo):
 
 1. Copy
@@ -744,7 +744,7 @@ inside the viewer's install directory, not this repo):
 citygml_energy/                Core package
 ├── __init__.py                Public re-exports (generate_city_model, CityModel, …)
 ├── bindings.py                xsdata-generated dataclasses (Energy ADE 3.0 + CityGML 2.0)
-├── core.py                    CityModel — thin wrapper around CityModelType
+├── core.py                    CityModel: thin wrapper around CityModelType
 ├── generation.py              generate_city_model / generate_gml_file
 ├── input_loader.py            JSON loader, validator, orchestrator
 ├── mapping.py                 Generic dict → xsdata, parent linking, tree traversal
@@ -754,7 +754,7 @@ citygml_energy/                Core package
 ├── schema_types.py            Central XSD-qualified element-name constants
 ├── serialization.py           XmlSerializer wrapper with NSMAP and tab indent
 ├── namespaces.py              NSMAP built from bindings + schemas/namespace_prefixes.json
-└── city_builder/              City-scale pipeline — see §12.4
+└── city_builder/              City-scale pipeline (see §12.4)
 
 examples/
 ├── create_renodat.py          CLI + library entry point (per-building)
@@ -773,14 +773,14 @@ inputs/
 └── city_smoke_test.json       Small-bbox smoke-test config
 
 schemas/
-├── citygml_energy_input.schema.json   Generated — tools/generate_input_schema.py
-├── city_input.schema.json             Generated — tools/generate_city_input_schema.py
+├── citygml_energy_input.schema.json   Generated by tools/generate_input_schema.py
+├── city_input.schema.json             Generated by tools/generate_city_input_schema.py
 └── namespace_prefixes.json            Hand-maintained URI → prefix map (§6.7)
 
 xsd/                            CityGML 2.0 + GML 3.1.1 + xLink + xAL (offline copies, used by validator)
 Energy_ADE-3.0beta8/            Authoritative Energy ADE 3.0 beta8 XSD + Alderaan reference
 
-tests/                          Per-building, city-scale, and infra test modules — see §8
+tests/                          Per-building, city-scale, and infra test modules (see §8)
 generated/                      Pipeline output (git-ignored)
 ```
 
@@ -803,7 +803,7 @@ round-tripped through the loader and validated against the XSD:
 - `nrg3:MaterialLibrary`, `nrg3:LayeredConstructionLibrary`
 
 Any other class defined in `bindings.py` can be added to the input
-without code changes — the loader resolves it dynamically by
+without code changes; the loader resolves it dynamically by
 `prefix:ElementName`.
 
 ---
@@ -814,19 +814,21 @@ A completely separate input pipeline in
 [`citygml_energy/city_builder/`](citygml_energy/city_builder/) produces a
 CityGML + Energy ADE file for an entire Dutch municipality by combining:
 
-- **BAG** (PDOK WFS `bag:pand` + `bag:verblijfsobject` +
-  `bag:nummeraanduiding` + `bag:openbareruimte`) — authoritative building
-  outlines, VBOs, and postal addresses.
-- **3DBAG** ([data.3dbag.nl](https://data.3dbag.nl)) — per-Pand
+- **BAG** (PDOK WFS `bag:pand` + `bag:verblijfsobject`):
+  authoritative building outlines and VBOs. Address fields (postcode,
+  huisnummer, street) are joined into each VBO by the WFS, so no
+  separate `nummeraanduiding` / `openbareruimte` fetches are needed.
+- **3DBAG** ([data.3dbag.nl](https://data.3dbag.nl)): per-Pand
   LoD 0 / 1 / 2 geometries as CityJSON tiles.
-- **EP-online** ([public.ep-online.nl](https://public.ep-online.nl)) —
-  the complete Dutch energy-label register, joined by
-  `(postcode, huisnummer, huisletter, toevoeging)`.
+- **EP-online** ([public.ep-online.nl](https://public.ep-online.nl)):
+  the complete Dutch energy-label register, joined either by
+  `BAGVerblijfsobjectID` (when present) or by
+  `(postcode, huisnummer, huisletter, toevoeging)` as a fallback.
 
 The workflow lives behind its own JSON config
 ([`inputs/city_example.json`](inputs/city_example.json)) with a separate
 schema version (`schema_version: "city-1"`). It does **not** use any of
-the code paths in §3–§9 — you can change one without touching the other.
+the code paths in §3–§9, so you can change one without touching the other.
 
 ### 12.1 Quick start
 
@@ -884,13 +886,15 @@ For every BAG Pand inside the municipality:
 - `bldg:Building` with `gml:id = "pand_<identificatie>"`
   (`xs:ID` cannot start with a digit, so a semantic prefix is prepended).
 - `yearOfConstruction` from 3DBAG `oorspronkelijkbouwjaar`.
-- `lod0FootPrint` (MultiSurface), `lod1Solid`, `lod2MultiSurface` —
-  filtered by the `lods` config.
+- `lod0FootPrint` (MultiSurface), `lod1Solid`, and (for LoD 2) one
+  thematic `bldg:boundedBy` surface per `GroundSurface` / `WallSurface`
+  / `RoofSurface`, each carrying its own `lod2MultiSurface`. The set
+  is filtered by the `lods` config.
 - One `nrg3:BuildingUnit` per BAG VBO
   (`gml:id = "bu_<vbo_identificatie>"`), each carrying:
   - `bldg:address` (xAL street + house number + postcode),
   - `nrg3:energyPerformanceCertificate` when EP-online had a match for
-    `(postcode, huisnummer, huisletter, toevoeging)` — populated with the
+    `(postcode, huisnummer, huisletter, toevoeging)`, populated with the
     `label` letter, `valid_from` (registratiedatum), `valid_to`
     (geldigTot), and EP-online as the `type` code.
 
@@ -904,7 +908,7 @@ and the appearance targeting in
 [`citygml_energy/city_builder/appearance.py`](citygml_energy/city_builder/appearance.py).
 Buildings with no EP-online match are rendered grey.
 
-Everything validates against the bundled XSD set — the end-to-end test
+Everything validates against the bundled XSD set; the end-to-end test
 `tests/test_city_pipeline.py::test_pipeline_output_validates_against_xsd`
 asserts exactly that against fully-mocked fetchers.
 
@@ -918,12 +922,12 @@ citygml_energy/city_builder/
 ├── cityjson_parse.py      CityJSON tile → ParsedBuilding (per-Pand LoDs)
 ├── address_match.py       VBO ↔ EP-online join keyed on normalised addr
 ├── epc_score.py           Label (A+++++ … G) ↔ kWh/m²/yr ↔ EU-palette RGB
-├── appearance.py          app:Appearance builder — colors buildings by avg EPC
+├── appearance.py          app:Appearance builder (colors buildings by avg EPC)
 ├── builders.py            bldg:Building / core:Address / BuildingUnit / EPC
 ├── pipeline.py            Orchestrator; build_city_model(config)
 └── fetchers/
     ├── municipality.py    PDOK bestuurlijkegebieden → MunicipalityOutline
-    ├── bag.py             Pand / VBO / Nummeraanduiding / OpenbareRuimte
+    ├── bag.py             Pand / VBO (with embedded address fields)
     ├── threedbag.py       FlatGeoBuf tile index + CityJSON downloads
     └── eponline.py        Bulk Mutatiebestand CSV (ZIP)
 
@@ -933,17 +937,17 @@ tools/generate_city_input_schema.py  Regenerate schemas/city_input.schema.json
 
 ### 12.5 Design choices
 
-- **Single config file** — everything a run needs is declared in the
+- **Single config file.** Everything a run needs is declared in the
   JSON; the Python code never needs to change to add a new city,
   different LoDs, or skip an input source.
-- **Offline testable** — every fetcher is a plain function taking a
+- **Offline testable.** Every fetcher is a plain function taking a
   `CachedSession`. The end-to-end pipeline test monkeypatches them all
   to fixture data and still asserts XSD validity of the resulting GML.
-- **Schema-agnostic** — all xsdata classes (`bldg:Building`,
+- **Schema-agnostic.** All xsdata classes (`bldg:Building`,
   `core:Address`, `nrg3:BuildingUnit`, `nrg3:EnergyPerformanceCertificate`,
   the xAL machinery) are resolved by XSD-qualified name through
   `citygml_energy.mapping.resolve_class`, so regenerating `bindings.py`
   does not break this pipeline either.
-- **Disk cache is the rate limit** — PDOK and 3DBAG have no API keys
+- **Disk cache is the rate limit.** PDOK and 3DBAG have no API keys
   and generous throughput; caching in the config-specified directory
   keeps re-runs fast and considerate.

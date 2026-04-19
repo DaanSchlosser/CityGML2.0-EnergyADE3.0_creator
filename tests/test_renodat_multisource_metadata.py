@@ -86,7 +86,7 @@ def test_nfa_rides_in_its_own_bdg_area_entry(building):
 def test_qualified_area_type_code_carries_codespace(building):
     """The ``<nrg3:type>`` CodeType must serialize its ``@codeSpace``.
 
-    A missing codeSpace would be silent data loss — validators accept it
+    A missing codeSpace would be silent data loss: validators accept it
     but the receiving toolchain cannot resolve the code to a vocabulary.
     """
     type_elems = building.findall("nrg3:bdgArea/nrg3:QualifiedArea/nrg3:type", NS)
@@ -98,7 +98,7 @@ def test_qualified_area_type_code_carries_codespace(building):
 def test_feature_metadata_documents_the_divergence(building):
     """``nrg3:Metadata`` substitutes directly into ``gml:metaDataProperty``.
 
-    Not into a ``<nrg3:metadata>`` wrapper — the XSD uses
+    Not into a ``<nrg3:metadata>`` wrapper; the XSD uses
     ``substitutionGroup="gml:metaDataProperty"`` on the ``<Metadata>``
     element declaration, so the element appears at top level on any
     gml:AbstractFeature. Guards the XPath shape plus the content that

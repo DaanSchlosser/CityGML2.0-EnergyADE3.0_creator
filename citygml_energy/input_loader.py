@@ -3,7 +3,7 @@
 Supports the schema_version 2 JSON format where each feature is a flat dict
 with ``type``, ``id``, ``parent``, ``parent_field``, and xsdata field names
 as keys.  All object construction is delegated to the generic ``mapping``
-module — no feature-type-specific code lives here.
+module: no feature-type-specific code lives here.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from .namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
 PathLike = str | Path
 
 # XML 1.0 NCName: must start with a letter or '_' and contain only NCNameChar.
-# We use a conservative ASCII subset — the XSD permits Unicode letters/digits,
+# We use a conservative ASCII subset; the XSD permits Unicode letters/digits,
 # but tooling interoperability is far better with ASCII-only IDs.
 _NCNAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
 
@@ -50,7 +50,7 @@ _ALLOWED_CITY_MODEL_KEYS = {"description", "name"}
 
 # Union of ``target_*`` fields across every registered geometry-source spec,
 # so adding a new spec that references a new target field is automatically
-# accepted by the validator — the spec is the single source of truth.
+# accepted by the validator. The spec is the single source of truth.
 _ALLOWED_GEOMETRY_SOURCE_KEYS: frozenset[str] = frozenset(
     {"type", "path"}
     | {
@@ -404,7 +404,7 @@ def _validate_geometry_source(
             required=target_spec.required,
         )
 
-    # Reject target-like keys that this spec doesn't declare — prevents
+    # Reject target-like keys that this spec doesn't declare. Prevents
     # typos like `target_pv_id` on a zonepart source being silently ignored.
     target_like = {k for k in geometry_source if k.startswith("target_")}
     unknown_targets = sorted(target_like - set(spec.target_fields))
@@ -496,7 +496,7 @@ def _resolve_geometry_source_paths(
 ) -> dict[str, Any]:
     """Return a shallow copy of *data* with geometry-source paths resolved.
 
-    The input dict is left unmodified — both ``geometry_sources`` and each
+    The input dict is left unmodified: both ``geometry_sources`` and each
     individual source dict are copied before mutation.
     """
     geometry_sources = data.get("geometry_sources")

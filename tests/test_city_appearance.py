@@ -6,7 +6,7 @@ Verifies that :func:`append_energy_label_appearance`:
   :class:`CityModel` via ``app:appearanceMember``.
 * Emits one ``app:X3DMaterial`` per unique averaged label.
 * Targets every ``MultiSurface`` and ``CompositeSurface`` id under each
-  building — covering LoD 0 MultiSurfaces, LoD 1 CompositeSurface
+  building, covering LoD 0 MultiSurfaces, LoD 1 CompositeSurface
   shells, and LoD 2 thematic-surface MultiSurfaces.
 * Groups buildings without any matched label under the grey fallback.
 * Serialises XSD-validly (no ``app:target`` points at a non-existent
