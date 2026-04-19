@@ -802,7 +802,7 @@ xsd/                            CityGML 2.0 + GML 3.1.1 + xLink + xAL (offline c
 Energy_ADE-3.0beta8/            Authoritative Energy ADE 3.0 beta8 XSD + Alderaan reference
 
 tests/                          Per-building, city-scale, and infra test modules (see §8)
-generated/                      Pipeline output (in .gitignore, but reference GMLs are tracked)
+generated/                      Pipeline output (git-ignored)
 ```
 
 > The KIT FZKViewer install directory (`KITModelViewer_V7.5_Build-3636/`)
