@@ -51,12 +51,12 @@
     },
     "include_energy_labels": {
       "type": "boolean",
-      "description": "Download EP-online and emit nrg3:EnergyPerformanceCertificate per matched VBO. Requires ep_online_api_key_file. Default: true."
+      "description": "Download EP-online and emit nrg3:EnergyPerformanceCertificate per matched VBO. Requires EP_ONLINE_API_KEY env var or ep_online_api_key_file. Default: true."
     },
     "ep_online_api_key_file": {
       "type": "string",
       "minLength": 1,
-      "description": "Path (absolute or relative to this JSON file) to a text file containing the EP-online API key."
+      "description": "Optional: path (absolute or relative to this JSON file) to a text file containing the EP-online API key. If not set, the loader falls back to EP_ONLINE_API_KEY environment variable (e.g., via .env file)."
     },
     "cache_dir": {
       "type": "string",
