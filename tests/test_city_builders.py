@@ -98,6 +98,68 @@ def test_build_building_lod1_is_solid_with_composite_surface() -> None:
     assert shell.id.endswith("_lod1_shell")
 
 
+def _posns_of_lod0(building) -> list[list[float]]:
+    """Flatten every gml:posList value in the LoD 0 MultiSurface."""
+    return [
+        poly.polygon.exterior.linear_ring.pos_list.value
+        for poly in building.lod0_foot_print.multi_surface.surface_member
+    ]
+
+
+def test_build_building_lifts_lod0_to_b3_h_maaiveld() -> None:
+    """3DBAG publishes LoD 0 at NAP=0 while LoD 1/2 sit on the
+    terrain height ``b3_h_maaiveld``. In elevated areas (e.g. Emmer-
+    Compascuum at ~13 m NAP) the two representations are otherwise
+    rendered metres apart vertically. The builder must re-anchor every
+    LoD 0 vertex to the maaiveld.
+    """
+    parsed = ParsedBuilding(
+        pand_id="0114100000202121",
+        attributes={"oorspronkelijkbouwjaar": 1985, "b3_h_maaiveld": 13.35},
+        geometries={
+            "0": [_square(0.0, "GroundSurface")],
+            "1": [_square(13.35), _square(16.9)],
+        },
+    )
+    building = build_building(parsed, lods=(0,))
+    for ring in _posns_of_lod0(building):
+        zs = ring[2::3]
+        assert all(z == 13.35 for z in zs), f"expected all z=13.35, got {zs}"
+
+
+def test_build_building_lod0_falls_back_to_min_lod1_when_maaiveld_missing() -> None:
+    """Without ``b3_h_maaiveld`` we still avoid a below-ground LoD 0:
+    the builder falls back to the minimum Z observed on LoD 1 (or 2).
+    """
+    parsed = ParsedBuilding(
+        pand_id="0114100000000001",
+        attributes={"oorspronkelijkbouwjaar": 1985},  # no maaiveld
+        geometries={
+            "0": [_square(0.0, "GroundSurface")],
+            "1": [_square(12.1), _square(16.4)],
+        },
+    )
+    building = build_building(parsed, lods=(0,))
+    for ring in _posns_of_lod0(building):
+        zs = ring[2::3]
+        assert all(z == 12.1 for z in zs), f"expected all z=12.1, got {zs}"
+
+
+def test_build_building_lod0_leaves_geometry_untouched_when_no_ground_hint() -> None:
+    """No maaiveld, no LoD 1, no LoD 2: return the polygons as-is
+    rather than invent a ground plane.
+    """
+    parsed = ParsedBuilding(
+        pand_id="x",
+        attributes={},
+        geometries={"0": [_square(0.0, "GroundSurface")]},
+    )
+    building = build_building(parsed, lods=(0,))
+    for ring in _posns_of_lod0(building):
+        zs = ring[2::3]
+        assert all(z == 0.0 for z in zs)
+
+
 # ---------------------------------------------------------------------------
 # Address
 # ---------------------------------------------------------------------------
