@@ -34,6 +34,8 @@ from .fetchers import eponline as eponline_fetchers
 from .fetchers import municipality as muni_fetchers
 from .fetchers import threedbag
 from .http import CachedSession
+from . import pv_panels as pv_panels_module
+from .pv_panels import ProjectedPanel, attach_pv_collectors_to_building
 
 if TYPE_CHECKING:
     from shapely.geometry.base import BaseGeometry
@@ -109,15 +111,61 @@ def build_city_model(
     if skipped:
         print(f"[city-builder] {skipped} panden have no 3DBAG geometry (skipped)")
 
+    pv_matches_per_pand = _maybe_match_pv_panels(
+        config=config, bbox=bbox, parsed_by_id=parsed_by_id,
+    )
+
     print("[city-builder] Assembling CityModel …")
     model = _assemble_city_model(
         config=config,
         panden=panden,
         parsed_by_id=parsed_by_id,
         resolved_per_pand=resolved_per_pand,
+        pv_matches_per_pand=pv_matches_per_pand,
     )
     print(f"[city-builder] Done: {len(model.xsd.city_object_member)} buildings in model")
     return model
+
+
+def _maybe_match_pv_panels(
+    *,
+    config: CityBuildConfig,
+    bbox: tuple[float, float, float, float],
+    parsed_by_id: dict[str, ParsedBuilding],
+) -> dict[str, list[ProjectedPanel]]:
+    """Load + match + project PV panels once in the main process.
+
+    Empty dict when no PV source is configured, when LoD 2 is disabled
+    (there is nothing to attach to), or when no panels fall inside the
+    bbox.
+    """
+    source = config.pv_panels_source
+    if source is None:
+        return {}
+    if 2 not in config.lods:
+        print(
+            "[city-builder] WARNING: pv_panels configured but LoD 2 is "
+            "disabled; skipping PV attach"
+        )
+        return {}
+
+    print(f"[city-builder] Loading PV panels: {source.path.name} ({source.layer})")
+    panels = pv_panels_module.load_panels_in_bbox(source, bbox)
+    if not panels:
+        print("[city-builder] PV panels: 0 polygons inside bbox; skipping")
+        return {}
+
+    matches, skipped = pv_panels_module.match_and_project_panels(
+        panels=panels,
+        parsed_buildings=parsed_by_id.values(),
+        z_offset_m=source.z_offset_m,
+    )
+    total = sum(len(v) for v in matches.values())
+    print(
+        f"[city-builder] PV panels: {total} projected onto {len(matches)} buildings "
+        f"({skipped} skipped, no LoD 2 roof overlap)"
+    )
+    return matches
 
 
 # ---------------------------------------------------------------------------
@@ -312,6 +360,7 @@ def _assemble_city_model(
     panden: list[bag_fetchers.Pand],
     parsed_by_id: dict[str, ParsedBuilding],
     resolved_per_pand: dict[str, list[ResolvedAddress]],
+    pv_matches_per_pand: dict[str, list[ProjectedPanel]] | None = None,
 ) -> CityModel:
     """Assemble a :class:`CityModel` from parsed BAG/3DBAG/EP-online inputs.
 
@@ -330,13 +379,18 @@ def _assemble_city_model(
         gml_name=config.city_model_name,
     )
 
+    inputs_per_pand = _bundle_per_pand_inputs(
+        panden=panden,
+        resolved_per_pand=resolved_per_pand,
+        pv_matches_per_pand=pv_matches_per_pand or {},
+    )
     workers = _assembly_worker_count(len(panden))
     if workers > 1:
         build_results = _build_pand_artifacts_parallel(
             config=config,
             panden=panden,
             parsed_by_id=parsed_by_id,
-            resolved_per_pand=resolved_per_pand,
+            inputs_per_pand=inputs_per_pand,
             workers=workers,
         )
     else:
@@ -344,7 +398,7 @@ def _assemble_city_model(
             config=config,
             panden=panden,
             parsed_by_id=parsed_by_id,
-            resolved_per_pand=resolved_per_pand,
+            inputs_per_pand=inputs_per_pand,
         )
 
     all_coords: list[Coord3D] = []
@@ -400,28 +454,65 @@ def _assembly_worker_count(n_panden: int) -> int:
 _PandArtifacts = tuple[Any, list[ResolvedAddress], list[str], list[Coord3D]]
 
 
+@dataclass(frozen=True, slots=True)
+class _PandInputs:
+    """Everything the per-pand build needs beyond geometry + config.
+
+    Bundling the two parallel per-pand dicts (``resolved_per_pand`` and
+    ``pv_matches_per_pand``) under one key keeps the worker-pool job
+    tuple flat and ready for any future "another thing per pand" input
+    (indicators, schedules, …) without re-plumbing every call site.
+    """
+
+    resolved: list[ResolvedAddress]
+    pv_panels: tuple[ProjectedPanel, ...]
+
+
+_EMPTY_INPUTS = _PandInputs(resolved=[], pv_panels=())
+
+
+def _bundle_per_pand_inputs(
+    *,
+    panden: list[bag_fetchers.Pand],
+    resolved_per_pand: dict[str, list[ResolvedAddress]],
+    pv_matches_per_pand: dict[str, list[ProjectedPanel]],
+) -> dict[str, _PandInputs]:
+    """Collapse the two per-pand dicts into a single dict of structs.
+
+    Only panden that appear in at least one of the sources get an
+    entry; everyone else falls through to :data:`_EMPTY_INPUTS` at
+    lookup time.
+    """
+    ids = {p.identificatie for p in panden}
+    ids &= set(resolved_per_pand) | set(pv_matches_per_pand)
+    return {
+        pid: _PandInputs(
+            resolved=resolved_per_pand.get(pid, []),
+            pv_panels=tuple(pv_matches_per_pand.get(pid, ())),
+        )
+        for pid in ids
+    }
+
+
 def _build_pand_artifacts_sequential(
     *,
     config: CityBuildConfig,
     panden: list[bag_fetchers.Pand],
     parsed_by_id: dict[str, ParsedBuilding],
-    resolved_per_pand: dict[str, list[ResolvedAddress]],
+    inputs_per_pand: dict[str, _PandInputs],
 ) -> list[_PandArtifacts]:
     """Sequentially build the per-pand artifacts. Default path."""
-    results: list[_PandArtifacts] = []
-    for pand in panden:
-        parsed = parsed_by_id.get(pand.identificatie)
-        if parsed is None:
-            continue
-        results.append(
-            _build_pand_artifacts(
-                pand=pand,
-                parsed=parsed,
-                resolved=resolved_per_pand.get(pand.identificatie, []),
-                build_params=_BuildParams.from_config(config),
-            )
+    build_params = _BuildParams.from_config(config)
+    return [
+        _build_pand_artifacts(
+            pand=pand,
+            parsed=parsed_by_id[pand.identificatie],
+            inputs=inputs_per_pand.get(pand.identificatie, _EMPTY_INPUTS),
+            build_params=build_params,
         )
-    return results
+        for pand in panden
+        if pand.identificatie in parsed_by_id
+    ]
 
 
 def _build_pand_artifacts_parallel(
@@ -429,7 +520,7 @@ def _build_pand_artifacts_parallel(
     config: CityBuildConfig,
     panden: list[bag_fetchers.Pand],
     parsed_by_id: dict[str, ParsedBuilding],
-    resolved_per_pand: dict[str, list[ResolvedAddress]],
+    inputs_per_pand: dict[str, _PandInputs],
     workers: int,
 ) -> list[_PandArtifacts]:
     """Run the per-pand build in a ``multiprocessing.Pool``.
@@ -443,7 +534,12 @@ def _build_pand_artifacts_parallel(
 
     build_params = _BuildParams.from_config(config)
     jobs: list[tuple[Any, ...]] = [
-        (pand, parsed_by_id[pand.identificatie], resolved_per_pand.get(pand.identificatie, []), build_params)
+        (
+            pand,
+            parsed_by_id[pand.identificatie],
+            inputs_per_pand.get(pand.identificatie, _EMPTY_INPUTS),
+            build_params,
+        )
         for pand in panden
         if pand.identificatie in parsed_by_id
     ]
@@ -491,12 +587,12 @@ class _BuildParams:
 
 
 def _build_pand_worker(
-    job: tuple[bag_fetchers.Pand, ParsedBuilding, list[ResolvedAddress], _BuildParams],
+    job: tuple[bag_fetchers.Pand, ParsedBuilding, _PandInputs, _BuildParams],
 ) -> _PandArtifacts:
     """Worker entry point: must be module-level to be picklable on spawn."""
-    pand, parsed, resolved, build_params = job
+    pand, parsed, inputs, build_params = job
     return _build_pand_artifacts(
-        pand=pand, parsed=parsed, resolved=resolved, build_params=build_params,
+        pand=pand, parsed=parsed, inputs=inputs, build_params=build_params,
     )
 
 
@@ -504,7 +600,7 @@ def _build_pand_artifacts(
     *,
     pand: bag_fetchers.Pand,
     parsed: ParsedBuilding,
-    resolved: list[ResolvedAddress],
+    inputs: _PandInputs,
     build_params: _BuildParams,
 ) -> _PandArtifacts:
     """Build the xsdata artefacts for one Pand.
@@ -527,15 +623,22 @@ def _build_pand_artifacts(
     )
     attach_building_units_to_building(
         building,
-        resolved,
+        inputs.resolved,
         gml_id_prefix=build_params.gml_id_prefix,
         city_name=build_params.municipality,
         srs_name=build_params.srs_name,
         srs_dimension=build_params.srs_dimension,
     )
+    if inputs.pv_panels:
+        attach_pv_collectors_to_building(
+            building,
+            list(inputs.pv_panels),
+            srs_name=build_params.srs_name,
+            srs_dimension=build_params.srs_dimension,
+        )
     coords: list[Coord3D] = []
     _collect_coordinates(parsed, coords)
-    return building, resolved, targets, coords
+    return building, inputs.resolved, targets, coords
 
 
 def _merge_attributes(parsed_attrs: dict[str, Any], pand: bag_fetchers.Pand) -> None:

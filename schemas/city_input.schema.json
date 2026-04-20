@@ -97,6 +97,31 @@
       "type": "string",
       "description": "Optional NCName prefix prepended to every generated gml:id. Useful when merging multiple city builds into one document.",
       "pattern": "^(?:[A-Za-z_][A-Za-z0-9_.\\-]*)?$"
+    },
+    "pv_panels": {
+      "type": "object",
+      "description": "Optional external PV panel polygon source. When set, the pipeline attaches one nrg3:PhotovoltaicCollector per panel to the Building with the largest 2D LoD 2 roof overlap. Geometry is stamped flat at the roof plane Z evaluated at the panel centroid plus z_offset_m.",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "layer"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path to an OGC GeoPackage (.gpkg) in EPSG:28992, absolute or relative to this JSON file."
+        },
+        "layer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the features table inside the GeoPackage holding the panel polygons."
+        },
+        "z_offset_m": {
+          "type": "number",
+          "description": "Flat Z offset above the roof plane, in metres. Defaults to 0.1."
+        }
+      }
     }
   }
 }
