@@ -23,6 +23,7 @@ from citygml_energy.city_builder.config import (
     ALLOWED_LODS,
     SCHEMA_VERSION,
 )
+from citygml_energy.city_builder.pv_panels import DEFAULT_Z_OFFSET_M
 from citygml_energy.namespaces import DEFAULT_SRS_NAME
 
 
@@ -131,6 +132,43 @@ def build_schema() -> dict[str, Any]:
                     "Useful when merging multiple city builds into one document."
                 ),
                 "pattern": r"^(?:[A-Za-z_][A-Za-z0-9_.\-]*)?$",
+            },
+            "pv_panels": {
+                "type": "object",
+                "description": (
+                    "Optional external PV panel polygon source. When set, the "
+                    "pipeline attaches one nrg3:PhotovoltaicCollector per panel "
+                    "to the Building with the largest 2D LoD 2 roof overlap. "
+                    "Geometry is stamped flat at the roof plane Z evaluated "
+                    "at the panel centroid plus z_offset_m."
+                ),
+                "additionalProperties": False,
+                "required": ["path", "layer"],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": (
+                            "Path to an OGC GeoPackage (.gpkg) in EPSG:28992, "
+                            "absolute or relative to this JSON file."
+                        ),
+                    },
+                    "layer": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": (
+                            "Name of the features table inside the GeoPackage "
+                            "holding the panel polygons."
+                        ),
+                    },
+                    "z_offset_m": {
+                        "type": "number",
+                        "description": (
+                            "Flat Z offset above the roof plane, in metres. "
+                            f"Defaults to {DEFAULT_Z_OFFSET_M}."
+                        ),
+                    },
+                },
             },
         },
     }
