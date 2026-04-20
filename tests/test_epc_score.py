@@ -106,8 +106,36 @@ def test_rgb_falls_back_to_grey_for_missing_labels() -> None:
 
 
 def test_best_label_is_green_and_worst_label_is_red() -> None:
-    # EU palette sanity: A+++++ should have green dominant, G red dominant.
+    # Dutch palette sanity: A+++++ should have green dominant, G red dominant.
     best = label_to_rgb("A+++++")
     worst = label_to_rgb("G")
     assert best[1] > best[0] and best[1] > best[2]  # green > red, green > blue
     assert worst[0] > worst[1] and worst[0] > worst[2]  # red dominant
+
+
+def test_palette_matches_rvo_2024_card_exactly() -> None:
+    """Pins the hex values sampled from the official RVO card.
+
+    Regression guard: the EU-generic "A = yellow, G = dark red" palette
+    shipped before was sampled from a different document and pushed the
+    whole scale one step; never again silently.
+    """
+    assert LABEL_HEX["G"] == "#E2001A"
+    assert LABEL_HEX["F"] == "#EB6909"
+    assert LABEL_HEX["E"] == "#FABA00"
+    assert LABEL_HEX["D"] == "#FFEC00"
+    assert LABEL_HEX["C"] == "#C8D100"
+    assert LABEL_HEX["B"] == "#55AB26"
+    # Every A-variant shares one green per the RVO spec.
+    green = "#009037"
+    for letter in ("A", "A+", "A++", "A+++", "A++++", "A+++++"):
+        assert LABEL_HEX[letter] == green, f"{letter} should be RVO green"
+
+
+def test_A_is_green_not_yellow() -> None:
+    """Direct sanity check against the old, shifted palette where A was
+    yellow (``#FFED00``). ``A`` must be green in the Dutch scheme.
+    """
+    r, g, b = label_to_rgb("A")
+    assert g > 0.4  # substantial green
+    assert r < 0.2  # not yellow (yellow has high red + high green)

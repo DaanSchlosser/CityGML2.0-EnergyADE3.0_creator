@@ -1,6 +1,6 @@
-"""EPC-label scoring, averaging, and EU-standard color mapping.
+"""EPC-label scoring, averaging, and Dutch energy-label color mapping.
 
-This module converts Dutch/EU energy-label letters (``A+++++`` … ``G``)
+This module converts Dutch energy-label letters (``A+++++`` … ``G``)
 into (a) a numeric score used for aggregating multiple labels on one
 building and (b) an RGB color used by the CityGML Appearance builder.
 
@@ -9,14 +9,21 @@ fossil-energy use (kWh/m²/yr), labels are averaged by taking the simple
 arithmetic mean of those kWh values, and the mean is then snapped back
 to a letter via a fixed threshold table.
 
-The color palette is the EU energy-label graphic scale (Regulation
-2017/1369, extended upward with RVO's ``A++++`` / ``A+++++`` tints and
-downward with grey for "no label"). The EU Regulation does not specify
-RGB values directly: the printed reference is CMYK. The hex values
-below are the de-facto digital rendering used across Dutch tools
-(EP-online, RVO "Uitgebreid Energielabel" graphics). They are isolated
-in :data:`LABEL_HEX` so a swap to a different authoritative palette is
-a one-line change.
+The color palette matches the RVO 2024 "Energielabel woningbouw"
+reference card sampled directly from the published example at
+https://www.energielabel.nl/media/oednouhj/energielabel_woningbouw_2024_voorbeeld-c-002.pdf
+(palette legend on page 2). Per that reference:
+
+* ``G`` red → ``D`` yellow → ``B`` green → ``A`` dark-green (7 primary bands).
+* **Every A-variant (``A`` through ``A++++``) shares the same dark green
+  ``#009037``.** The visual distinction in RVO materials comes from the
+  ``+`` suffix text, not a gradient — this is the spec, not a limitation
+  of our renderer.
+* ``A+++++`` is not drawn on the RVO card (it is outside the regulatory
+  scale); we reuse the same dark green so the best-possible label never
+  falls through to grey.
+* ``None`` / unrecognised letter → neutral grey so "no label" buildings
+  stay visible but unhighlighted.
 """
 
 from __future__ import annotations
@@ -70,21 +77,22 @@ _WORST_LABEL = "G"
 
 
 # ---------------------------------------------------------------------------
-# EU energy-label colors (hex, as digitally rendered by Dutch tools)
+# Dutch energy-label colours
 # ---------------------------------------------------------------------------
+_GREEN_A: str = "#009037"
 LABEL_HEX: dict[str | None, str] = {
-    "A+++++": "#009A3E",
-    "A++++": "#2CA24C",
-    "A+++": "#5AB24B",
-    "A++": "#85C247",
-    "A+": "#BDD631",
-    "A": "#FFED00",
-    "B": "#FDD100",
-    "C": "#F8AE1A",
-    "D": "#F18E1C",
-    "E": "#E94E1B",
-    "F": "#E30613",
-    "G": "#B40000",
+    "A+++++": _GREEN_A,
+    "A++++": _GREEN_A,
+    "A+++": _GREEN_A,
+    "A++": _GREEN_A,
+    "A+": _GREEN_A,
+    "A": _GREEN_A,
+    "B": "#55AB26",
+    "C": "#C8D100",
+    "D": "#FFEC00",
+    "E": "#FABA00",
+    "F": "#EB6909",
+    "G": "#E2001A",
     None: "#808080",
 }
 
