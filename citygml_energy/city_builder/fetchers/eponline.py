@@ -286,7 +286,9 @@ def _parse_csv_from_bulk_bytes(
     # Seek rather than slice: ``raw[offset:]`` would copy ~1.5 GB.
     body = io.BytesIO(raw)
     body.seek(offset)
-    filtered_text = _filter_bulk_bytes_by_postcode(body, postcode_bytes_set)
+    filtered_text = _filter_bulk_bytes_by_postcode(
+        body, postcode_bytes_set, postcode_col_idx=idx["postcode"]
+    )
     reader = csv.reader(filtered_text, delimiter=";")
     return list(_iter_matching_rows(reader, idx, id_set=id_set, key_set=key_set))
 
@@ -294,27 +296,47 @@ def _parse_csv_from_bulk_bytes(
 def _filter_bulk_bytes_by_postcode(
     buf: io.BytesIO,
     postcode_bytes_set: frozenset[bytes],
+    *,
+    postcode_col_idx: int,
 ) -> Iterable[str]:
-    """Yield decoded lines whose first field (postcode) is wanted.
+    """Yield decoded CSV lines whose Postcode column is in *postcode_bytes_set*.
 
-    Hot loop over every row of the 5 M-row EP-online CSV; locals bound
-    up front so the body avoids ``LOAD_GLOBAL`` per iteration. Decodes
-    as ``utf-8`` (not ``utf-8-sig``) because the BOM was already
-    consumed by :func:`_parse_csv_from_bulk_bytes` before this runs.
+    The EP-online CSV puts ``Postcode`` at column 12 (after
+    ``Registratiedatum;Opnamedatum;GeldigTot;…``), not column 0, so
+    this prefilter must seek past the preceding semicolon-separated
+    fields before reading the postcode. Reading only those bytes, and
+    skipping the full :func:`csv.reader` parse for non-matching rows,
+    is the entire point of the bulk path on the 5 M-row file.
+
+    Hot loop; locals bound up front so the body avoids ``LOAD_GLOBAL``
+    per iteration. Decodes as ``utf-8`` (not ``utf-8-sig``) because the
+    BOM was already consumed by :func:`_parse_csv_from_bulk_bytes`.
     """
     readline = buf.readline
     set_contains = postcode_bytes_set.__contains__
+    sep_byte = b";"
     while True:
         line = readline()
         if not line:
             return
-        sep = line.find(b";")
-        if sep < 0:
+        # Walk to the start of the Postcode field by skipping `postcode_col_idx`
+        # semicolons, then read up to the next one.
+        start = 0
+        for _ in range(postcode_col_idx):
+            sep = line.find(sep_byte, start)
+            if sep < 0:
+                start = -1
+                break
+            start = sep + 1
+        if start < 0:
             continue
-        first = line[:sep]
-        if b" " in first:
-            first = first.replace(b" ", b"")
-        pc = first.strip().upper()
+        end = line.find(sep_byte, start)
+        if end < 0:
+            continue
+        pc = line[start:end]
+        if b" " in pc:
+            pc = pc.replace(b" ", b"")
+        pc = pc.strip().upper()
         if set_contains(pc):
             yield line.decode("utf-8")
 

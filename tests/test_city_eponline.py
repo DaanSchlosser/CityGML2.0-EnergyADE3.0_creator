@@ -86,3 +86,65 @@ def test_parser_tolerates_missing_optional_columns() -> None:
     assert labels[0].huisnummer == 42
     assert labels[0].energieklasse is None
     assert labels[0].registratiedatum is None
+
+
+# ---------------------------------------------------------------------------
+# Regression: bulk byte-level prefilter honours the Postcode column index.
+# ---------------------------------------------------------------------------
+
+# The production EP-online CSV ships Postcode at column 12 (after
+# Registratiedatum, Opnamedatum, GeldigTot, Certificaathouder, SoortOpname,
+# Status, Berekeningstype, OpBasisVanReferentiegebouw, Gebouwklasse,
+# Gebouwtype, Gebouwsubtype, SBICode), not at column 0. An earlier version
+# of the bulk prefilter read line[:first_semicolon] and compared it to the
+# wanted-postcode set, which silently dropped every row of the 5 M-row file.
+_REAL_HEADER = (
+    b"Registratiedatum;Opnamedatum;GeldigTot;Certificaathouder;SoortOpname;"
+    b"Status;Berekeningstype;OpBasisVanReferentiegebouw;Gebouwklasse;"
+    b"Gebouwtype;Gebouwsubtype;SBICode;Postcode;Huisnummer;Huisletter;"
+    b"Huisnummertoevoeging;BAGVerblijfsobjectID;Energieklasse;"
+    b"Registratiedatum;Opnamedatum;GeldigTot\n"
+)
+_REAL_PREAMBLE = b"# EP-online export\n\n"
+
+
+def _real_shape_csv(*rows: bytes) -> bytes:
+    return _REAL_PREAMBLE + _REAL_HEADER + b"\n".join(rows) + b"\n"
+
+
+def test_bulk_prefilter_matches_postcode_at_real_column_index() -> None:
+    from citygml_energy.city_builder.address_key import address_key
+    from citygml_energy.city_builder.fetchers.eponline import _parse_csv_from_bulk_bytes
+
+    csv_bytes = _real_shape_csv(
+        b"20240101;20240101;20340101;Holder;RV;Final;Conv;No;W;A;B;1234;"
+        b"7881AA;42;;;0114010000000001;A;20240101;20240101;20340101",
+        b"20240101;20240101;20340101;Holder;RV;Final;Conv;No;W;A;B;1234;"
+        b"9999ZZ;99;;;unrelated;C;20240101;20240101;20340101",
+    )
+    wanted_keys = {address_key("7881AA", 42, None, None)}
+
+    labels = _parse_csv_from_bulk_bytes(
+        csv_bytes, wanted_ids=None, wanted_keys=wanted_keys
+    )
+    assert len(labels) == 1, "prefilter must not drop the matching row"
+    assert labels[0].postcode == "7881AA"
+    assert labels[0].huisnummer == 42
+    assert labels[0].energieklasse == "A"
+
+
+def test_bulk_prefilter_tolerates_spaces_and_lowercase_postcodes() -> None:
+    from citygml_energy.city_builder.address_key import address_key
+    from citygml_energy.city_builder.fetchers.eponline import _parse_csv_from_bulk_bytes
+
+    csv_bytes = _real_shape_csv(
+        b"20240101;20240101;20340101;Holder;RV;Final;Conv;No;W;A;B;1234;"
+        b"7881 aa;42;;;0114010000000001;B;20240101;20240101;20340101",
+    )
+    wanted_keys = {address_key("7881AA", 42, None, None)}
+
+    labels = _parse_csv_from_bulk_bytes(
+        csv_bytes, wanted_ids=None, wanted_keys=wanted_keys
+    )
+    assert len(labels) == 1
+    assert labels[0].postcode == "7881AA"
