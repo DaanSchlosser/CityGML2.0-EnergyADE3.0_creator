@@ -1,0 +1,498 @@
+{
+  "schema_version": 2,
+  "city_model": {
+    "description": "Sample CityGML 2.0 + EnergyADE 3.0 reproducer for KIT SDM_KITModelViewer issues #24, #25 and #26. All data values are placeholders.",
+    "name": "Sample City"
+  },
+  "coordinate_origin": [0.0, 0.0, 0.0],
+  "construction_mapping": {
+    "by_type": {
+      "WallSurface": "constr_external_wall",
+      "GroundSurface": "constr_ground_floor",
+      "RoofSurface": "constr_reed_roof",
+      "Window": "constr_window_hr",
+      "Door": "constr_back_door"
+    },
+    "by_id": {
+      "id_building_1_Door2_1": "constr_front_door",
+      "id_building_1_Door2_2": "constr_front_door"
+    }
+  },
+  "geometry_sources": [
+    {"type": "step-renodat-lod0", "path": "Owner-Occupier1_LOD0_STEP.stp", "target_building_id": "id_building_1"},
+    {"type": "step-renodat-lod1", "path": "Owner-Occupier1_LOD1_STEP.stp", "target_building_id": "id_building_1"},
+    {"type": "step-renodat-lod2", "path": "Owner-Occupier1_LOD2_STEP.stp", "target_building_id": "id_building_1", "target_pv_id": "pv_panel_1"},
+    {"type": "step-renodat-lod3", "path": "Owner-Occupier1_LOD3_STEP.stp", "target_building_id": "id_building_1", "target_pv_id": "pv_panel_1"},
+    {"type": "step-zonepart-lod3", "path": "Owner-Occupier1_ZonePart1_STEP.stp", "target_zone_part_id": "zone_part_1"},
+    {"type": "step-zonepart-lod3", "path": "Owner-Occupier1_ZonePart2_STEP.stp", "target_zone_part_id": "zone_part_2"}
+  ],
+  "features": [
+    {
+      "type": "bldg:Building",
+      "id": "id_building_1",
+      "name": ["Sample Residence"],
+      "creation_date": "2000-01-01",
+      "identifier": [{"value": "SAMPLE-0000000000000000", "code_space": "https://example.invalid/register"}],
+      "metadata": [{
+        "author": "Sample Author",
+        "acquisition_method": "measurement",
+        "owner": "Sample Owner",
+        "quality_description": "Sample quality description for shareable reproducer.",
+        "source": "Sample source"
+      }],
+      "class_value": {"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"},
+      "function": [{"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml"}],
+      "usage": [{"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml"}],
+      "year_of_construction": "2000",
+      "roof_type": {"value": "1000", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml"},
+      "storeys_above_ground": 2,
+      "storeys_below_ground": 0,
+      "bdg_is_protected": [false],
+      "bdg_number_of_building_units": [1],
+      "bdg_owner_name": ["Sample Owner"],
+      "bdg_ownership_type": [{"value": "occupantPrivateOwner", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml"}],
+      "bdg_type": [{"value": "singleFamilyHouse", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingTypeValue.xml"}],
+      "bdg_area": [
+        {
+          "qualified_area": {
+            "description": "Sample gross floor area (register).",
+            "source": "Sample register",
+            "value": {"value": 100.0, "uom": "m2"},
+            "type_value": {"value": "grossFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
+          }
+        },
+        {
+          "qualified_area": {
+            "description": "Sample gross floor area (measured model).",
+            "source": "Sample measurement",
+            "value": {"value": 98.0, "uom": "m2"},
+            "type_value": {"value": "grossFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
+          }
+        },
+        {
+          "qualified_area": {
+            "description": "Sample net floor area.",
+            "source": "Sample measurement",
+            "value": {"value": 85.0, "uom": "m2"},
+            "type_value": {"value": "netFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
+          }
+        }
+      ],
+      "bdg_height": [
+        {
+          "qualified_height": {
+            "description": "Sample building height.",
+            "source": "Sample measurement",
+            "value": {"value": 7.50, "uom": "m"},
+            "type_value": {"value": "maxHeightAboveGround", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeightTypeValue.xml"}
+          }
+        }
+      ],
+      "bdg_volume": [
+        {
+          "qualified_volume": {
+            "description": "Sample building volume.",
+            "source": "Sample measurement",
+            "value": {"value": 700.0, "uom": "m3"},
+            "type_value": {"value": "grossVolume", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/VolumeTypeValue.xml"}
+          }
+        }
+      ]
+    },
+    {
+      "type": "nrg3:PhotovoltaicCollector",
+      "parent": "id_building_1",
+      "id": "pv_panel_1",
+      "name": ["Sample PV collector"],
+      "creation_date": "2000-01-02",
+      "model": "sample-pv-model",
+      "year_of_installation": 2000,
+      "number_of_devices": 20,
+      "installed_power": {"value": 5000.0, "uom": "W"},
+      "azimuth": {"value": 180.0, "uom": "deg"},
+      "inclination": {"value": 35.0, "uom": "deg"},
+      "cell_type": {"value": "unknown", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml"},
+      "installed_on": ["RoofSurface_01", "RoofSurface_02"]
+    },
+    {
+      "type": "nrg3:HeatPump",
+      "parent": "id_building_1",
+      "id": "heat_pump_1",
+      "description": "Sample water-water heat pump.",
+      "name": ["Sample heat pump"],
+      "creation_date": "2000-01-03",
+      "model": "sample-heatpump-model",
+      "identifier": [{"value": "sample-heatpump-id", "code_space": "https://example.invalid/heatpump"}],
+      "number_of_devices": 1,
+      "installed_power": {"value": 4000.0, "uom": "W"},
+      "heat_source": {"value": "waterSource", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
+      "cop_source_temperature": {"value": 10.0, "uom": "degC"},
+      "cop_operation_temperature": {"value": 40.0, "uom": "degC"}
+    },
+    {
+      "type": "nrg3:Occupants",
+      "parent": "id_building_1",
+      "id": "id_occupants_1",
+      "description": "Sample residents.",
+      "name": ["Sample occupants"],
+      "creation_date": "2000-01-04",
+      "type_value": {"value": "residents", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml"},
+      "number_of_occupants": 2,
+      "heat_dissipation": {"value": 60.0, "uom": "W"}
+    },
+    {
+      "type": "nrg3:EVChargingStation",
+      "parent": "id_building_1",
+      "id": "id_ev_charging_station_1",
+      "description": "Sample AC Mode 3 EV charging station.",
+      "name": ["Sample EV charging station"],
+      "creation_date": "2000-01-05",
+      "model": "sample-ev-model",
+      "year_of_installation": 2000,
+      "valid_from": "2000-01-05T00:00:00",
+      "number_of_devices": 1,
+      "installed_power": {"value": 11000.0, "uom": "W"},
+      "type_value": {"value": "AC", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingStationTypeValue.xml"},
+      "charging_speed_level": {"value": "Level 2", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingSpeedLevelValue.xml"},
+      "connector_type": {"value": "AC - Mennekes (Type2)", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingConnectorTypeValue.xml"},
+      "has_load_management": true,
+      "access": {"value": "private", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingAccessTypeValue.xml"}
+    },
+    {
+      "type": "nrg3:Energy",
+      "parent": "id_ev_charging_station_1",
+      "id": "id_ev_energy_1",
+      "description": "Sample EV charging energy demand.",
+      "name": ["Sample EV charging energy demand"],
+      "creation_date": "2000-01-06",
+      "operation_type": {"value": "demands", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
+      "reference_period": {"value": "year", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ReferencePeriodValue.xml"},
+      "amount": {"value": 0.500, "uom": "MWh/a"},
+      "year": 2000,
+      "is_amount_normalized": false,
+      "type_value": {"value": "finalEnergy", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
+      "end_use": {"value": "mobility", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
+      "energy_carrier": {"value": "electricity", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
+      "maximum_load": {"value": 2.0, "uom": "kW"},
+      "source": {"value": "powerGrid", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
+    },
+    {
+      "type": "nrg3:Energy",
+      "parent": "pv_panel_1",
+      "id": "id_pv_production_1",
+      "description": "Sample PV energy production.",
+      "name": ["Sample PV production"],
+      "creation_date": "2000-01-07",
+      "operation_type": {"value": "produces", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
+      "is_amount_normalized": false,
+      "type_value": {"value": "finalEnergy", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
+      "end_use": {"value": "electricalAppliances", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
+      "energy_carrier": {"value": "electricity", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
+      "source": {"value": "solarEnergy", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
+    },
+    {
+      "type": "nrg3:Zone",
+      "parent": "id_building_1",
+      "id": "zone_1",
+      "description": "Sample thermal zone.",
+      "name": ["Sample zone"],
+      "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
+      "coincides_with_lod2_hull": false,
+      "coincides_with_lod3_hull": true
+    },
+    {
+      "type": "nrg3:ZonePart",
+      "parent": "zone_1",
+      "id": "zone_part_1",
+      "description": "Sample zone part 1.",
+      "name": ["Sample zone part 1"],
+      "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
+      "is_heated": true,
+      "is_cooled": true,
+      "coincides_with_lod2_hull": false,
+      "coincides_with_lod3_hull": false
+    },
+    {
+      "type": "nrg3:ConstantValueSchedule",
+      "parent": "zone_part_1",
+      "parent_field": "heating_schedule",
+      "id": "zone_part_1_heating_schedule",
+      "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
+      "value": {"value": 20.0, "uom": "°C"}
+    },
+    {
+      "type": "nrg3:ConstantValueSchedule",
+      "parent": "zone_part_1",
+      "parent_field": "cooling_schedule",
+      "id": "zone_part_1_cooling_schedule",
+      "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
+      "value": {"value": 26.0, "uom": "°C"}
+    },
+    {
+      "type": "nrg3:ZonePart",
+      "parent": "zone_1",
+      "id": "zone_part_2",
+      "description": "Sample zone part 2.",
+      "name": ["Sample zone part 2"],
+      "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
+      "is_heated": true,
+      "is_cooled": true,
+      "coincides_with_lod2_hull": false,
+      "coincides_with_lod3_hull": false
+    },
+    {
+      "type": "nrg3:ConstantValueSchedule",
+      "parent": "zone_part_2",
+      "parent_field": "heating_schedule",
+      "id": "zone_part_2_heating_schedule",
+      "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
+      "value": {"value": 16.0, "uom": "°C"}
+    },
+    {
+      "type": "nrg3:ConstantValueSchedule",
+      "parent": "zone_part_2",
+      "parent_field": "cooling_schedule",
+      "id": "zone_part_2_cooling_schedule",
+      "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
+      "value": {"value": 26.0, "uom": "°C"}
+    },
+    {
+      "type": "nrg3:MonthlyTimeSeries",
+      "parent": "id_pv_production_1",
+      "parent_field": "time_dependent_amount",
+      "id": "id_monthly_ts_pv_production_1",
+      "description": "Sample monthly time series.",
+      "name": ["Sample monthly time series"],
+      "interpolation_type": "averageInSucceedingInterval",
+      "start_date": "2000-01-01",
+      "end_date": "2003-07-01",
+      "values_list": {
+        "value": [100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0],
+        "uom": "kWh"
+      }
+    },
+
+    {
+      "type": "nrg3:MaterialLibrary",
+      "id": "material_library_1",
+      "name": ["Sample material library"],
+      "description": "Sample construction materials.",
+      "type_value": {"value": "materialLibrary"},
+      "library_member": [
+        {
+          "solid_material": {
+            "id": "mat_gypsum_board",
+            "name": ["Sample material 1"],
+            "type_value": {"value": "gypsum"},
+            "is_transparent": false,
+            "thermal_conductivity": {"value": 0.10, "uom": "W/(m*K)"},
+            "density": {"value": 100.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        },
+        {
+          "solid_material": {
+            "id": "mat_mineral_wool",
+            "name": ["Sample material 2"],
+            "type_value": {"value": "mineralWool"},
+            "is_transparent": false,
+            "thermal_conductivity": {"value": 0.20, "uom": "W/(m*K)"},
+            "density": {"value": 200.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        },
+        {
+          "solid_material": {
+            "id": "mat_osb",
+            "name": ["Sample material 3"],
+            "type_value": {"value": "wood"},
+            "is_transparent": false,
+            "thermal_conductivity": {"value": 0.30, "uom": "W/(m*K)"},
+            "density": {"value": 300.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        },
+        {
+          "solid_material": {
+            "id": "mat_timber_hsb",
+            "name": ["Sample material 4"],
+            "type_value": {"value": "wood"},
+            "is_transparent": false,
+            "thermal_conductivity": {"value": 0.40, "uom": "W/(m*K)"},
+            "density": {"value": 400.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        },
+        {
+          "solid_material": {
+            "id": "mat_reed_thatch",
+            "name": ["Sample material 5"],
+            "type_value": {"value": "thatch"},
+            "is_transparent": false,
+            "thermal_conductivity": {"value": 0.50, "uom": "W/(m*K)"},
+            "density": {"value": 500.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        },
+        {
+          "solid_material": {
+            "id": "mat_concrete",
+            "name": ["Sample material 6"],
+            "type_value": {"value": "concrete"},
+            "is_transparent": false,
+            "thermal_conductivity": {"value": 0.60, "uom": "W/(m*K)"},
+            "density": {"value": 600.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        },
+        {
+          "solid_material": {
+            "id": "mat_eps",
+            "name": ["Sample material 7"],
+            "type_value": {"value": "looseFilledInsulation"},
+            "is_transparent": false,
+            "thermal_conductivity": {"value": 0.70, "uom": "W/(m*K)"},
+            "density": {"value": 700.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        },
+        {
+          "solid_material": {
+            "id": "mat_screed",
+            "name": ["Sample material 8"],
+            "type_value": {"value": "concrete"},
+            "is_transparent": false,
+            "thermal_conductivity": {"value": 0.80, "uom": "W/(m*K)"},
+            "density": {"value": 800.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        },
+        {
+          "solid_material": {
+            "id": "mat_hr_glass",
+            "name": ["Sample material 9"],
+            "description": "Sample transparent material.",
+            "type_value": {"value": "glass"},
+            "is_transparent": true,
+            "thermal_conductivity": {"value": 0.90, "uom": "W/(m*K)"},
+            "density": {"value": 900.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        },
+        {
+          "gas": {
+            "id": "mat_argon",
+            "name": ["Sample gas material"],
+            "type_value": {"value": "argon"},
+            "is_ventilated": false,
+            "r_value": {"value": 0.10, "uom": "m2*K/W"}
+          }
+        },
+        {
+          "solid_material": {
+            "id": "mat_timber_door",
+            "name": ["Sample material 10"],
+            "type_value": {"value": "wood"},
+            "is_transparent": false,
+            "thermal_conductivity": {"value": 0.15, "uom": "W/(m*K)"},
+            "density": {"value": 500.0, "uom": "kg/m3"},
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+          }
+        }
+      ]
+    },
+
+    {
+      "type": "nrg3:LayeredConstructionLibrary",
+      "id": "construction_library_1",
+      "name": ["Sample construction library"],
+      "description": "Sample layered constructions.",
+      "type_value": {"value": "constructionLibrary"},
+      "library_member": [
+        {
+          "layered_construction": {
+            "id": "constr_external_wall",
+            "name": ["Sample construction 1"],
+            "description": "Sample external wall.",
+            "type_value": {"value": "insulatedWoodenWall"},
+            "u_value": {"value": 0.25, "uom": "W/(m2*K)"},
+            "layer": [
+              {"layer": {"id": "constr_wall_L1", "thickness": {"value": 0.01, "uom": "m"}, "material": {"href": "#mat_gypsum_board"}}},
+              {"layer": {"id": "constr_wall_L2", "description": "Sample insulation layer.", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_mineral_wool"}}},
+              {"layer": {"id": "constr_wall_L3", "thickness": {"value": 0.02, "uom": "m"}, "material": {"href": "#mat_osb"}}}
+            ]
+          }
+        },
+        {
+          "layered_construction": {
+            "id": "constr_ground_floor",
+            "name": ["Sample construction 2"],
+            "description": "Sample ground floor.",
+            "type_value": {"value": "groundSlab"},
+            "u_value": {"value": 0.25, "uom": "W/(m2*K)"},
+            "layer": [
+              {"layer": {"id": "constr_floor_L1", "description": "Sample screed layer.", "thickness": {"value": 0.05, "uom": "m"}, "material": {"href": "#mat_screed"}}},
+              {"layer": {"id": "constr_floor_L2", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_eps"}}},
+              {"layer": {"id": "constr_floor_L3", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_concrete"}}}
+            ]
+          }
+        },
+        {
+          "layered_construction": {
+            "id": "constr_reed_roof",
+            "name": ["Sample construction 3"],
+            "description": "Sample roof.",
+            "type_value": {"value": "insulatedThatchRoof"},
+            "u_value": {"value": 0.20, "uom": "W/(m2*K)"},
+            "layer": [
+              {"layer": {"id": "constr_roof_L1", "thickness": {"value": 0.01, "uom": "m"}, "material": {"href": "#mat_gypsum_board"}}},
+              {"layer": {"id": "constr_roof_L2", "description": "Sample insulation layer.", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_mineral_wool"}}},
+              {"layer": {"id": "constr_roof_L3", "thickness": {"value": 0.02, "uom": "m"}, "material": {"href": "#mat_osb"}}},
+              {"layer": {"id": "constr_roof_L4", "description": "Sample exterior layer.", "thickness": {"value": 0.30, "uom": "m"}, "material": {"href": "#mat_reed_thatch"}}}
+            ]
+          }
+        },
+        {
+          "layered_construction": {
+            "id": "constr_window_hr",
+            "name": ["Sample construction 4"],
+            "description": "Sample window.",
+            "type_value": {"value": "doubleGlazedWindow"},
+            "u_value": {"value": 1.00, "uom": "W/(m2*K)"},
+            "g_value": {"value": 0.50, "uom": ""},
+            "glazing_ratio": {"value": 0.50, "uom": ""},
+            "layer": [
+              {"layer": {"id": "constr_window_L1", "thickness": {"value": 0.005, "uom": "m"}, "material": {"href": "#mat_hr_glass"}}},
+              {"layer": {"id": "constr_window_L2", "thickness": {"value": 0.015, "uom": "m"}, "material": {"href": "#mat_argon"}}},
+              {"layer": {"id": "constr_window_L3", "description": "Sample inner pane.", "thickness": {"value": 0.005, "uom": "m"}, "material": {"href": "#mat_hr_glass"}}}
+            ]
+          }
+        },
+        {
+          "layered_construction": {
+            "id": "constr_front_door",
+            "name": ["Sample construction 5"],
+            "description": "Sample front door.",
+            "type_value": {"value": "insulatedTimberDoor"},
+            "u_value": {"value": 1.50, "uom": "W/(m2*K)"},
+            "layer": [
+              {"layer": {"id": "constr_front_door_L1", "thickness": {"value": 0.05, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
+            ]
+          }
+        },
+        {
+          "layered_construction": {
+            "id": "constr_back_door",
+            "name": ["Sample construction 6"],
+            "description": "Sample back door.",
+            "type_value": {"value": "insulatedTimberDoor"},
+            "u_value": {"value": 1.50, "uom": "W/(m2*K)"},
+            "layer": [
+              {"layer": {"id": "constr_back_door_L1", "thickness": {"value": 0.05, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
