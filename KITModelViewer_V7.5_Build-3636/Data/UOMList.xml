@@ -31,6 +31,8 @@
 			kwh
 		</altId>
 	</UOM>
+	<UOM name="MEGAWATT_HOUR" id="MWh" quantity="ENERGY" factor="0.001" sign="MWh" description="Unit for energy"/>
+	<UOM name="MEGAWATT_HOUR_PER_YEAR" id="MWh/a" quantity="ENERGY_PER_TIME" sign="MWh/a" description="Unit for annual energy (megawatt-hours per annum)"/>
 	<UOM name="WATT_HOUR" id="Wh" quantity="ENERGY" factor="1000.0" sign="Wh" description="Unit for energy">
 		<altId>
 			WH
