@@ -85,11 +85,18 @@ def build_building(
              ``lod2MultiSurface``.  Polygons without a recognised semantic
              type are assigned to WallSurface.
 
-    When *surface_targets_out* is supplied, each colorable surface id
-    created here (``#{gml_id}_lod0``, ``#{gml_id}_lod1_shell``, and one
-    per LoD 2 thematic surface) is appended to it. The pipeline uses
-    this to avoid a per-building :func:`iter_instances` walk when
-    building the ``app:Appearance`` (see
+    When *surface_targets_out* is supplied, every colorable surface id
+    created here is appended to it: the LoD 0 ``gml:MultiSurface`` plus
+    each of its member ``gml:Polygon`` ids, the LoD 1 ``gml:CompositeSurface``
+    shell plus each of its member ``gml:Polygon`` ids, and one
+    ``gml:MultiSurface`` per LoD 2 thematic surface plus its member
+    ``gml:Polygon`` ids. Per-polygon ids are included because some viewers
+    (KIT SDM_KITModelViewer among them) only resolve appearance targets
+    that point at individual ``gml:Polygon`` elements and silently skip
+    targets that point at a container ``gml:MultiSurface`` /
+    ``gml:CompositeSurface``. The pipeline uses this pre-collected list
+    to avoid a per-building :func:`iter_instances` walk when building
+    the ``app:Appearance`` (see
     :func:`citygml_energy.city_builder.appearance.append_energy_label_appearance`).
     """
     gml_id = _safe_gml_id(gml_id_prefix, "pand", parsed.pand_id)
@@ -110,17 +117,29 @@ def build_building(
         )
         if surface_targets_out is not None:
             surface_targets_out.append(f"#{gml_id}_lod0")
+            _extend_polygon_targets(
+                surface_targets_out, f"{gml_id}_lod0", len(polygons_lod0)
+            )
 
     if 1 in lods and parsed.geometries.get("1"):
         polygons_lod1 = _unwrap_polygons(parsed.geometries["1"])
+        # 3DBAG publishes LoD 1/2 CityJSON with outward-facing rings already,
+        # per the CityJSON spec. The centroid-based heuristic in
+        # ``orient_solid_polygons`` can mis-flip walls on concave facades
+        # (L- and U-shapes), which produces inward-facing polygons that
+        # viewers then back-face-cull. Trust the source orientation here.
         building.lod1_solid = build_solid(
             f"{gml_id}_lod1",
             polygons_lod1,
             srs_name=srs_name,
             srs_dimension=srs_dimension,
+            orient=False,
         )
         if surface_targets_out is not None:
             surface_targets_out.append(f"#{gml_id}_lod1_shell")
+            _extend_polygon_targets(
+                surface_targets_out, f"{gml_id}_lod1", len(polygons_lod1)
+            )
 
     if 2 in lods and parsed.geometries.get("2"):
         _attach_lod2_thematic_surfaces(
@@ -269,6 +288,7 @@ def _attach_lod2_thematic_surfaces(
         building.bounded_by.append(wrapper_cls(**{field_name: surf}))
         if surface_targets_out is not None:
             surface_targets_out.append(f"#{surf_id}_ms")
+            _extend_polygon_targets(surface_targets_out, f"{surf_id}_ms", len(polygons))
 
 
 # ---------------------------------------------------------------------------
@@ -508,6 +528,21 @@ def _build_epc(
 # ---------------------------------------------------------------------------
 # Internal utilities
 # ---------------------------------------------------------------------------
+
+
+def _extend_polygon_targets(
+    sink: list[str], container_gml_id: str, polygon_count: int
+) -> None:
+    """Append ``#{container_gml_id}_poly_{i}`` refs for each generated polygon.
+
+    Mirrors the id scheme used by
+    :func:`citygml_energy._gml_builders.build_multi_surface` and
+    :func:`citygml_energy._gml_builders.build_solid`; kept close to the call
+    sites so any future rename breaks the dedicated appearance test rather
+    than a surface-data-less-but-still-valid CityGML file.
+    """
+    for i in range(1, polygon_count + 1):
+        sink.append(f"#{container_gml_id}_poly_{i}")
 
 
 def _safe_gml_id(user_prefix: str, kind: str, source_id: str) -> str:

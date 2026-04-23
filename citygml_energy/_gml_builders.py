@@ -98,15 +98,19 @@ def build_solid(
     *,
     srs_name: str,
     srs_dimension: int,
+    orient: bool = True,
 ) -> SolidPropertyType:
     """Build a ``gml:Solid`` whose exterior shell is a ``gml:CompositeSurface``.
 
-    Polygons are re-oriented outward before assembly (see
-    :func:`orient_solid_polygons`): shared surfaces between adjacent zones
-    often arrive with inward-facing normals because they were authored from
-    the neighbouring zone's perspective.
+    When *orient* is ``True`` (the default), polygons are re-oriented outward
+    via :func:`orient_solid_polygons` before assembly: shared surfaces between
+    adjacent zones often arrive with inward-facing normals because they were
+    authored from the neighbouring zone's perspective. Pass ``orient=False``
+    when the source is already known-outward (3DBAG CityJSON LoD 1/2), because
+    the centroid heuristic can mis-flip walls on concave facades and so
+    produces inward-facing faces that viewers back-face-cull.
     """
-    oriented = orient_solid_polygons(polygons)
+    oriented = orient_solid_polygons(polygons) if orient else polygons
     members = [
         SurfaceMember(polygon=build_polygon(f"{gml_id}_poly_{index}", polygon))
         for index, polygon in enumerate(oriented, start=1)
