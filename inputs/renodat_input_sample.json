@@ -126,8 +126,8 @@
       "number_of_devices": 1,
       "installed_power": {"value": 4000.0, "uom": "W"},
       "heat_source": {"value": "waterSource", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
-      "cop_source_temperature": {"value": 10.0, "uom": "degC"},
-      "cop_operation_temperature": {"value": 40.0, "uom": "degC"}
+      "cop_source_temperature": {"value": 10.0, "uom": "C"},
+      "cop_operation_temperature": {"value": 40.0, "uom": "C"}
     },
     {
       "type": "nrg3:Occupants",
@@ -218,7 +218,7 @@
       "parent_field": "heating_schedule",
       "id": "zone_part_1_heating_schedule",
       "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-      "value": {"value": 20.0, "uom": "°C"}
+      "value": {"value": 20.0, "uom": "C"}
     },
     {
       "type": "nrg3:ConstantValueSchedule",
@@ -226,7 +226,7 @@
       "parent_field": "cooling_schedule",
       "id": "zone_part_1_cooling_schedule",
       "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-      "value": {"value": 26.0, "uom": "°C"}
+      "value": {"value": 26.0, "uom": "C"}
     },
     {
       "type": "nrg3:ZonePart",
@@ -246,7 +246,7 @@
       "parent_field": "heating_schedule",
       "id": "zone_part_2_heating_schedule",
       "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-      "value": {"value": 16.0, "uom": "°C"}
+      "value": {"value": 16.0, "uom": "C"}
     },
     {
       "type": "nrg3:ConstantValueSchedule",
@@ -254,7 +254,7 @@
       "parent_field": "cooling_schedule",
       "id": "zone_part_2_cooling_schedule",
       "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-      "value": {"value": 26.0, "uom": "°C"}
+      "value": {"value": 26.0, "uom": "C"}
     },
     {
       "type": "nrg3:MonthlyTimeSeries",
@@ -285,9 +285,9 @@
             "name": ["Sample material 1"],
             "type_value": {"value": "gypsum"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.10, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.10, "uom": "W/K*m"},
             "density": {"value": 100.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         },
         {
@@ -296,9 +296,9 @@
             "name": ["Sample material 2"],
             "type_value": {"value": "mineralWool"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.20, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.20, "uom": "W/K*m"},
             "density": {"value": 200.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         },
         {
@@ -307,9 +307,9 @@
             "name": ["Sample material 3"],
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.30, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.30, "uom": "W/K*m"},
             "density": {"value": 300.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         },
         {
@@ -318,9 +318,9 @@
             "name": ["Sample material 4"],
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.40, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.40, "uom": "W/K*m"},
             "density": {"value": 400.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         },
         {
@@ -329,9 +329,9 @@
             "name": ["Sample material 5"],
             "type_value": {"value": "thatch"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.50, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.50, "uom": "W/K*m"},
             "density": {"value": 500.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         },
         {
@@ -340,9 +340,9 @@
             "name": ["Sample material 6"],
             "type_value": {"value": "concrete"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.60, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.60, "uom": "W/K*m"},
             "density": {"value": 600.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         },
         {
@@ -351,9 +351,9 @@
             "name": ["Sample material 7"],
             "type_value": {"value": "looseFilledInsulation"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.70, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.70, "uom": "W/K*m"},
             "density": {"value": 700.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         },
         {
@@ -362,9 +362,9 @@
             "name": ["Sample material 8"],
             "type_value": {"value": "concrete"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.80, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.80, "uom": "W/K*m"},
             "density": {"value": 800.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         },
         {
@@ -374,9 +374,9 @@
             "description": "Sample transparent material.",
             "type_value": {"value": "glass"},
             "is_transparent": true,
-            "thermal_conductivity": {"value": 0.90, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.90, "uom": "W/K*m"},
             "density": {"value": 900.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         },
         {
@@ -385,7 +385,7 @@
             "name": ["Sample gas material"],
             "type_value": {"value": "argon"},
             "is_ventilated": false,
-            "r_value": {"value": 0.10, "uom": "m2*K/W"}
+            "r_value": {"value": 0.10, "uom": "K*m2/W"}
           }
         },
         {
@@ -394,9 +394,9 @@
             "name": ["Sample material 10"],
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.15, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.15, "uom": "W/K*m"},
             "density": {"value": 500.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
           }
         }
       ]
@@ -415,7 +415,7 @@
             "name": ["Sample construction 1"],
             "description": "Sample external wall.",
             "type_value": {"value": "insulatedWoodenWall"},
-            "u_value": {"value": 0.25, "uom": "W/(m2*K)"},
+            "u_value": {"value": 0.25, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_wall_L1", "thickness": {"value": 0.01, "uom": "m"}, "material": {"href": "#mat_gypsum_board"}}},
               {"layer": {"id": "constr_wall_L2", "description": "Sample insulation layer.", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_mineral_wool"}}},
@@ -429,7 +429,7 @@
             "name": ["Sample construction 2"],
             "description": "Sample ground floor.",
             "type_value": {"value": "groundSlab"},
-            "u_value": {"value": 0.25, "uom": "W/(m2*K)"},
+            "u_value": {"value": 0.25, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_floor_L1", "description": "Sample screed layer.", "thickness": {"value": 0.05, "uom": "m"}, "material": {"href": "#mat_screed"}}},
               {"layer": {"id": "constr_floor_L2", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_eps"}}},
@@ -443,7 +443,7 @@
             "name": ["Sample construction 3"],
             "description": "Sample roof.",
             "type_value": {"value": "insulatedThatchRoof"},
-            "u_value": {"value": 0.20, "uom": "W/(m2*K)"},
+            "u_value": {"value": 0.20, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_roof_L1", "thickness": {"value": 0.01, "uom": "m"}, "material": {"href": "#mat_gypsum_board"}}},
               {"layer": {"id": "constr_roof_L2", "description": "Sample insulation layer.", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_mineral_wool"}}},
@@ -458,9 +458,9 @@
             "name": ["Sample construction 4"],
             "description": "Sample window.",
             "type_value": {"value": "doubleGlazedWindow"},
-            "u_value": {"value": 1.00, "uom": "W/(m2*K)"},
-            "g_value": {"value": 0.50, "uom": ""},
-            "glazing_ratio": {"value": 0.50, "uom": ""},
+            "u_value": {"value": 1.00, "uom": "W/K*m2"},
+            "g_value": {"value": 0.50, "uom": "scale"},
+            "glazing_ratio": {"value": 0.50, "uom": "scale"},
             "layer": [
               {"layer": {"id": "constr_window_L1", "thickness": {"value": 0.005, "uom": "m"}, "material": {"href": "#mat_hr_glass"}}},
               {"layer": {"id": "constr_window_L2", "thickness": {"value": 0.015, "uom": "m"}, "material": {"href": "#mat_argon"}}},
@@ -474,7 +474,7 @@
             "name": ["Sample construction 5"],
             "description": "Sample front door.",
             "type_value": {"value": "insulatedTimberDoor"},
-            "u_value": {"value": 1.50, "uom": "W/(m2*K)"},
+            "u_value": {"value": 1.50, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_front_door_L1", "thickness": {"value": 0.05, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
             ]
@@ -486,7 +486,7 @@
             "name": ["Sample construction 6"],
             "description": "Sample back door.",
             "type_value": {"value": "insulatedTimberDoor"},
-            "u_value": {"value": 1.50, "uom": "W/(m2*K)"},
+            "u_value": {"value": 1.50, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_back_door_L1", "thickness": {"value": 0.05, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
             ]
