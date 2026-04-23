@@ -126,8 +126,8 @@
       "number_of_devices": 1,
       "installed_power": {"value": 6000, "uom": "W"},
       "heat_source": {"value": "waterSource", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
-      "cop_source_temperature": {"value": 24, "uom": "degC"},
-      "cop_operation_temperature": {"value": 31, "uom": "degC"}
+      "cop_source_temperature": {"value": 24, "uom": "C"},
+      "cop_operation_temperature": {"value": 31, "uom": "C"}
     },
     {
       "type": "nrg3:Occupants",
@@ -218,7 +218,7 @@
       "parent_field": "heating_schedule",
       "id": "zone_part_1_heating_schedule",
       "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-      "value": {"value": 22, "uom": "\u00b0C"}
+      "value": {"value": 22, "uom": "C"}
     },
     {
       "type": "nrg3:ConstantValueSchedule",
@@ -226,7 +226,7 @@
       "parent_field": "cooling_schedule",
       "id": "zone_part_1_cooling_schedule",
       "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-      "value": {"value": 24, "uom": "\u00b0C"}
+      "value": {"value": 24, "uom": "C"}
     },
     {
       "type": "nrg3:ZonePart",
@@ -246,7 +246,7 @@
       "parent_field": "heating_schedule",
       "id": "zone_part_2_heating_schedule",
       "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-      "value": {"value": 18, "uom": "\u00b0C"}
+      "value": {"value": 18, "uom": "C"}
     },
     {
       "type": "nrg3:ConstantValueSchedule",
@@ -254,7 +254,7 @@
       "parent_field": "cooling_schedule",
       "id": "zone_part_2_cooling_schedule",
       "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-      "value": {"value": 24, "uom": "\u00b0C"}
+      "value": {"value": 24, "uom": "C"}
     },
     {
       "type": "nrg3:MonthlyTimeSeries",
@@ -285,9 +285,9 @@
             "name": ["Gypsum plasterboard"],
             "type_value": {"value": "gypsum"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.25, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.25, "uom": "W/K*m"},
             "density": {"value": 900, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1000, "uom": "J/K*kg"}
           }
         },
         {
@@ -296,9 +296,9 @@
             "name": ["Mineral wool insulation"],
             "type_value": {"value": "mineralWool"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.035, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.035, "uom": "W/K*m"},
             "density": {"value": 30, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 840, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 840, "uom": "J/K*kg"}
           }
         },
         {
@@ -307,9 +307,9 @@
             "name": ["OSB sheathing board"],
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
             "density": {"value": 600, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1700, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1700, "uom": "J/K*kg"}
           }
         },
         {
@@ -318,9 +318,9 @@
             "name": ["Structural timber (HSB frame)"],
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
             "density": {"value": 500, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1600, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1600, "uom": "J/K*kg"}
           }
         },
         {
@@ -329,9 +329,9 @@
             "name": ["Reed thatch (rieten dak)"],
             "type_value": {"value": "thatch"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.09, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.09, "uom": "W/K*m"},
             "density": {"value": 190, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1400, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1400, "uom": "J/K*kg"}
           }
         },
         {
@@ -340,9 +340,9 @@
             "name": ["Reinforced concrete (floor slab)"],
             "type_value": {"value": "concrete"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 1.8, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 1.8, "uom": "W/K*m"},
             "density": {"value": 2400, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 840, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 840, "uom": "J/K*kg"}
           }
         },
         {
@@ -351,9 +351,9 @@
             "name": ["EPS floor insulation"],
             "type_value": {"value": "looseFilledInsulation"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.036, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.036, "uom": "W/K*m"},
             "density": {"value": 20, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1450, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1450, "uom": "J/K*kg"}
           }
         },
         {
@@ -362,9 +362,9 @@
             "name": ["Cement screed with floor heating"],
             "type_value": {"value": "concrete"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 1.4, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 1.4, "uom": "W/K*m"},
             "density": {"value": 2000, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 880, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 880, "uom": "J/K*kg"}
           }
         },
         {
@@ -374,9 +374,9 @@
             "description": "Low-e coated float glass, HR++ rated",
             "type_value": {"value": "glass"},
             "is_transparent": true,
-            "thermal_conductivity": {"value": 1.0, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 1.0, "uom": "W/K*m"},
             "density": {"value": 2500, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 750, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 750, "uom": "J/K*kg"}
           }
         },
         {
@@ -385,7 +385,7 @@
             "name": ["Argon gas (glazing cavity)"],
             "type_value": {"value": "argon"},
             "is_ventilated": false,
-            "r_value": {"value": 0.16, "uom": "m2*K/W"}
+            "r_value": {"value": 0.16, "uom": "K*m2/W"}
           }
         },
         {
@@ -394,9 +394,9 @@
             "name": ["Insulated timber door panel"],
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/(m*K)"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
             "density": {"value": 550, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1600, "uom": "J/(kg*K)"}
+            "specific_heat_capacity": {"value": 1600, "uom": "J/K*kg"}
           }
         }
       ]
@@ -415,7 +415,7 @@
             "name": ["External wall (HSB timber frame, Rc=5.0)"],
             "description": "HSB element insulated: gypsum + mineral wool + OSB. Rc=5.0 m2K/W per arch. spec.",
             "type_value": {"value": "insulatedWoodenWall"},
-            "u_value": {"value": 0.20, "uom": "W/(m2*K)"},
+            "u_value": {"value": 0.20, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_wall_L1", "thickness": {"value": 0.0125, "uom": "m"}, "material": {"href": "#mat_gypsum_board"}}},
               {"layer": {"id": "constr_wall_L2", "description": "Mineral wool between HSB timber studs (effective lambda includes thermal bridging)", "thickness": {"value": 0.180, "uom": "m"}, "material": {"href": "#mat_mineral_wool"}}},
@@ -429,7 +429,7 @@
             "name": ["Ground floor (concrete slab + EPS, Rc=5.0)"],
             "description": "Insulated concrete ground floor slab with floor heating. Rc=5.0 m2K/W per arch. spec.",
             "type_value": {"value": "groundSlab"},
-            "u_value": {"value": 0.20, "uom": "W/(m2*K)"},
+            "u_value": {"value": 0.20, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_floor_L1", "description": "Cement screed with embedded floor heating (vloerverwarming)", "thickness": {"value": 0.065, "uom": "m"}, "material": {"href": "#mat_screed"}}},
               {"layer": {"id": "constr_floor_L2", "thickness": {"value": 0.180, "uom": "m"}, "material": {"href": "#mat_eps"}}},
@@ -443,7 +443,7 @@
             "name": ["Reed roof (rieten dak, Rc=6.0)"],
             "description": "Sloped reed-thatched roof over HSB structure. Rc=6.0 m2K/W per arch. spec.",
             "type_value": {"value": "insulatedThatchRoof"},
-            "u_value": {"value": 0.167, "uom": "W/(m2*K)"},
+            "u_value": {"value": 0.167, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_roof_L1", "thickness": {"value": 0.0125, "uom": "m"}, "material": {"href": "#mat_gypsum_board"}}},
               {"layer": {"id": "constr_roof_L2", "description": "Mineral wool between timber rafters", "thickness": {"value": 0.220, "uom": "m"}, "material": {"href": "#mat_mineral_wool"}}},
@@ -458,9 +458,9 @@
             "name": ["Window HR++ (U=1.1, g=0.60)"],
             "description": "HR++ double glazing: 4mm glass / 16mm argon / 4mm low-e glass. U=1.1 W/m2K, ZTA=0.60 per arch. spec.",
             "type_value": {"value": "doubleGlazedWindow"},
-            "u_value": {"value": 1.1, "uom": "W/(m2*K)"},
-            "g_value": {"value": 0.60, "uom": ""},
-            "glazing_ratio": {"value": 0.70, "uom": ""},
+            "u_value": {"value": 1.1, "uom": "W/K*m2"},
+            "g_value": {"value": 0.60, "uom": "scale"},
+            "glazing_ratio": {"value": 0.70, "uom": "scale"},
             "layer": [
               {"layer": {"id": "constr_window_L1", "thickness": {"value": 0.004, "uom": "m"}, "material": {"href": "#mat_hr_glass"}}},
               {"layer": {"id": "constr_window_L2", "thickness": {"value": 0.016, "uom": "m"}, "material": {"href": "#mat_argon"}}},
@@ -474,7 +474,7 @@
             "name": ["Front door (U=1.43 incl frame)"],
             "description": "Insulated timber front door. U=1.43 W/m2K incl. frame per arch. spec.",
             "type_value": {"value": "insulatedTimberDoor"},
-            "u_value": {"value": 1.43, "uom": "W/(m2*K)"},
+            "u_value": {"value": 1.43, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_front_door_L1", "thickness": {"value": 0.054, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
             ]
@@ -486,7 +486,7 @@
             "name": ["Back door (U=1.64 incl frame)"],
             "description": "Insulated timber back door. U=1.64 W/m2K incl. frame per arch. spec.",
             "type_value": {"value": "insulatedTimberDoor"},
-            "u_value": {"value": 1.64, "uom": "W/(m2*K)"},
+            "u_value": {"value": 1.64, "uom": "W/K*m2"},
             "layer": [
               {"layer": {"id": "constr_back_door_L1", "thickness": {"value": 0.048, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
             ]

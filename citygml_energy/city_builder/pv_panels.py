@@ -77,11 +77,13 @@ DEFAULT_Z_OFFSET_M: float = 0.1
 _EXPECTED_SRS_ID: int = 28992
 _UNDEFINED_SRS_IDS: frozenset[int] = frozenset({0, -1})
 
-# Alderaan-style uom strings. Both fields are xs:anyURI in the XSD so
-# the string is not schema-constrained, but matching the normative
-# reference keeps downstream viewers happy.
-_UOM_AREA_M2: str = "m^2"
-_UOM_DEGREES: str = "decimal degrees"
+# uom tokens match the KIT SDM_KITModelViewer Data/UOMList.xml @id
+# values so the viewer recognises them in its Properties panel. The
+# XSD types @uom as xs:anyURI so the string is not schema-constrained;
+# this is a downstream-viewer compatibility choice. "deg" is the altId
+# of "grad" (DEGREE) and is accepted by the viewer.
+_UOM_AREA_M2: str = "m2"
+_UOM_DEGREES: str = "deg"
 
 # Below this, the roof is effectively horizontal and the azimuth is
 # numerically meaningless. 1e-6 is well below single-panel noise and
