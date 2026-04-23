@@ -55,11 +55,52 @@ def build_schema() -> dict[str, Any]:
                 "type": "array",
                 "description": (
                     "Optional [minx, miny, maxx, maxy] in EPSG:28992 to narrow "
-                    "the fetch further than the municipality outline."
+                    "the fetch further than the municipality outline. Mutually "
+                    "exclusive with 'boundary'."
                 ),
                 "minItems": 4,
                 "maxItems": 4,
                 "items": {"type": "number"},
+            },
+            "boundary": {
+                "type": "object",
+                "description": (
+                    "Optional free-form (possibly concave) polygon selected from "
+                    "a GeoPackage feature. When set, the fetch extent is derived "
+                    "from the polygon's own bounds, and buildings whose 2D LoD 0 "
+                    "footprint does not intersect the polygon are dropped. Mutually "
+                    "exclusive with 'bbox'."
+                ),
+                "additionalProperties": False,
+                "required": ["path", "layer", "fid"],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": (
+                            "Path to an OGC GeoPackage (.gpkg) in EPSG:28992 "
+                            "(or srs_id 0/-1 for 'undefined'), absolute or "
+                            "relative to this JSON file."
+                        ),
+                    },
+                    "layer": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": (
+                            "Name of the features table inside the GeoPackage "
+                            "holding the boundary polygon(s)."
+                        ),
+                    },
+                    "fid": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": (
+                            "GeoPackage feature id of the polygon to use as the "
+                            "boundary. Lets one GPKG carry multiple candidate "
+                            "areas without ambiguity."
+                        ),
+                    },
+                },
             },
             "lods": {
                 "type": "array",

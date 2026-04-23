@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from ..namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
+from .boundary import BoundarySource
 from .pv_panels import PvPanelsSource
 
 PathLike = str | Path
@@ -74,6 +75,14 @@ class CityBuildConfig:
             When present, the pipeline attaches one
             ``nrg3:PhotovoltaicCollector`` per panel to the Building
             whose LoD 2 RoofSurface has the largest 2D overlap.
+        boundary_source: optional (free-form, possibly concave) polygon
+            from a GeoPackage; see
+            :class:`citygml_energy.city_builder.boundary.BoundarySource`.
+            When present, the pipeline derives its rectangular fetch
+            extent from the polygon's bounds and then drops any
+            building whose 2D LoD 0 footprint does not intersect the
+            polygon, so a hand-drawn concave outline trims cleanly.
+            Mutually exclusive with :attr:`bbox`.
     """
 
     source_path: Path
@@ -91,6 +100,7 @@ class CityBuildConfig:
     city_model_description: str | None
     gml_id_prefix: str
     pv_panels_source: PvPanelsSource | None = None
+    boundary_source: BoundarySource | None = None
 
     @property
     def ep_online_api_key(self) -> str | None:
@@ -126,6 +136,7 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
     "schema_version",
     "municipality",
     "bbox",
+    "boundary",
     "lods",
     "include_addresses",
     "include_energy_labels",
@@ -141,6 +152,7 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
 
 _ALLOWED_CITY_MODEL_KEYS: frozenset[str] = frozenset({"name", "description"})
 _ALLOWED_PV_PANELS_KEYS: frozenset[str] = frozenset({"path", "layer", "z_offset_m"})
+_ALLOWED_BOUNDARY_KEYS: frozenset[str] = frozenset({"path", "layer", "fid"})
 
 
 def load_city_config(path: PathLike) -> CityBuildConfig:
@@ -269,6 +281,14 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
     pv_panels_source = _validate_pv_panels(
         data.get("pv_panels"), source=source, base_dir=base_dir
     )
+    boundary_source = _validate_boundary(
+        data.get("boundary"), source=source, base_dir=base_dir
+    )
+    if boundary_source is not None and bbox is not None:
+        raise CityBuildError(
+            f"{source}: 'bbox' and 'boundary' are mutually exclusive; "
+            f"the fetch extent is derived from the boundary polygon itself"
+        )
 
     return CityBuildConfig(
         source_path=source_path,
@@ -286,6 +306,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         city_model_description=city_model.get("description"),
         gml_id_prefix=gml_id_prefix,
         pv_panels_source=pv_panels_source,
+        boundary_source=boundary_source,
     )
 
 
@@ -370,6 +391,47 @@ def _validate_pv_panels(
             )
         kwargs["z_offset_m"] = float(z_offset_raw)
     return PvPanelsSource(**kwargs)
+
+
+def _validate_boundary(
+    value: Any, *, source: str, base_dir: Path
+) -> BoundarySource | None:
+    """Validate the optional ``boundary`` block.
+
+    Returns ``None`` when unset. Path is resolved relative to the
+    config's directory (matching the handling of ``cache_dir`` /
+    ``output`` / ``pv_panels.path``). Existence of the file, of the
+    layer, and of the ``fid`` inside it are checked lazily at read
+    time in :func:`.boundary.load_boundary_polygon`, so a config
+    authored on a machine without the GPKG still validates.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise CityBuildError(
+            f"{source}: boundary must be an object when provided"
+        )
+    unexpected = sorted(set(value) - _ALLOWED_BOUNDARY_KEYS)
+    if unexpected:
+        raise CityBuildError(
+            f"{source}: unexpected boundary key(s): {', '.join(unexpected)}"
+        )
+    path_raw = value.get("path")
+    if not isinstance(path_raw, str) or not path_raw.strip():
+        raise CityBuildError(f"{source}: boundary.path must be a non-empty string")
+    layer = value.get("layer")
+    if not isinstance(layer, str) or not layer.strip():
+        raise CityBuildError(f"{source}: boundary.layer must be a non-empty string")
+    fid_raw = value.get("fid")
+    if isinstance(fid_raw, bool) or not isinstance(fid_raw, int) or fid_raw < 0:
+        raise CityBuildError(
+            f"{source}: boundary.fid must be a non-negative integer (got {fid_raw!r})"
+        )
+    return BoundarySource(
+        path=_resolve_path(path_raw, base_dir),
+        layer=layer.strip(),
+        fid=fid_raw,
+    )
 
 
 def _validate_bool(data: dict[str, Any], key: str, *, source: str, default: bool) -> bool:

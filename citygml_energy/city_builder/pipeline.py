@@ -29,6 +29,7 @@ from .appearance import (
     append_energy_label_appearance,
     append_pv_panel_appearance,
 )
+from .boundary import BoundarySource, load_boundary_polygon
 from .builders import attach_building_units_to_building, build_building
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 from .config import CityBuildConfig, CityBuildError, load_city_config
@@ -71,11 +72,13 @@ def build_city_model(
     if session is None:
         session = CachedSession(cache_dir=config.cache_dir)
 
+    boundary_geom = _maybe_load_boundary(config)
+
     print(f"[city-builder] Fetching municipality outline: {config.municipality}")
     outline = muni_fetchers.fetch_municipality_outline(
         session, name=config.municipality
     )
-    bbox = config.bbox or outline.bbox
+    bbox = _resolve_bbox(config, outline=outline, boundary_geom=boundary_geom)
     cbs_code = outline.cbs_code or None
     print(f"[city-builder] CBS code: {cbs_code!r}  bbox: {bbox}")
 
@@ -113,6 +116,17 @@ def build_city_model(
     skipped = len(panden) - len(parsed_by_id)
     if skipped:
         print(f"[city-builder] {skipped} panden have no 3DBAG geometry (skipped)")
+
+    if boundary_geom is not None:
+        before = len(parsed_by_id)
+        parsed_by_id = _filter_by_boundary(parsed_by_id, boundary_geom)
+        dropped = before - len(parsed_by_id)
+        kept_ids = set(parsed_by_id)
+        panden = [p for p in panden if p.identificatie in kept_ids]
+        print(
+            f"[city-builder] Boundary polygon kept {len(parsed_by_id)} / {before} "
+            f"buildings ({dropped} outside)"
+        )
 
     pv_matches_per_pand = _maybe_match_pv_panels(
         config=config, bbox=bbox, parsed_by_id=parsed_by_id,
@@ -174,6 +188,110 @@ def _maybe_match_pv_panels(
 # ---------------------------------------------------------------------------
 # Sub-step helpers
 # ---------------------------------------------------------------------------
+
+
+def _maybe_load_boundary(config: CityBuildConfig) -> BaseGeometry | None:
+    """Load the configured boundary polygon once, or return ``None``."""
+    source = config.boundary_source
+    if source is None:
+        return None
+    print(
+        f"[city-builder] Loading boundary polygon: {source.path.name} "
+        f"(layer={source.layer}, fid={source.fid})"
+    )
+    return load_boundary_polygon(source)
+
+
+def _resolve_bbox(
+    config: CityBuildConfig,
+    *,
+    outline: muni_fetchers.MunicipalityOutline,
+    boundary_geom: BaseGeometry | None,
+) -> tuple[float, float, float, float]:
+    """Return the fetch bbox, preferring the boundary polygon when set.
+
+    Resolution order, in plain words:
+
+    * If a boundary polygon is set, take its 2D bounds. The pipeline
+      later clips builds to the (concave) polygon itself, so this bbox
+      is just the rectangular fetch envelope.
+    * Else, fall back to the user-supplied ``bbox`` from the config.
+    * Else, use the municipality outline's own bbox.
+    """
+    if boundary_geom is not None:
+        minx, miny, maxx, maxy = boundary_geom.bounds
+        return (float(minx), float(miny), float(maxx), float(maxy))
+    if config.bbox is not None:
+        return config.bbox
+    return outline.bbox
+
+
+def _filter_by_boundary(
+    parsed_by_id: dict[str, ParsedBuilding],
+    boundary_geom: BaseGeometry,
+) -> dict[str, ParsedBuilding]:
+    """Keep only buildings whose 2D LoD 0 footprint intersects *boundary_geom*.
+
+    Rule: "any overlap": a building is kept if any part of its LoD 0
+    footprint polygon intersects the (possibly concave) boundary. This
+    matches the user's intent of drawing a cut-line: buildings straddling
+    the edge land on whichever side hosts most of their footprint, and
+    we prefer keeping them over cutting them in half.
+
+    Buildings without a LoD 0 polygon (shouldn't happen for 3DBAG, but
+    defensively handled) are dropped with a log line so a silent data
+    gap is easy to spot.
+    """
+    try:
+        from shapely import prepare
+        from shapely.geometry import Polygon as ShapelyPolygon
+    except ImportError as exc:  # pragma: no cover, optional dep
+        raise RuntimeError(
+            "Boundary filtering needs shapely; install with: pip install -e .[city]"
+        ) from exc
+
+    # ``prepare`` builds a cached PIP/intersects acceleration structure
+    # for the boundary. The polygon is touched once per building, so the
+    # prep cost amortises over even a modest run.
+    prepare(boundary_geom)
+
+    kept: dict[str, ParsedBuilding] = {}
+    for pand_id, pb in parsed_by_id.items():
+        lod0 = pb.geometries.get("0") or []
+        if not lod0:
+            continue
+        footprint = _footprint_xy(lod0[0], ShapelyPolygon)
+        if footprint is None:
+            continue
+        if boundary_geom.intersects(footprint):
+            kept[pand_id] = pb
+    return kept
+
+
+def _footprint_xy(sp: SemanticPolygon, Polygon: Any) -> Any:
+    """Return a 2D shapely Polygon for *sp*, healing rings with ``buffer(0)``.
+
+    3DBAG LoD 0 is a single-polygon MultiSurface, so using the first
+    SemanticPolygon is sufficient. Returns ``None`` for degenerate rings
+    (< 3 vertices) or geometry that ``buffer(0)`` couldn't rescue: in
+    either case the building is dropped from the boundary-filter result.
+    """
+    ring = sp.polygon.exterior
+    if len(ring) < 3:
+        return None
+    exterior = [(x, y) for (x, y, _z) in ring]
+    interiors = [
+        [(x, y) for (x, y, _z) in hole] for hole in sp.polygon.interiors
+    ]
+    try:
+        poly = Polygon(exterior, interiors)
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+    except Exception:  # noqa: BLE001, malformed rings: skip silently
+        return None
+    if poly.is_empty or poly.geom_type not in {"Polygon", "MultiPolygon"}:
+        return None
+    return poly
 
 
 def _maybe_fetch_energy_labels(
