@@ -25,7 +25,10 @@ from .._step import Coord3D
 from ..core import CityModel
 from .address_key import address_key_from_vbo
 from .address_match import ResolvedAddress, match_addresses
-from .appearance import append_energy_label_appearance
+from .appearance import (
+    append_energy_label_appearance,
+    append_pv_panel_appearance,
+)
 from .builders import attach_building_units_to_building, build_building
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 from .config import CityBuildConfig, CityBuildError, load_city_config
@@ -417,6 +420,7 @@ def _assemble_city_model(
         building_label_pairs,
         targets_by_gml_id=targets_by_gml_id,
     )
+    append_pv_panel_appearance(model)
 
     if all_coords:
         model.set_envelope(
