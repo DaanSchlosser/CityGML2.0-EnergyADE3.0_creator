@@ -25,7 +25,19 @@ Desktop.ini
 .DS_Store
 
 # Project-specific
-/KITModelViewer_V7.5_Build-3636
+# KIT viewer install is git-ignored except for two files that carry the
+# Energy ADE 3.0 upgrades this repo ships (see README §9).
+/KITModelViewer_V7.5_Build-3636/*
+!/KITModelViewer_V7.5_Build-3636/Data/
+!/KITModelViewer_V7.5_Build-3636/GMLSchemata/
+/KITModelViewer_V7.5_Build-3636/Data/*
+!/KITModelViewer_V7.5_Build-3636/Data/UOMList.xml
+/KITModelViewer_V7.5_Build-3636/GMLSchemata/*
+!/KITModelViewer_V7.5_Build-3636/GMLSchemata/CityGML_2_0/
+/KITModelViewer_V7.5_Build-3636/GMLSchemata/CityGML_2_0/*
+!/KITModelViewer_V7.5_Build-3636/GMLSchemata/CityGML_2_0/CityGML/
+/KITModelViewer_V7.5_Build-3636/GMLSchemata/CityGML_2_0/CityGML/*
+!/KITModelViewer_V7.5_Build-3636/GMLSchemata/CityGML_2_0/CityGML/EnergyADE-local.xsd
 /generated
 
 # Claude Code
