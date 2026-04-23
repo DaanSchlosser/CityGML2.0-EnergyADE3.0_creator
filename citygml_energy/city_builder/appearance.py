@@ -8,17 +8,28 @@ letter, and each group becomes the ``<app:target>`` list of one
 material. Buildings without any energy label are colored grey (the
 fallback for :func:`epc_score.label_to_rgb`).
 
-Targeting rule: we target every ``gml:MultiSurface`` and
-``gml:CompositeSurface`` id found under each building:
+Targeting rule: we target every ``gml:MultiSurface``, ``gml:CompositeSurface``
+and ``gml:Polygon`` id found under each building:
 
-* LoD 0 → the ``gml:MultiSurface`` inside ``bldg:lod0FootPrint``.
-* LoD 1 → the ``gml:CompositeSurface`` shell inside ``bldg:lod1Solid``.
+* LoD 0 → the ``gml:MultiSurface`` inside ``bldg:lod0FootPrint`` plus each
+  of its member ``gml:Polygon`` elements.
+* LoD 1 → the ``gml:CompositeSurface`` shell inside ``bldg:lod1Solid``
+  plus each of its member ``gml:Polygon`` elements.
 * LoD 2 → the ``gml:MultiSurface`` inside each thematic surface's
-  ``bldg:lod2MultiSurface``.
+  ``bldg:lod2MultiSurface`` plus each of its member ``gml:Polygon``
+  elements.
 
 The CityGML 2.0 Appearance XSD annotates ``app:target`` as accepting
-"gml:MultiSurface or descendants of gml:AbstractSurfaceType", and both of
-those GML classes satisfy that constraint.
+"gml:MultiSurface or descendants of gml:AbstractSurfaceType"; all three
+targeted classes satisfy that constraint. Individual ``gml:Polygon``
+targets are included in addition to the containers because some
+viewers (KIT SDM_KITModelViewer observed, and its family of viewers)
+only resolve appearance targets that point at individual polygons and
+silently skip targets that point at an enclosing ``gml:MultiSurface``
+or ``gml:CompositeSurface`` that lives directly under
+``bldg:lod0FootPrint`` or ``bldg:lod1Solid`` (i.e. outside a thematic
+boundary surface). Emitting both keeps the file readable and makes the
+color apply in every viewer observed so far.
 """
 
 from __future__ import annotations
@@ -26,7 +37,7 @@ from __future__ import annotations
 from functools import cache
 from typing import Any
 
-from ..bindings import AppearanceMember, CompositeSurface, MultiSurface
+from ..bindings import AppearanceMember, CompositeSurface, MultiSurface, Polygon
 from ..mapping import get_fields, iter_instances, resolve_class
 from ..schema_types import APPEARANCE, X3D_MATERIAL
 from .address_match import ResolvedAddress
@@ -46,13 +57,15 @@ def collect_surface_target_ids(building: Any) -> list[str]:
     """Return ``#<gml:id>`` references for every colorable surface under *building*.
 
     Walks the xsdata tree with :func:`mapping.iter_instances` and picks
-    up every :class:`MultiSurface` and :class:`CompositeSurface` whose
-    ``id`` is populated. Both are valid ``app:target`` types per the
-    CityGML 2.0 Appearance XSD.
+    up every :class:`MultiSurface`, :class:`CompositeSurface`, and
+    :class:`Polygon` whose ``id`` is populated. All three are valid
+    ``app:target`` types per the CityGML 2.0 Appearance XSD, and the
+    per-polygon entries are what keeps the EPC color applied in viewers
+    that do not resolve container-level targets.
     """
     targets: list[str] = []
     for obj in iter_instances(building):
-        if isinstance(obj, (MultiSurface, CompositeSurface)) and obj.id:
+        if isinstance(obj, (MultiSurface, CompositeSurface, Polygon)) and obj.id:
             targets.append(f"#{obj.id}")
     return targets
 
@@ -90,9 +103,7 @@ def append_energy_label_appearance(
         if not surface_targets:
             continue
         letter = average_labels(
-            r.energy_label.energieklasse
-            for r in resolved
-            if r.energy_label is not None
+            r.energy_label.energieklasse for r in resolved if r.energy_label is not None
         )
         targets_by_letter.setdefault(letter, []).extend(surface_targets)
 
@@ -164,9 +175,7 @@ def _surface_data_property_type(appearance_cls: type) -> type:
     return info.inner_type
 
 
-_LETTER_ORDER_INDEX: dict[str, int] = {
-    letter: i for i, letter in enumerate(LABEL_TO_KWH)
-}
+_LETTER_ORDER_INDEX: dict[str, int] = {letter: i for i, letter in enumerate(LABEL_TO_KWH)}
 
 
 def _sorted_letters(

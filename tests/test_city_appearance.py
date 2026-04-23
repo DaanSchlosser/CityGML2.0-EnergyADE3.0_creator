@@ -121,6 +121,22 @@ def test_collect_targets_includes_lod0_lod1_and_lod2_surfaces() -> None:
     assert any("roofsurface_ms" in t for t in targets)
 
 
+def test_collect_targets_includes_individual_polygon_ids() -> None:
+    """Per-polygon targets are required for viewers (KIT SDM_KITModelViewer
+    among them) that ignore container-level targets under
+    ``bldg:lod0FootPrint`` / ``bldg:lod1Solid``.
+    """
+    building, _ = _build_with_labels("001", ["A"])
+    targets = collect_surface_target_ids(building)
+
+    # Each lod0 / lod1 / thematic-ms MultiSurface carries at least one
+    # Polygon, and those polygons' gml:ids must also be in the target list.
+    assert any(t.endswith("_lod0_poly_1") for t in targets)
+    assert any("_lod1_poly_" in t for t in targets)
+    assert any("groundsurface_ms_poly_1" in t for t in targets)
+    assert any("roofsurface_ms_poly_1" in t for t in targets)
+
+
 # ---------------------------------------------------------------------------
 # append_energy_label_appearance
 # ---------------------------------------------------------------------------
