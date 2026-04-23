@@ -37,7 +37,13 @@ from __future__ import annotations
 from functools import cache
 from typing import Any
 
-from ..bindings import AppearanceMember, CompositeSurface, MultiSurface, Polygon
+from ..bindings import (
+    AppearanceMember,
+    CompositeSurface,
+    MultiSurface,
+    PhotovoltaicCollector,
+    Polygon,
+)
 from ..mapping import get_fields, iter_instances, resolve_class
 from ..schema_types import APPEARANCE, X3D_MATERIAL
 from .address_match import ResolvedAddress
@@ -45,12 +51,20 @@ from .epc_score import LABEL_TO_KWH, average_labels, label_to_rgb
 
 __all__ = [
     "ENERGY_LABEL_THEME",
+    "PV_PANEL_DIFFUSE_COLOR",
+    "PV_PANEL_THEME",
     "append_energy_label_appearance",
+    "append_pv_panel_appearance",
     "collect_surface_target_ids",
 ]
 
 
 ENERGY_LABEL_THEME = "energyLabel"
+
+# PV-panel appearance: "very dark blue, almost black". Darker than any
+# EPC-palette blue, still readable as blue rather than pure black.
+PV_PANEL_THEME = "pvPanels"
+PV_PANEL_DIFFUSE_COLOR: tuple[float, float, float] = (0.03, 0.05, 0.15)
 
 
 def collect_surface_target_ids(building: Any) -> list[str]:
@@ -132,9 +146,73 @@ def append_energy_label_appearance(
     city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
 
 
+def append_pv_panel_appearance(city_model: Any) -> None:
+    """Attach an ``app:Appearance`` that paints every PV panel dark blue.
+
+    One ``app:X3DMaterial`` targets every ``gml:MultiSurface`` and
+    ``gml:Polygon`` found under a :class:`PhotovoltaicCollector` in the
+    model: the collector's ``lod2MultiSurface`` plus each of its
+    polygons. Per-polygon targets are included for the same
+    viewer-compatibility reason as the energy-label appearance (see
+    :func:`collect_surface_target_ids`).
+
+    The appearance lives under its own theme (``"pvPanels"``) so a
+    viewer's theme switcher can toggle panels independently of the
+    energy-label painting.
+
+    A no-op when the model contains no PV collectors.
+    """
+    targets = _collect_pv_surface_target_ids(city_model)
+    if not targets:
+        return
+
+    appearance_cls = resolve_class(APPEARANCE)
+    material_cls = resolve_class(X3D_MATERIAL)
+    surface_data_inner = _surface_data_property_type(appearance_cls)
+
+    material = surface_data_inner(
+        x3_dmaterial=material_cls(
+            diffuse_color=list(PV_PANEL_DIFFUSE_COLOR),
+            target=targets,
+        )
+    )
+    appearance = appearance_cls(
+        id=f"appearance_{PV_PANEL_THEME}",
+        theme=PV_PANEL_THEME,
+        surface_data_member=[material],
+    )
+    city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
+
+
 # ---------------------------------------------------------------------------
 # Internals
 # ---------------------------------------------------------------------------
+
+
+def _collect_pv_surface_target_ids(city_model: Any) -> list[str]:
+    """Return ``#<gml:id>`` refs for every colorable surface under a PV collector.
+
+    Walks the underlying xsdata tree once (:func:`iter_instances` is
+    cycle-safe and yields each dataclass node once), and for each
+    :class:`PhotovoltaicCollector` descends into its subtree to pick up
+    MultiSurface / Polygon ids. Re-using the per-collector subtree walk
+    keeps the rule consistent with :func:`collect_surface_target_ids`
+    and avoids collecting non-PV surfaces by accident.
+
+    Accepts either the :class:`~citygml_energy.core.CityModel` wrapper or
+    the raw xsdata ``CityModelType``: :class:`CityModel` is not a
+    dataclass so :func:`iter_instances` will not descend into it; we
+    unwrap to the ``.xsd`` attribute when present.
+    """
+    root = getattr(city_model, "xsd", city_model)
+    targets: list[str] = []
+    for pv in iter_instances(root):
+        if not isinstance(pv, PhotovoltaicCollector):
+            continue
+        for sub in iter_instances(pv):
+            if isinstance(sub, (MultiSurface, Polygon)) and sub.id:
+                targets.append(f"#{sub.id}")
+    return targets
 
 
 def _resolve_surface_targets(
