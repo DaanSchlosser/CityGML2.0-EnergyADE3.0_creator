@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "city_model": {
-    "description": "Example CityGML2.0 + EnergyADE3.0 dataset for a single-family residence with various energy-related features and metadata.",
-    "name": "RenoDAT City"
+    "description": "Owner-occupier reference building: a single-family residence in Delft used as the per-building test case for the CityGML 2.0 + EnergyADE 3.0 data model under the RenoDAT research project (TU Delft / NWO, 2025-2029). All feature-level energy attributes and metadata are populated.",
+    "name": "Owner-occupier reference building"
   },
   "coordinate_origin": [85182.085, 446868.675, 0.105],
   "construction_mapping": {
@@ -19,10 +19,10 @@
     }
   },
   "geometry_sources": [
-    {"type": "step-renodat-lod0", "path": "Owner-Occupier1_LOD0_STEP.stp", "target_building_id": "id_building_1"},
-    {"type": "step-renodat-lod1", "path": "Owner-Occupier1_LOD1_STEP.stp", "target_building_id": "id_building_1"},
-    {"type": "step-renodat-lod2", "path": "Owner-Occupier1_LOD2_STEP.stp", "target_building_id": "id_building_1", "target_pv_id": "pv_panel_1"},
-    {"type": "step-renodat-lod3", "path": "Owner-Occupier1_LOD3_STEP.stp", "target_building_id": "id_building_1", "target_pv_id": "pv_panel_1"},
+    {"type": "step-building-lod0", "path": "Owner-Occupier1_LOD0_STEP.stp", "target_building_id": "id_building_1"},
+    {"type": "step-building-lod1", "path": "Owner-Occupier1_LOD1_STEP.stp", "target_building_id": "id_building_1"},
+    {"type": "step-building-lod2", "path": "Owner-Occupier1_LOD2_STEP.stp", "target_building_id": "id_building_1", "target_pv_id": "pv_panel_1"},
+    {"type": "step-building-lod3", "path": "Owner-Occupier1_LOD3_STEP.stp", "target_building_id": "id_building_1", "target_pv_id": "pv_panel_1"},
     {"type": "step-zonepart-lod3", "path": "Owner-Occupier1_ZonePart1_STEP.stp", "target_zone_part_id": "zone_part_1"},
     {"type": "step-zonepart-lod3", "path": "Owner-Occupier1_ZonePart2_STEP.stp", "target_zone_part_id": "zone_part_2"}
   ],
@@ -38,7 +38,7 @@
         "acquisition_method": "measurement",
         "owner": "Han Solo",
         "quality_description": "Gross floor area disagrees between BAG register (122.0 m2) and the measured 3D model (119.6 m2); both values are retained as separate QualifiedArea entries so downstream tooling can pick the provenance it trusts.",
-        "source": "BAG + RenoDAT measurement survey"
+        "source": "BAG + on-site measurement survey"
       }],
       "class_value": {"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"},
       "function": [{"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml"}],
@@ -63,7 +63,7 @@
         },
         {
           "qualified_area": {
-            "description": "Gross floor area derived from the RenoDAT 3D measurement model (outer-wall envelope, including internal walls).",
+            "description": "Gross floor area derived from the on-site 3D measurement model (outer-wall envelope, including internal walls).",
             "source": "3D model (LOD3 STEP geometry)",
             "value": {"value": 119.6, "uom": "m2"},
             "type_value": {"value": "grossFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
@@ -71,7 +71,7 @@
         },
         {
           "qualified_area": {
-            "description": "Net (usable) floor area from the RenoDAT 3D measurement model (inside-face of outer walls, minus internal walls).",
+            "description": "Net (usable) floor area from the on-site 3D measurement model (inside-face of outer walls, minus internal walls).",
             "source": "3D model (LOD3 STEP geometry)",
             "value": {"value": 104.2, "uom": "m2"},
             "type_value": {"value": "netFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}

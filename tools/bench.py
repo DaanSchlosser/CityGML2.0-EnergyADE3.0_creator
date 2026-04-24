@@ -1,14 +1,14 @@
 """Wall-time micro-benchmark for both GML-generation pipelines.
 
-Runs the canonical RenoDAT per-building pipeline and the city-scale
+Runs the per-building (reference) pipeline and the city-scale
 smoke-test pipeline, each a configurable number of times, and prints a
 compact table of timings (mean / min / stdev). Intended as a quick
 regression guard during perf work, not a scientific benchmark.
 
 Usage::
 
-    python tools/bench.py                        # defaults: 3 RenoDAT, 1 city
-    python tools/bench.py --renodat-iters 5      # more RenoDAT runs
+    python tools/bench.py                        # defaults: 3 per-building, 1 city
+    python tools/bench.py --building-iters 5      # more per-building runs
     python tools/bench.py --city-iters 0         # skip the city smoke run
     python tools/bench.py --city-input path.json # override city config
 
@@ -53,36 +53,29 @@ def _report(label: str, samples: list[float]) -> None:
     )
 
 
-def bench_renodat(iters: int, *, input_path: Path, output_path: Path) -> list[float]:
-    samples: list[float] = []
-    for _ in range(iters):
-        samples.append(
-            _time_one(
-                lambda: generate_gml_file(
-                    input_path=input_path, output_path=output_path
-                )
-            )
+def bench_building(iters: int, *, input_path: Path, output_path: Path) -> list[float]:
+    return [
+        _time_one(
+            lambda: generate_gml_file(input_path=input_path, output_path=output_path)
         )
-    return samples
+        for _ in range(iters)
+    ]
 
 
 def bench_city(iters: int, *, input_path: Path) -> list[float]:
-    samples: list[float] = []
-    for _ in range(iters):
-        samples.append(_time_one(lambda: build_city_gml_file(input_path)))
-    return samples
+    return [_time_one(lambda: build_city_gml_file(input_path)) for _ in range(iters)]
 
 
 def _build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--renodat-iters", type=int, default=3)
+    parser.add_argument("--building-iters", type=int, default=3)
     parser.add_argument("--city-iters", type=int, default=1)
     parser.add_argument(
-        "--renodat-input", type=Path, default=DEFAULT_INPUT_PATH,
-        help="RenoDAT JSON input.",
+        "--building-input", type=Path, default=DEFAULT_INPUT_PATH,
+        help="Per-building JSON input.",
     )
     parser.add_argument(
-        "--renodat-output", type=Path, default=DEFAULT_OUTPUT_PATH,
+        "--building-output", type=Path, default=DEFAULT_OUTPUT_PATH,
         help="Output GML path for the per-building run.",
     )
     parser.add_argument(
@@ -97,15 +90,15 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_argument_parser().parse_args(argv)
     print(f"Python {sys.version.split()[0]}: CityGML/Energy-ADE bench\n")
 
-    renodat_samples = bench_renodat(
-        args.renodat_iters,
-        input_path=args.renodat_input,
-        output_path=args.renodat_output,
+    building_samples = bench_building(
+        args.building_iters,
+        input_path=args.building_input,
+        output_path=args.building_output,
     )
     city_samples = bench_city(args.city_iters, input_path=args.city_input)
 
     print()
-    _report("RenoDAT (per-building)", renodat_samples)
+    _report("Per-building (reference)", building_samples)
     _report("City smoke (city-scale)", city_samples)
     return 0
 

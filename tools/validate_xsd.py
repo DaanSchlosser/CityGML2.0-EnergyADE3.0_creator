@@ -4,7 +4,7 @@ Uses lxml's XMLSchema with a custom resolver that redirects all schema imports
 to local files, so no network access is required.
 
 Usage:
-    python tools/validate_xsd.py generated/renodat.gml
+    python tools/validate_xsd.py generated/owner_occupier_building.gml
     python tools/validate_xsd.py Energy_ADE-3.0beta8/test_data/Alderaan_Energy_ADE_All.gml
 """
 

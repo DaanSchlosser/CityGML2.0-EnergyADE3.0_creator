@@ -991,7 +991,7 @@
     },
     "geometry_sources": {
       "type": "array",
-      "description": "STEP geometry imports. Each entry's 'type' picks a handler; supported types: step-renodat-lod0, step-renodat-lod1, step-renodat-lod2, step-renodat-lod3, step-renodat-lod4, step-zonepart-lod0, step-zonepart-lod1, step-zonepart-lod2, step-zonepart-lod3.",
+      "description": "STEP geometry imports. Each entry's 'type' picks a handler; supported types: step-building-lod0, step-building-lod1, step-building-lod2, step-building-lod3, step-building-lod4, step-zonepart-lod0, step-zonepart-lod1, step-zonepart-lod2, step-zonepart-lod3.",
       "items": {
         "oneOf": [
           {
@@ -1004,7 +1004,7 @@
             "additionalProperties": false,
             "properties": {
               "type": {
-                "const": "step-renodat-lod0"
+                "const": "step-building-lod0"
               },
               "path": {
                 "type": "string",
@@ -1033,7 +1033,7 @@
             "additionalProperties": false,
             "properties": {
               "type": {
-                "const": "step-renodat-lod1"
+                "const": "step-building-lod1"
               },
               "path": {
                 "type": "string",
@@ -1062,7 +1062,7 @@
             "additionalProperties": false,
             "properties": {
               "type": {
-                "const": "step-renodat-lod2"
+                "const": "step-building-lod2"
               },
               "path": {
                 "type": "string",
@@ -1091,7 +1091,7 @@
             "additionalProperties": false,
             "properties": {
               "type": {
-                "const": "step-renodat-lod3"
+                "const": "step-building-lod3"
               },
               "path": {
                 "type": "string",
@@ -1120,7 +1120,7 @@
             "additionalProperties": false,
             "properties": {
               "type": {
-                "const": "step-renodat-lod4"
+                "const": "step-building-lod4"
               },
               "path": {
                 "type": "string",
