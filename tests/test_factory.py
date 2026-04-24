@@ -74,12 +74,49 @@ def xsd_schema():
 
 
 def _validate(city_model: CityModel, xsd_schema) -> None:
-    """Serialize and validate a CityModel against the XSD."""
+    """Serialize and validate a CityModel against the XSD.
+
+    Also cross-checks that every ``CityObjectMember`` constructed in
+    Python actually appears as a ``gml:id``-bearing element in the
+    serialized XML. XSD validation alone permits an empty document
+    (``minOccurs=0`` on every child), so a future refactor that forgets
+    to attach a feature to the model would still pass. This routine
+    catches that by diffing the input-side id set against the output.
+    """
     xml = serialize_to_string(city_model)
     doc = etree.fromstring(xml.encode("utf-8"))
     xsd_schema.validate(doc)
     errors = [str(e) for e in xsd_schema.error_log]
     assert not errors, "XSD validation errors:\n" + "\n".join(errors)
+
+    # Collect every gml:id attached to a top-level feature in the model.
+    # xsdata dataclasses use ``__slots__``, so iterate declared fields.
+    import dataclasses as _dc
+
+    expected_ids: set[str] = set()
+    for member in city_model.city_object_member:
+        for field in _dc.fields(member):
+            candidate = getattr(member, field.name, None)
+            if candidate is None or isinstance(candidate, (str, int, float, bool, list)):
+                continue
+            fid = getattr(candidate, "id", None)
+            if isinstance(fid, str) and fid:
+                expected_ids.add(fid)
+                break
+
+    actual_ids = {
+        el.get("{http://www.opengis.net/gml}id")
+        for el in doc.iter()
+        if el.get("{http://www.opengis.net/gml}id")
+    }
+    missing = expected_ids - actual_ids
+    assert not missing, (
+        "feature(s) declared in the CityModel never made it into the "
+        f"serialized XML: {sorted(missing)}"
+    )
+    assert expected_ids, (
+        "test fixture built an empty CityModel; _validate would pass vacuously"
+    )
 
 
 # ---------------------------------------------------------------------------

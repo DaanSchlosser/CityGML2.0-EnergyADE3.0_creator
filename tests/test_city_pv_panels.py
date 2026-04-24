@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 import sqlite3
 import struct
-from datetime import date
 from pathlib import Path
 
 import lxml.etree as etree
@@ -33,7 +32,7 @@ pytest.importorskip("shapely")
 from shapely.geometry import Polygon
 
 from citygml_energy._step import GeometryPolygon
-from citygml_energy.city_builder import CityBuildConfig, build_city_model
+from citygml_energy.city_builder import build_city_model
 from citygml_energy.city_builder import pipeline as pipeline_module
 from citygml_energy.city_builder import pv_panels as pv_panels_module
 from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
@@ -332,7 +331,7 @@ def test_match_and_project_sloped_roof_sets_azimuth_and_inclination_and_lifts_wi
 
     # Reference point lies on the offset plane, 0.1 m perpendicular above
     # the roof's plane-Z at (0.5, 0.5).
-    rx, ry, rz = p.reference_point
+    _rx, ry, rz = p.reference_point
     # Inverse of the offset: undoing the shift should place the point
     # back on the roof plane (z = 3 + y).
     y_on_roof = ry + DEFAULT_Z_OFFSET_M / (2 ** 0.5)  # normal_y = -1/√2
@@ -404,13 +403,17 @@ def test_attach_pv_emits_expected_xsd_structure() -> None:
     assert pv.lod2_multi_surface is not None
     assert pv.cell_type.value == "unknown"
 
-    # uom convention: Alderaan reference uses "m^2" and "decimal degrees".
-    assert pv.module_area.uom == "m^2"
+    # uom tokens match the KIT SDM_KITModelViewer UOMList.xml primary ids
+    # (m2 for SQUARE_METRE) and altIds (deg for DEGREE). An earlier version
+    # of this test asserted "m^2" / "decimal degrees" which matched neither
+    # the UoM XML nor the code — the viewer accepts only the canonical
+    # tokens, so the test is pinned to what the pipeline actually emits.
+    assert pv.module_area.uom == "m2"
     assert pv.module_area.value == 1.0
-    assert pv.inclination.uom == "decimal degrees"
+    assert pv.inclination.uom == "deg"
     assert pv.inclination.value == 30.0
     assert pv.azimuth is not None
-    assert pv.azimuth.uom == "decimal degrees"
+    assert pv.azimuth.uom == "deg"
     assert pv.azimuth.value == 180.0
 
     # referencePoint is a single gml:Point with 3D coords.
@@ -497,7 +500,7 @@ def test_config_rejects_bad_pv_panels_block(tmp_path: Path) -> None:
     (tmp_path / "cache").mkdir()
     from citygml_energy.city_builder.config import CityBuildError
 
-    with pytest.raises(CityBuildError, match="pv_panels.path"):
+    with pytest.raises(CityBuildError, match=r"pv_panels\.path"):
         load_city_config(source)
 
 
@@ -533,7 +536,7 @@ def test_pipeline_attaches_pv_collectors(
 
 
 def test_pipeline_skips_pv_when_lod2_disabled(
-    tmp_path: Path, mocked_fetchers, monkeypatch: pytest.MonkeyPatch, capsys
+    tmp_path: Path, mocked_fetchers, monkeypatch: pytest.MonkeyPatch, caplog
 ) -> None:
     source = tmp_path / "city.json"
     source.write_text(
@@ -559,11 +562,15 @@ def test_pipeline_skips_pv_when_lod2_disabled(
         lambda src, bbox: _fixture_panels(),
     )
 
-    model = build_city_model(config)
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="citygml_energy.city_builder.pipeline"):
+        model = build_city_model(config)
     building = model.xsd.city_object_member[0].building
     assert building.device == []
-    out = capsys.readouterr().out
-    assert "LoD 2 is" in out  # warning surfaced
+    assert any("LoD 2 is" in r.message for r in caplog.records), (
+        "expected a WARNING-level 'LoD 2 is disabled' message on stderr"
+    )
 
 
 def test_pipeline_output_with_pv_validates_against_xsd(
