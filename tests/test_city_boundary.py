@@ -32,7 +32,6 @@ from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticP
 from citygml_energy.city_builder.config import CityBuildError, load_city_config
 from citygml_energy.city_builder.pipeline import _filter_by_boundary
 
-
 # ---------------------------------------------------------------------------
 # Minimal GPKG fixture (mirrors test_city_pv_panels._make_minimal_gpkg so the
 # two boundary + PV paths share an identical on-disk shape)
@@ -139,7 +138,7 @@ def test_load_boundary_raises_for_missing_fid(tmp_path: Path) -> None:
     _write_boundary_gpkg(
         gpkg, [(1, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])]
     )
-    with pytest.raises(ValueError, match="boundary.fid=99 not found"):
+    with pytest.raises(ValueError, match=r"boundary\.fid=99 not found"):
         load_boundary_polygon(BoundarySource(path=gpkg, layer="grid2", fid=99))
 
 
@@ -301,5 +300,113 @@ def test_config_rejects_non_integer_fid(tmp_path: Path) -> None:
             "fid": "1",
         },
     )
-    with pytest.raises(CityBuildError, match="boundary.fid must be"):
+    with pytest.raises(CityBuildError, match=r"boundary\.fid must be"):
         load_city_config(path)
+
+
+# ---------------------------------------------------------------------------
+# GeoJSON boundary reader (added alongside .gpkg to drop per-area GPKG
+# dependency for simple single-polygon AOIs like emmer_compascuum_area.geojson)
+# ---------------------------------------------------------------------------
+
+
+def _write_geojson(
+    path: Path,
+    coords: list[tuple[float, float]],
+    *,
+    crs: str | None = "urn:ogc:def:crs:EPSG::28992",
+    wrap: str = "feature_collection",
+    extra_feature: dict | None = None,
+) -> None:
+    """Write a minimal single-feature GeoJSON in the given CRS.
+
+    *wrap* selects between a ``FeatureCollection`` and a bare ``Feature``
+    so we can exercise both code paths in ``_load_from_geojson``.
+    """
+    import json
+
+    geometry = {"type": "Polygon", "coordinates": [[list(p) for p in coords]]}
+    feature = {"type": "Feature", "properties": {}, "geometry": geometry}
+    if wrap == "feature":
+        doc: dict = feature
+    else:
+        doc = {"type": "FeatureCollection", "features": [feature]}
+        if extra_feature is not None:
+            doc["features"].append(extra_feature)
+    if crs is not None:
+        doc["crs"] = {"type": "name", "properties": {"name": crs}}
+    path.write_text(json.dumps(doc), encoding="utf-8")
+
+
+def test_load_boundary_from_geojson_single_feature_collection(tmp_path: Path) -> None:
+    path = tmp_path / "area.geojson"
+    _write_geojson(path, [(0, 0), (10, 0), (10, 10), (0, 10), (0, 0)])
+    geom = load_boundary_polygon(BoundarySource(path=path))
+    assert geom.bounds == (0.0, 0.0, 10.0, 10.0)
+
+
+def test_load_boundary_from_geojson_bare_feature(tmp_path: Path) -> None:
+    """A plain Feature (no enclosing FeatureCollection) is a legal GeoJSON root."""
+    path = tmp_path / "area.geojson"
+    _write_geojson(path, [(0, 0), (5, 0), (5, 5), (0, 5), (0, 0)], wrap="feature")
+    geom = load_boundary_polygon(BoundarySource(path=path))
+    assert geom.bounds == (0.0, 0.0, 5.0, 5.0)
+
+
+def test_load_boundary_from_geojson_picks_by_fid(tmp_path: Path) -> None:
+    path = tmp_path / "area.geojson"
+    _write_geojson(
+        path,
+        [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)],
+        extra_feature={
+            "type": "Feature",
+            "id": 7,
+            "properties": {"id": 7},
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[[100, 100], [101, 100], [101, 101], [100, 101], [100, 100]]],
+            },
+        },
+    )
+    geom = load_boundary_polygon(BoundarySource(path=path, fid=7))
+    assert geom.bounds == (100.0, 100.0, 101.0, 101.0)
+
+
+def test_load_boundary_from_geojson_rejects_non_rd_crs(tmp_path: Path) -> None:
+    """A WGS84-tagged GeoJSON must not silently misalign with RD-based 3DBAG data."""
+    path = tmp_path / "area.geojson"
+    _write_geojson(
+        path, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)],
+        crs="urn:ogc:def:crs:EPSG::4326",
+    )
+    with pytest.raises(ValueError, match="EPSG:28992"):
+        load_boundary_polygon(BoundarySource(path=path))
+
+
+def test_load_boundary_from_geojson_accepts_missing_crs(tmp_path: Path) -> None:
+    """GeoJSON without a ``crs`` block is silently accepted (see boundary.py docstring)."""
+    path = tmp_path / "area.geojson"
+    _write_geojson(path, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)], crs=None)
+    geom = load_boundary_polygon(BoundarySource(path=path))
+    assert geom.is_valid
+
+
+def test_config_accepts_geojson_boundary_without_layer_or_fid(tmp_path: Path) -> None:
+    """A `.geojson` path is single-feature by convention; layer + fid are optional."""
+    geojson = tmp_path / "area.geojson"
+    _write_geojson(geojson, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])
+    cfg = _write_config(tmp_path, boundary={"path": str(geojson)})
+    loaded = load_city_config(cfg)
+    assert loaded.boundary_source is not None
+    assert loaded.boundary_source.layer is None
+    assert loaded.boundary_source.fid is None
+
+
+def test_config_rejects_gpkg_boundary_missing_layer_or_fid(tmp_path: Path) -> None:
+    """`.gpkg` is ambiguous without layer + fid and must fail loudly at load time."""
+    cfg = _write_config(tmp_path, boundary={"path": "some.gpkg", "layer": "grid2"})
+    with pytest.raises(CityBuildError, match="fid is required"):
+        load_city_config(cfg)
+    cfg = _write_config(tmp_path, boundary={"path": "some.gpkg", "fid": 0})
+    with pytest.raises(CityBuildError, match="layer is required"):
+        load_city_config(cfg)

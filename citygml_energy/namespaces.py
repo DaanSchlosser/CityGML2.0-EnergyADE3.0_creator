@@ -208,6 +208,22 @@ CS_BUILDING_ROOFTYPE = (
     "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml"
 )
 
+# BAG (Basisregistratie Adressen en Gebouwen) linked-data identifier URL
+# bases. These are the ``rdf_seealso`` prefixes published by the Dutch
+# Kadaster for Pand and Verblijfsobject resources respectively. Attached
+# as ``@codeSpace`` on ``nrg3:identifier`` so any consumer can
+# reconstruct the full dereferenceable BAG URL by concatenating the
+# codespace + the identificatie value.
+CS_BAG_PAND = "http://bag.basisregistraties.overheid.nl/bag/id/pand/"
+CS_BAG_VERBLIJFSOBJECT = "http://bag.basisregistraties.overheid.nl/bag/id/verblijfsobject/"
+
+# 3DBAG roof-type vocabulary. 3DBAG's ``b3_dak_type`` string values
+# (``horizontal``, ``slanted``, ``multiple horizontal``) are NOT
+# elements of SIG3D's numeric roof-type codelist; emitting them with
+# the SIG3D codespace would mis-label the vocabulary. A 3DBAG-owned
+# codespace documents the source enumeration correctly.
+CS_3DBAG_DAK_TYPE = "https://docs.3dbag.nl/en/schema/attributes/#b3_dak_type"
+
 
 def _nrg3_cs_base() -> str:
     """Codespace base URL for Energy-ADE 3.0 codelists.

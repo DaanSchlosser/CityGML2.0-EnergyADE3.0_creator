@@ -15,13 +15,33 @@ from __future__ import annotations
 from functools import cache
 from typing import Any
 
-from .._gml_builders import build_multi_point, build_multi_surface, build_solid
 from .._step import GeometryPolygon
-from ..bindings import CodeType, Name, ThoroughfareNameType
+from ..bindings import (
+    BdgVolume,
+    CodeType,
+    DateAttribute,
+    DoubleAttribute,
+    ExternalObjectReferenceType1,
+    ExternalReferenceType1,
+    Identifier,
+    LengthType,
+    MeasureType,
+    Name,
+    QualifiedArea,
+    QualifiedAreaPropertyType,
+    QualifiedVolume,
+    ThoroughfareNameType,
+)
+from ..gml_builders import build_multi_point, build_multi_surface, build_solid
 from ..mapping import get_fields, resolve_class
 from ..namespaces import (
+    CS_3DBAG_DAK_TYPE,
+    CS_BAG_PAND,
+    CS_BAG_VERBLIJFSOBJECT,
     CS_BUILDING_FUNCTION,
+    CS_NRG3_AREA_TYPE,
     CS_NRG3_EPC_TYPE,
+    CS_NRG3_VOLUME_TYPE,
     DEFAULT_SRS_DIMENSION,
     DEFAULT_SRS_NAME,
 )
@@ -31,6 +51,7 @@ from ..schema_types import (
     BUILDING_UNIT,
     CITYGML_SURFACE_TYPES,
     ENERGY_PERFORMANCE_CERTIFICATE,
+    SOLITARY_VEGETATION_OBJECT,
     XAL_ADDRESS_DETAILS,
     XAL_LOCALITY,
     XAL_POSTAL_CODE,
@@ -39,6 +60,12 @@ from ..schema_types import (
 )
 from .address_match import ResolvedAddress
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
+from .cityjson_trees_parse import ParsedTree
+from .fetchers.bgt import (
+    BGT_INFORMATION_SYSTEM_URL,
+    BgtTree,
+    bgt_feature_uri,
+)
 from .fetchers.eponline import EnergyLabel
 
 __all__ = [
@@ -46,6 +73,7 @@ __all__ = [
     "build_address",
     "build_building",
     "build_building_unit",
+    "build_solitary_vegetation_object",
 ]
 
 
@@ -102,6 +130,16 @@ def build_building(
     gml_id = _safe_gml_id(gml_id_prefix, "pand", parsed.pand_id)
     building_cls = resolve_class(BUILDING)
     building = building_cls(id=gml_id, name=[Name(value=parsed.pand_id)])
+
+    # BAG Pand id attached as an nrg3:identifier with the authoritative
+    # linked-data codeSpace (see schemas/namespace_prefixes.json and
+    # CS_BAG_PAND). Matches the pattern in inputs/owner_occupier_building.json:35.
+    # The codeSpace + value concatenate to the full dereferenceable URL
+    # (`rdf_seealso` in the PDOK BAG WFS response), so we do not need to
+    # round-trip the URL prefix from the fetcher.
+    building.identifier.append(
+        Identifier(value=parsed.pand_id, code_space=CS_BAG_PAND)
+    )
 
     _apply_building_attributes(building, parsed.attributes)
 
@@ -211,7 +249,37 @@ def _as_float(value: Any) -> float | None:
 
 
 def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
-    """Write commonly-useful 3DBAG attributes onto the building."""
+    """Write commonly-useful 3DBAG attributes onto the building.
+
+    Maps the subset of 3DBAG's ~60 attributes that have a clean native
+    CityGML / Energy ADE target:
+
+    * ``oorspronkelijkbouwjaar`` → ``bldg:yearOfConstruction`` (BAG /
+      3DBAG always agree; ``_merge_attributes`` ensures BAG wins on
+      ties).
+    * ``gebruiksdoel`` → ``bldg:function`` (rare on 3DBAG Building
+      nodes; the VBO carries the real value).
+    * ``b3_bouwlagen`` → ``bldg:storeysAboveGround`` — count of
+      above-ground storeys (integer, non-negative).
+    * ``b3_h_dak_max - b3_h_maaiveld`` → ``bldg:measuredHeight`` —
+      total physical height of the building in metres. ``measuredHeight``
+      in the CityGML 2.0 XSD is ``gml:LengthType`` ("The measured
+      height [of the building]") with no dictated reference point; the
+      Dutch convention is ground-to-highest-roof-point, which is
+      exactly ``max(roof) - maaiveld``. We prefer ``b3_h_dak_max`` over
+      ``b3_h_dak_70p`` so antenna / chimney tips register as part of
+      the building's physical extent, not a statistical percentile.
+    * ``b3_dak_type`` → ``bldg:roofType`` with
+      :data:`CS_3DBAG_DAK_TYPE` as the codeSpace. The 3DBAG vocabulary
+      (``horizontal`` / ``slanted`` / ``multiple horizontal``) is NOT
+      a member of SIG3D's numeric roof-type codelist, so labelling it
+      as SIG3D would mis-represent the vocabulary. A 3DBAG-owned
+      codeSpace documents the source enumeration honestly.
+    * ``b3_volume_lod22`` → ``nrg3:area``-style ``QualifiedVolume``
+      with type ``grossVolume``. Matches the per-building-input pattern at
+      ``inputs/owner_occupier_building.json::bdg_volume``, so a single GML file
+      can mix 3DBAG-measured and per-building-input-declared volumes transparently.
+    """
     year = _as_int(attrs.get("oorspronkelijkbouwjaar"))
     if year is not None:
         from xsdata.models.datatype import XmlPeriod
@@ -226,13 +294,51 @@ def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
             CodeType(value=str(function), code_space=CS_BUILDING_FUNCTION)
         )
 
+    bouwlagen = _as_int(attrs.get("b3_bouwlagen"))
+    if bouwlagen is not None and bouwlagen >= 0:
+        building.storeys_above_ground = bouwlagen
+
+    h_dak = _as_float(attrs.get("b3_h_dak_max"))
+    h_maaiveld = _as_float(attrs.get("b3_h_maaiveld"))
+    if h_dak is not None and h_maaiveld is not None and h_dak > h_maaiveld:
+        building.measured_height = LengthType(
+            value=round(h_dak - h_maaiveld, 3), uom=_UOM_METRES,
+        )
+
+    dak_type = attrs.get("b3_dak_type")
+    if isinstance(dak_type, str) and dak_type:
+        building.roof_type = CodeType(value=dak_type, code_space=CS_3DBAG_DAK_TYPE)
+
+    volume = _as_float(attrs.get("b3_volume_lod22"))
+    if volume is not None and volume > 0:
+        # ``bldg:Building`` is a CityGML class that does not carry a
+        # native ``volume`` list; the Energy ADE adds one under the name
+        # ``bdgVolume`` whose property type is a
+        # ``QualifiedVolumePropertyType`` specialisation ``BdgVolume``.
+        # Structure matches ``inputs/owner_occupier_building.json::bdg_volume``.
+        building.bdg_volume.append(
+            BdgVolume(
+                qualified_volume=QualifiedVolume(
+                    description=(
+                        "Gross volume computed by 3DBAG from the LoD 2.2 "
+                        "roof-shape reconstruction."
+                    ),
+                    source="3DBAG b3_volume_lod22",
+                    value=MeasureType(value=round(volume, 3), uom=_UOM_VOLUME_M3),
+                    type_value=CodeType(
+                        value="grossVolume", code_space=CS_NRG3_VOLUME_TYPE,
+                    ),
+                )
+            )
+        )
+
 
 # ---------------------------------------------------------------------------
 # LoD 2 thematic surface helpers
 # ---------------------------------------------------------------------------
 
 # Surface-type dispatch is centralised in schema_types so the city-scale and
-# RenoDAT pipelines share a single source of truth for CityGML thematic
+# per-building pipelines share a single source of truth for CityGML thematic
 # surfaces.
 _SURFACE_TYPES = CITYGML_SURFACE_TYPES
 _FALLBACK_SURFACE = "WallSurface"
@@ -270,7 +376,8 @@ def _attach_lod2_thematic_surfaces(
     if not groups:
         return
 
-    wrapper_cls = _inner_type(type(building), "bounded_by")
+    # mypy stub for ``_lru_cache_wrapper`` rejects ``type[Any]``; safe.
+    wrapper_cls = _inner_type(type(building), "bounded_by")  # type: ignore[arg-type]
     if wrapper_cls is None:
         return
 
@@ -325,6 +432,48 @@ def build_building_unit(
         type_value=CodeType(value=gebruiksdoel),
     )
 
+    # BAG VBO id as an authoritative linked-data identifier. Same pattern
+    # as the Building (see ``build_building``), with the VBO-specific
+    # codespace base.
+    unit.identifier.append(
+        Identifier(
+            value=resolved.vbo.identificatie,
+            code_space=CS_BAG_VERBLIJFSOBJECT,
+        )
+    )
+
+    if resolved.vbo.oppervlakte is not None and resolved.vbo.oppervlakte > 0:
+        # BAG's ``oppervlakte`` is the ``gebruiksoppervlakte`` per NEN 2580:
+        # the usable floor area, excluding walls and vertical shafts. The
+        # closest member of Energy ADE 3.0's ``AreaTypeValue`` codelist is
+        # ``netFloorArea`` (which also excludes walls); strictly speaking
+        # NEN 2580 gebruiksoppervlakte is a specifically Dutch metric with
+        # additional deductions (stairwells, circulation) that do not
+        # perfectly coincide with the international "net floor area"
+        # definition. The ``source`` text below pins the provenance so a
+        # reader can recover the exact semantics.
+        unit.area.append(
+            QualifiedAreaPropertyType(
+                qualified_area=QualifiedArea(
+                    description=(
+                        "Usable floor area ('gebruiksoppervlakte' per NEN 2580) "
+                        "as recorded by the Dutch BAG register for this "
+                        "verblijfsobject."
+                    ),
+                    source=(
+                        "BAG bag:verblijfsobject.oppervlakte "
+                        "(PDOK WFS v2.0)"
+                    ),
+                    value=MeasureType(
+                        value=float(resolved.vbo.oppervlakte), uom=_UOM_AREA_M2,
+                    ),
+                    type_value=CodeType(
+                        value="netFloorArea", code_space=CS_NRG3_AREA_TYPE,
+                    ),
+                )
+            )
+        )
+
     address = build_address(
         resolved,
         gml_id_prefix=gml_id_prefix,
@@ -360,7 +509,8 @@ def attach_building_units_to_building(
     """Wrap each resolved VBO in a ``BuildingUnit2`` and attach to *building*."""
     if not addresses:
         return
-    wrapper_cls = _inner_type(type(building), "building_unit")
+    # mypy stub for ``_lru_cache_wrapper`` rejects ``type[Any]``; safe.
+    wrapper_cls = _inner_type(type(building), "building_unit")  # type: ignore[arg-type]
     if wrapper_cls is None:
         return
     for resolved in addresses:
@@ -457,11 +607,15 @@ def build_address(
 
 def _build_locality(*, street: str, number_text: str, postcode: str, city_name: str = "") -> Any:
     locality_cls = resolve_class(XAL_LOCALITY)
-    locality_name_cls = locality_cls.LocalityName
+    # ``LocalityName`` and ``PostalCodeNumber`` are xsdata-generated nested
+    # classes on their parents; ``resolve_class`` returns ``type`` so mypy
+    # cannot see the nested attribute. Verified to exist at runtime by the
+    # xsd-valid output tests.
+    locality_name_cls = locality_cls.LocalityName  # type: ignore[attr-defined]
     thoroughfare_cls = resolve_class(XAL_THOROUGHFARE)
     thoroughfare_number_cls = resolve_class(XAL_THOROUGHFARE_NUMBER)
     postal_code_cls = resolve_class(XAL_POSTAL_CODE)
-    postal_code_number_cls = postal_code_cls.PostalCodeNumber
+    postal_code_number_cls = postal_code_cls.PostalCodeNumber  # type: ignore[attr-defined]
 
     thoroughfare = thoroughfare_cls(
         thoroughfare_number=[thoroughfare_number_cls(content=[number_text])],
@@ -522,6 +676,16 @@ def _build_epc(
         epc.valid_to = XmlDateTime.from_string(
             f"{label.geldig_tot.isoformat()}T00:00:00"
         )
+    if label.berekeningstype:
+        # EP-online's ``Berekeningstype`` names the NTA-8800 variant used
+        # for the EPC calculation, e.g.
+        # "NTA 8800:2024 (detailopname utiliteitsbouw)". The CityGML /
+        # Energy ADE slot for this provenance is
+        # ``nrg3:EnergyPerformanceCertificate/certificationMethod``
+        # (xs:string, minOccurs=0). Emitting the raw Berekeningstype
+        # string keeps the label auditable against the NTA-8800 standard
+        # without inventing an intermediate codelist.
+        epc.certification_method = label.berekeningstype
     return epc
 
 
@@ -536,13 +700,245 @@ def _extend_polygon_targets(
     """Append ``#{container_gml_id}_poly_{i}`` refs for each generated polygon.
 
     Mirrors the id scheme used by
-    :func:`citygml_energy._gml_builders.build_multi_surface` and
-    :func:`citygml_energy._gml_builders.build_solid`; kept close to the call
+    :func:`citygml_energy.gml_builders.build_multi_surface` and
+    :func:`citygml_energy.gml_builders.build_solid`; kept close to the call
     sites so any future rename breaks the dedicated appearance test rather
     than a surface-data-less-but-still-valid CityGML file.
     """
-    for i in range(1, polygon_count + 1):
-        sink.append(f"#{container_gml_id}_poly_{i}")
+    sink.extend(
+        f"#{container_gml_id}_poly_{i}"
+        for i in range(1, polygon_count + 1)
+    )
+
+
+# ---------------------------------------------------------------------------
+# SolitaryVegetationObject (CFTree)
+# ---------------------------------------------------------------------------
+
+
+# gml:id prefix for trees. CFTree's gtid is purely numeric (e.g. ``"42"``),
+# which is invalid as ``xs:ID``; the prefix keeps the final id a valid NCName.
+_TREE_ID_PREFIX: str = "tree_"
+
+# ``uom`` tokens match the KIT SDM_KITModelViewer Data/UOMList.xml @id values
+# so the viewer recognises them in its Properties panel (same convention used
+# in :mod:`citygml_energy.city_builder.pv_panels`).
+_UOM_METRES: str = "m"  # METRE primary id
+_UOM_AREA_M2: str = "m2"  # SQUARE_METRE primary id
+_UOM_VOLUME_M3: str = "m3"  # CUBIC_METRE primary id
+
+
+# CFTree attribute keys → CityGML field / generic-attribute destination. Keys
+# are the attribute names as written by CFTree's
+# :func:`construct_geometry._normalize_attributes`. Splitting the table out
+# makes the mapping reviewable at a glance and easy to extend when CFTree
+# adds new morphometrics in a future release.
+_CFTREE_NATIVE_FIELDS: dict[str, str] = {
+    # CFTree key        → CityGML SolitaryVegetationObject field (xsdata name)
+    "trunk_H_m": "height",
+    "trunk_DBH_m": "trunk_diameter",
+    "crown_width_m": "crown_diameter",
+}
+_CFTREE_GENERIC_DOUBLE: frozenset[str] = frozenset({
+    # Morphometrics without a native CityGML slot. Preserved as generic
+    # double attributes so downstream consumers that care (CFD, microclimate)
+    # can still reach them; everything else safely ignores them.
+    #
+    # Actual keys observed in CFTree's
+    # ``construct_geometry._normalize_attributes`` output (verified
+    # against generated tiles, not taken from the source at face value).
+    #
+    # NB: ``trunk_radius_m`` is deliberately NOT in this set. CFTree
+    # computes it as ``0.5 * trunk_DBH_m`` (see
+    # ``extract_tree_metrics.estimate_trunk_dimensions``), so emitting
+    # both the radius and the DBH-derived ``veg:trunkDiameter`` would
+    # doubly-signal the same measurement. The CityGML ``veg:trunkDiameter``
+    # field keeps the primary value; any consumer that wants the radius
+    # can compute it on the fly.
+    "crown_median_z",
+    "crown_r50_m",
+    "crown_porosity",
+    "trunk_base_height_m",
+})
+
+
+def build_solitary_vegetation_object(
+    tree: ParsedTree,
+    *,
+    gml_id_prefix: str = "",
+    srs_name: str = DEFAULT_SRS_NAME,
+    srs_dimension: int = DEFAULT_SRS_DIMENSION,
+    bgt_match: BgtTree | None = None,
+) -> Any:
+    """Build a ``veg:SolitaryVegetationObject`` from a CFTree tree.
+
+    Geometry
+        Every triangular face from every CityJSON ``Solid`` component
+        (crown + trunk + any future components) is flattened into a
+        single ``gml:MultiSurface`` and attached as ``veg:lod3Geometry``.
+        The watertight crown and trunk meshes stay visually coherent
+        because their faces share global RD coordinates — CityGML 2.0
+        has no per-component slot for a tree, so merging is the correct
+        lossless encoding.
+
+    Morphometrics
+        Native CityGML 2.0 fields (``height``, ``trunkDiameter``,
+        ``crownDiameter``) are populated directly from CFTree's
+        attribute dict. Non-native metrics (``porosity``, ``r50``,
+        ``median_z``, trunk radius + base XYZ) go into
+        ``gen:doubleAttribute`` children so downstream CFD consumers
+        keep access while a plain CityGML viewer still parses cleanly.
+
+    BGT cross-reference (optional)
+        When *bgt_match* is given, the tree is cross-linked to the
+        authoritative Dutch register:
+
+        * ``core:externalReference`` with
+          ``informationSystem = <BGT PDOK URL>`` and
+          ``externalObject.name = <lokaal_id>`` plus
+          ``externalObject.uri = <dereferenceable BGT feature URL>``.
+        * ``gen:dateAttribute name="bgtCreationDate"`` when BGT has a
+          registry creation date. Deliberately *not* written as
+          ``core:creationDate`` because CityGML's ``creationDate``
+          semantics is "when this CityObject record was created in the
+          dataset", not "when the physical feature was first registered
+          in an external register" — misusing it would confuse any
+          tool that keys lifecycle logic on it.
+
+        Trees without a BGT match have neither attachment: the
+        presence/absence of the ``externalReference`` doubles as a
+        "known to BGT" flag without a dedicated generic attribute.
+
+    Per-attribute failures degrade silently: a ``NaN`` / missing /
+    non-numeric value for a single morphometric is skipped via
+    :func:`_as_finite_float` rather than aborting the tree, so a
+    malformed per-tree CityJSON does not kill the whole city build.
+    Binding-resolution failures (e.g. a non-existent
+    ``veg:SolitaryVegetationObject``) still raise; those are schema
+    errors and should surface loudly.
+    """
+    tree_cls = resolve_class(SOLITARY_VEGETATION_OBJECT)
+    gml_id = _safe_gml_id(gml_id_prefix, "tree", tree.gtid)
+    obj = tree_cls(id=gml_id, name=[Name(value=f"T_{tree.gtid}")])
+
+    if tree.polygons:
+        obj.lod3_geometry = _geometry_property_from_polygons(
+            f"{gml_id}_lod3", tree.polygons,
+            srs_name=srs_name, srs_dimension=srs_dimension,
+        )
+
+    _apply_cftree_morphometrics(obj, tree.attributes)
+
+    if bgt_match is not None:
+        _apply_bgt_cross_reference(obj, bgt_match)
+
+    return obj
+
+
+def _apply_bgt_cross_reference(obj: Any, bgt_match: BgtTree) -> None:
+    """Attach a BGT ``vegetatieobject_punt`` cross-reference to *obj*.
+
+    The CityGML 2.0 ``ExternalObjectReferenceType`` is defined as an
+    ``xs:choice`` between a ``name`` element and a ``uri`` element —
+    exactly one branch must be populated, never both. This function
+    populates ``uri`` only; the BGT ``lokaal_id`` is reachable as the
+    last path segment of the URL, so picking ``uri`` preserves both
+    the dereferenceable-URL and raw-handle semantics in a single
+    schema-valid element.
+
+    The creation date, when present, becomes a ``gen:dateAttribute``
+    — not a ``core:creationDate`` on the CityObject itself, to avoid
+    semantic confusion between "record created in *our* dataset" and
+    "record first registered in BGT".
+    """
+    obj.external_reference.append(
+        ExternalReferenceType1(
+            information_system=BGT_INFORMATION_SYSTEM_URL,
+            external_object=ExternalObjectReferenceType1(
+                uri=bgt_feature_uri(bgt_match.lokaal_id),
+            ),
+        )
+    )
+    if bgt_match.creation_date is not None:
+        from xsdata.models.datatype import XmlDate
+
+        obj.date_attribute.append(
+            DateAttribute(
+                name="bgtCreationDate",
+                value=XmlDate.from_date(bgt_match.creation_date),
+            )
+        )
+
+
+def _geometry_property_from_polygons(
+    gml_id: str,
+    polygons: list[GeometryPolygon],
+    *,
+    srs_name: str,
+    srs_dimension: int,
+) -> Any:
+    """Wrap a polygon list as a ``gml:GeometryPropertyType`` holding a MultiSurface.
+
+    ``SolitaryVegetationObject.lod3Geometry`` is typed
+    ``gml:GeometryPropertyType`` (a generic geometry container) so the
+    contained element is a ``gml:MultiSurface``. We therefore build a
+    ``MultiSurfacePropertyType`` first and then copy its inner
+    ``MultiSurface`` onto a fresh ``GeometryPropertyType`` — this is a
+    single-level re-wrap, not a copy of polygon data, so the cost is
+    minimal.
+    """
+    from ..bindings import GeometryPropertyType
+
+    ms_prop = build_multi_surface(
+        gml_id, polygons,
+        srs_name=srs_name, srs_dimension=srs_dimension,
+    )
+    return GeometryPropertyType(multi_surface=ms_prop.multi_surface)
+
+
+def _apply_cftree_morphometrics(obj: Any, attrs: dict[str, Any]) -> None:
+    """Write CFTree morphometric values onto a SolitaryVegetationObject.
+
+    Native fields get :class:`LengthType` measures tagged with the
+    viewer-friendly ``m`` uom token. Everything else in
+    :data:`_CFTREE_GENERIC_DOUBLE` becomes a ``gen:doubleAttribute``.
+    Other attribute keys (``gtid``, ``tile_id``, unknown future
+    metrics) are ignored here because they either duplicate ``gml:id``
+    or carry no clean CityGML mapping; downstream tools can still
+    recover ``gtid`` by stripping the ``tree_`` prefix from ``gml:id``.
+    """
+    for cftree_key, field_name in _CFTREE_NATIVE_FIELDS.items():
+        value = _as_finite_float(attrs.get(cftree_key))
+        if value is None:
+            continue
+        setattr(obj, field_name, LengthType(value=value, uom=_UOM_METRES))
+
+    for cftree_key in _CFTREE_GENERIC_DOUBLE:
+        value = _as_finite_float(attrs.get(cftree_key))
+        if value is None:
+            continue
+        obj.double_attribute.append(
+            DoubleAttribute(name=cftree_key, value=value)
+        )
+
+
+def _as_finite_float(value: Any) -> float | None:
+    """Return *value* as a finite ``float`` or ``None``.
+
+    CFTree writes ``NaN`` for metrics it could not compute (missing DTM
+    pixel, degenerate crown, …). We treat NaN, +/-Inf, ``None``, and
+    empty strings all as "absent" so they never make it into the GML.
+    """
+    if value is None or value == "":
+        return None
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    # ``math.isnan`` / ``math.isinf`` avoid the float-``==``-NaN trap.
+    from math import isfinite
+
+    return result if isfinite(result) else None
 
 
 def _safe_gml_id(user_prefix: str, kind: str, source_id: str) -> str:

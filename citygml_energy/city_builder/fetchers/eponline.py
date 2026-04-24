@@ -72,6 +72,11 @@ _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     "registratiedatum": ("Registratiedatum",),
     "opnamedatum": ("Opnamedatum",),
     "geldig_tot": ("GeldigTot",),
+    # Berekeningstype = the NTA-8800 variant used for the EPC calculation,
+    # e.g. "NTA 8800:2024 (detailopname utiliteitsbouw)". Carried through to
+    # ``nrg3:EnergyPerformanceCertificate/certificationMethod`` so the
+    # provenance of the label is legible to downstream tools.
+    "berekeningstype": ("Berekeningstype",),
 }
 
 
@@ -93,6 +98,11 @@ class EnergyLabel:
     registratiedatum: date | None
     opnamedatum: date | None
     geldig_tot: date | None
+    # ``berekeningstype`` defaults to ``None`` so callers that construct
+    # EnergyLabel fixtures (tests, one-off scripts) do not have to care
+    # about the field. The CSV parser always populates it, so the default
+    # is only exercised by hand-built instances.
+    berekeningstype: str | None = None
 
     def address_key(self) -> AddressKey:
         """Return the ``(postcode, huisnummer, huisletter, toevoeging)`` tuple.
@@ -416,9 +426,14 @@ def _try_parse_with_polars(
         rows = (_normalise_row(r) for r in filtered.iter_rows())
         return list(_iter_matching_rows(rows, idx, id_set=id_set, key_set=key_set))
     except Exception as exc:
-        # Any polars hiccup (schema mismatch, buffer error, malformed CSV)
-        # drops us onto the well-tested stdlib path with no user-visible
-        # impact. Log once at WARNING so the regression is observable.
+        # Any polars hiccup (schema mismatch, buffer error, malformed CSV,
+        # an ArrowError from a future polars version) drops us onto the
+        # well-tested stdlib path with no user-visible impact. Bare
+        # ``Exception`` is deliberate here: the only alternative is to
+        # hard-import ``polars.exceptions.PolarsError``, which couples
+        # this module to an optional dep just to match a catch clause.
+        # KeyboardInterrupt / SystemExit are BaseException and still
+        # propagate, which is the only hard correctness requirement.
         logging.getLogger(__name__).warning(
             "polars EP-online parse failed (%s); falling back to csv.reader",
             exc,
@@ -598,6 +613,7 @@ def _iter_matching_rows(
     i_reg = idx["registratiedatum"]
     i_opn = idx["opnamedatum"]
     i_geld = idx["geldig_tot"]
+    i_berek = idx["berekeningstype"]
 
     # Local aliases for micro-opt in the hot loop.
     norm_postcode = normalise_postcode
@@ -657,6 +673,9 @@ def _iter_matching_rows(
             registratiedatum=parse_ymd(row[i_reg] if 0 <= i_reg < row_len else ""),
             opnamedatum=parse_ymd(row[i_opn] if 0 <= i_opn < row_len else ""),
             geldig_tot=parse_ymd(row[i_geld] if 0 <= i_geld < row_len else ""),
+            berekeningstype=(
+                row[i_berek].strip() if 0 <= i_berek < row_len else ""
+            ) or None,
         )
 
 

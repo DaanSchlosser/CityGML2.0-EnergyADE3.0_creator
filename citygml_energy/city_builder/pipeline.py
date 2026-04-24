@@ -8,6 +8,11 @@ the result to :attr:`CityBuildConfig.output_path`.
 Network calls are delegated to :class:`CachedSession` through the
 fetchers; tests inject a pre-populated cache dir or monkeypatch
 ``session.session`` so they never hit the wire.
+
+Progress messages are emitted through the stdlib ``logging`` module
+(logger name ``citygml_energy.city_builder.pipeline``) at INFO level.
+CLIs configure a handler; library callers can silence with standard
+``logging.getLogger("citygml_energy").setLevel(WARNING)``.
 """
 
 from __future__ import annotations
@@ -20,30 +25,41 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .._gml_builders import build_envelope
 from .._step import Coord3D
 from ..core import CityModel
+from ..gml_builders import build_envelope
+from . import pv_panels as pv_panels_module
+from . import vegetation as vegetation_module
 from .address_key import address_key_from_vbo
 from .address_match import ResolvedAddress, match_addresses
 from .appearance import (
     append_energy_label_appearance,
     append_pv_panel_appearance,
+    append_vegetation_appearance,
 )
-from .boundary import BoundarySource, load_boundary_polygon
-from .builders import attach_building_units_to_building, build_building
+from .bgt_match import match_trees_to_bgt
+from .boundary import load_boundary_polygon
+from .builders import (
+    attach_building_units_to_building,
+    build_building,
+    build_solitary_vegetation_object,
+)
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
+from .cityjson_trees_parse import ParsedTree
 from .config import CityBuildConfig, CityBuildError, load_city_config
 from .fetchers import bag as bag_fetchers
 from .fetchers import eponline as eponline_fetchers
 from .fetchers import municipality as muni_fetchers
 from .fetchers import threedbag
+from .fetchers.bgt import BgtTree, fetch_bgt_trees
 from .http import CachedSession
-from . import pv_panels as pv_panels_module
 from .pv_panels import ProjectedPanel, attach_pv_collectors_to_building
 
 if TYPE_CHECKING:
     from shapely.geometry.base import BaseGeometry
 
+
+_LOG = logging.getLogger(__name__)
 
 PathLike = str | Path
 
@@ -74,48 +90,48 @@ def build_city_model(
 
     boundary_geom = _maybe_load_boundary(config)
 
-    print(f"[city-builder] Fetching municipality outline: {config.municipality}")
+    _LOG.info(f"Fetching municipality outline: {config.municipality}")
     outline = muni_fetchers.fetch_municipality_outline(
         session, name=config.municipality
     )
     bbox = _resolve_bbox(config, outline=outline, boundary_geom=boundary_geom)
     cbs_code = outline.cbs_code or None
-    print(f"[city-builder] CBS code: {cbs_code!r}  bbox: {bbox}")
+    _LOG.info(f"CBS code: {cbs_code!r}  bbox: {bbox}")
 
-    print("[city-builder] Fetching BAG panden …")
+    _LOG.info("Fetching BAG panden …")
     panden = bag_fetchers.fetch_panden(session, bbox=bbox, cbs_code=cbs_code)
     known_pand_ids = {pand.identificatie for pand in panden}
-    print(f"[city-builder] {len(panden)} panden")
+    _LOG.info(f"{len(panden)} panden")
 
     resolved_per_pand: dict[str, list[ResolvedAddress]] = {}
     if config.include_addresses:
-        print("[city-builder] Fetching BAG verblijfsobjecten …")
+        _LOG.info("Fetching BAG verblijfsobjecten …")
         vbos = bag_fetchers.fetch_verblijfsobjecten(
             session, bbox=bbox, cbs_code=cbs_code
         )
-        print(f"[city-builder] {len(vbos)} verblijfsobjecten")
+        _LOG.info(f"{len(vbos)} verblijfsobjecten")
 
         energy_labels = _maybe_fetch_energy_labels(session, config, vbos=vbos)
         if energy_labels is not None:
-            print(f"[city-builder] {len(energy_labels)} EP-online labels matched")
+            _LOG.info(f"{len(energy_labels)} EP-online labels matched")
 
         resolved_per_pand = match_addresses(
             vbos=vbos,
             energy_labels=energy_labels,
         )
         matched_vbos = sum(len(v) for v in resolved_per_pand.values())
-        print(f"[city-builder] {matched_vbos} VBOs matched to {len(resolved_per_pand)} panden")
+        _LOG.info(f"{matched_vbos} VBOs matched to {len(resolved_per_pand)} panden")
 
-    print("[city-builder] Fetching 3DBAG tiles …")
+    _LOG.info("Fetching 3DBAG tiles …")
     parsed_buildings = _fetch_parsed_buildings(session, outline=outline, bbox=bbox)
     parsed_by_id = {pb.pand_id: pb for pb in parsed_buildings if pb.pand_id in known_pand_ids}
-    print(
-        f"[city-builder] {len(parsed_buildings)} buildings from 3DBAG tiles; "
+    _LOG.info(
+        f"{len(parsed_buildings)} buildings from 3DBAG tiles; "
         f"{len(parsed_by_id)} match known BAG panden"
     )
     skipped = len(panden) - len(parsed_by_id)
     if skipped:
-        print(f"[city-builder] {skipped} panden have no 3DBAG geometry (skipped)")
+        _LOG.info(f"{skipped} panden have no 3DBAG geometry (skipped)")
 
     if boundary_geom is not None:
         before = len(parsed_by_id)
@@ -123,8 +139,8 @@ def build_city_model(
         dropped = before - len(parsed_by_id)
         kept_ids = set(parsed_by_id)
         panden = [p for p in panden if p.identificatie in kept_ids]
-        print(
-            f"[city-builder] Boundary polygon kept {len(parsed_by_id)} / {before} "
+        _LOG.info(
+            f"Boundary polygon kept {len(parsed_by_id)} / {before} "
             f"buildings ({dropped} outside)"
         )
 
@@ -132,16 +148,102 @@ def build_city_model(
         config=config, bbox=bbox, parsed_by_id=parsed_by_id,
     )
 
-    print("[city-builder] Assembling CityModel …")
+    trees = _maybe_load_trees(
+        config=config, bbox=bbox, boundary_geom=boundary_geom,
+    )
+    bgt_matches = _maybe_match_trees_to_bgt(
+        session=session, trees=trees, bbox=bbox,
+    )
+
+    _LOG.info("Assembling CityModel …")
     model = _assemble_city_model(
         config=config,
         panden=panden,
         parsed_by_id=parsed_by_id,
         resolved_per_pand=resolved_per_pand,
         pv_matches_per_pand=pv_matches_per_pand,
+        trees=trees,
+        bgt_matches=bgt_matches,
     )
-    print(f"[city-builder] Done: {len(model.xsd.city_object_member)} buildings in model")
+    building_count = sum(
+        1 for m in model.xsd.city_object_member if m.building is not None
+    )
+    vegetation_count = sum(
+        1 for m in model.xsd.city_object_member
+        if m.solitary_vegetation_object is not None
+    )
+    _LOG.info(
+        f"Done: {building_count} buildings + "
+        f"{vegetation_count} trees in model"
+    )
     return model
+
+
+def _maybe_load_trees(
+    *,
+    config: CityBuildConfig,
+    bbox: tuple[float, float, float, float],
+    boundary_geom: BaseGeometry | None,
+) -> list[ParsedTree]:
+    """Load CFTree reconstructions from *config.vegetation_source*.
+
+    Empty list when no vegetation source is configured. The bbox clip
+    runs first (fast, avoids parsing tiles that are fully outside); the
+    optional boundary polygon clip runs second, matching the building
+    filter's ``boundary-wins-over-bbox`` semantics.
+    """
+    source = config.vegetation_source
+    if source is None:
+        return []
+
+    _LOG.info(f"Loading CFTree vegetation: {source.path}")
+    trees = vegetation_module.load_trees_in_bbox(source, bbox)
+    if not trees:
+        return []
+
+    if boundary_geom is not None:
+        before = len(trees)
+        trees = vegetation_module.filter_trees_by_boundary(trees, boundary_geom)
+        _LOG.info(
+            f"Boundary polygon kept {len(trees)} / {before} trees"
+        )
+    else:
+        _LOG.info(f"Loaded {len(trees)} trees inside bbox")
+
+    return trees
+
+
+def _maybe_match_trees_to_bgt(
+    *,
+    session: CachedSession,
+    trees: list[ParsedTree],
+    bbox: tuple[float, float, float, float],
+) -> dict[str, BgtTree]:
+    """Fetch BGT ``vegetatieobject_punt`` and nearest-join onto CFTree trees.
+
+    Returns an empty dict when there are no CFTree trees or when BGT
+    yields nothing for the bbox. Any HTTP / parse error is caught by
+    :func:`fetch_bgt_trees`, which logs a warning and returns ``[]`` —
+    the cross-reference is an authoritative-register link, not a hard
+    dependency, so a PDOK outage degrades to plain geometry rather
+    than failing the build.
+
+    The match is logged with ``matched / total`` so users can judge
+    coverage: low ratios (e.g. < 50 %) suggest either that the AOI is
+    private garden land (unregistered in BGT) or that CFTree is
+    over-reconstructing non-tree vegetation.
+    """
+    if not trees:
+        return {}
+    _LOG.info("Fetching BGT vegetatieobject_punt (boom) …")
+    bgt_trees = fetch_bgt_trees(session, bbox)
+    matches = match_trees_to_bgt(trees, bgt_trees)
+    _LOG.info(
+        f"BGT cross-reference: {len(matches)} of {len(trees)} "
+        f"CFTree trees matched a BGT boom record ({len(bgt_trees)} BGT "
+        f"features in bbox)"
+    )
+    return matches
 
 
 def _maybe_match_pv_panels(
@@ -160,16 +262,15 @@ def _maybe_match_pv_panels(
     if source is None:
         return {}
     if 2 not in config.lods:
-        print(
-            "[city-builder] WARNING: pv_panels configured but LoD 2 is "
-            "disabled; skipping PV attach"
+        _LOG.warning(
+            "pv_panels configured but LoD 2 is disabled; skipping PV attach"
         )
         return {}
 
-    print(f"[city-builder] Loading PV panels: {source.path.name} ({source.layer})")
+    _LOG.info(f"Loading PV panels: {source.path.name} ({source.layer})")
     panels = pv_panels_module.load_panels_in_bbox(source, bbox)
     if not panels:
-        print("[city-builder] PV panels: 0 polygons inside bbox; skipping")
+        _LOG.info("PV panels: 0 polygons inside bbox; skipping")
         return {}
 
     matches, skipped = pv_panels_module.match_and_project_panels(
@@ -178,8 +279,8 @@ def _maybe_match_pv_panels(
         z_offset_m=source.z_offset_m,
     )
     total = sum(len(v) for v in matches.values())
-    print(
-        f"[city-builder] PV panels: {total} projected onto {len(matches)} buildings "
+    _LOG.info(
+        f"PV panels: {total} projected onto {len(matches)} buildings "
         f"({skipped} skipped, no LoD 2 roof overlap)"
     )
     return matches
@@ -195,8 +296,8 @@ def _maybe_load_boundary(config: CityBuildConfig) -> BaseGeometry | None:
     source = config.boundary_source
     if source is None:
         return None
-    print(
-        f"[city-builder] Loading boundary polygon: {source.path.name} "
+    _LOG.info(
+        f"Loading boundary polygon: {source.path.name} "
         f"(layer={source.layer}, fid={source.fid})"
     )
     return load_boundary_polygon(source)
@@ -268,7 +369,7 @@ def _filter_by_boundary(
     return kept
 
 
-def _footprint_xy(sp: SemanticPolygon, Polygon: Any) -> Any:
+def _footprint_xy(sp: SemanticPolygon, polygon_cls: Any) -> Any:
     """Return a 2D shapely Polygon for *sp*, healing rings with ``buffer(0)``.
 
     3DBAG LoD 0 is a single-polygon MultiSurface, so using the first
@@ -279,15 +380,18 @@ def _footprint_xy(sp: SemanticPolygon, Polygon: Any) -> Any:
     ring = sp.polygon.exterior
     if len(ring) < 3:
         return None
+    from shapely.errors import ShapelyError
+
     exterior = [(x, y) for (x, y, _z) in ring]
     interiors = [
         [(x, y) for (x, y, _z) in hole] for hole in sp.polygon.interiors
     ]
     try:
-        poly = Polygon(exterior, interiors)
+        poly = polygon_cls(exterior, interiors)
         if not poly.is_valid:
             poly = poly.buffer(0)
-    except Exception:  # noqa: BLE001, malformed rings: skip silently
+    except (ShapelyError, ValueError, TypeError, IndexError) as exc:
+        _LOG.debug("skipping malformed footprint ring: %s", exc)
         return None
     if poly.is_empty or poly.geom_type not in {"Polygon", "MultiPolygon"}:
         return None
@@ -333,7 +437,7 @@ def _maybe_fetch_energy_labels(
     if cache_path is not None and cache_path.exists():
         labels = _try_load_filtered_labels(cache_path)
         if labels is not None:
-            print(f"[city-builder] EP-online labels loaded from filter cache ({cache_path.name})")
+            _LOG.info(f"EP-online labels loaded from filter cache ({cache_path.name})")
             return labels
 
     labels = eponline_fetchers.fetch_energy_labels(
@@ -372,6 +476,20 @@ def _wanted_sets_digest(
     return h.hexdigest()[:24]
 
 
+def _energy_label_shape_fingerprint() -> str:
+    """Stable short hash of :class:`EnergyLabel`'s field list.
+
+    Folded into the filtered-labels cache key so that adding, removing,
+    or renaming a field on the dataclass automatically invalidates every
+    pre-existing pickle. Without this, a stale pickle produced before a
+    new field was added would unpickle into a slotted instance whose
+    new slot is never set, causing ``AttributeError`` the first time
+    the builder accesses it.
+    """
+    fields = getattr(eponline_fetchers.EnergyLabel, "__dataclass_fields__", {})
+    return hashlib.sha256("|".join(sorted(fields)).encode("utf-8")).hexdigest()[:8]
+
+
 def _filtered_labels_cache_path(
     session: CachedSession,
     wanted_digest: str,
@@ -397,7 +515,8 @@ def _filtered_labels_cache_path(
     h.update(b"\x02")
     h.update(wanted_digest.encode("ascii"))
     digest = h.hexdigest()[:24]
-    return session.cache_dir / f"ep_online_filtered.{digest}.pkl"
+    shape = _energy_label_shape_fingerprint()
+    return session.cache_dir / f"ep_online_filtered.{digest}.v{shape}.pkl"
 
 
 def _try_load_filtered_labels(
@@ -482,6 +601,8 @@ def _assemble_city_model(
     parsed_by_id: dict[str, ParsedBuilding],
     resolved_per_pand: dict[str, list[ResolvedAddress]],
     pv_matches_per_pand: dict[str, list[ProjectedPanel]] | None = None,
+    trees: list[ParsedTree] | None = None,
+    bgt_matches: dict[str, BgtTree] | None = None,
 ) -> CityModel:
     """Assemble a :class:`CityModel` from parsed BAG/3DBAG/EP-online inputs.
 
@@ -540,6 +661,18 @@ def _assemble_city_model(
     )
     append_pv_panel_appearance(model)
 
+    if trees:
+        tree_appearance_targets = _attach_trees_to_model(
+            model,
+            trees,
+            gml_id_prefix=config.gml_id_prefix,
+            srs_name=config.srs_name,
+            srs_dimension=config.srs_dimension,
+            coords_sink=all_coords,
+            bgt_matches=bgt_matches or {},
+        )
+        append_vegetation_appearance(model, targets=tree_appearance_targets)
+
     if all_coords:
         model.set_envelope(
             build_envelope(
@@ -549,6 +682,64 @@ def _assemble_city_model(
             )
         )
     return model
+
+
+def _attach_trees_to_model(
+    model: CityModel,
+    trees: list[ParsedTree],
+    *,
+    gml_id_prefix: str,
+    srs_name: str,
+    srs_dimension: int,
+    coords_sink: list[Coord3D],
+    bgt_matches: dict[str, BgtTree],
+) -> list[str]:
+    """Emit one ``veg:SolitaryVegetationObject`` per :class:`ParsedTree`.
+
+    Every tree gets geometry + CFTree morphometrics
+    (height, trunk diameter, crown diameter). When *bgt_matches*
+    contains an entry keyed on the tree's gtid, the builder also
+    attaches a ``core:externalReference`` pointing at the
+    authoritative BGT ``vegetatieobject_punt`` feature — the only
+    cross-link that the strictly-Dutch-government-data policy allows.
+    Unmatched trees carry plain geometry + CFTree morphometrics, which
+    is a valid CityGML vegetation object in its own right.
+
+    Tree crown vertices also widen the city envelope: if we skipped
+    them, a SolitaryVegetationObject extending past the building
+    footprint would clip at the final ``gml:boundedBy`` and render
+    with a dotted line above the camera in some viewers.
+
+    Returns the list of colorable surface ids (``#<gml:id>``) emitted
+    under each tree so the downstream vegetation appearance step can
+    consume them without a second ``iter_instances`` walk of the whole
+    city model. Mirrors how the per-pand build path returns
+    ``targets_by_gml_id`` to the energy-label appearance.
+    """
+    appearance_targets: list[str] = []
+    for tree in trees:
+        obj = build_solitary_vegetation_object(
+            tree,
+            gml_id_prefix=gml_id_prefix,
+            srs_name=srs_name,
+            srs_dimension=srs_dimension,
+            bgt_match=bgt_matches.get(tree.gtid),
+        )
+        model.add(obj)
+        if obj.lod3_geometry is not None and obj.lod3_geometry.multi_surface is not None:
+            ms = obj.lod3_geometry.multi_surface
+            if ms.id:
+                appearance_targets.append(f"#{ms.id}")
+            appearance_targets.extend(
+                f"#{member.polygon.id}"
+                for member in ms.surface_member
+                if member.polygon is not None and member.polygon.id
+            )
+        for polygon in tree.polygons:
+            coords_sink.extend(polygon.exterior)
+            for hole in polygon.interiors:
+                coords_sink.extend(hole)
+    return appearance_targets
 
 
 def _assembly_worker_count(n_panden: int) -> int:
@@ -672,7 +863,7 @@ def _build_pand_artifacts_parallel(
     # built-in default tuned down slightly. Batching amortises worker
     # dispatch overhead without losing responsiveness on smaller runs.
     chunksize = max(1, len(jobs) // (workers * 4))
-    print(f"[city-builder] Assembly worker pool: {workers} processes × {chunksize} panden/chunk")
+    _LOG.info(f"Assembly worker pool: {workers} processes × {chunksize} panden/chunk")
     # ``spawn`` is the right start method here: fork-safety with xsdata's
     # lazy registry and requests sessions is not guaranteed, and ``spawn``
     # is the Windows default anyway. The child imports ``citygml_energy``
