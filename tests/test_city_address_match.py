@@ -117,4 +117,6 @@ def test_most_recent_label_wins_on_duplicate_key() -> None:
     ]
     vbos = [_vbo("V1", "P1", postcode="2628CD", huisnummer=42)]
     grouped = match_addresses(vbos=vbos, energy_labels=labels)
-    assert grouped["P1"][0].energy_label.energieklasse == "A"
+    resolved_label = grouped["P1"][0].energy_label
+    assert resolved_label is not None
+    assert resolved_label.energieklasse == "A"

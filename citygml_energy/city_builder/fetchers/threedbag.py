@@ -66,11 +66,18 @@ def fetch_tile_index(session: CachedSession, outline: BaseGeometry) -> list[Tile
     ``<cache_dir>/3dbag_tile_index.*.json`` to force a re-query of the index.
     """
     bounds = outline.bounds  # (minx, miny, maxx, maxy) in EPSG:28992
-    bounds_key = "_".join(str(int(round(v))) for v in bounds)
+    bounds_key = "_".join(str(round(v)) for v in bounds)
     index_cache = session.cache_dir / f"3dbag_tile_index.{bounds_key}.json"
     if session.use_cache and index_cache.exists():
         data = json.loads(index_cache.read_text(encoding="utf-8"))
-        return [Tile(tile_id=d["tile_id"], download_url=d["download_url"], bbox=tuple(d["bbox"])) for d in data]  # type: ignore[arg-type]
+        return [
+            Tile(
+                tile_id=d["tile_id"],
+                download_url=d["download_url"],
+                bbox=tuple(d["bbox"]),
+            )
+            for d in data
+        ]
 
     try:
         import flatgeobuf as fgb

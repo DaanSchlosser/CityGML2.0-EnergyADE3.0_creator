@@ -12,10 +12,12 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.11",
     "lxml-stubs>=0.5",
+    "mypy>=1.15",
+    "pyright>=1.1.380",
     "xsdata[cli,lxml]>=24.0",
 ]
 # City-scale workflow: BAG / 3DBAG / EP-online fetch + CityJSON parsing.
-# Optional because the per-building RenoDAT pipeline does not need them.
+# Optional because the per-building pipeline does not need them.
 city = [
     "requests>=2.32",
     "shapely>=2.0",
@@ -44,7 +46,11 @@ extend-exclude = [
 [tool.ruff.lint]
 # En-dash is intentional typography in docstrings/comments (numeric ranges, parenthetical
 # clauses). Whitelist it so RUF002/RUF003 do not flag correct Unicode usage.
-allowed-confusables = ["–"]
+# En-dash (–) is intentional typography in docstrings/comments (numeric
+# ranges, parenthetical clauses). Multiplication sign (×) is correct math
+# notation in dimensions like "3×4 grid" or "10×10 metres". Whitelisting
+# both stops RUF001/002/003 from flagging correct Unicode usage.
+allowed-confusables = ["–", "×"]
 
 select = [
     "F",      # pyflakes
@@ -78,34 +84,28 @@ ignore = [
 known-first-party = ["citygml_energy"]
 
 # ── Pyright / Pylance ───────────────────────────────────────────────────
+# All top-level pyright settings go in the ``[tool.pyright]`` table below;
+# execution-environment overrides are in the trailing
+# ``[[tool.pyright.executionEnvironments]]`` tables. TOML parses arrays-of-
+# tables greedily, so any ``include`` / ``exclude`` / ``extraPaths`` keys
+# MUST appear before the first ``[[executionEnvironments]]`` table or the
+# TOML parser attaches them to the last array element and Pyright rejects
+# them as "unrecognized setting".
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 reportMissingTypeStubs = false
 reportMissingModuleSource = false
-
-# The xsdata-generated bindings.py contains GML property-type classes with
-# thousands of fields each (e.g. ValuePropertyType ~2300 lines). Pyright's
-# per-symbol complexity heuristic bails on these, after which every call site
-# of a bindings dataclass surfaces a phantom "No parameter named X" error.
-# Suppress those two checks for the citygml_energy package (which constructs
-# bindings dataclasses everywhere); tests/ and tools/ keep strict checking
-# via the default execution environment below.
-[[tool.pyright.executionEnvironments]]
-root = "citygml_energy"
-reportCallIssue = "none"
-reportGeneralTypeIssues = "none"
-
-[[tool.pyright.executionEnvironments]]
-root = "tests"
-
-[[tool.pyright.executionEnvironments]]
-root = "tools"
-
-# Restrict analysis to first-party source. Without this, Pylance/Pyright walks
-# the bundled KITModelViewer Python distribution, the .venv, and any reference
-# data dirs, producing tens of thousands of irrelevant diagnostics in the
-# VSCode sidebar.
+# Tests, tools, and examples import first-party packages from the repo
+# root ("import citygml_energy", "from tools.validate_xsd import ..."),
+# which Pyright does not auto-discover when invoked with scoped paths.
+# ``extraPaths = ["."]`` puts the project root on the analysis path so
+# those imports resolve the same way a ``pytest`` run would.
+extraPaths = ["."]
+# Restrict analysis to first-party source. Without this, Pyright walks
+# the bundled KITModelViewer Python distribution, the .venv, and any
+# reference data dirs, producing tens of thousands of irrelevant
+# diagnostics in the VSCode sidebar.
 include = [
     "citygml_energy",
     "tests",
@@ -122,6 +122,68 @@ exclude = [
     "build",
     "dist",
 ]
+
+# The xsdata-generated bindings.py contains GML property-type classes with
+# thousands of fields each (e.g. ValuePropertyType ~2300 lines). Pyright's
+# per-symbol complexity heuristic bails on these, after which every call
+# site of a bindings dataclass surfaces phantom "No parameter named X"
+# errors. Suppress those three checks for every first-party root where we
+# construct bindings dataclasses (the whole repo, basically). Tests, tools,
+# and examples fall in the same boat because their fixtures build the same
+# dataclasses directly.
+[[tool.pyright.executionEnvironments]]
+root = "citygml_energy"
+reportCallIssue = "none"
+reportGeneralTypeIssues = "none"
+reportArgumentType = "none"
+
+[[tool.pyright.executionEnvironments]]
+root = "tests"
+reportCallIssue = "none"
+reportGeneralTypeIssues = "none"
+reportArgumentType = "none"
+
+[[tool.pyright.executionEnvironments]]
+root = "tools"
+reportCallIssue = "none"
+reportGeneralTypeIssues = "none"
+reportArgumentType = "none"
+
+[[tool.pyright.executionEnvironments]]
+root = "examples"
+reportCallIssue = "none"
+reportGeneralTypeIssues = "none"
+reportArgumentType = "none"
+
+# ── Mypy ────────────────────────────────────────────────────────────────
+# Mypy runs alongside Pyright. Both target the same first-party source;
+# mypy adds parametric (flow-sensitive) type checking that Pyright's
+# ``basic`` mode does not cover. Strictness is "standard" rather than
+# ``--strict``: the generated bindings don't carry rich stubs, and
+# tightening further here only buys noise.
+[tool.mypy]
+python_version = "3.12"
+files = ["citygml_energy", "tests", "tools", "examples"]
+explicit_package_bases = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+# The xsdata-generated bindings carry thousands of heavily-overloaded
+# attribute signatures; mypy bails on them the same way pyright does.
+# Skipping type-checking of that single module is the pragmatic approach;
+# call sites in the rest of the package are checked as normal.
+[[tool.mypy.overrides]]
+module = "citygml_energy.bindings"
+ignore_errors = true
+
+# Test fixtures construct many bindings dataclasses and access optional
+# attributes after ``assert`` narrowing that xsdata's fields do not model.
+# Relaxing ``union-attr`` in tests silences the false positives without
+# losing real signal in production code.
+[[tool.mypy.overrides]]
+module = "tests.*"
+disable_error_code = ["union-attr", "attr-defined", "arg-type"]
 
 # ── Pytest ──────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]

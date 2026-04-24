@@ -138,6 +138,9 @@ def _index_labels(
         # independently.
         ts = _label_timestamp(label)
         if hit_id:
+            # ``hit_id`` is only True when ``vbo_id is not None``; reassert
+            # for the type checker so the dict access below narrows cleanly.
+            assert vbo_id is not None
             incumbent = by_vbo_id.get(vbo_id)
             if incumbent is None or ts >= _label_timestamp(incumbent):
                 by_vbo_id[vbo_id] = label
