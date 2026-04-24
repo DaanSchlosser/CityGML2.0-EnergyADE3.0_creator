@@ -8,6 +8,7 @@ tests assert both the in-memory dataclass shape and the serialised XML.
 
 from __future__ import annotations
 
+from citygml_energy._step import GeometryPolygon
 from citygml_energy.city_builder.address_match import ResolvedAddress
 from citygml_energy.city_builder.builders import (
     attach_building_units_to_building,
@@ -16,8 +17,6 @@ from citygml_energy.city_builder.builders import (
 )
 from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject, _extract_point
-from citygml_energy._step import GeometryPolygon
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -106,7 +105,10 @@ def test_address_has_no_multi_point_when_vbo_lacks_one() -> None:
 
 def test_multi_point_inherits_default_srs_name() -> None:
     address = build_address(_resolved(point=(85000.0, 446500.0)))
+    assert address is not None
+    assert address.multi_point is not None
     mp = address.multi_point.multi_point
+    assert mp is not None
     # The compound RD-New + NAP CRS used by the rest of the file.
     assert mp.srs_name_attribute.startswith("urn:ogc:def:crs")
     assert mp.srs_dimension == 3

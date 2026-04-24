@@ -12,7 +12,6 @@ from citygml_energy.city_builder.epc_score import (
     normalize_label,
 )
 
-
 # ---------------------------------------------------------------------------
 # normalize_label
 # ---------------------------------------------------------------------------
@@ -44,8 +43,10 @@ def test_label_map_covers_eu_plus_rvo_scale() -> None:
 def test_label_kwh_values_are_monotonically_increasing() -> None:
     # Labels are ordered best-to-worst; kWh (primary fossil energy use)
     # should never decrease going down the scale.
+    from itertools import pairwise
+
     values = list(LABEL_TO_KWH.values())
-    for prev, curr in zip(values, values[1:]):
+    for prev, curr in pairwise(values):
         assert prev < curr
 
 
@@ -132,10 +133,10 @@ def test_palette_matches_rvo_2024_card_exactly() -> None:
         assert LABEL_HEX[letter] == green, f"{letter} should be RVO green"
 
 
-def test_A_is_green_not_yellow() -> None:
+def test_label_a_is_green_not_yellow() -> None:
     """Direct sanity check against the old, shifted palette where A was
     yellow (``#FFED00``). ``A`` must be green in the Dutch scheme.
     """
-    r, g, b = label_to_rgb("A")
+    r, g, _b = label_to_rgb("A")
     assert g > 0.4  # substantial green
     assert r < 0.2  # not yellow (yellow has high red + high green)

@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import pytest
 
-from citygml_energy._gml_builders import (
+from citygml_energy._step import GeometryPolygon
+from citygml_energy.gml_builders import (
     build_envelope,
     build_multi_surface,
     build_polygon,
@@ -21,7 +22,6 @@ from citygml_energy._gml_builders import (
     open_ring,
     orient_solid_polygons,
 )
-from citygml_energy._step import GeometryPolygon
 
 _SRS = "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109"
 
@@ -158,6 +158,7 @@ def test_build_multi_surface_sets_srs_on_outer_element_only() -> None:
     ]
     prop = build_multi_surface("ms_1", polygons, srs_name=_SRS, srs_dimension=3)
     multi = prop.multi_surface
+    assert multi is not None
     assert multi.id == "ms_1"
     assert multi.srs_name_attribute == _SRS
     assert multi.srs_dimension == 3
@@ -167,7 +168,10 @@ def test_build_multi_surface_sets_srs_on_outer_element_only() -> None:
 def test_build_solid_wraps_in_composite_surface_shell() -> None:
     cube = _unit_cube_polygons()
     prop = build_solid("solid_1", cube, srs_name=_SRS, srs_dimension=3)
+    assert prop.solid is not None
+    assert prop.solid.exterior is not None
     shell = prop.solid.exterior.composite_surface
+    assert shell is not None
     assert shell.id == "solid_1_shell"
     assert len(shell.surface_member) == 6
 
