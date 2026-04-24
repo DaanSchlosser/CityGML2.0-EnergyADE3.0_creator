@@ -43,6 +43,7 @@ from ..bindings import (
     MultiSurface,
     PhotovoltaicCollector,
     Polygon,
+    SolitaryVegetationObject,
 )
 from ..mapping import get_fields, iter_instances, resolve_class
 from ..schema_types import APPEARANCE, X3D_MATERIAL
@@ -53,8 +54,11 @@ __all__ = [
     "ENERGY_LABEL_THEME",
     "PV_PANEL_DIFFUSE_COLOR",
     "PV_PANEL_THEME",
+    "VEGETATION_DIFFUSE_COLOR",
+    "VEGETATION_THEME",
     "append_energy_label_appearance",
     "append_pv_panel_appearance",
+    "append_vegetation_appearance",
     "collect_surface_target_ids",
 ]
 
@@ -65,6 +69,14 @@ ENERGY_LABEL_THEME = "energyLabel"
 # EPC-palette blue, still readable as blue rather than pure black.
 PV_PANEL_THEME = "pvPanels"
 PV_PANEL_DIFFUSE_COLOR: tuple[float, float, float] = (0.03, 0.05, 0.15)
+
+# Vegetation appearance: a deep foliage green that reads clearly against
+# both the EU-palette building colors and the dark-blue PV panels. The
+# specific RGB is chosen to match the KIT viewer's default background
+# rather than a theoretically "correct" chlorophyll reflectance, because
+# the pipeline's output is reviewed in FZKViewer / KIT SDM first.
+VEGETATION_THEME = "vegetation"
+VEGETATION_DIFFUSE_COLOR: tuple[float, float, float] = (0.15, 0.55, 0.15)
 
 
 def collect_surface_target_ids(building: Any) -> list[str]:
@@ -77,11 +89,11 @@ def collect_surface_target_ids(building: Any) -> list[str]:
     per-polygon entries are what keeps the EPC color applied in viewers
     that do not resolve container-level targets.
     """
-    targets: list[str] = []
-    for obj in iter_instances(building):
-        if isinstance(obj, (MultiSurface, CompositeSurface, Polygon)) and obj.id:
-            targets.append(f"#{obj.id}")
-    return targets
+    return [
+        f"#{obj.id}"
+        for obj in iter_instances(building)
+        if isinstance(obj, (MultiSurface, CompositeSurface, Polygon)) and obj.id
+    ]
 
 
 def append_energy_label_appearance(
@@ -184,9 +196,82 @@ def append_pv_panel_appearance(city_model: Any) -> None:
     city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
 
 
+def append_vegetation_appearance(
+    city_model: Any,
+    *,
+    targets: list[str] | None = None,
+) -> None:
+    """Attach an ``app:Appearance`` that paints every tree foliage-green.
+
+    *targets* is the list of ``#<gml:id>`` refs collected during tree
+    attachment; the pipeline passes it explicitly so the appearance
+    step does not re-walk the full xsdata tree a second time
+    (mirroring how :func:`append_energy_label_appearance` consumes
+    ``targets_by_gml_id`` from the per-pand build). When ``None`` is
+    supplied (e.g., tests or future callers that construct an
+    already-populated model), :func:`_collect_vegetation_surface_target_ids`
+    falls back to a single ``iter_instances`` walk.
+
+    Per-polygon targets accompany the container targets for the same
+    viewer-compatibility reason as the energy-label appearance (see
+    :func:`collect_surface_target_ids`): KIT SDM_KITModelViewer and its
+    family silently skip appearance targets that point at an enclosing
+    ``gml:MultiSurface``, so emitting both keeps the color applied in
+    every viewer observed so far.
+
+    The appearance lives under its own theme (``"vegetation"``) so the
+    viewer's theme switcher can toggle it independently of building /
+    PV painting.
+
+    A no-op when the model contains no vegetation objects.
+    """
+    if targets is None:
+        targets = _collect_vegetation_surface_target_ids(city_model)
+    if not targets:
+        return
+
+    appearance_cls = resolve_class(APPEARANCE)
+    material_cls = resolve_class(X3D_MATERIAL)
+    surface_data_inner = _surface_data_property_type(appearance_cls)
+
+    material = surface_data_inner(
+        x3_dmaterial=material_cls(
+            diffuse_color=list(VEGETATION_DIFFUSE_COLOR),
+            target=targets,
+        )
+    )
+    appearance = appearance_cls(
+        id=f"appearance_{VEGETATION_THEME}",
+        theme=VEGETATION_THEME,
+        surface_data_member=[material],
+    )
+    city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
+
+
 # ---------------------------------------------------------------------------
 # Internals
 # ---------------------------------------------------------------------------
+
+
+def _collect_vegetation_surface_target_ids(city_model: Any) -> list[str]:
+    """Return ``#<gml:id>`` refs for every colorable surface under a tree.
+
+    Mirrors :func:`_collect_pv_surface_target_ids`. Yields one target
+    per ``gml:MultiSurface`` container plus one per member
+    ``gml:Polygon``, covering both viewers that resolve container
+    targets and those that only resolve per-polygon targets.
+    """
+    root = getattr(city_model, "xsd", city_model)
+    targets: list[str] = []
+    for tree in iter_instances(root):
+        if not isinstance(tree, SolitaryVegetationObject):
+            continue
+        targets.extend(
+            f"#{sub.id}"
+            for sub in iter_instances(tree)
+            if isinstance(sub, (MultiSurface, Polygon)) and sub.id
+        )
+    return targets
 
 
 def _collect_pv_surface_target_ids(city_model: Any) -> list[str]:
@@ -209,9 +294,11 @@ def _collect_pv_surface_target_ids(city_model: Any) -> list[str]:
     for pv in iter_instances(root):
         if not isinstance(pv, PhotovoltaicCollector):
             continue
-        for sub in iter_instances(pv):
-            if isinstance(sub, (MultiSurface, Polygon)) and sub.id:
-                targets.append(f"#{sub.id}")
+        targets.extend(
+            f"#{sub.id}"
+            for sub in iter_instances(pv)
+            if isinstance(sub, (MultiSurface, Polygon)) and sub.id
+        )
     return targets
 
 

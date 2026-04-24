@@ -24,6 +24,7 @@ from citygml_energy.city_builder.config import (
     SCHEMA_VERSION,
 )
 from citygml_energy.city_builder.pv_panels import DEFAULT_Z_OFFSET_M
+from citygml_energy.city_builder.vegetation import DEFAULT_TREE_FILENAME
 from citygml_energy.namespaces import DEFAULT_SRS_NAME
 
 
@@ -65,39 +66,43 @@ def build_schema() -> dict[str, Any]:
             "boundary": {
                 "type": "object",
                 "description": (
-                    "Optional free-form (possibly concave) polygon selected from "
-                    "a GeoPackage feature. When set, the fetch extent is derived "
-                    "from the polygon's own bounds, and buildings whose 2D LoD 0 "
-                    "footprint does not intersect the polygon are dropped. Mutually "
-                    "exclusive with 'bbox'."
+                    "Optional free-form (possibly concave) polygon. When set, the "
+                    "fetch extent is derived from the polygon's own bounds, and "
+                    "buildings whose 2D LoD 0 footprint does not intersect the "
+                    "polygon are dropped. Mutually exclusive with 'bbox'. Two "
+                    "formats are accepted, dispatched on file extension: '.gpkg' "
+                    "(GeoPackage, requires 'layer' + 'fid') and '.geojson' / "
+                    "'.json' (single-feature or 'fid'-disambiguated)."
                 ),
                 "additionalProperties": False,
-                "required": ["path", "layer", "fid"],
+                "required": ["path"],
                 "properties": {
                     "path": {
                         "type": "string",
                         "minLength": 1,
                         "description": (
-                            "Path to an OGC GeoPackage (.gpkg) in EPSG:28992 "
-                            "(or srs_id 0/-1 for 'undefined'), absolute or "
-                            "relative to this JSON file."
+                            "Path to a GeoPackage (.gpkg) or GeoJSON (.geojson / "
+                            ".json) in EPSG:28992 (or srs_id 0/-1 for 'undefined'), "
+                            "absolute or relative to this JSON file."
                         ),
                     },
                     "layer": {
                         "type": "string",
                         "minLength": 1,
                         "description": (
-                            "Name of the features table inside the GeoPackage "
-                            "holding the boundary polygon(s)."
+                            "Required for .gpkg: name of the features table "
+                            "holding the boundary polygon(s). Ignored for GeoJSON "
+                            "(which has no layer concept)."
                         ),
                     },
                     "fid": {
                         "type": "integer",
                         "minimum": 0,
                         "description": (
-                            "GeoPackage feature id of the polygon to use as the "
-                            "boundary. Lets one GPKG carry multiple candidate "
-                            "areas without ambiguity."
+                            "Required for .gpkg: feature id of the polygon to use. "
+                            "Optional for GeoJSON: when given, selects the feature "
+                            "whose 'id' or 'properties.id'/'fid' matches; when "
+                            "omitted, the first (Multi)Polygon feature is used."
                         ),
                     },
                 },
@@ -207,6 +212,42 @@ def build_schema() -> dict[str, Any]:
                         "description": (
                             "Flat Z offset above the roof plane, in metres. "
                             f"Defaults to {DEFAULT_Z_OFFSET_M}."
+                        ),
+                    },
+                },
+            },
+            "vegetation": {
+                "type": "object",
+                "description": (
+                    "Optional CFTree (https://github.com/NoahAlting/CFTree) "
+                    "reconstruction output directory. When set, the pipeline "
+                    "walks 'path/tiles/<tile_id>/<tree_filename>' and emits one "
+                    "veg:SolitaryVegetationObject per tree inside the bbox or "
+                    "boundary polygon, with LoD3 crown + trunk MultiSurface "
+                    "geometry and CFTree morphometrics (height, trunkDiameter, "
+                    "crownDiameter, plus porosity/r50/median_z as "
+                    "gen:doubleAttribute)."
+                ),
+                "additionalProperties": False,
+                "required": ["path"],
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": (
+                            "Path to a CFTree case output directory (typically "
+                            "CFTree's data/<case>), absolute or relative to this "
+                            "JSON file. The loader expects per-tile subdirectories "
+                            "below 'path/tiles/<tile_id>/'."
+                        ),
+                    },
+                    "tree_filename": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": (
+                            "Filename to read inside every tile directory. "
+                            f"Defaults to {DEFAULT_TREE_FILENAME!r}; override "
+                            "only if a future CFTree release renames the file."
                         ),
                     },
                 },

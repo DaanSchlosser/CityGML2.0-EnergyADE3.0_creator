@@ -1,0 +1,29 @@
+{
+  "$schema": "../schemas/city_input.schema.json",
+  "schema_version": "city-1",
+  "municipality": "Emmen",
+  "boundary": {
+    "path": "../inputs/pv_panels/grid2.gpkg",
+    "layer": "grid2",
+    "fid": 1
+  },
+  "lods": [0, 1, 2],
+  "include_addresses": true,
+  "include_energy_labels": true,
+  "cache_dir": "../.cache/citygml_energy_city",
+  "output": "../generated/grid2_area1_trees.gml",
+  "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5709",
+  "srs_dimension": 3,
+  "city_model": {
+    "name": "Emmer-Compascuum (grid2, area fid=1, with trees)",
+    "description": "Buildings + PV + CFTree LoD3 trees inside the first hand-drawn concave polygon of inputs/pv_panels/grid2.gpkg. BAG + 3DBAG LoD 0/1/2 + EP-online + Groningen PV panels (Zenodo 14860030) + CFTree reconstructions from AHN4 LiDAR, optionally enriched with OSM and Landelijk Register Monumentale Bomen."
+  },
+  "pv_panels": {
+    "path": "../inputs/pv_panels/pv_panels.gpkg",
+    "layer": "pv_panels",
+    "z_offset_m": 0.1
+  },
+  "vegetation": {
+    "path": "../../CFTree/data/emmer_compascuum_grid2"
+  }
+}

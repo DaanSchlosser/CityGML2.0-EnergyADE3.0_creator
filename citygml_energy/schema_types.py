@@ -31,6 +31,21 @@ WALL_SURFACE = "bldg:WallSurface"
 ROOF_SURFACE = "bldg:RoofSurface"
 
 # ---------------------------------------------------------------------------
+# CityGML 2.0: Vegetation
+# ---------------------------------------------------------------------------
+SOLITARY_VEGETATION_OBJECT = "veg:SolitaryVegetationObject"
+PLANT_COVER = "veg:PlantCover"
+
+# ---------------------------------------------------------------------------
+# CityGML 2.0: Generics (used for attributes without a native schema field)
+# ---------------------------------------------------------------------------
+GEN_STRING_ATTRIBUTE = "gen:stringAttribute"
+GEN_INT_ATTRIBUTE = "gen:intAttribute"
+GEN_DOUBLE_ATTRIBUTE = "gen:doubleAttribute"
+GEN_DATE_ATTRIBUTE = "gen:dateAttribute"
+GEN_URI_ATTRIBUTE = "gen:uriAttribute"
+
+# ---------------------------------------------------------------------------
 # CityGML 2.0: Appearance
 # ---------------------------------------------------------------------------
 APPEARANCE = "app:Appearance"

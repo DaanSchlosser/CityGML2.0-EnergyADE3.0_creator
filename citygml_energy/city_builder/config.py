@@ -15,9 +15,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..errors import CityBuildError
 from ..namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
 from .boundary import BoundarySource
 from .pv_panels import PvPanelsSource
+from .vegetation import DEFAULT_TREE_FILENAME, VegetationSource
 
 PathLike = str | Path
 
@@ -31,10 +33,6 @@ EP_ONLINE_ENV_VAR = "EP_ONLINE_API_KEY"
 _NCNAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
 
 _ALLOWED_LODS: frozenset[int] = frozenset({0, 1, 2})
-
-
-class CityBuildError(ValueError):
-    """Raised when a city-builder JSON config is invalid."""
 
 
 @dataclass(frozen=True)
@@ -101,6 +99,13 @@ class CityBuildConfig:
     gml_id_prefix: str
     pv_panels_source: PvPanelsSource | None = None
     boundary_source: BoundarySource | None = None
+    vegetation_source: VegetationSource | None = None
+    """Optional CFTree output directory (from
+    https://github.com/NoahAlting/CFTree). When set, the pipeline walks
+    ``path/tiles/<tile_id>/trees_lod3.city.json`` and emits one
+    ``veg:SolitaryVegetationObject`` per tree inside the bbox /
+    boundary. See
+    :class:`citygml_energy.city_builder.vegetation.VegetationSource`."""
 
     @property
     def ep_online_api_key(self) -> str | None:
@@ -148,11 +153,13 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
     "city_model",
     "gml_id_prefix",
     "pv_panels",
+    "vegetation",
 })
 
 _ALLOWED_CITY_MODEL_KEYS: frozenset[str] = frozenset({"name", "description"})
 _ALLOWED_PV_PANELS_KEYS: frozenset[str] = frozenset({"path", "layer", "z_offset_m"})
 _ALLOWED_BOUNDARY_KEYS: frozenset[str] = frozenset({"path", "layer", "fid"})
+_ALLOWED_VEGETATION_KEYS: frozenset[str] = frozenset({"path", "tree_filename"})
 
 
 def load_city_config(path: PathLike) -> CityBuildConfig:
@@ -284,6 +291,9 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
     boundary_source = _validate_boundary(
         data.get("boundary"), source=source, base_dir=base_dir
     )
+    vegetation_source = _validate_vegetation(
+        data.get("vegetation"), source=source, base_dir=base_dir
+    )
     if boundary_source is not None and bbox is not None:
         raise CityBuildError(
             f"{source}: 'bbox' and 'boundary' are mutually exclusive; "
@@ -307,6 +317,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         gml_id_prefix=gml_id_prefix,
         pv_panels_source=pv_panels_source,
         boundary_source=boundary_source,
+        vegetation_source=vegetation_source,
     )
 
 
@@ -393,6 +404,47 @@ def _validate_pv_panels(
     return PvPanelsSource(**kwargs)
 
 
+def _validate_vegetation(
+    value: Any, *, source: str, base_dir: Path
+) -> VegetationSource | None:
+    """Validate the optional ``vegetation`` block.
+
+    Returns ``None`` when unset. The referenced directory is resolved
+    relative to the config's parent, matching every other path in this
+    config. Presence of the directory / of any tile file inside is
+    **not** checked at config-load time: the CFTree pipeline is
+    typically run separately and its output directory may not yet
+    exist when the city config is edited. Missing-directory warnings
+    surface at build time via
+    :func:`citygml_energy.city_builder.vegetation.load_trees_in_bbox`.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise CityBuildError(
+            f"{source}: vegetation must be an object when provided"
+        )
+    unexpected = sorted(set(value) - _ALLOWED_VEGETATION_KEYS)
+    if unexpected:
+        raise CityBuildError(
+            f"{source}: unexpected vegetation key(s): {', '.join(unexpected)}"
+        )
+    path_raw = value.get("path")
+    if not isinstance(path_raw, str) or not path_raw.strip():
+        raise CityBuildError(
+            f"{source}: vegetation.path must be a non-empty string"
+        )
+    tree_filename = value.get("tree_filename", DEFAULT_TREE_FILENAME)
+    if not isinstance(tree_filename, str) or not tree_filename.strip():
+        raise CityBuildError(
+            f"{source}: vegetation.tree_filename must be a non-empty string when provided"
+        )
+    return VegetationSource(
+        path=_resolve_path(path_raw, base_dir),
+        tree_filename=tree_filename.strip(),
+    )
+
+
 def _validate_boundary(
     value: Any, *, source: str, base_dir: Path
 ) -> BoundarySource | None:
@@ -403,7 +455,12 @@ def _validate_boundary(
     ``output`` / ``pv_panels.path``). Existence of the file, of the
     layer, and of the ``fid`` inside it are checked lazily at read
     time in :func:`.boundary.load_boundary_polygon`, so a config
-    authored on a machine without the GPKG still validates.
+    authored on a machine without the polygon file still validates.
+
+    ``layer`` and ``fid`` are required for ``.gpkg`` (a GeoPackage can
+    hold multiple candidate areas), but optional for ``.geojson`` /
+    ``.json`` (single-feature files are the expected case, and
+    multi-feature ones can still be disambiguated by supplying ``fid``).
     """
     if value is None:
         return None
@@ -419,19 +476,36 @@ def _validate_boundary(
     path_raw = value.get("path")
     if not isinstance(path_raw, str) or not path_raw.strip():
         raise CityBuildError(f"{source}: boundary.path must be a non-empty string")
-    layer = value.get("layer")
-    if not isinstance(layer, str) or not layer.strip():
-        raise CityBuildError(f"{source}: boundary.layer must be a non-empty string")
+    resolved_path = _resolve_path(path_raw, base_dir)
+    is_gpkg = resolved_path.suffix.lower() == ".gpkg"
+
+    layer_raw = value.get("layer")
+    if layer_raw is None:
+        if is_gpkg:
+            raise CityBuildError(
+                f"{source}: boundary.layer is required for .gpkg files"
+            )
+        layer: str | None = None
+    else:
+        if not isinstance(layer_raw, str) or not layer_raw.strip():
+            raise CityBuildError(f"{source}: boundary.layer must be a non-empty string")
+        layer = layer_raw.strip()
+
     fid_raw = value.get("fid")
-    if isinstance(fid_raw, bool) or not isinstance(fid_raw, int) or fid_raw < 0:
-        raise CityBuildError(
-            f"{source}: boundary.fid must be a non-negative integer (got {fid_raw!r})"
-        )
-    return BoundarySource(
-        path=_resolve_path(path_raw, base_dir),
-        layer=layer.strip(),
-        fid=fid_raw,
-    )
+    if fid_raw is None:
+        if is_gpkg:
+            raise CityBuildError(
+                f"{source}: boundary.fid is required for .gpkg files"
+            )
+        fid: int | None = None
+    else:
+        if isinstance(fid_raw, bool) or not isinstance(fid_raw, int) or fid_raw < 0:
+            raise CityBuildError(
+                f"{source}: boundary.fid must be a non-negative integer (got {fid_raw!r})"
+            )
+        fid = fid_raw
+
+    return BoundarySource(path=resolved_path, layer=layer, fid=fid)
 
 
 def _validate_bool(data: dict[str, Any], key: str, *, source: str, default: bool) -> bool:
@@ -466,7 +540,7 @@ def _maybe_load_dotenv(start_dir: Path) -> None:
         return
     _DOTENV_LOADED_FROM.add(start_dir)
     try:
-        from dotenv import load_dotenv  # type: ignore[import-not-found]
+        from dotenv import load_dotenv
     except ImportError:
         return
     for candidate in [start_dir, *start_dir.parents]:
