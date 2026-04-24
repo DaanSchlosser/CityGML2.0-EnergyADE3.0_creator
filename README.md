@@ -2,11 +2,12 @@
 
 A Python toolkit for generating standards-compliant CityGML 2.0 files extended
 with the Energy ADE 3.0 (beta8) application domain extension. The project
-reads a single flat-dict JSON input, attaches imported STEP geometry, and
-emits a fully XSD-validated GML file, without any hand-written XML.
+reads a single flat-dict JSON input, attaches imported STEP or CityJSON
+geometry, and emits a fully XSD-validated GML file, without any hand-written
+XML.
 
-This document describes the input format, the pipeline, the role of each
-module, and the architectural decisions behind the codebase.
+This document describes the research context, the input formats, the two
+pipelines, and the architectural decisions behind the codebase.
 
 > **Viewing the output in KIT FZKViewer?** The viewer ships with an
 > incompatible Energy ADE 2.0 schema and will silently mangle the file.
@@ -15,17 +16,33 @@ module, and the architectural decisions behind the codebase.
 
 ---
 
-## 1. What this project does
+## 1. Research context: RenoDAT and Building Renovation Passports
 
-The goal is to produce a CityGML + Energy ADE GML file describing a
-real-world building, its geometry, devices (PV panels, heat pumps, EV
-chargers), occupants, thermal zones, schedules, and material/construction
-libraries, from a single curated JSON dataset plus Rhino-exported STEP
-geometry.
+This toolkit is a contribution to **[RenoDAT](https://3d.bk.tudelft.nl/projects/renodat/)**
+— *Accelerating building **RENO**vation and decarbonization through
+**DAT**a integration* — a TU Delft–led,
+[NWO](https://www.nwo.nl/en/projects/xqbeg97133)-funded research project
+(autumn 2025 – summer 2029) that develops the data infrastructure for
+**Building Renovation Passports (BRPs)**. RenoDAT unites technical,
+social, legal, and pedagogical expertise around one question: what does
+it take — in data governance, interoperability, and standardisation — to
+actually accelerate the renovation of the Dutch housing stock?
 
-The reference dataset is **RenoDAT**, a single-family residence in Delft
-modeled at LOD 0–3 with thermal zone parts. The same pipeline generalizes
-to any building data that fits the supported feature catalog.
+**The question this toolkit tests:** *Is CityGML 2.0 + Energy ADE 3.0 a
+meaningful starting point for BRPs?* Energy ADE 3.0 (beta8) was
+developed well before RenoDAT; the project is a catalyst for its
+real-world testing, extension, and de-facto standardisation.
+
+**Two pipelines, two test cases for that question:**
+
+| Pipeline | Input | Purpose in RenoDAT |
+|---|---|---|
+| **Per-building** | Hand-authored `schema_version: 2` JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport — zones, schedules, devices, layered constructions, material libraries, per-surface appearances — for one dwelling? The included [owner-occupier reference building](inputs/owner_occupier_building.json) (a single-family residence in Delft, modelled LoD 0–3 with thermal zone parts) is the worked example. |
+| **City-scale** | `schema_version: "city-1"` config naming a Dutch municipality | Does the same data model scale to the dwelling stock? Fetches BAG + 3DBAG + EP-online (+ optional PV panels, BGT tree register, CFTree vegetation) for an entire area and assembles one GML file. |
+
+Both pipelines emit the **same** CityGML 2.0 + Energy ADE 3.0 wire
+format, validated against the same XSD set, so downstream tooling sees
+one shape regardless of the authoring path.
 
 The output is a `.gml` file that:
 
@@ -45,11 +62,11 @@ python -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 
-# generate the GML file (per-building pipeline)
-python examples/create_renodat.py
+# generate the GML file (per-building pipeline, owner-occupier reference building)
+python examples/create_building.py
 
 # validate it against the bundled XSDs (offline)
-python tools/validate_xsd.py generated/renodat.gml
+python tools/validate_xsd.py generated/owner_occupier_building.gml
 
 # run the test suite
 python -m pytest -q
@@ -63,7 +80,7 @@ Python: `python --version` (must be ≥ 3.12).
 Custom paths:
 
 ```powershell
-python examples/create_renodat.py --input inputs/renodat_input.json --output generated/renodat.gml
+python examples/create_building.py --input inputs/owner_occupier_building.json --output generated/owner_occupier_building.gml
 ```
 
 Requirements: Python 3.12+ and `lxml >= 5.0`. Dev extras add `pytest`,
@@ -73,11 +90,12 @@ workflow (§12), the `city` extras add `requests`, `shapely`,
 parsing). An optional `city-fast` extra adds `polars` for sub-second
 EP-online CSV filtering. All declared in [pyproject.toml](pyproject.toml).
 
-Two parallel input pipelines live in this repo:
+Two parallel input pipelines live in this repo (see §1 for the RenoDAT
+framing):
 
 | Workflow | Input format | What it does |
 |---|---|---|
-| **Per-building** (RenoDAT) | `schema_version: 2` JSON + Rhino STEP files | Hand-curated detailed Energy-ADE dataset per building (zones, schedules, devices, layered constructions). See §3–§9. |
+| **Per-building** | `schema_version: 2` JSON + Rhino STEP files | Hand-curated detailed Energy-ADE dataset per building (zones, schedules, devices, layered constructions). See §3–§9. |
 | **City-scale** | `schema_version: "city-1"` JSON | Downloads BAG + 3DBAG + EP-online for a whole Dutch municipality and assembles one GML file. See §12. |
 
 ---
@@ -85,7 +103,7 @@ Two parallel input pipelines live in this repo:
 ## 3. The input file
 
 Everything the generator needs lives in a single JSON document
-([inputs/renodat_input.json](inputs/renodat_input.json)). It has eight
+([inputs/owner_occupier_building.json](inputs/owner_occupier_building.json)). It has eight
 top-level keys (plus an optional `$schema`):
 
 ```jsonc
@@ -98,7 +116,7 @@ top-level keys (plus an optional `$schema`):
     "by_id":   { "id_building_1_Door2_1": "constr_front_door" }
   },
   "geometry_sources": [
-    { "type": "step-renodat-lod3",
+    { "type": "step-building-lod3",
       "path": "Owner-Occupier1_LOD3_STEP.stp",
       "target_building_id": "id_building_1",
       "target_pv_id": "pv_panel_1" },
@@ -141,7 +159,7 @@ Field-by-field semantics:
   selects the importer mode (see [§6.4](#64-citygml_energygeometry));
   each entry targets a specific feature by gml:id. Two target fields are
   recognized:
-  - `step-renodat-lod{0..4}` sources require **`target_building_id`** and
+  - `step-building-lod{0..4}` sources require **`target_building_id`** and
     accept an optional **`target_pv_id`** (used by LOD 3 to attach
     `SolarPanelSurface_*` faces to a `PhotovoltaicCollector`).
   - `step-zonepart-lod{0..3}` sources require **`target_zone_part_id`**:
@@ -160,7 +178,7 @@ Field-by-field semantics:
 - **`$schema`** *(optional)*: pointer to
   [schemas/citygml_energy_input.schema.json](schemas/citygml_energy_input.schema.json)
   for VS Code autocomplete and inline validation while editing. The
-  canonical [inputs/renodat_input.json](inputs/renodat_input.json) does
+  canonical [inputs/owner_occupier_building.json](inputs/owner_occupier_building.json) does
   not currently set it; add it manually if you want editor assistance.
 - **`srs_name`** *(optional, defaults to
   `urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109`)*: the CRS URN
@@ -184,7 +202,7 @@ the source).
 
 ```mermaid
 flowchart TD
-    J["inputs/renodat_input.json"]:::input
+    J["inputs/owner_occupier_building.json"]:::input
     S["inputs/*.stp<br/>(STEP geometry, parsed in stage 4)"]:::input
 
     subgraph Load["<b>load_feature_collection</b> &nbsp;·&nbsp; read + validate"]
@@ -206,7 +224,7 @@ flowchart TD
 
     CM(["<b>CityModel</b><br/>xsdata-bound, in-memory"]):::model
     W["<b>model.write</b> / serialize_to_file<br/>xsdata XmlSerializer + tab indent"]:::stage
-    OUT["generated/renodat.gml"]:::output
+    OUT["generated/owner_occupier_building.gml"]:::output
     VAL["<b>tools/validate_xsd.py</b><br/>offline lxml + local schema resolver<br/>(separate post-hoc step)"]:::stage
 
     J --> V1
@@ -275,7 +293,7 @@ what each one does and why it lives where it does.
    `_step.parse_all_polygons` (anonymous solids for LoD 1/2 and zone
    parts), adds `coordinate_origin` to every coordinate, builds
    `gml:Polygon` / `gml:MultiSurface` / `gml:Solid` / `gml:Envelope`
-   via `_gml_builders`, and attaches the result to the target feature
+   via `gml_builders`, and attaches the result to the target feature
    (building, zone part, PV collector) resolved by `gml:id`. Classifies
    named shells against the auto-discovered `bounded_by` / `opening`
    taxonomy; matches openings to parent surfaces by **interior-ring
@@ -303,7 +321,7 @@ what each one does and why it lives where it does.
    `generation.generate_gml_file`, *not* from the orchestrator;
    building a model in-memory and writing it are separate concerns.
 
-8. **`tools/validate_xsd.py generated/renodat.gml`** in
+8. **`tools/validate_xsd.py generated/owner_occupier_building.gml`** in
    [tools/validate_xsd.py](tools/validate_xsd.py). Separate post-hoc
    script. Loads the Energy ADE 3.0 beta8 XSD with an lxml resolver
    that redirects every `http://schemas.opengis.net/...` import to its
@@ -446,6 +464,26 @@ appends the result to `cityObjectMember` (top-level) or invokes
 it applies `geometry_sources`, then `construction_mapping` (each
 surface resolved by `by_id`, falling back to `by_type`).
 
+**Fail-loud validator.** Every known class of bad input is rejected at
+the validator with a field-specific message (see
+[`tests/test_invalid_inputs_rejected.py`](tests/test_invalid_inputs_rejected.py)
+for the full list):
+
+- unknown feature types, duplicate / non-NCName / whitespace-only IDs
+- parent references to missing IDs, self-parent, parent-chain cycles
+- Energy ADE containment violations (e.g. `ZonePart` with a `Building`
+  parent – the XSD permits it via `ZonePropertyType` substitution but
+  it corrupts the thermal-zone hierarchy); whitelist in
+  `_ALLOWED_PARENT_TYPES`
+- `construction_mapping.by_id` / `by_type` values that do not match any
+  declared `library_member.id`
+- geometry-source paths that do not resolve, unknown source types,
+  target keys pointing at features of the wrong type
+
+Silent drops here would pass XSD validation (most Energy ADE children
+are `minOccurs=0`) but produce incomplete output; the validator closes
+that gap.
+
 The module exposes three layered entry points:
 `load_feature_collection(path)` returns the validated, path-normalized
 dict; `build_city_model_from_feature_collection(data, base_path=...)`
@@ -455,9 +493,9 @@ wrapper used by `generation.generate_city_model()`. A standalone
 `validate_feature_collection(data)` is also available for callers that
 only want to check input validity without building anything.
 
-### 6.4 `citygml_energy.geometry` (+ `citygml_energy._step`, `citygml_energy._gml_builders`)
+### 6.4 `citygml_energy.geometry` (+ `_step`, `gml_builders`, `device_relations`, `construction_mapping`)
 
-Three cleanly-separated layers:
+Cleanly-separated layers, each with a single responsibility:
 
 - **[`citygml_energy._step`](citygml_energy/_step.py)**: ISO 10303-21
   parser. Reads the `DATA;` section of a Rhino-exported `.stp` file,
@@ -466,21 +504,41 @@ Three cleanly-separated layers:
   `SHELL_BASED_SURFACE_MODEL` entities with user-facing layer names)
   and `parse_all_polygons()` (for `MANIFOLD_SOLID_BREP`, the anonymous
   closed shells used by zone solids). Deliberately xsdata-independent.
-- **[`citygml_energy._gml_builders`](citygml_energy/_gml_builders.py)**:
+- **[`citygml_energy.gml_builders`](citygml_energy/gml_builders.py)**:
   pure GML primitive builders. Turns coordinate lists into
   `gml:Polygon` / `gml:MultiSurface` / `gml:Solid` / `gml:Envelope` /
   `gml:MultiPoint` objects; also hosts the ring-orientation and
   Newell-normal helpers used for solid assembly. Knows GML 3.1.1 wire
   types but nothing about CityGML semantics or JSON input: the stable
   layer between the STEP parser and the schema-aware attachment code.
+  Coordinates are quantised to a micrometre grid on emission
+  (`_COORD_DECIMALS = 6`), so sub-µm FP noise from STEP transforms
+  collapses to zero and every ordinate serialises as a plain
+  fixed-point decimal – no scientific notation, no spurious diffs
+  between reruns.
 - **[`citygml_energy.geometry`](citygml_energy/geometry.py)**:
-  schema-aware attachment. Consumes the STEP primitives and GML
-  builders above. Carries no hardcoded surface or opening class
+  schema-aware STEP-source dispatch. Consumes the STEP primitives and
+  GML builders above. Carries no hardcoded surface or opening class
   references: target classes (`bldg:Building`, `nrg3:ZonePart`,
   `nrg3:PhotovoltaicCollector`) are resolved through
   `mapping.resolve_class`, and the surface/opening taxonomy is
   auto-discovered from the `bounded_by` / `opening` property-type
-  wrappers' dataclass metadata.
+  wrappers' dataclass metadata. Re-exports
+  `apply_device_relations` and `apply_construction_mapping` from their
+  sibling modules (below) for back-compat.
+- **[`citygml_energy.device_relations`](citygml_energy/device_relations.py)**:
+  resolves JSON-declared `installed_on` references on devices (PV
+  collectors, heat pumps, …) into `nrg3:CityObjectRelation` links.
+  Tried in order against the STEP surface-name index and the gml:id
+  feature index so authoring tools can write `"RoofSurface_01"` or a
+  gml:id interchangeably.
+- **[`citygml_energy.construction_mapping`](citygml_energy/construction_mapping.py)**:
+  post-processor that walks the assembled `CityModel` and appends
+  `nrg3:layeredConstruction` xlink:href references wherever the
+  bindings declare the field. Scope is determined by the bindings, not
+  by a hand-maintained taxonomy, so regenerating with new surface /
+  opening / zone-boundary classes picks up matching mappings without
+  code changes.
 
 **Geometry-source registry.** Accepted `geometry_sources[*].type`
 values are declared in `geometry.GEOMETRY_SOURCE_SPECS`. Each spec
@@ -491,11 +549,11 @@ and the dispatch table in the applier cannot drift.
 
 | Source type            | Purpose                                                           |
 |------------------------|-------------------------------------------------------------------|
-| `step-renodat-lod0`    | Building footprint at LOD 0                                       |
-| `step-renodat-lod1`    | LOD 1 block model                                                 |
-| `step-renodat-lod2`    | LOD 2 with roof shape                                             |
-| `step-renodat-lod3`    | LOD 3 with semantic boundaries (walls, roofs, ground, openings, PV) |
-| `step-renodat-lod4`    | LOD 4 (interior detail)                                           |
+| `step-building-lod0`    | Building footprint at LOD 0                                       |
+| `step-building-lod1`    | LOD 1 block model                                                 |
+| `step-building-lod2`    | LOD 2 with roof shape                                             |
+| `step-building-lod3`    | LOD 3 with semantic boundaries (walls, roofs, ground, openings, PV) |
+| `step-building-lod4`    | LOD 4 (interior detail)                                           |
 | `step-zonepart-lod0..3`| Thermal `ZonePart` boundary surface set at the matching LOD (uses `target_zone_part_id` instead of `target_building_id`) |
 
 Faces such as `WallSurface_04`, `RoofSurface_02`, `GroundSurface_01`,
@@ -579,20 +637,42 @@ nothing else should spell out schema names in string literals.
 
 Glue layer exposing `generate_city_model(input_path)` and
 `generate_gml_file(input_path, output_path)` with sensible defaults
-pointing at [inputs/renodat_input.json](inputs/renodat_input.json) and
-[generated/renodat.gml](generated/renodat.gml).
+pointing at [inputs/owner_occupier_building.json](inputs/owner_occupier_building.json) and
+[generated/owner_occupier_building.gml](generated/owner_occupier_building.gml).
+
+### 6.10 `citygml_energy.errors`
+
+Shared exception hierarchy. Everything a user can misconfigure raises
+a subclass of `CityGMLError`, so `except CityGMLError` catches input
+problems from either pipeline:
+
+```
+CityGMLError(ValueError)         # root; still a ValueError for backwards compat
+├── InputFileError               # per-building JSON feature-collection loader (input_loader.py)
+└── CityBuildError               # city-scale pipeline (config.py + boundary.py + pipeline.py)
+```
+
+All three names are re-exported from the package root. The `ValueError`
+parentage is deliberate: existing callers that `except ValueError` keep
+working without changes.
 
 ---
 
 ## 7. Scripts
 
-### 7.1 [examples/create_renodat.py](examples/create_renodat.py)
+### 7.1 [examples/create_building.py](examples/create_building.py)
 
 Canonical CLI + library entry point. With no arguments it reads
-[inputs/renodat_input.json](inputs/renodat_input.json) and writes
-[generated/renodat.gml](generated/renodat.gml). Both paths are
+[inputs/owner_occupier_building.json](inputs/owner_occupier_building.json) and writes
+[generated/owner_occupier_building.gml](generated/owner_occupier_building.gml). Both paths are
 overridable via `--input` / `--output`. Importable functions:
-`create_renodat()`, `write_renodat_file()`.
+`create_building()`, `write_building_gml_file()`.
+
+The companion [examples/create_city.py](examples/create_city.py) is
+the city-scale entry point (§12). Pass `-v` for INFO-level pipeline
+progress on stderr (the mocked fetcher milestones) or `-vv` for DEBUG
+(fetcher / HTTP retry detail). Default verbosity is WARNING, keeping
+piped runs quiet.
 
 ### 7.2 [tools/generate_bindings.py](tools/generate_bindings.py)
 
@@ -646,7 +726,7 @@ The KIT ModelViewer's own schemas are never consulted by the
 validator; they matter only for the §9 viewer-side display fix.
 
 ```powershell
-python tools/validate_xsd.py generated/renodat.gml
+python tools/validate_xsd.py generated/owner_occupier_building.gml
 ```
 
 ---
@@ -656,24 +736,54 @@ python tools/validate_xsd.py generated/renodat.gml
 Run with `python -m pytest -q`. The [tests/](tests/) tree is organised
 by concern:
 
-**Per-building pipeline (RenoDAT)**
+**Per-building pipeline**
 
-- **[test_renodat_reference.py](tests/test_renodat_reference.py)**:
-  end-to-end test of the canonical pipeline. Asserts (1) **XSD
+- **[test_reference_building.py](tests/test_reference_building.py)**:
+  end-to-end test of the canonical pipeline, parametrised over both
+  the full owner-occupier reference building and the shareable sample. Asserts (1) **XSD
   validity** of the generated GML against the full schema set and (2)
   **completeness**, meaning every feature declared in the JSON appears
   in the serialized XML. The completeness check exists because XSD
   validation alone cannot detect silently dropped features (nearly
   every Energy ADE child is `minOccurs=0`). Supplementary assertions
   cover CRS propagation, coordinate formatting, and loader error handling.
-- **[test_renodat_multisource_metadata.py](tests/test_renodat_multisource_metadata.py)**:
+- **[test_multisource_metadata.py](tests/test_multisource_metadata.py)**:
   exercises the multi-source `QualifiedAttribute` encoding (repeated
   `bdgArea` / `Height` / `Volume` with source metadata).
 - **[test_factory.py](tests/test_factory.py)**: per-feature-type XSD
   validation. Constructs xsdata objects directly (Building, Device,
   Zone, schedules, EPCs, occupants, …), serializes them, and validates
   against the XSD set. Catches binding-level breakage independently of
-  the input loader.
+  the input loader. The shared `_validate()` helper also cross-checks
+  that every feature declared in the CityModel actually appears as a
+  `gml:id` in the serialised output, so a silent-drop regression
+  (forgetting to `model.add(...)`) fails the test instead of sneaking
+  through XSD validation of an empty document.
+
+**Structural invariants and negative tests**
+
+- **[test_pipeline_invariants.py](tests/test_pipeline_invariants.py)**:
+  contract-level invariants that must hold for *any* valid input, run
+  against both pipelines:
+  - **Completeness**: every input feature id ends up as a `gml:id` in
+    the output (catches silent drops that XSD validation cannot).
+  - **Determinism**: two independent runs on the same input produce
+    byte-identical output (guards against dict-order leakage and
+    non-reproducibility that would break diff-based review).
+  - **Coordinate precision**: every ordinate is a plain fixed-point
+    decimal with ≤ 6 fractional digits; no scientific notation, no
+    negative zero.
+  - **XML escaping and Unicode round-trip** for user-supplied text.
+- **[test_invalid_inputs_rejected.py](tests/test_invalid_inputs_rejected.py)**:
+  72 mutation tests, parametrised over both owner-occupier fixtures (36 ×
+  2), where each test starts from a valid input and applies one
+  targeted corruption (missing field, duplicate ID, self-parent,
+  parent-chain cycle, `ZonePart` with `Building` parent,
+  `construction_mapping.by_id` with a nonexistent target, …) and
+  asserts the loader raises `InputFileError` with a field-specific
+  message. The `test_unmutated_fixture_is_still_valid` anchor catches
+  false positives where "rejection" would otherwise be caused by an
+  unrelated setup defect.
 
 **Schema / bindings / infrastructure**
 
@@ -761,15 +871,18 @@ inside the viewer's install directory, not this repo):
 
 ```
 citygml_energy/                Core package
-├── __init__.py                Public re-exports (generate_city_model, CityModel, …)
+├── __init__.py                Public re-exports (generate_city_model, CityModel, CityGMLError, …)
 ├── bindings.py                xsdata-generated dataclasses (Energy ADE 3.0 + CityGML 2.0)
 ├── core.py                    CityModel: thin wrapper around CityModelType
+├── errors.py                  Exception hierarchy (CityGMLError → InputFileError / CityBuildError)
 ├── generation.py              generate_city_model / generate_gml_file
-├── input_loader.py            JSON loader, validator, orchestrator
+├── input_loader.py            JSON loader, validator, orchestrator (see §6.3)
 ├── mapping.py                 Generic dict → xsdata, parent linking, tree traversal
 ├── geometry.py                STEP → xsdata attachment, auto-discovered taxonomy
+├── device_relations.py        installed_on → nrg3:CityObjectRelation resolver
+├── construction_mapping.py    nrg3:layeredConstruction xlink post-processor
 ├── _step.py                   ISO 10303-21 parser (xsdata-independent)
-├── _gml_builders.py           Pure gml:Polygon / MultiSurface / Solid / Envelope builders
+├── gml_builders.py            Pure gml:Polygon / MultiSurface / Solid / Envelope builders (with µm quantisation)
 ├── _xsdata_patches.py         Runtime patches for xsdata edge cases
 ├── schema_types.py            Central XSD-qualified element-name constants
 ├── serialization.py           XmlSerializer wrapper with NSMAP and tab indent
@@ -777,8 +890,8 @@ citygml_energy/                Core package
 └── city_builder/              City-scale pipeline (see §12.4)
 
 examples/
-├── create_renodat.py          CLI + library entry point (per-building)
-└── create_city.py             CLI + library entry point (city-scale)
+├── create_building.py         CLI + library entry point (per-building)
+└── create_city.py             CLI + library entry point (city-scale, -v for INFO, -vv for DEBUG)
 
 tools/
 ├── generate_bindings.py       Regenerate bindings.py from XSD (auto-discovered URL map)
@@ -788,10 +901,11 @@ tools/
 └── bench.py                   Benchmarking utilities
 
 inputs/
-├── renodat_input.json         Canonical per-building data (§3)
-├── Owner-Occupier1_*.stp      STEP geometry, LOD 0–3 + 2 thermal zone parts
-├── city_example.json          Full-city config (§12)
-└── city_smoke_test.json       Small-bbox smoke-test config
+├── owner_occupier_building.json         Per-building reference input (§3)
+├── owner_occupier_building_sample.json  Shareable sanitised sample (same shape, placeholder values)
+├── Owner-Occupier1_*.stp                STEP geometry, LOD 0–3 + 2 thermal zone parts
+├── city_example.json                    Full-city config (§12)
+└── city_smoke_test.json                 Small-bbox smoke-test config
 
 schemas/
 ├── citygml_energy_input.schema.json   Generated by tools/generate_input_schema.py
@@ -802,6 +916,7 @@ xsd/                            CityGML 2.0 + GML 3.1.1 + xLink + xAL (offline c
 Energy_ADE-3.0beta8/            Authoritative Energy ADE 3.0 beta8 XSD + Alderaan reference
 
 tests/                          Per-building, city-scale, and infra test modules (see §8)
+docs/                           Data-source overviews and design reports
 generated/                      Pipeline output (git-ignored)
 ```
 
@@ -813,7 +928,7 @@ generated/                      Pipeline output (git-ignored)
 
 ## 11. Supported feature types
 
-The current RenoDAT input exercises the following types, each
+The owner-occupier reference building input exercises the following types, each
 round-tripped through the loader and validated against the XSD:
 
 - `bldg:Building`
@@ -845,6 +960,17 @@ CityGML + Energy ADE file for an entire Dutch municipality by combining:
   the complete Dutch energy-label register, joined either by
   `BAGVerblijfsobjectID` (when present) or by
   `(postcode, huisnummer, huisletter, toevoeging)` as a fallback.
+- **PV panels** (optional, via the `pv_panels` config block): 2D
+  roof-panel polygons from an external GeoPackage, projected onto the
+  building's LoD 2 roof surfaces as
+  `nrg3:PhotovoltaicCollector` features.
+- **Trees** (optional, via the `vegetation` config block): per-tree
+  LoD 3 crown + trunk meshes produced externally by
+  [CFTree](https://github.com/NoahAlting/CFTree) from AHN LiDAR, loaded
+  as `veg:SolitaryVegetationObject` features with height / crown /
+  trunk morphometrics. Full rationale, data-source mapping, and
+  CityGML + Energy ADE model-fit analysis in
+  [`docs/vegetation_integration_report.md`](docs/vegetation_integration_report.md).
 
 The workflow lives behind its own JSON config
 ([`inputs/city_example.json`](inputs/city_example.json)) with a separate
@@ -954,23 +1080,30 @@ asserts exactly that against fully-mocked fetchers.
 
 ```
 citygml_energy/city_builder/
-├── __init__.py            Public API
-├── config.py              JSON → CityBuildConfig + dotenv fallback
-├── http.py                CachedSession: requests + disk cache + retries
-├── cityjson_parse.py      CityJSON tile → ParsedBuilding (per-Pand LoDs)
-├── address_key.py         Address normalisation key for VBO ↔ EP-online join
-├── address_match.py       VBO ↔ EP-online join keyed on normalised addr
-├── epc_score.py           Label (A+++++ … G) ↔ kWh/m²/yr ↔ EU-palette RGB
-├── appearance.py          app:Appearance builder (colors buildings by avg EPC)
-├── builders.py            bldg:Building / core:Address / BuildingUnit / EPC
-├── pipeline.py            Orchestrator; build_city_model(config)
+├── __init__.py                Public API
+├── config.py                  JSON → CityBuildConfig + dotenv fallback
+├── http.py                    CachedSession: requests + disk cache + retries
+├── boundary.py                Concave-boundary GeoPackage / GeoJSON loader
+├── cityjson_parse.py          CityJSON tile → ParsedBuilding (per-Pand LoDs)
+├── cityjson_trees_parse.py    CityJSON tile → ParsedTree (CFTree per-tree meshes)
+├── address_key.py             Address normalisation key for VBO ↔ EP-online join
+├── address_match.py           VBO ↔ EP-online join keyed on normalised addr
+├── epc_score.py               Label (A+++++ … G) ↔ kWh/m²/yr ↔ EU-palette RGB
+├── appearance.py              app:Appearance builder (colors by avg EPC, PV theme, vegetation theme)
+├── builders.py                bldg:Building / core:Address / BuildingUnit / EPC / SolitaryVegetationObject
+├── pv_panels.py               GeoPackage panel polygons → nrg3:PhotovoltaicCollector on LoD 2 roofs
+├── vegetation.py              CFTree loader + bbox-and-boundary clip
+├── bgt_match.py               Nearest-neighbour match of CFTree trees to BGT register
+├── tree_enrichment.py         Optional CFTree attribute enrichment (placeholder)
+├── pipeline.py                Orchestrator; build_city_model(config)
 └── fetchers/
-    ├── municipality.py    PDOK bestuurlijkegebieden → MunicipalityOutline
-    ├── bag.py             Pand / VBO (with embedded address fields)
-    ├── threedbag.py       FlatGeoBuf tile index + CityJSON downloads
-    └── eponline.py        Bulk Mutatiebestand CSV (ZIP)
+    ├── municipality.py        PDOK bestuurlijkegebieden → MunicipalityOutline
+    ├── bag.py                 Pand / VBO (with embedded address fields)
+    ├── threedbag.py           FlatGeoBuf tile index + CityJSON downloads
+    ├── eponline.py            Bulk Mutatiebestand CSV (ZIP)
+    └── bgt.py                 BGT vegetatieobject_punt (authoritative tree register)
 
-examples/create_city.py              CLI + library entry point
+examples/create_city.py              CLI + library entry point (-v for INFO, -vv for DEBUG)
 tools/generate_city_input_schema.py  Regenerate schemas/city_input.schema.json
 ```
 

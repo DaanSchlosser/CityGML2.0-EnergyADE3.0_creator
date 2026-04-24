@@ -1,4 +1,10 @@
-"""Canonical RenoDAT GML generation entry point."""
+"""Per-building CLI entry point: JSON + STEP -> CityGML 2.0 + EnergyADE 3.0.
+
+Default inputs point at the owner-occupier reference building
+(``inputs/owner_occupier_building.json``). Use ``--input`` to pass a
+different feature-collection JSON. See the README for the RenoDAT
+research context this script is a test case for.
+"""
 
 from __future__ import annotations
 
@@ -20,16 +26,23 @@ INPUT = DEFAULT_INPUT_PATH
 OUTPUT = DEFAULT_OUTPUT_PATH
 
 
-def create_renodat(input_path: Path | str = INPUT) -> CityModel:
-    """Backward-compatible wrapper for the canonical generation API."""
+def create_building(input_path: Path | str = INPUT) -> CityModel:
+    """Load *input_path* and return a :class:`CityModel` without writing.
+
+    Thin wrapper around :func:`citygml_energy.generate_city_model` with
+    the default input set to the owner-occupier reference building.
+    """
     return generate_city_model(input_path=input_path)
 
 
-def write_renodat_file(
+def write_building_gml_file(
     input_path: Path | str = INPUT,
     output_path: Path | str = OUTPUT,
 ) -> CityModel:
-    """Backward-compatible wrapper for the canonical generation API."""
+    """Load *input_path*, build a :class:`CityModel`, write GML to *output_path*.
+
+    Thin wrapper around :func:`citygml_energy.generate_gml_file`.
+    """
     return generate_gml_file(
         input_path=input_path,
         output_path=output_path,
@@ -37,12 +50,12 @@ def write_renodat_file(
 
 
 def _build_argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--input",
         type=Path,
         default=INPUT,
-        help="Canonical JSON feature input file to convert into CityGML.",
+        help="Feature-collection JSON input (schema_version=2).",
     )
     parser.add_argument(
         "--output",
@@ -57,7 +70,7 @@ if __name__ == "__main__":
     parser = _build_argument_parser()
     args = parser.parse_args()
 
-    model = write_renodat_file(
+    model = write_building_gml_file(
         input_path=args.input,
         output_path=args.output,
     )

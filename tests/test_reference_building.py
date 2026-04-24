@@ -1,4 +1,4 @@
-"""Tests for the RenoDAT reference input.
+"""Tests for the reference-building input.
 
 Two concerns are tested:
 
@@ -9,8 +9,13 @@ Two concerns are tested:
    the serialized XML.  XSD validation alone cannot catch silently dropped
    features because nearly all child elements are optional (minOccurs=0).
 
-Supplementary tests cover qualities the XSD cannot enforce (CRS propagation,
-coordinate formatting) and input-loader error handling.
+Supplementary tests cover qualities the XSD cannot enforce (CRS propagation)
+and input-loader error handling.
+
+Tests are parameterized over every canonical owner-occupier fixture so they stay
+value-agnostic: any structurally-equivalent valid input (full or shareable
+sample) must satisfy the same assertions. Magic numbers tied to a specific
+fixture do not belong here.
 """
 
 from copy import deepcopy
@@ -25,7 +30,7 @@ from citygml_energy import (
     generate_city_model,
     load_feature_collection,
 )
-from examples.create_renodat import INPUT
+from examples.create_building import INPUT
 from tools.validate_xsd import load_schema
 
 NS = {
@@ -35,6 +40,12 @@ NS = {
     "nrg3": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
     "xlink": "http://www.w3.org/1999/xlink",
 }
+
+_SAMPLE_INPUT = INPUT.parent / "owner_occupier_building_sample.json"
+
+_RENODAT_INPUTS = [INPUT]
+if _SAMPLE_INPUT.exists():
+    _RENODAT_INPUTS.append(_SAMPLE_INPUT)
 
 
 # ---------------------------------------------------------------------------
@@ -47,19 +58,28 @@ def xsd_schema():
     return load_schema()
 
 
-@pytest.fixture(scope="session")
-def renodat_model():
-    return generate_city_model(INPUT)
+@pytest.fixture(
+    scope="module",
+    params=_RENODAT_INPUTS,
+    ids=[p.stem for p in _RENODAT_INPUTS],
+)
+def building_input_path(request):
+    return request.param
 
 
-@pytest.fixture(scope="session")
-def renodat_xml(renodat_model):
-    return renodat_model.to_string()
+@pytest.fixture(scope="module")
+def reference_building_model(building_input_path):
+    return generate_city_model(building_input_path)
 
 
-@pytest.fixture(scope="session")
-def renodat_root(renodat_xml):
-    return etree.fromstring(renodat_xml.encode("utf-8"))
+@pytest.fixture(scope="module")
+def reference_building_xml(reference_building_model):
+    return reference_building_model.to_string()
+
+
+@pytest.fixture(scope="module")
+def reference_building_root(reference_building_xml):
+    return etree.fromstring(reference_building_xml.encode("utf-8"))
 
 
 # ---------------------------------------------------------------------------
@@ -67,9 +87,9 @@ def renodat_root(renodat_xml):
 # ---------------------------------------------------------------------------
 
 
-def test_generated_validates_against_xsd(xsd_schema, renodat_root):
-    """The full RenoDAT output validates against the XSD schema set."""
-    xsd_schema.assertValid(renodat_root)
+def test_generated_validates_against_xsd(xsd_schema, reference_building_root):
+    """The full per-building pipeline output validates against the XSD schema set."""
+    xsd_schema.assertValid(reference_building_root)
 
 
 # ---------------------------------------------------------------------------
@@ -81,45 +101,45 @@ def test_generated_validates_against_xsd(xsd_schema, renodat_root):
 # ---------------------------------------------------------------------------
 
 
-def test_single_building_as_city_object_member(renodat_root):
+def test_single_building_as_city_object_member(reference_building_root):
     """The input has one building; it must appear as one cityObjectMember."""
-    buildings = renodat_root.findall("core:cityObjectMember/bldg:Building", NS)
+    buildings = reference_building_root.findall("core:cityObjectMember/bldg:Building", NS)
     assert len(buildings) == 1
 
 
-def test_all_devices_attached_to_building(renodat_root):
+def test_all_devices_attached_to_building(reference_building_root):
     """Input declares 3 devices (PV, HeatPump, EV); all must be nested under the building."""
-    devices = renodat_root.findall(".//bldg:Building/nrg3:device", NS)
+    devices = reference_building_root.findall(".//bldg:Building/nrg3:device", NS)
     assert len(devices) == 3
 
-    assert len(renodat_root.findall(".//nrg3:device/nrg3:PhotovoltaicCollector", NS)) == 1
-    assert len(renodat_root.findall(".//nrg3:device/nrg3:HeatPump", NS)) == 1
-    assert len(renodat_root.findall(".//nrg3:device/nrg3:EVChargingStation", NS)) == 1
+    assert len(reference_building_root.findall(".//nrg3:device/nrg3:PhotovoltaicCollector", NS)) == 1
+    assert len(reference_building_root.findall(".//nrg3:device/nrg3:HeatPump", NS)) == 1
+    assert len(reference_building_root.findall(".//nrg3:device/nrg3:EVChargingStation", NS)) == 1
 
 
-def test_occupants_attached_to_building(renodat_root):
+def test_occupants_attached_to_building(reference_building_root):
     """Input declares 1 Occupants feature; it must be nested under the building."""
-    occupants = renodat_root.findall(".//bldg:Building/nrg3:occupiedBy/nrg3:Occupants", NS)
+    occupants = reference_building_root.findall(".//bldg:Building/nrg3:occupiedBy/nrg3:Occupants", NS)
     assert len(occupants) == 1
 
 
-def test_zone_with_two_heated_zone_parts(renodat_root):
+def test_zone_with_two_heated_zone_parts(reference_building_root):
     """Input declares 1 Zone with 2 conditioned ZoneParts.
 
     The attic ZonePart was removed from the input because it is neither
     heated nor cooled, and the EnergyADE model does not require listing
     unconditioned spaces.
     """
-    zones = renodat_root.findall(".//bldg:Building/nrg3:zone//nrg3:Zone", NS)
+    zones = reference_building_root.findall(".//bldg:Building/nrg3:zone//nrg3:Zone", NS)
     assert len(zones) == 1
 
     zone_parts = zones[0].findall("nrg3:zonePart/nrg3:ZonePart", NS)
     assert len(zone_parts) == 2
 
 
-def test_heating_and_cooling_schedules_on_zone_parts(renodat_root):
+def test_heating_and_cooling_schedules_on_zone_parts(reference_building_root):
     """Both conditioned zone parts carry a heating and a cooling schedule."""
-    zone_parts = renodat_root.findall(".//nrg3:Zone/nrg3:zonePart/nrg3:ZonePart", NS)
+    zone_parts = reference_building_root.findall(".//nrg3:Zone/nrg3:zonePart/nrg3:ZonePart", NS)
     assert len(zone_parts) == 2
 
     parts_with_heating = [
@@ -132,20 +152,20 @@ def test_heating_and_cooling_schedules_on_zone_parts(renodat_root):
     assert len(parts_with_cooling) == 2
 
 
-def test_energy_resources_attached_to_devices(renodat_root):
+def test_energy_resources_attached_to_devices(reference_building_root):
     """Input declares 2 Energy resources: one on the EV, one on the PV."""
-    ev_resources = renodat_root.findall(".//nrg3:EVChargingStation/nrg3:resource/nrg3:Energy", NS)
+    ev_resources = reference_building_root.findall(".//nrg3:EVChargingStation/nrg3:resource/nrg3:Energy", NS)
     assert len(ev_resources) == 1
 
-    pv_resources = renodat_root.findall(
+    pv_resources = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector/nrg3:resource/nrg3:Energy", NS
     )
     assert len(pv_resources) == 1
 
 
-def test_monthly_time_series_on_pv_energy(renodat_root):
+def test_monthly_time_series_on_pv_energy(reference_building_root):
     """The PV energy resource has a MonthlyTimeSeries for time-dependent production."""
-    ts = renodat_root.findall(
+    ts = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector//nrg3:Energy"
         "/nrg3:timeDependentAmount/nrg3:MonthlyTimeSeries",
         NS,
@@ -153,7 +173,7 @@ def test_monthly_time_series_on_pv_energy(renodat_root):
     assert len(ts) == 1
 
 
-def test_pv_has_two_installed_on_relations_from_json(renodat_root):
+def test_pv_has_two_installed_on_relations_from_json(reference_building_root):
     """PV panel array spans two roofs; both relations originate from the JSON.
 
     The input's ``installed_on: ["RoofSurface_01", "RoofSurface_02"]`` is
@@ -163,7 +183,7 @@ def test_pv_has_two_installed_on_relations_from_json(renodat_root):
     ``|parent=RoofSurface_02``, so a geometry-derived approach would emit
     only one relation). The two distinct hrefs prove the JSON path is live.
     """
-    relations = renodat_root.findall(
+    relations = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
     )
     assert len(relations) == 2
@@ -180,13 +200,13 @@ def test_pv_has_two_installed_on_relations_from_json(renodat_root):
     assert all(h and h.startswith("#") for h in hrefs)
 
 
-def test_pv_installed_on_resolves_to_real_roof_surfaces(renodat_root):
+def test_pv_installed_on_resolves_to_real_roof_surfaces(reference_building_root):
     """Every installedOn href must point to an existing RoofSurface element."""
     roof_ids = {
         roof.get("{http://www.opengis.net/gml}id")
-        for roof in renodat_root.findall(".//bldg:boundedBy/bldg:RoofSurface", NS)
+        for roof in reference_building_root.findall(".//bldg:boundedBy/bldg:RoofSurface", NS)
     }
-    relations = renodat_root.findall(
+    relations = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
     )
     for rel in relations:
@@ -197,9 +217,9 @@ def test_pv_installed_on_resolves_to_real_roof_surfaces(renodat_root):
         )
 
 
-def test_geometry_imported_from_step(renodat_root):
+def test_geometry_imported_from_step(reference_building_root):
     """Input has STEP files for LOD0-3; the building must have geometry at each level."""
-    building = renodat_root.find("core:cityObjectMember/bldg:Building", NS)
+    building = reference_building_root.find("core:cityObjectMember/bldg:Building", NS)
 
     # LOD0 footprint
     assert building.find("bldg:lod0FootPrint", NS) is not None
@@ -207,27 +227,34 @@ def test_geometry_imported_from_step(renodat_root):
     # LOD1 solid
     assert building.find("bldg:lod1Solid", NS) is not None
 
-    # LOD2+3 boundary surfaces (walls, roofs, ground)
-    bounded = building.findall("bldg:boundedBy", NS)
-    assert len(bounded) > 0
+    # LOD2+3 boundary surfaces. A real building must have at least one of
+    # each semantic category; ``len > 0`` alone would survive a refactor
+    # that drops two of the three types. Check categories explicitly.
+    wall_surfaces = building.findall("bldg:boundedBy/bldg:WallSurface", NS)
+    roof_surfaces = building.findall("bldg:boundedBy/bldg:RoofSurface", NS)
+    ground_surfaces = building.findall("bldg:boundedBy/bldg:GroundSurface", NS)
+    assert wall_surfaces, "Building has no WallSurface after STEP import"
+    assert roof_surfaces, "Building has no RoofSurface after STEP import"
+    assert ground_surfaces, "Building has no GroundSurface after STEP import"
 
     # Zone parts have lod3Solid from STEP files (attic ZonePart was removed
     # from the input because it is unconditioned).
-    zone_parts = renodat_root.findall(".//nrg3:ZonePart", NS)
+    zone_parts = reference_building_root.findall(".//nrg3:ZonePart", NS)
     parts_with_solid = [zp for zp in zone_parts if zp.find("nrg3:lod3Solid", NS) is not None]
     assert len(parts_with_solid) == 2
 
 
-def test_pv_has_lod2_and_lod3_geometry(renodat_root):
+def test_pv_has_lod2_and_lod3_geometry(reference_building_root):
     """The PV collector carries geometry at both LoD 2 and LoD 3.
 
     LoD 2 is the aggregated "whole array" surface (one polygon), exported
     from Rhino as a single unnamed shell. LoD 3 is the individually-panelled
     representation (one polygon per physical panel). Both arrive via STEP
     imports and both attach to the same PhotovoltaicCollector, so a reader
-    that understands only one LoD still sees the array.
+    that understands only one LoD still sees the array. The absolute panel
+    count depends on the STEP file and is intentionally not asserted here.
     """
-    pv = renodat_root.find(".//nrg3:PhotovoltaicCollector", NS)
+    pv = reference_building_root.find(".//nrg3:PhotovoltaicCollector", NS)
     assert pv is not None
 
     lod2 = pv.find("nrg3:lod2MultiSurface", NS)
@@ -240,8 +267,8 @@ def test_pv_has_lod2_and_lod3_geometry(renodat_root):
     lod3 = pv.find("nrg3:lod3MultiSurface", NS)
     assert lod3 is not None, "PV must carry lod3MultiSurface (per-panel array)"
     lod3_polys = lod3.findall(".//gml:Polygon", NS)
-    assert len(lod3_polys) == 36, (
-        f"LoD 3 PV must carry one polygon per panel (36), got {len(lod3_polys)}"
+    assert len(lod3_polys) > len(lod2_polys), (
+        "LoD 3 PV must carry more polygons than LoD 2 (one per physical panel)"
     )
 
 
@@ -274,29 +301,51 @@ def test_multiple_buildings_validate_against_xsd(xsd_schema):
 # ---------------------------------------------------------------------------
 
 
-def test_generated_has_envelope_with_crs(renodat_root):
+def test_generated_has_envelope_with_crs(reference_building_root):
     """The gml:Envelope carries srsName and srsDimension (needed by CityGML readers)."""
-    envelope = renodat_root.find(".//gml:Envelope", NS)
+    envelope = reference_building_root.find(".//gml:Envelope", NS)
     assert envelope is not None, "Missing gml:Envelope"
     assert "srsName" in envelope.attrib
     assert envelope.attrib["srsDimension"] == "3"
 
 
-def test_geometry_elements_have_srs(renodat_root):
-    """All gml:MultiSurface elements carry srsName and srsDimension."""
-    multi_surfaces = renodat_root.findall(".//gml:MultiSurface", NS)
-    assert len(multi_surfaces) > 0
+def test_geometry_elements_have_srs(reference_building_root):
+    """All gml:MultiSurface elements carry srsName and srsDimension.
+
+    Anchors on a concrete lower bound derived from the fixture's structure
+    (at least one multi-surface per boundary surface), so the for-loop
+    cannot pass vacuously when the count regresses to zero.
+    """
+    multi_surfaces = reference_building_root.findall(".//gml:MultiSurface", NS)
+    bounded_surfaces = reference_building_root.findall(
+        ".//bldg:Building/bldg:boundedBy/*", NS
+    )
+    assert len(multi_surfaces) >= len(bounded_surfaces), (
+        f"expected >= {len(bounded_surfaces)} MultiSurface elements "
+        f"(one per boundary surface), got {len(multi_surfaces)}"
+    )
     for ms in multi_surfaces:
         assert "srsName" in ms.attrib, f"Missing srsName on {ms.attrib}"
         assert "srsDimension" in ms.attrib, f"Missing srsDimension on {ms.attrib}"
 
 
-def test_no_scientific_notation_in_coordinates(renodat_root):
-    """Coordinate values must not contain scientific notation (breaks many CityGML readers)."""
-    for pos_list in renodat_root.findall(".//gml:posList", NS):
-        text = pos_list.text or ""
-        for token in text.split():
-            assert "e" not in token.lower(), f"Scientific notation found in coordinates: {token}"
+def test_coordinates_are_fixed_point_decimals(reference_building_root):
+    """Every ordinate is a plain fixed-point decimal, not scientific notation.
+
+    Some CityGML readers choke on ``1.23e-5``-style tokens. The emitter
+    quantises to a micrometre grid before serialisation, so sub-um FP
+    residuals collapse to zero and every ordinate stays in decimal form.
+    """
+    for pos_list in reference_building_root.findall(".//gml:posList", NS):
+        for token in (pos_list.text or "").split():
+            assert "e" not in token.lower(), (
+                f"Coordinate emitted in scientific notation: {token!r}"
+            )
+    for pos in reference_building_root.findall(".//gml:pos", NS):
+        for token in (pos.text or "").split():
+            assert "e" not in token.lower(), (
+                f"Coordinate emitted in scientific notation: {token!r}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -304,7 +353,7 @@ def test_no_scientific_notation_in_coordinates(renodat_root):
 # ---------------------------------------------------------------------------
 
 
-def test_renodat_input_rejects_unknown_feature_type():
+def test_building_input_rejects_unknown_feature_type():
     data = load_feature_collection(INPUT)
     invalid_data = deepcopy(data)
     invalid_data["features"][0]["type"] = "nrg3:NotSupported"
@@ -313,7 +362,7 @@ def test_renodat_input_rejects_unknown_feature_type():
         build_city_model_from_feature_collection(invalid_data)
 
 
-def test_renodat_input_rejects_missing_geometry_source_target():
+def test_building_input_rejects_missing_geometry_source_target():
     data = load_feature_collection(INPUT)
     invalid_data = deepcopy(data)
     invalid_data["geometry_sources"][0]["target_building_id"] = "missing_building"
@@ -322,7 +371,7 @@ def test_renodat_input_rejects_missing_geometry_source_target():
         build_city_model_from_feature_collection(invalid_data)
 
 
-def test_renodat_input_rejects_missing_geometry_source_file():
+def test_building_input_rejects_missing_geometry_source_file():
     data = load_feature_collection(INPUT)
     invalid_data = deepcopy(data)
     invalid_data["geometry_sources"][0]["path"] = "../does_not_exist.stp"
@@ -334,7 +383,7 @@ def test_renodat_input_rejects_missing_geometry_source_file():
         )
 
 
-def test_renodat_input_rejects_unresolved_installed_on():
+def test_building_input_rejects_unresolved_installed_on():
     """``installed_on`` referencing a nonexistent surface must fail loudly.
 
     Silent no-op would let JSON typos slip past as missing relations that

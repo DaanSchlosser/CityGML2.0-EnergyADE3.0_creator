@@ -3,7 +3,7 @@
 Covers the tricky bits (comment stripping, multi-line entities, complex
 entity skipping, quoted-string handling, coordinate offset, origin of
 ``SHELL_BASED_SURFACE_MODEL`` vs. ``MANIFOLD_SOLID_BREP``) without
-depending on Rhino or a full RenoDAT file.
+depending on Rhino or a full per-building STEP file.
 """
 
 from __future__ import annotations

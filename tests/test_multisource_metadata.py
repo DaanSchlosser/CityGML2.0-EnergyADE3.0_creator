@@ -5,14 +5,16 @@ sources with different values" is a repeated element rather than a custom
 wrapper (``nrg3:bdgArea`` is ``maxOccurs="unbounded"``, and each
 ``QualifiedArea`` carries its own ``description`` / ``source`` /
 ``value`` / ``type`` code via ``AbstractQualifiedAttributeType``). These
-tests guard that the reference RenoDAT input exercises this encoding
-correctly and that the build→serialize pipeline preserves the source and
+tests guard that the reference-building input exercises this encoding
+correctly and that the build->serialize pipeline preserves the source and
 value of each entry.
 
 XSD validity of the full document is already covered by
-``test_renodat_reference.py``; this file focuses on the multi-source
+``test_reference_building.py``; this file focuses on the multi-source
 invariants an XSD cannot enforce: two entries with the same ``type`` but
-different ``source`` and ``value`` must survive the round-trip.
+different ``source`` and ``value`` must survive the round-trip. Tests are
+value-agnostic: the JSON's actual numeric areas and source names are
+never pinned -- only that distinctness and structure are preserved.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ import lxml.etree as etree
 import pytest
 
 from citygml_energy import generate_city_model
-from examples.create_renodat import INPUT
+from examples.create_building import INPUT
 
 NS = {
     "bldg": "http://www.opengis.net/citygml/building/2.0",
@@ -30,11 +32,21 @@ NS = {
     "nrg3": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
 }
 
+_SAMPLE_INPUT = INPUT.parent / "owner_occupier_building_sample.json"
 
-@pytest.fixture(scope="module")
-def building():
-    """Parsed ``bldg:Building`` element from the reference RenoDAT output."""
-    model = generate_city_model(INPUT)
+_RENODAT_INPUTS = [INPUT]
+if _SAMPLE_INPUT.exists():
+    _RENODAT_INPUTS.append(_SAMPLE_INPUT)
+
+
+@pytest.fixture(
+    scope="module",
+    params=_RENODAT_INPUTS,
+    ids=[p.stem for p in _RENODAT_INPUTS],
+)
+def building(request):
+    """Parsed ``bldg:Building`` element from an owner-occupier output."""
+    model = generate_city_model(request.param)
     root = etree.fromstring(model.to_string().encode("utf-8"))
     (bldg,) = root.findall("core:cityObjectMember/bldg:Building", NS)
     return bldg
@@ -55,7 +67,8 @@ def test_diverging_gfa_entries_preserve_distinct_source_and_value(building):
     This is the core multi-source claim: repeating the ``bdgArea`` element
     with the same ``type`` code but different sources is the correct
     encoding, and neither entry may collapse into the other during build
-    or serialization.
+    or serialization. The specific numeric areas are not asserted -- only
+    that both sides of the divergence survive.
     """
     gfa_entries = _qualified_areas_by_type(building, "grossFloorArea")
     assert len(gfa_entries) == 2
@@ -71,7 +84,8 @@ def test_diverging_gfa_entries_preserve_distinct_source_and_value(building):
 
     assert len(set(sources)) == 2, f"sources must differ, got {sources}"
     assert len(set(values)) == 2, f"values must differ, got {values}"
-    assert sorted(values) == pytest.approx([119.6, 122.0])
+    for value in values:
+        assert value > 0, f"area must be a positive magnitude, got {value}"
 
 
 def test_nfa_rides_in_its_own_bdg_area_entry(building):
@@ -80,7 +94,7 @@ def test_nfa_rides_in_its_own_bdg_area_entry(building):
     assert len(nfa_entries) == 1
     value = nfa_entries[0].find("nrg3:value", NS)
     assert value.get("uom") == "m2"
-    assert float(value.text) == pytest.approx(104.2)
+    assert float(value.text) > 0
 
 
 def test_qualified_area_type_code_carries_codespace(building):
@@ -101,13 +115,14 @@ def test_feature_metadata_documents_the_divergence(building):
     Not into a ``<nrg3:metadata>`` wrapper; the XSD uses
     ``substitutionGroup="gml:metaDataProperty"`` on the ``<Metadata>``
     element declaration, so the element appears at top level on any
-    gml:AbstractFeature. Guards the XPath shape plus the content that
-    explains *why* the two GFA values diverge.
+    gml:AbstractFeature. Guards the XPath shape and that a non-empty
+    ``qualityDescription`` survives; the specific narrative text is an
+    input-level concern, not a pipeline invariant.
     """
     metas = building.findall("nrg3:Metadata", NS)
     assert len(metas) == 1, (
         "Metadata must appear as a direct child of Building (substitutes "
         "into gml:metaDataProperty), not inside a <nrg3:metadata> wrapper"
     )
-    quality = metas[0].find("nrg3:qualityDescription", NS).text
-    assert "BAG" in quality and "3D" in quality
+    quality = metas[0].find("nrg3:qualityDescription", NS)
+    assert quality is not None and quality.text and quality.text.strip()
