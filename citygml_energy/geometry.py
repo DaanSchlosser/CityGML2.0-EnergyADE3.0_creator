@@ -32,8 +32,10 @@ Domain knowledge still encoded here:
 
 * STEP layer-naming conventions (``WallSurface_1``, ``Window_2``,
   ``SolarPanelSurface_1``, optional ``lod3_`` prefix, ``|parent=...``
-  suffix). This is the RenoDAT authoring convention and is expressed as
-  configuration (:data:`_SOLAR_PANEL_PREFIX`, :func:`_strip_lod_prefix`).
+  suffix). This is an ad-hoc authoring convention (originated with the
+  Rhino-exported owner-occupier reference building in this repo);
+  alternatives are expressed as configuration
+  (:data:`_SOLAR_PANEL_PREFIX`, :func:`_strip_lod_prefix`).
 * The set of supported JSON geometry-source types: see
   :data:`GEOMETRY_SOURCE_SPECS`. Adding a new source type only requires
   registering a spec; the input loader and the JSON-schema generator both
@@ -50,12 +52,6 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from ._gml_builders import (
-    build_envelope,
-    build_multi_surface,
-    build_solid,
-    open_ring,
-)
 from ._step import (
     Coord3D,
     GeometryPolygon,
@@ -63,33 +59,35 @@ from ._step import (
     parse_all_polygons,
     parse_named_shells,
 )
-from .bindings import (
-    AbstractCityObjectPropertyType,
-    CityObjectRelation,
-    CodeType,
-    Envelope,
-    RelatedTo,
-)
+from .bindings import Envelope
+from .construction_mapping import apply_construction_mapping  # re-exported
 from .core import CityModel
-from .mapping import get_fields, iter_instances, resolve_class
+from .device_relations import (  # re-exported; also sole source of _index_features
+    DEFAULT_INSTALLED_ON_RELATION,
+    _index_features,
+    apply_device_relations,
+)
+from .gml_builders import (
+    build_envelope,
+    build_multi_surface,
+    build_solid,
+    open_ring,
+)
+from .mapping import get_fields, resolve_class
 from .namespaces import (
-    CS_NRG3_RELATION_TYPE,
     DEFAULT_SRS_DIMENSION,
     DEFAULT_SRS_NAME,
 )
-from .schema_types import (
-    BUILDING,
-    LAYERED_CONSTRUCTION,
-    PHOTOVOLTAIC_COLLECTOR,
-    ZONE_PART,
-)
+from .schema_types import BUILDING, PHOTOVOLTAIC_COLLECTOR, ZONE_PART
 
 # ---------------------------------------------------------------------------
-# STEP layer naming convention (RenoDAT default, overridable per source)
+# STEP layer naming convention (owner-occupier authoring default,
+# overridable per source)
 # ---------------------------------------------------------------------------
 _LOD_PREFIX_RE = re.compile(r"^lod\d+(?:\.\d+)?_", re.IGNORECASE)
 DEFAULT_SOLAR_PANEL_PREFIX = "SolarPanelSurface_"
-DEFAULT_INSTALLED_ON_RELATION = "installedOn"
+# ``DEFAULT_INSTALLED_ON_RELATION`` is imported above from :mod:`.device_relations`
+# and re-exported at the module top for back-compat; no redefinition here.
 
 _FEATURE_KIND_SURFACE = "surface"
 _FEATURE_KIND_OPENING = "opening"
@@ -188,11 +186,11 @@ class GeometrySourceSpec:
 
     The input loader uses :attr:`target_fields` to validate each source;
     :func:`apply_geometry_sources` uses :attr:`handler` to know which
-    routine to dispatch to. :attr:`solar_panel_prefix` lets non-RenoDAT
-    callers rename the STEP layer prefix that triggers solar-panel
-    handling. Device-to-surface ``installedOn`` relations are declared
-    in the JSON input, not derived from STEP naming
-    (see :func:`apply_device_relations`).
+    routine to dispatch to. :attr:`solar_panel_prefix` lets callers that
+    follow a different STEP-layer convention rename the prefix that
+    triggers solar-panel handling. Device-to-surface ``installedOn``
+    relations are declared in the JSON input, not derived from STEP
+    naming (see :func:`apply_device_relations`).
     """
 
     source_type: str
@@ -214,8 +212,8 @@ _ZONEPART_TARGET = TargetFieldSpec(xsd_type=ZONE_PART, required=True)
 def _build_source_specs() -> dict[str, GeometrySourceSpec]:
     specs: dict[str, GeometrySourceSpec] = {}
     for lod in range(5):
-        specs[f"step-renodat-lod{lod}"] = GeometrySourceSpec(
-            source_type=f"step-renodat-lod{lod}",
+        specs[f"step-building-lod{lod}"] = GeometrySourceSpec(
+            source_type=f"step-building-lod{lod}",
             lod_level=lod,
             target_fields={
                 "target_building_id": _BUILDING_TARGET,
@@ -236,7 +234,7 @@ def _build_source_specs() -> dict[str, GeometrySourceSpec]:
 
 
 GEOMETRY_SOURCE_SPECS: dict[str, GeometrySourceSpec] = _build_source_specs()
-"""Registry keyed by ``source_type`` (e.g. ``"step-renodat-lod3"``)."""
+"""Registry keyed by ``source_type`` (e.g. ``"step-building-lod3"``)."""
 
 SUPPORTED_GEOMETRY_SOURCE_TYPES: frozenset[str] = frozenset(GEOMETRY_SOURCE_SPECS)
 """Public allowlist consumed by the input loader; derived from the specs."""
@@ -375,120 +373,15 @@ def apply_geometry_sources(
         )
 
 
-def _index_features(model: CityModel) -> dict[str, Any]:
-    """Build ``{gml:id → object}`` for every indexable feature under *model*."""
-    index: dict[str, Any] = {}
-    for obj in iter_instances(model.xsd):
-        gml_id = getattr(obj, "id", None)
-        if isinstance(gml_id, str) and gml_id:
-            # First occurrence wins. XSD requires ids to be unique, so
-            # collisions would surface at serialization; we don't second-guess
-            # the input here.
-            index.setdefault(gml_id, obj)
-    return index
-
-
-def apply_device_relations(
-    model: CityModel,
-    device_relations: dict[str, list[str]],
-    *,
-    relation_type: str = DEFAULT_INSTALLED_ON_RELATION,
-) -> None:
-    """Emit ``nrg3:CityObjectRelation`` entries from JSON-declared targets.
-
-    *device_relations* maps a device's ``gml:id`` (e.g. ``"pv_panel_1"``)
-    to a list of surface references. Each reference is first looked up in
-    :attr:`CityModel.surface_name_index` (so author-facing STEP layer
-    names like ``"RoofSurface_01"`` work), then falls back to the
-    gml:id-keyed feature index, meaning JSON may cite any indexable
-    ``gml:id`` directly too.
-
-    Unresolved references raise :class:`ValueError` to fail loudly rather
-    than emit a dangling xlink:href. Devices that are themselves
-    unresolved also raise, because a silent no-op here would make typos
-    in the JSON invisible until someone checks the GML by hand.
-
-    The default *relation_type* is ``installedOn`` (the EnergyADE 3.0
-    codelist value for device-on-surface placement); callers needing
-    other relation semantics pass a different code.
-    """
-    if not device_relations:
-        return
-
-    feature_index = _index_features(model)
-    surface_name_index = model.surface_name_index
-
-    for device_id, targets in device_relations.items():
-        device = feature_index.get(device_id)
-        if device is None:
-            raise ValueError(
-                f"apply_device_relations: device {device_id!r} not found in model; "
-                f"installed_on references an unknown feature id"
-            )
-        if not hasattr(device, "related_to"):
-            raise ValueError(
-                f"apply_device_relations: feature {device_id!r} "
-                f"({type(device).__name__}) has no 'related_to' field; "
-                f"the XSD does not permit ADE relations on this type"
-            )
-
-        for target_ref in targets:
-            target_gml_id = surface_name_index.get(target_ref) or (
-                target_ref if target_ref in feature_index else None
-            )
-            if target_gml_id is None:
-                known = ", ".join(sorted(surface_name_index)) or "(none attached yet)"
-                raise ValueError(
-                    f"apply_device_relations: target {target_ref!r} for "
-                    f"{device_id!r} could not be resolved to any attached "
-                    f"surface or indexed gml:id. Known STEP surface names: {known}"
-                )
-            device.related_to.append(
-                RelatedTo(
-                    city_object_relation=CityObjectRelation(
-                        relation_type=CodeType(
-                            value=relation_type,
-                            code_space=CS_NRG3_RELATION_TYPE,
-                        ),
-                        related_to=_make_city_object_ref(target_gml_id),
-                    ),
-                )
-            )
-
-
-def apply_construction_mapping(
-    model: CityModel,
-    mapping: dict[str, Any],
-) -> None:
-    """Append ``nrg3:layeredConstruction`` references wherever the XSD permits them.
-
-    Traverses the entire ``CityModel`` and, for each dataclass instance
-    that carries a ``layered_construction`` *list* field (per the generated
-    bindings), resolves a construction ID via ``by_id`` (keyed by
-    ``gml:id``) or falls back to ``by_type`` (keyed by the class's XSD
-    element name). A ``LayeredConstruction2`` xlink:href is appended when
-    a mapping is found.
-
-    Scope is therefore determined by the bindings, not by hand-maintained
-    taxonomy: boundary surfaces, openings, zone boundaries, and any other
-    class the XSD gives ``layered_construction`` receive matching mappings
-    without code changes. The caller is responsible for keeping the mapping
-    keys semantically appropriate for its domain.
-    """
-    by_type: dict[str, str] = mapping.get("by_type", {})
-    by_id: dict[str, str] = mapping.get("by_id", {})
-
-    for obj in iter_instances(model.xsd):
-        construction_list = _layered_construction_list(obj)
-        if construction_list is None:
-            continue
-        constr_id = _resolve_construction_id(obj, by_id, by_type)
-        if constr_id is not None:
-            construction_list.append(_make_construction_ref(constr_id))
-
-
 # ---------------------------------------------------------------------------
 # Per-source-type dispatch
+#
+# ``apply_device_relations`` and ``apply_construction_mapping`` used to
+# live here; they now sit in their own modules (:mod:`.device_relations`
+# and :mod:`.construction_mapping`) and are re-imported at the top of
+# this file so the public API (``from .geometry import
+# apply_device_relations, apply_construction_mapping``) is preserved
+# for existing callers.
 # ---------------------------------------------------------------------------
 
 
@@ -499,7 +392,7 @@ def _apply_building_source(
     step_path: Path,
     source: dict[str, Any],
 ) -> list[Coord3D]:
-    """Handle one ``step-renodat-lod{0..4}`` source."""
+    """Handle one ``step-building-lod{0..4}`` source."""
     target_building_id = str(source["target_building_id"])
     target_pv_id = (
         str(source["target_pv_id"]) if source.get("target_pv_id") is not None else None
@@ -683,7 +576,8 @@ def _classify_shell(
     # ``opening`` field. All surface classes in the same wrapper share the
     # same opening wrapper type, so we grab the first one.
     for entry in surface_map.values():
-        opening_wrapper = _discover_wrapper(entry.element_cls, "opening")
+        # mypy stub for ``_lru_cache_wrapper`` rejects ``type[Any]``; safe.
+        opening_wrapper = _discover_wrapper(entry.element_cls, "opening")  # type: ignore[arg-type]
         if opening_wrapper is None:
             continue
         opening_map = _discover_property_map(opening_wrapper)
@@ -858,7 +752,8 @@ def _attach_pending_openings(
                 )
             },
         )
-        opening_wrapper = _discover_wrapper(type(parent_surface), "opening")
+        # mypy stub for ``_lru_cache_wrapper`` rejects ``type[Any]``; safe.
+        opening_wrapper = _discover_wrapper(type(parent_surface), "opening")  # type: ignore[arg-type]
         if opening_wrapper is None:
             raise RuntimeError(
                 f"{type(parent_surface).__name__} has no 'opening' field; "
@@ -964,67 +859,8 @@ def _set_envelope(model: CityModel, envelope: Envelope) -> None:
     model.set_envelope(envelope)
 
 
-# ---------------------------------------------------------------------------
-# Construction mapping helpers
-# ---------------------------------------------------------------------------
-
-
-@cache
-def _layered_construction_ref_cls() -> type:
-    """Resolve the ``nrg3:layeredConstruction`` property-type wrapper once."""
-    return resolve_class(LAYERED_CONSTRUCTION)
-
-
-def _make_construction_ref(construction_id: str) -> Any:
-    """Build an xlink:href wrapper pointing at a LayeredConstruction library entry."""
-    return _layered_construction_ref_cls()(href=f"#{construction_id}")
-
-
-def _layered_construction_list(obj: Any) -> list[Any] | None:
-    """Return the ``layered_construction`` list on *obj* if present.
-
-    Also verifies the list's element type matches the
-    ``nrg3:layeredConstruction`` wrapper. The field name alone isn't
-    enough because unrelated xsdata classes could theoretically reuse it.
-    """
-    info = get_fields(type(obj)).get("layered_construction")
-    if info is None or not info.is_list:
-        return None
-    if info.inner_type is not _layered_construction_ref_cls():
-        return None
-    value = getattr(obj, "layered_construction", None)
-    return value if isinstance(value, list) else None
-
-
-def _resolve_construction_id(
-    obj: Any,
-    by_id: dict[str, str],
-    by_type: dict[str, str],
-) -> str | None:
-    gml_id = getattr(obj, "id", None)
-    if isinstance(gml_id, str) and gml_id in by_id:
-        return by_id[gml_id]
-    type_name = _xsd_type_name(type(obj))
-    if type_name and type_name in by_type:
-        return by_type[type_name]
-    return None
-
-
-def _xsd_type_name(cls: type) -> str | None:
-    """Return the class's XSD element name (``Meta.name`` or class name)."""
-    meta = getattr(cls, "Meta", None)
-    if meta is None:
-        return None
-    return getattr(meta, "name", None) or cls.__name__
-
-
-# ---------------------------------------------------------------------------
-# Feature lookup
-# ---------------------------------------------------------------------------
-
-
-def _make_city_object_ref(gml_id: str) -> AbstractCityObjectPropertyType:
-    return AbstractCityObjectPropertyType(href=f"#{gml_id}")
+# Construction-mapping and feature-lookup helpers now live in
+# :mod:`.construction_mapping` and :mod:`.device_relations` respectively.
 
 
 __all__ = [
