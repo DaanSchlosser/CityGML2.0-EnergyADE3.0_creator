@@ -59,6 +59,21 @@ __all__ = [
 ]
 
 
+# Coordinates originate from lidar / photogrammetry at cm-accuracy at best.
+# Emitting floats with 14+ significant digits advertises a precision the
+# data doesn't have, and values that should be exactly zero (e.g.
+# STEP round-trip residuals of order 1e-14) serialise as scientific
+# notation, which some CityGML readers reject. Quantising to a micrometre
+# grid at emission time addresses both: every ordinate becomes a plain
+# fixed-point decimal, and sub-micrometre FP noise collapses to 0.
+_COORD_DECIMALS = 6
+
+
+def _q(value: float) -> float:
+    """Quantise an ordinate to the output grid (1 um on real inputs)."""
+    return round(value, _COORD_DECIMALS)
+
+
 # ---------------------------------------------------------------------------
 # GML object builders
 # ---------------------------------------------------------------------------
@@ -172,7 +187,7 @@ def build_multi_point(
     members = []
     for index, coords in enumerate(points, start=1):
         padded = list(coords) + [0.0] * max(0, srs_dimension - len(coords))
-        padded = padded[:srs_dimension]
+        padded = [_q(v) for v in padded[:srs_dimension]]
         members.append(
             PointMember(
                 point=Point(
@@ -224,10 +239,10 @@ def build_envelope(
             max_z = z
     return Envelope(
         lower_corner=DirectPositionType(
-            value=[min_x, min_y, min_z], srs_dimension=srs_dimension
+            value=[_q(min_x), _q(min_y), _q(min_z)], srs_dimension=srs_dimension
         ),
         upper_corner=DirectPositionType(
-            value=[max_x, max_y, max_z], srs_dimension=srs_dimension
+            value=[_q(max_x), _q(max_y), _q(max_z)], srs_dimension=srs_dimension
         ),
         srs_name=srs_name,
         srs_dimension=srs_dimension,
@@ -253,9 +268,9 @@ def flatten_ring(ring: list[Coord3D]) -> list[float]:
     if not ring:
         raise ValueError("Geometry rings must contain at least one coordinate")
     if points_close(ring[0], ring[-1]):
-        return list(chain.from_iterable(ring))
+        return [_q(v) for v in chain.from_iterable(ring)]
     # Closed form: append the first point to the tail via chain, no copy.
-    return list(chain.from_iterable(ring)) + list(ring[0])
+    return [_q(v) for v in chain.from_iterable(ring)] + [_q(v) for v in ring[0]]
 
 
 def open_ring(ring: list[Coord3D]) -> list[Coord3D]:
