@@ -13,7 +13,7 @@ import enum
 import types
 import typing
 import warnings
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from functools import lru_cache
 from typing import Any, Union
 
@@ -121,7 +121,7 @@ def get_fields(cls: type) -> dict[str, FieldInfo]:
         if hint is None:
             continue
         is_list, inner = _unwrap_hint(hint)
-        meta = f.metadata or {}
+        meta: Mapping[str, Any] = f.metadata or {}
         xml_name = meta.get("name")
         is_attr = meta.get("type") == "Attribute"
         result[f.name] = FieldInfo(
@@ -323,11 +323,17 @@ def build_from_dict(cls: type, data: dict[str, Any]) -> Any:
                 f"Available fields: {', '.join(available[:30])}"
             )
 
-        if info.is_list:
-            items = raw_value if isinstance(raw_value, list) else [raw_value]
-            kwargs[info.name] = [_coerce(info.inner_type, item) for item in items]
-        else:
-            kwargs[info.name] = _coerce(info.inner_type, raw_value)
+        try:
+            if info.is_list:
+                items = raw_value if isinstance(raw_value, list) else [raw_value]
+                kwargs[info.name] = [_coerce(info.inner_type, item) for item in items]
+            else:
+                kwargs[info.name] = _coerce(info.inner_type, raw_value)
+        except (TypeError, ValueError) as exc:
+            # Re-raise with the offending field name prepended so upstream
+            # InputFileError messages stay actionable ("pv_panel_1.installed_power:
+            # ..." instead of just "could not convert string to float").
+            raise type(exc)(f"field {key!r}: {exc}") from exc
 
     return cls(**kwargs)
 

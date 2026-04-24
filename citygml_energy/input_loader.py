@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .core import CityModel
+from .errors import InputFileError
 from .geometry import (
     GEOMETRY_SOURCE_SPECS,
     SUPPORTED_GEOMETRY_SOURCE_TYPES,
@@ -24,6 +25,13 @@ from .geometry import (
 )
 from .mapping import attach_child, build_from_dict, resolve_class
 from .namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
+
+__all__ = [
+    "InputFileError",
+    "build_city_model_from_feature_collection",
+    "load_feature_collection",
+    "validate_feature_collection",
+]
 
 PathLike = str | Path
 
@@ -60,9 +68,21 @@ _ALLOWED_GEOMETRY_SOURCE_KEYS: frozenset[str] = frozenset(
     }
 )
 
-
-class InputFileError(ValueError):
-    """Raised when a JSON feature input file is invalid."""
+# Parent-type constraints. Keys are child feature type strings; values are
+# the set of feature type strings allowed as their ``parent``. Children not
+# listed here accept any parent type the attachment machinery finds a slot
+# for. Only add entries when the XSD's permissive ``issubclass`` match
+# diverges from EnergyADE's intended containment hierarchy -- otherwise we
+# duplicate schema knowledge that should live in the bindings.
+#
+# ``ZonePart`` is the canonical case: the XSD allows a ZonePart to slot
+# directly under ``bldg:Building`` via ``ZonePropertyType``, but the
+# Energy ADE 3.0 model specifies ``Building -> Zone -> ZonePart``. Silently
+# accepting a ZonePart with a Building parent produces output that passes
+# XSD validation but corrupts the thermal-zone hierarchy.
+_ALLOWED_PARENT_TYPES: dict[str, frozenset[str]] = {
+    "nrg3:ZonePart": frozenset({"nrg3:Zone"}),
+}
 
 
 def load_feature_collection(path: PathLike) -> dict[str, Any]:
@@ -142,6 +162,7 @@ def validate_feature_collection(
         feature_ids.add(gml_id)
         feature_types_by_id[gml_id] = feature["type"]
 
+    parent_edges: dict[str, str] = {}
     for index, feature in enumerate(features):
         parent_id = feature.get("parent")
         if parent_id is None:
@@ -154,6 +175,27 @@ def validate_feature_collection(
             raise InputFileError(
                 f"{source}: features[{index}].parent references missing id {parent_id!r}"
             )
+        gml_id = feature["id"].strip()
+        if parent_id == gml_id:
+            raise InputFileError(
+                f"{source}: features[{index}].parent {parent_id!r} points at itself"
+            )
+        child_type = feature["type"]
+        allowed_parents = _ALLOWED_PARENT_TYPES.get(child_type)
+        if allowed_parents is not None:
+            parent_type = feature_types_by_id[parent_id]
+            if parent_type not in allowed_parents:
+                raise InputFileError(
+                    f"{source}: features[{index}] ({child_type}) cannot have a "
+                    f"parent of type {parent_type!r}; allowed parent type(s): "
+                    f"{', '.join(sorted(allowed_parents))}"
+                )
+        parent_edges[gml_id] = parent_id
+
+    # Detect parent-chain cycles. Silent acceptance would let the builder
+    # recurse forever (or produce nonsense hierarchies); better to reject
+    # at the validator with a message naming the cycle.
+    _check_parent_cycles(parent_edges, source=source)
 
     geometry_sources = data.get("geometry_sources", [])
     if not isinstance(geometry_sources, list):
@@ -170,7 +212,11 @@ def validate_feature_collection(
         )
 
     if "construction_mapping" in data:
-        _validate_construction_mapping(data["construction_mapping"], source=source)
+        _validate_construction_mapping(
+            data["construction_mapping"],
+            features=features,
+            source=source,
+        )
 
     if "srs_name" in data:
         srs_name = data["srs_name"]
@@ -462,7 +508,60 @@ def _validate_geometry_target(
 _ALLOWED_CONSTRUCTION_MAPPING_KEYS = {"by_type", "by_id"}
 
 
-def _validate_construction_mapping(mapping: Any, *, source: str) -> None:
+def _collect_library_member_ids(features: list[Any]) -> set[str]:
+    """Return the set of ``id`` values inside every ``library_member`` entry.
+
+    LayeredConstruction / SolidMaterial / Gas ids live one level below the
+    library feature, so they do not appear in the top-level ``features`` id
+    set. We scan the nested ``library_member`` dicts to recover them and
+    cross-check every ``construction_mapping.by_id`` value against this
+    set, making a typo impossible to miss.
+    """
+    ids: set[str] = set()
+    for feature in features:
+        if not isinstance(feature, dict):
+            continue
+        members = feature.get("library_member")
+        if not isinstance(members, list):
+            continue
+        for member in members:
+            if not isinstance(member, dict):
+                continue
+            for nested in member.values():
+                if isinstance(nested, dict):
+                    member_id = nested.get("id")
+                    if isinstance(member_id, str) and member_id.strip():
+                        ids.add(member_id.strip())
+    return ids
+
+
+def _check_parent_cycles(edges: Mapping[str, str], *, source: str) -> None:
+    """Detect cycles in the parent-of relation.
+
+    Walks each start node along ``edges`` until it either terminates at a
+    root (no parent) or revisits a node already seen on the walk. The latter
+    is a cycle; since self-references are rejected upstream, any cycle here
+    is length >= 2.
+    """
+    for start in edges:
+        seen: list[str] = []
+        node: str | None = start
+        while node is not None:
+            if node in seen:
+                cycle = " -> ".join(seen[seen.index(node):] + [node])
+                raise InputFileError(
+                    f"{source}: cyclic parent relation detected: {cycle}"
+                )
+            seen.append(node)
+            node = edges.get(node)
+
+
+def _validate_construction_mapping(
+    mapping: Any,
+    *,
+    features: list[Any],
+    source: str,
+) -> None:
     if not isinstance(mapping, dict):
         raise InputFileError(f"{source}: construction_mapping must be an object")
 
@@ -489,6 +588,22 @@ def _validate_construction_mapping(mapping: Any, *, source: str) -> None:
                 raise InputFileError(
                     f"{source}: construction_mapping.{sub_key}[{k!r}] must be a non-empty string"
                 )
+
+    # Cross-check every referenced construction id against the library.
+    # A typo on the value side used to land silently: the mapping applier
+    # just skips surfaces whose resolved id isn't there, producing GML
+    # without a construction reference and no warning.
+    library_ids = _collect_library_member_ids(features)
+    if library_ids:
+        referenced = set(mapping.get("by_type", {}).values()) | set(
+            mapping.get("by_id", {}).values()
+        )
+        dangling = sorted(v for v in referenced if v not in library_ids)
+        if dangling:
+            raise InputFileError(
+                f"{source}: construction_mapping references unknown construction "
+                f"id(s) (no library_member declares these): {', '.join(dangling)}"
+            )
 
 
 def _resolve_geometry_source_paths(
