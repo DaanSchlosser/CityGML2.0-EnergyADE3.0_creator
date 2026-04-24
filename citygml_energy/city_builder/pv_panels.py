@@ -35,11 +35,11 @@ from __future__ import annotations
 import logging
 import math
 import sqlite3
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any
 
-from .._gml_builders import build_multi_surface, newell_normal
 from .._step import GeometryPolygon
 from ..bindings import (
     AbstractCityObjectPropertyType,
@@ -54,6 +54,7 @@ from ..bindings import (
     ReferencePoint,
     RelatedTo,
 )
+from ..gml_builders import build_multi_surface, newell_normal
 from ..namespaces import CS_NRG3_CELL_TYPE, CS_NRG3_RELATION_TYPE
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 
@@ -376,15 +377,18 @@ def match_and_project_panels(
 
 
 def _collect_roof_facets(
-    parsed_buildings: Iterable[ParsedBuilding], Polygon: Any
+    parsed_buildings: Iterable[ParsedBuilding], polygon_cls: Any
 ) -> list[_RoofFacet]:
     """Index every LoD 2 RoofSurface polygon as a 2D shapely Polygon.
 
     ``buffer(0)`` rescues self-intersecting source rings; facets that
     stay empty or non-polygonal after the heal are dropped. Passing
-    *Polygon* in as an argument avoids a second import dance at module
-    top level for an optional dependency.
+    *polygon_cls* (the ``shapely.geometry.Polygon`` class itself) in as
+    an argument avoids a second import dance at module top level for
+    an optional dependency.
     """
+    from shapely.errors import ShapelyError  # local; shapely is optional
+
     facets: list[_RoofFacet] = []
     for pb in parsed_buildings:
         for sp in pb.geometries.get("2") or ():
@@ -398,10 +402,11 @@ def _collect_roof_facets(
                 [(x, y) for (x, y, _z) in hole] for hole in sp.polygon.interiors
             ]
             try:
-                poly = Polygon(exterior, interiors)
+                poly = polygon_cls(exterior, interiors)
                 if not poly.is_valid:
                     poly = poly.buffer(0)
-            except Exception:  # noqa: BLE001, malformed rings: skip
+            except (ShapelyError, ValueError, TypeError, IndexError) as exc:
+                _LOG.debug("skipping malformed roof facet ring: %s", exc)
                 continue
             if poly.is_empty or poly.geom_type not in {"Polygon", "MultiPolygon"}:
                 continue
@@ -497,9 +502,11 @@ def _project_panel_on_roof(
             ],
         )
 
-    if panel_xy.geom_type == "Polygon":
+    from shapely.geometry import MultiPolygon, Polygon
+
+    if isinstance(panel_xy, Polygon):
         polys = [polygon_to_geom(panel_xy)]
-    elif panel_xy.geom_type == "MultiPolygon":
+    elif isinstance(panel_xy, MultiPolygon):
         polys = [polygon_to_geom(p) for p in panel_xy.geoms]
     else:
         raise ValueError(f"unsupported panel geometry type {panel_xy.geom_type!r}")
