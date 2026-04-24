@@ -24,6 +24,7 @@ subsequent runs are near-instant as long as the cache stays on disk.
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -34,6 +35,25 @@ if str(REPO_ROOT) not in sys.path:
 from citygml_energy.city_builder import build_city_gml_file
 
 
+def _configure_logging(verbosity: int) -> None:
+    """Route package progress messages to stderr at the requested level.
+
+    ``-v`` shows pipeline INFO (the old ``[city-builder]`` progress
+    lines); ``-vv`` drops to DEBUG and includes fetcher / HTTP retry
+    detail. Default (no flag) keeps only WARNING+ so piped use stays
+    quiet.
+    """
+    level = logging.WARNING if verbosity <= 0 else (
+        logging.INFO if verbosity == 1 else logging.DEBUG
+    )
+    logging.basicConfig(
+        level=level,
+        format="[%(name)s] %(message)s",
+        stream=sys.stderr,
+        force=True,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -42,7 +62,13 @@ def main(argv: list[str] | None = None) -> int:
         default=REPO_ROOT / "inputs" / "city_example.json",
         help="Path to a city-build JSON config (schema_version=city-1).",
     )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="count", default=1,
+        help="Increase log verbosity (default: INFO; -vv: DEBUG).",
+    )
     args = parser.parse_args(argv)
+    _configure_logging(args.verbose)
 
     model = build_city_gml_file(args.input)
     print(f"Wrote {len(model.xsd.city_object_member)} city objects")

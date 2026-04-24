@@ -40,7 +40,7 @@ _HTTP_POOL_MAXSIZE = 20
 # ~55 ms per tile (stdlib json) to ~15 ms with orjson. Graceful fallback
 # keeps the base install small for users who never touch the city extras.
 try:
-    import orjson as _orjson  # type: ignore[import-not-found]
+    import orjson as _orjson
 
     def loads_json(data: bytes | str) -> Any:
         """Parse a JSON payload using orjson when available, else stdlib."""
@@ -64,6 +64,17 @@ class CachedSession:
     Responses are stored as raw bytes next to a small JSON metadata file
     so cached downloads survive restarts. Set ``use_cache=False`` to
     bypass; useful for tests that monkeypatch the underlying session.
+
+    **Mutability model.** ``CachedSession`` is a service object, not a
+    value object. The configured fields (``cache_dir``, ``use_cache``,
+    ``timeout``, ``max_retries``, ``backoff_seconds``) are effectively
+    immutable after construction -- nothing in this module writes to
+    them -- while ``_session`` is populated lazily on first network use
+    and is deliberately monkey-patchable by tests (see
+    ``tests/test_city_bgt.py`` for the pattern). ``@dataclass`` gives
+    us a free ``__init__`` / ``__repr__`` for the config fields; it is
+    **not** ``frozen`` because patching ``_session`` is part of the
+    test contract.
     """
 
     cache_dir: Path
@@ -164,13 +175,24 @@ class CachedSession:
         if cache_path is not None and cache_path.exists():
             return cache_path.read_bytes()
 
+        # Only retry on transient network-layer failures. Broader catches
+        # would also swallow KeyboardInterrupt / MemoryError / programming
+        # mistakes, masking bugs as mysterious retry-exhaustion failures.
+        # ``RequestException`` is the root of every requests-raised error
+        # (connection reset, SSL error, timeout, read error, ...); ``OSError``
+        # covers DNS / low-level socket issues that surface before requests
+        # wraps them. The ``self.session`` property call ensures ``requests``
+        # is imported before we reach the ``except`` clause.
+        session = self.session
+        import requests as _requests  # already imported by ``session`` above
+
         last_exc: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
             try:
-                response = self.session.request(
+                response = session.request(
                     method, url, params=params, headers=headers, timeout=self.timeout
                 )
-            except Exception as exc:
+            except (_requests.RequestException, OSError) as exc:
                 last_exc = exc
                 time.sleep(self.backoff_seconds * attempt)
                 continue

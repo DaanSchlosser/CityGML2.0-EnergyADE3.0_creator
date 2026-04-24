@@ -14,10 +14,13 @@ available directly on the VBO feature.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from ..http import CachedSession
+
+_LOGGER = logging.getLogger(__name__)
 
 BAG_WFS_URL = "https://service.pdok.nl/lv/bag/wfs/v2_0"
 BAG_PAGE_SIZE = 1000
@@ -244,7 +247,8 @@ def _extract_point(geometry: Any) -> tuple[float, float] | None:
         return None
     try:
         return (float(coords[0]), float(coords[1]))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as exc:
+        _LOGGER.warning("BAG Point coordinates not numeric (%r): %s", coords, exc)
         return None
 
 
@@ -253,7 +257,8 @@ def _as_int(value: Any) -> int | None:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as exc:
+        _LOGGER.warning("BAG integer field not coercible (%r): %s", value, exc)
         return None
 
 
@@ -262,7 +267,8 @@ def _as_float(value: Any) -> float | None:
         return None
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as exc:
+        _LOGGER.warning("BAG float field not coercible (%r): %s", value, exc)
         return None
 
 
