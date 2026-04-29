@@ -37,7 +37,7 @@ Emmer-Compascuum AOI (41.5 ha, 674 buildings, 652 trees).
 | 3 | PDOK BAG `bag:pand` | 8 properties + geometry | 4 | `bldg:Building` |
 | 4 | PDOK BAG `bag:verblijfsobject` | 14 properties + geometry | 11 + geometry | `nrg3:BuildingUnit` + `core:Address` |
 | 5 | 3DBAG CityJSON tile | 62 `Building` attributes + LoD 0/1.2/2.2 geometries | 8 attributes + 3 LoD geometries | `bldg:lod0FootPrint` + `bldg:lod1Solid` + `bldg:boundedBy/lod2MultiSurface` + `bldg:measuredHeight` + `bldg:roofType` + `bldg:storeysAboveGround` + `nrg3:bdgVolume` |
-| 6 | EP-online `Mutatiebestand` CSV | 42 columns | 10 | `nrg3:EnergyPerformanceCertificate` + `app:Appearance` theme energyLabel |
+| 6 | EP-online `Mutatiebestand` CSV | 42 columns | 20 | `nrg3:EnergyPerformanceCertificate` + `app:Appearance` theme energyLabel + `nrg3:Zone` (per VBO) + `nrg3:Energy` resources (per VBO) + per-VBO `gen:*Attribute` classification + `nrg3:Metadata` source attribution |
 | 7 | PV panels GeoPackage | 2 columns + geometry | 2 + geometry | `nrg3:PhotovoltaicCollector` |
 | 8 | CFTree `trees_lod3.city.json` | 10 attributes + LoD 3 geometry | 9 + geometry | `veg:SolitaryVegetationObject` + `veg:lod3Geometry` |
 | 9 | BGT `vegetatieobject_punt` | 23 properties + geometry | 5 + geometry | `core:externalReference` + `gen:dateAttribute` |
@@ -175,45 +175,33 @@ The CSV has **42 columns** plus two header meta-lines (`PublicatieDatum`, `Laats
 | `Registratiedatum` | ✓ | `nrg3:EnergyPerformanceCertificate/validFrom` (XmlDateTime at midnight UTC) | |
 | `GeldigTot` | ✓ | `nrg3:EnergyPerformanceCertificate/validTo` | |
 | `Opnamedatum` | ✓ | — | Tie-breaker for duplicate rows in `address_match` (latest opname wins). |
-| `Berekeningstype` | ✓ | `nrg3:EnergyPerformanceCertificate/certificationMethod` | Raw NTA-8800 variant string (e.g. `"NTA 8800:2024 (basisopname woningbouw)"`). Emitting verbatim keeps the label auditable against the standard without inventing a codelist. |
+| `Berekeningstype` | ✓ | `nrg3:EnergyPerformanceCertificate/certificationMethod` (concatenated with `SoortOpname` via `" / "`) | Raw NTA-8800 variant string. Now joined with `SoortOpname` so the EPC's certification method carries both the inspection rigour and the calculation variant. |
+| `SoortOpname` | ✓ | `nrg3:EnergyPerformanceCertificate/certificationMethod` (prepended to `Berekeningstype`) | Inspection rigour ("Basisopname" / "Detailopname"). Native (derived); see [`docs/ep_online_data_model_mapping.md`](ep_online_data_model_mapping.md) §5d. |
+| `Gebouwtype` | ✓ | `gen:stringAttribute name="bdgTypeEPOnline"` on each `nrg3:BuildingUnit` (English-mapped Energy ADE `BuildingTypeValue.xml` value, looked up via [`citygml_energy/city_builder/gebouwtype_lookup.py`](../citygml_energy/city_builder/gebouwtype_lookup.py)) | RVO building-type taxonomy → English Energy ADE codelist. Per-VBO; the native `nrg3:bdgType` element substitutes onto Building only, so the per-VBO version is encoded as a generic string attribute (mapping doc §5e). |
+| `Bouwjaar` | ✓ | `gen:intAttribute name="yearOfConstructionEPOnline"` on the **Building** (Pand level, picked from the most-recently-registered cert across the Pand's VBOs). One `nrg3:Metadata` block on the Building attributes EP-online; the BAG-source block sits next to it. | Year-of-construction is a Pand-level fact regardless of which register reports it; EP-online ships it per-VBO only because the CSV is row-per-cert. Mapping doc §5h. |
+| `GebruiksoppervlakteThermischeZone` | ✓ | `nrg3:Zone/area` as a `QualifiedArea` (type `netFloorArea`, source attributing EP-online) on a per-VBO Zone hosted under the Building, xlink-referencing the BuildingUnit. uom `m2`. | Anchor for every per-m² energy metric. Mapping doc §5h. |
+| `Energiebehoefte` | ✓ | `nrg3:Energy` resource on the BuildingUnit via `nrg3:resource`: type `netEnergy`, endUse `spaceHeating`, normalised against the thermal-zone area. uom `kWh/m2/a`. | BENG-1, heating + cooling combined. Mapping doc §5i. |
+| `Warmtebehoefte` | ✓ | sibling `nrg3:Energy` resource: type `netEnergy`, distinguished from BENG-1 by the `description` field. | NTA 8800 net heating demand. Mapping doc §5i. |
+| `PrimaireFossieleEnergie` | ✓ | `nrg3:Energy` resource: type `primaryEnergy`. | BENG-2. Mapping doc §5j. |
+| `AandeelHernieuwbareEnergie` | ✓ | `gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie"` on each `nrg3:BuildingUnit`. uom `percent` (NOT `%`). | BENG-3 renewable share. No native Energy ADE slot; the EPC cannot host generic attributes (extends AbstractFeatureWithLifeSpan, not CityObject), so the attribute lives on the BuildingUnit. Mapping doc §5j. |
+| `BerekendeCO2Emissie` | ✓ | `nrg3:Energy/co2Equivalent` on the BENG-2 (primary-energy) `nrg3:Energy` resource. uom `kg/m2/a`. | Emissions are a property of `AbstractResource`, not a standalone feature. Mapping doc §5k. |
+| `BerekendeEnergieverbruik` | ✓ | `nrg3:Energy` resource: type `finalEnergy`. uom `kWh/m2/a`. | Delivered final-energy figure. Distinct from BENG-1 (net) and BENG-2 (primary). Mapping doc §5k. |
+| **Source attribution** | ✓ | one `nrg3:Metadata` block on the Building (BAG-source for `bldg:yearOfConstruction`); one `nrg3:Metadata` block per BuildingUnit (EP-online-source for the per-VBO emissions on that unit) | Mapping doc §4 + §6. |
 | `PublicatieDatum` (meta row 1) | | | Date of this Mutatiebestand vintage. Not parsed. |
 | `LaatstVerwerkteMutatievolgnummer` (meta row 2) | | | Opaque RVO mutation counter. Not parsed. |
-| `Certificaathouder` | | | Who issued the label. Planned — see [`docs/ep_online_classification_plan.md`](ep_online_classification_plan.md). |
-| `SoortOpname` | | | Opname type (`Basisopname` / `Detailopname`). Planned. |
-| `Status` | | | `Bestaand` / `Nieuwbouw` / `Verbouw`. Planned. |
-| `OpBasisVanReferentiegebouw` | | | Boolean: whether a reference-building calculation was used. Planned. |
-| `Gebouwklasse` | | | `W` (woning) / `U` (utility). Planned — will map to `nrg3:bdg_type` via a Gebouwtype lookup. |
-| `Gebouwtype` | | | More specific than `Gebouwklasse` (e.g. `Rijwoning hoek`). Planned. |
-| `Gebouwsubtype` | | | Subtype qualifier. Planned. |
-| `SBICode` | | | Economic-activity code (utility buildings). Planned. |
-| `Detailaanduiding` | | | Long-form address supplement. Latent. |
+| `Opnamedatum` | ⚙ | — | Inspection date. Used as the address-match tiebreak only; deliberately not emitted (Skip-(latent), mapping doc §5b). |
+| `Certificaathouder`, `Status`, `OpBasisVanReferentiegebouw`, `Gebouwklasse`, `Gebouwsubtype`, `SBICode`, `Detailaanduiding`, `Projectnaam`, `Projectobject`, `Bouwjaar` agreement diff | | | Skip-(latent) or Drop per the mapping doc §5d, §5e, §5f, §5g. Each has a documented potential target in case of revisit. |
+| `Compactheid` | | | Surface-to-volume ratio. Skip-(latent); potentially useful for a future thermal-modelling extension. Mapping doc §5h. |
+| `EnergieIndex`, `EnergieIndexEMGForfaitair` | | | Pre-NTA-8800 (legacy). Dropped: mathematically incompatible with BENG metrics. Mapping doc §5i. |
+| `PrimaireFossieleEnergieEMGForfaitair`, `AandeelHernieuwbareEnergieEMGForfaitair` | | | Same physical quantity computed under a different convention; not modelled. Dropped (mapping doc §5j). |
+| `Temperatuuroverschrijding` | | | Summer overheating hours (BENG-4). Skip-(latent); revisit if thermal-comfort enters scope (mapping doc §5k). |
+| `EisEnergiebehoefte`, `EisPrimaireFossieleEnergie`, `EisAandeelHernieuwbareEnergie`, `EisTemperatuuroverschrijding` | | | BENG / Bouwbesluit thresholds. Skip-(latent); not modelled today (mapping doc §5l). |
 | `BAGLigplaatsID`, `BAGStandplaatsID` | | | BAG handles for houseboats / caravan plots. Not used (the pipeline only builds VBO-based BuildingUnits). |
 | `BAGPandIDs` | | | Comma-separated parent Pand ids. Redundant with the `pandidentificatie` join path; not used. |
-| `Projectnaam`, `Projectobject` | | | Project-level metadata. Latent. |
-| `Bouwjaar` | | | Redundant with BAG. Not used. |
-| `GebruiksoppervlakteThermischeZone` | | | Thermal-zone floor area (m²). **Highly useful** for Energy ADE thermal zones — would populate `nrg3:ThermalZone/floorArea` or `nrg3:BuildingUnit/areaOfUse`. Latent. |
-| `Compactheid` | | | Building compactness (surface/volume). Latent. |
-| `EnergieIndex` | | | Older EI metric (pre-NTA-8800). Latent. |
-| `EnergieIndexEMGForfaitair` | | | EI with EMG-forfaitair correction. Latent. |
-| `Energiebehoefte` | | | Net heating demand (kWh/m²·yr). **Highly useful** for Energy ADE `nrg3:EnergyDemand`. Latent. |
-| `PrimaireFossieleEnergie` | | | Primary-fossil energy use (kWh/m²·yr). Latent. |
-| `PrimaireFossieleEnergieEMGForfaitair` | | | Same with EMG-forfaitair. Latent. |
-| `AandeelHernieuwbareEnergie` | | | Renewable-energy share (%). Latent. |
-| `AandeelHernieuwbareEnergieEMGForfaitair` | | | Same with EMG-forfaitair. Latent. |
-| `Temperatuuroverschrijding` | | | Summer overheating hours. Latent. |
-| `Warmtebehoefte` | | | Heating demand. Latent. |
-| `EisEnergiebehoefte`, `EisPrimaireFossieleEnergie`, `EisAandeelHernieuwbareEnergie`, `EisTemperatuuroverschrijding` | | | BENG / Bouwbesluit requirement thresholds for this building class. Latent. |
-| `BerekendeCO2Emissie` | | | CO₂ emission (kg/m²·yr). Latent. |
-| `BerekendeEnergieverbruik` | | | Total annual energy use. Latent. |
 
 **Emitted** `type` on `nrg3:EnergyPerformanceCertificate` is the constant `"EP-online"` with `codeSpace = CS_NRG3_EPC_TYPE`, not a per-label value.
 
-> **Note on the latent columns.** EP-online carries genuinely
-> energy-modelling-relevant numbers (thermal-zone area, demand,
-> emissions, compactness) that the pipeline currently ignores.
-> Wiring those up to `nrg3:EnergyDemand` / `nrg3:ThermalZone` is a
-> natural follow-up; it was out of scope for the current "buildings +
-> PV + trees" milestone.
+The full per-column rationale, including verdicts (Native / Native (derived) / gen:Attribute / Skip (latent) / Drop) and potential targets for every Skip-(latent) field, lives in [`docs/ep_online_data_model_mapping.md`](ep_online_data_model_mapping.md).
 
 ---
 
@@ -345,17 +333,22 @@ A small number of output fields are not read from any source; they are computed 
 
 ## Appendix B — UoM tokens emitted
 
-The pipeline emits three `uom` tokens, each cross-checked against the KIT FZKViewer's bundled UoM list
+The pipeline emits the tokens below, each cross-checked against the KIT FZKViewer's bundled UoM list
 ([`KITModelViewer_V7.5_Build-3636/Data/UOMList.xml`](../KITModelViewer_V7.5_Build-3636/Data/UOMList.xml)):
 
 | Token | Used on | Matched against UOMList | Status |
 |---|---|---|---|
 | `m` | `veg:height`, `veg:trunkDiameter`, `veg:crownDiameter` | `UOM name="METRE" id="m"` | primary id ✓ |
-| `m2` | `nrg3:moduleArea` on `PhotovoltaicCollector` | `UOM name="SQUARE_METRE" id="m2"` | primary id ✓ |
+| `m2` | `nrg3:moduleArea` on `PhotovoltaicCollector`, `nrg3:Zone/area`, `nrg3:Energy/normalizationValue` | `UOM name="SQUARE_METRE" id="m2"` | primary id ✓ |
 | `deg` | `nrg3:inclination`, `nrg3:azimuth` on `PhotovoltaicCollector` | `UOM name="DEGREE" id="grad"`, `altId=deg` | altId (canonical id is `grad`) ✓ |
+| `percent` | `gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie"` | `UOM name="PERCENTAGE" id="percent"` | primary id ✓ |
+| `kWh/m2/a` | `nrg3:Energy/amount` on the four EP-online resources (Energiebehoefte, Warmtebehoefte, PrimaireFossieleEnergie, BerekendeEnergieverbruik) | UOMList has `kWh/m2` (no per-annum) and `MWh/a` (no per-area) but not the composed token | new for this project, pending FZK UOMList revision |
+| `kg/m2/a` | `nrg3:Energy/co2Equivalent` on the BENG-2 (primary-energy) resource | UOMList has `kg`, `kg/m3`; no per-area-mass-per-annum | new for this project, pending FZK UOMList revision |
 
-No tokens outside this set are emitted anywhere in the pipeline
-(verified by grep of `uom=` across `citygml_energy/`).
+The two `*/a` tokens are NL convention (NTA 8800 reports BENG metrics in
+kWh/m²·jaar and CO₂ in kg/m²·jaar). They are documented as gaps to be
+communicated upstream to the FZK developers; until the UOMList catches
+up, viewers fall back to displaying the raw token verbatim.
 
 ---
 
@@ -388,8 +381,7 @@ roadmap of the pipeline is legible from a single document.
 |---|---|---|---|
 | `bag:pand.status`, `bag:verblijfsobject.status` | BAG | `gen:stringAttribute` or a future `bldg:condition` | "in use" / "demolished" / "planned" distinction for every Pand/VBO. |
 | `b3_opp_*`, `b3_rmse_lod*`, `b3_h_dak_{50p,70p,min}`, `b3_puntdichtheid_ahn*` | 3DBAG | mix of `nrg3:bdg_area`, quality-indicator generics | Surface-area-per-facet, per-LoD reconstruction quality, LiDAR point density. |
-| `GebruiksoppervlakteThermischeZone`, `Energiebehoefte`, `PrimaireFossieleEnergie`, `CO2Emissie`, `AandeelHernieuwbareEnergie`, `Warmtebehoefte`, `EisEnergiebehoefte` etc. | EP-online | `nrg3:EnergyDemand`, `nrg3:ThermalZone/floorArea`, `nrg3:Emission` | The Energy ADE's core energy-flow domain is currently unused; these columns are exactly the inputs it expects. |
-| `Certificaathouder`, `SoortOpname`, `Gebouwklasse/type/subtype`, `Status`, `SBICode`, `OpBasisVanReferentiegebouw` | EP-online | `nrg3:bdg_type`, additions to `certificationMethod`, generic attributes | Classification fields — see [`docs/ep_online_classification_plan.md`](ep_online_classification_plan.md) for the full plan. |
+| `Certificaathouder`, `Status`, `OpBasisVanReferentiegebouw`, `Gebouwklasse`, `Gebouwsubtype`, `SBICode`, `Opnamedatum`, `Compactheid`, `Temperatuuroverschrijding`, BENG `Eis*` thresholds, EMG-Forfaitair variants | EP-online | gen:*Attribute or future schema extensions, per [`docs/ep_online_data_model_mapping.md`](ep_online_data_model_mapping.md) §5 | All Skip-(latent) or Drop per the umbrella mapping spec; `Certificaathouder` is privacy-driven, the others were judged not load-bearing for the current thesis question. Each row in the mapping doc names a potential target for revisit. |
 | `bag:verblijfsobject.woonplaats` | BAG | `xAL:LocalityName` | Village-level addressing (Emmer-Compascuum vs the Emmen municipality). |
 | `bronhouder` | BGT | `core:externalReference/informationSystem` suffix | Multi-municipality merges could disambiguate which authority maintains each cross-referenced tree. |
 

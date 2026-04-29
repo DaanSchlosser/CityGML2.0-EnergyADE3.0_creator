@@ -24,12 +24,16 @@ from ..bindings import (
     ExternalObjectReferenceType1,
     ExternalReferenceType1,
     Identifier,
+    IntAttribute,
     LengthType,
+    MeasureAttribute,
     MeasureType,
+    Metadata1,
     Name,
     QualifiedArea,
     QualifiedAreaPropertyType,
     QualifiedVolume,
+    StringAttribute,
     ThoroughfareNameType,
 )
 from ..gml_builders import build_multi_point, build_multi_surface, build_solid
@@ -61,15 +65,19 @@ from ..schema_types import (
 from .address_match import ResolvedAddress
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 from .cityjson_trees_parse import ParsedTree
+from .energy_resources import attach_energy_resources_to_building_unit
 from .fetchers.bgt import (
     BGT_INFORMATION_SYSTEM_URL,
     BgtTree,
     bgt_feature_uri,
 )
 from .fetchers.eponline import EnergyLabel
+from .gebouwtype_lookup import lookup_bdg_type
 
 __all__ = [
     "EnergyLabel",
+    "apply_bag_year_metadata_to_building",
+    "apply_eponline_year_to_building",
     "build_address",
     "build_building",
     "build_building_unit",
@@ -474,6 +482,41 @@ def build_building_unit(
             )
         )
 
+    # EP-online ``GebruiksoppervlakteThermischeZone`` is the floor area each
+    # per-m² energy metric on this BuildingUnit (BENG-1, BENG-2,
+    # Warmtebehoefte, BerekendeEnergieverbruik) is normalised against. It
+    # does not always agree with BAG ``oppervlakte`` because EP-online sums
+    # only the heated floor area within the thermal envelope, while BAG
+    # records the legal usable area per VBO. Encoded as a second
+    # ``QualifiedArea`` (same ``netFloorArea`` type, distinct ``source``) so
+    # both numbers stay queryable side-by-side; this is the documented
+    # multi-source pattern Energy ADE 3.0 supports for QualifiedAttribute.
+    label = resolved.energy_label
+    if (
+        label is not None
+        and label.gebruiksoppervlakte_thermische_zone is not None
+        and label.gebruiksoppervlakte_thermische_zone > 0
+    ):
+        unit.area.append(
+            QualifiedAreaPropertyType(
+                qualified_area=QualifiedArea(
+                    description=(
+                        "EP-online thermal-zone floor area: the denominator "
+                        "every per-m² energy metric on this BuildingUnit is "
+                        "normalised against."
+                    ),
+                    source="EP-online Mutatiebestand v4 (RVO)",
+                    value=MeasureType(
+                        value=float(label.gebruiksoppervlakte_thermische_zone),
+                        uom=_UOM_AREA_M2,
+                    ),
+                    type_value=CodeType(
+                        value="netFloorArea", code_space=CS_NRG3_AREA_TYPE,
+                    ),
+                )
+            )
+        )
+
     address = build_address(
         resolved,
         gml_id_prefix=gml_id_prefix,
@@ -493,6 +536,39 @@ def build_building_unit(
             unit.energy_performance_certificate.append(
                 epc_prop_cls(energy_performance_certificate=epc)
             )
+
+    # EP-online's renewable-energy share (BENG-3) has no native Energy ADE
+    # slot. The mapping doc § 5j keeps it as a ``gen:measureAttribute``;
+    # it lands on the BuildingUnit because the CityGML 2.0 generic
+    # attribute substitution is on AbstractCityObject (BuildingUnit
+    # inherits) and not on EnergyPerformanceCertificate (which extends
+    # AbstractFeatureWithLifeSpan, NOT a CityObject).
+    if label is not None and label.aandeel_hernieuwbare_energie is not None:
+        unit.measure_attribute.append(
+            MeasureAttribute(
+                name="epOnlineAandeelHernieuwbareEnergie",
+                value=MeasureType(
+                    value=float(label.aandeel_hernieuwbare_energie),
+                    uom=_UOM_PERCENT,
+                ),
+            )
+        )
+
+    # nrg3:Energy resources for the four NTA-8800 BENG metrics. Attached
+    # to BuildingUnit via the ``nrg3:resource`` substitution (XSD line
+    # 1366); see :mod:`citygml_energy.city_builder.energy_resources` for
+    # the per-resource construction logic and uom convention.
+    attach_energy_resources_to_building_unit(unit, label)
+
+    # Per-VBO EP-online classification: bdgTypeEPOnline string attribute,
+    # yearOfConstructionEPOnline int attribute, plus a single Metadata
+    # block on this BuildingUnit attributing the EP-online source for
+    # everything attached above (classification + energy resources +
+    # renewable share). EP-online is per-VBO, so all of these emissions
+    # live at this scope; the Building's ``bldg:yearOfConstruction``
+    # remains BAG-authoritative with its own Metadata block at the
+    # Building level (see :func:`apply_bag_year_metadata_to_building`).
+    _apply_eponline_classification_to_building_unit(unit, label)
 
     return unit
 
@@ -645,6 +721,242 @@ def _assemble_number(resolved: ResolvedAddress) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Year-of-construction source attribution at the Building level
+# ---------------------------------------------------------------------------
+
+
+def apply_bag_year_metadata_to_building(building: Any) -> None:
+    """Attach a ``nrg3:Metadata`` block documenting the BAG source of
+    ``bldg:yearOfConstruction``, when the Building has the year set.
+
+    BAG ``bouwjaar`` is structurally a Pand-level fact (one bouwjaar per
+    BAG building, regardless of how many VBOs sit inside), so its
+    Metadata block lives at the Building level alongside the value it
+    annotates. The EP-online equivalent
+    (``yearOfConstructionEPOnline``) ALSO lives at the Building level
+    because year-of-construction is a property of the physical
+    structure, not of an individual dwelling unit; see
+    :func:`apply_eponline_year_to_building`. The other EP-online
+    classification fields (Gebouwtype, renewable share, energy metrics)
+    are genuinely per-VBO and live on the BuildingUnit.
+
+    No-op when the building has no ``yearOfConstruction`` (e.g. 3DBAG
+    omitted ``oorspronkelijkbouwjaar`` and BAG had no ``bouwjaar`` for
+    the Pand).
+    """
+    if building.year_of_construction is None:
+        return
+    building.metadata.append(
+        Metadata1(
+            source="BAG bag:pand.bouwjaar (PDOK WFS v2.0)",
+            quality_description=(
+                "Source for bldg:yearOfConstruction on this Pand."
+            ),
+        )
+    )
+
+
+def apply_eponline_year_to_building(
+    building: Any,
+    addresses: list[ResolvedAddress],
+) -> None:
+    """Attach EP-online's ``Bouwjaar`` to the Building, with source metadata.
+
+    ``Bouwjaar`` is a Pand-level fact (a building is constructed once;
+    all its VBOs share the same year of construction). EP-online ships
+    it per-VBO only because the Mutatiebestand CSV is one-row-per-cert
+    — the underlying datum it reports is still the Pand's year. Two
+    EP-online certificates against two VBOs of the same Pand should
+    therefore record the same Bouwjaar; if they disagree, that is a
+    data-quality signal we surface by picking the most-recent-registered
+    cert's value (mirroring the ``_label_timestamp`` rule used by
+    :func:`citygml_energy.city_builder.address_match._label_timestamp`).
+
+    The recency pick is restricted to certs that actually carry a
+    ``Bouwjaar``; otherwise a Pand whose newest cert happened to leave
+    the field empty would emit no year-of-construction at all even
+    though older certs under the same Pand do carry one. The natural
+    fix is to skip empty-bouwjaar candidates before the recency max.
+
+    Two emissions on the Building when an EP-online Bouwjaar is
+    available:
+
+    * ``gen:intAttribute name="yearOfConstructionEPOnline"`` carrying
+      the value. Sits alongside (not replacing) the BAG-authoritative
+      ``bldg:yearOfConstruction`` so per-Pand BAG-vs-EP-online
+      disagreement is auditable directly from the GML.
+    * One ``nrg3:Metadata`` block on the Building attributing the
+      EP-online source for the value.
+
+    No-op when no resolved address has an EP-online label or when no
+    label has a ``Bouwjaar`` set.
+    """
+    label = _pick_canonical_eponline_label(addresses)
+    if label is None:
+        return
+    assert label.bouwjaar is not None  # narrowing: helper filters candidates
+
+    building.int_attribute.append(
+        IntAttribute(
+            name="yearOfConstructionEPOnline",
+            value=int(label.bouwjaar),
+        )
+    )
+    building.metadata.append(
+        Metadata1(
+            source="EP-online Mutatiebestand v4 (RVO)",
+            quality_description=(
+                "Source for gen:intAttribute "
+                "name=\"yearOfConstructionEPOnline\" on this Pand. "
+                "Picked from the most-recently-registered EP-online "
+                "certificate across this Pand's VBOs."
+            ),
+        )
+    )
+
+
+def _pick_canonical_eponline_label(
+    addresses: list[ResolvedAddress],
+) -> EnergyLabel | None:
+    """Return the most-recently-registered EP-online label that carries a ``Bouwjaar``.
+
+    Used by :func:`apply_eponline_year_to_building` to pick the single
+    canonical Pand-level value. We filter to ``bouwjaar is not None``
+    *before* the recency max because the alternative — selecting the
+    overall newest cert and bailing if it lacks Bouwjaar — silently
+    drops the year for Pands whose newest cert left the field empty
+    even when older certs under the same Pand do carry one.
+
+    Tiebreak rule: ``registratiedatum`` wins, falling back to
+    ``opnamedatum`` and then to "any non-null value over null". Mirrors
+    :func:`citygml_energy.city_builder.address_match._label_timestamp`
+    so the per-Pand reduction order matches the per-VBO de-duplication
+    order seen earlier in the pipeline.
+    """
+    candidates = [
+        addr.energy_label
+        for addr in addresses
+        if addr.energy_label is not None and addr.energy_label.bouwjaar is not None
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=_eponline_label_recency_key)
+
+
+def _eponline_label_recency_key(label: EnergyLabel) -> tuple[int, int, int]:
+    """Sort key: ``(registratiedatum, opnamedatum, has_reg)``."""
+    reg = label.registratiedatum
+    opname = label.opnamedatum
+    return (
+        reg.toordinal() if reg else 0,
+        opname.toordinal() if opname else 0,
+        1 if reg else 0,
+    )
+
+
+# ---------------------------------------------------------------------------
+# EP-online classification at the BuildingUnit level (per-VBO)
+# ---------------------------------------------------------------------------
+
+
+def _apply_eponline_classification_to_building_unit(
+    unit: Any,
+    label: EnergyLabel | None,
+) -> None:
+    """Attach per-VBO EP-online classification fields to a BuildingUnit.
+
+    This function only handles classification values whose underlying
+    physical reality is genuinely per-VBO. ``Bouwjaar`` is intentionally
+    NOT one of them: a building is constructed once, so the year of
+    construction is a Pand-level fact and lives on the Building (see
+    :func:`apply_eponline_year_to_building`).
+
+    Two emissions on a BuildingUnit when an EP-online label is set:
+
+    * ``gen:stringAttribute name="bdgTypeEPOnline"``: the
+      :func:`gebouwtype_lookup.lookup_bdg_type` mapping of the Dutch
+      ``Gebouwtype`` term to the Energy ADE
+      ``BuildingTypeValue.xml`` vocabulary. Per-VBO because NTA 8800's
+      Gebouwtype classifies the dwelling unit's typology
+      ("Rijwoning hoek" = corner unit in a row) which can differ across
+      VBOs in the same Pand (mixed-use, partial conversion). Encoded
+      as a generic string attribute (not as ``nrg3:bdgType``) because
+      the native ``bdgType`` element substitutes onto
+      ``bldg:_GenericApplicationPropertyOfAbstractBuilding``
+      (XSD line 1599) and lives on Building only — there is no per-VBO
+      native slot. Documented schema gap; the value still uses the
+      English Energy ADE codelist term so consumers can lift it to
+      native bdgType if a future per-VBO slot lands.
+    * One ``nrg3:Metadata`` block on the BuildingUnit attributing the
+      EP-online source. Emitted whenever ``bdgTypeEPOnline`` lands or
+      whenever any per-VBO energy-flow values land (Energy resources,
+      renewable-share measure attribute) — those emissions live on the
+      same BuildingUnit too, so a single metadata block on the unit
+      covers all of them.
+
+    No-op when *label* is ``None``.
+    """
+    if label is None:
+        return
+
+    emitted_classification = False
+
+    if label.gebouwtype:
+        bdg_type_value = lookup_bdg_type(label.gebouwtype)
+        if bdg_type_value is not None:
+            unit.string_attribute.append(
+                StringAttribute(
+                    name="bdgTypeEPOnline",
+                    value=bdg_type_value,
+                )
+            )
+            emitted_classification = True
+
+    # The Metadata block annotates the EP-online source for every
+    # per-VBO emission on this unit. We emit it whenever this VBO has
+    # actually received an EP-online-derived value: ``bdgTypeEPOnline``
+    # above, the renewable-share measure attribute (set in
+    # ``build_building_unit``), the thermal-zone QualifiedArea (also set
+    # in ``build_building_unit``), or any of the four Energy resources
+    # (set by :func:`energy_resources.attach_energy_resources_to_building_unit`).
+    # Including the area in the trigger keeps the Metadata block paired
+    # with every EP-online artefact on the unit, even for the (rare)
+    # label that ships only ``gebruiksoppervlakte_thermische_zone`` and
+    # no other numerics.
+    has_renewable = label.aandeel_hernieuwbare_energie is not None
+    has_thermal_zone_area = (
+        label.gebruiksoppervlakte_thermische_zone is not None
+        and label.gebruiksoppervlakte_thermische_zone > 0
+    )
+    has_energy = any(
+        v is not None
+        for v in (
+            label.energiebehoefte,
+            label.warmtebehoefte,
+            label.primaire_fossiele_energie,
+            label.berekende_energieverbruik,
+            label.berekende_co2_emissie,
+        )
+    )
+    if emitted_classification or has_renewable or has_thermal_zone_area or has_energy:
+        unit.metadata.append(
+            Metadata1(
+                source="EP-online Mutatiebestand v4 (RVO)",
+                quality_description=(
+                    "Source for the EP-online-derived per-VBO emissions "
+                    "on this BuildingUnit (bdgTypeEPOnline, "
+                    "epOnlineAandeelHernieuwbareEnergie, the EP-online "
+                    "thermal-zone nrg3:QualifiedArea, and the "
+                    "nrg3:Energy resources hosted via nrg3:resource). "
+                    "Year of construction (yearOfConstructionEPOnline) "
+                    "is at the Building level: a Pand is constructed "
+                    "once."
+                ),
+            )
+        )
+
+
+# ---------------------------------------------------------------------------
 # EnergyPerformanceCertificate
 # ---------------------------------------------------------------------------
 
@@ -676,17 +988,38 @@ def _build_epc(
         epc.valid_to = XmlDateTime.from_string(
             f"{label.geldig_tot.isoformat()}T00:00:00"
         )
-    if label.berekeningstype:
-        # EP-online's ``Berekeningstype`` names the NTA-8800 variant used
-        # for the EPC calculation, e.g.
-        # "NTA 8800:2024 (detailopname utiliteitsbouw)". The CityGML /
-        # Energy ADE slot for this provenance is
+    method = _certification_method_string(label)
+    if method is not None:
+        # ``Berekeningstype`` names the NTA-8800 variant used for the
+        # calculation (e.g. "NTA 8800:2024 (detailopname utiliteitsbouw)");
+        # ``SoortOpname`` ("Basisopname" / "Detailopname") qualifies the
+        # inspection rigour. Both ride on
         # ``nrg3:EnergyPerformanceCertificate/certificationMethod``
-        # (xs:string, minOccurs=0). Emitting the raw Berekeningstype
-        # string keeps the label auditable against the NTA-8800 standard
-        # without inventing an intermediate codelist.
-        epc.certification_method = label.berekeningstype
+        # (xs:string, minOccurs=0); a " / " separator preserves the two
+        # values as a single auditable string while letting downstream
+        # parsers split on it. Picked over a separate field per the
+        # Phase-0 spec § 5d direction.
+        epc.certification_method = method
     return epc
+
+
+def _certification_method_string(label: EnergyLabel) -> str | None:
+    """Compose the EPC ``certificationMethod`` string from EP-online inputs.
+
+    Joins ``SoortOpname`` and ``Berekeningstype`` with `` / `` (space-slash-
+    space) when both are present, returns whichever is set when only one is
+    present, and returns ``None`` when neither is set. The separator
+    deliberately avoids the em dash per the project's annotation
+    convention; downstream tools can split on `` / `` to recover both.
+    """
+    parts = [
+        text
+        for text in (label.soort_opname, label.berekeningstype)
+        if text and text.strip()
+    ]
+    if not parts:
+        return None
+    return " / ".join(p.strip() for p in parts)
 
 
 # ---------------------------------------------------------------------------
@@ -722,10 +1055,15 @@ _TREE_ID_PREFIX: str = "tree_"
 
 # ``uom`` tokens match the KIT SDM_KITModelViewer Data/UOMList.xml @id values
 # so the viewer recognises them in its Properties panel (same convention used
-# in :mod:`citygml_energy.city_builder.pv_panels`).
+# in :mod:`citygml_energy.city_builder.pv_panels`). The two energy-domain
+# tokens introduced for EP-online (``kWh/m2/a``, ``kg/m2/a``) live in
+# :mod:`citygml_energy.city_builder.energy_resources` because that's the
+# only call site for them; ``percent`` is shared with this module's
+# renewable-share emission so it is declared here.
 _UOM_METRES: str = "m"  # METRE primary id
 _UOM_AREA_M2: str = "m2"  # SQUARE_METRE primary id
 _UOM_VOLUME_M3: str = "m3"  # CUBIC_METRE primary id
+_UOM_PERCENT: str = "percent"  # PERCENTAGE primary id (NOT "%", which is a sign-glyph)
 
 
 # CFTree attribute keys → CityGML field / generic-attribute destination. Keys
