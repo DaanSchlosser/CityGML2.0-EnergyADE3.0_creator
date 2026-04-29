@@ -91,9 +91,19 @@ def fetch_panden(
     *cbs_code* (if given) filters to BAG ``identificatie`` values that
     start with that code, exactly the BAG convention for the 4-digit
     municipality prefix.
+
+    Results are deduplicated by ``identificatie`` (first occurrence wins).
+    The PDOK BAG WFS does not guarantee a stable ordering across
+    paginated GetFeature requests, and the bbox subdivision fallback
+    re-queries quadrants whose geometries can overlap on the shared
+    midpoint lines, so the same Pand can appear in multiple raw
+    responses. Letting duplicates through produces ``<bldg:Building>``
+    elements with colliding ``gml:id``s downstream, which breaks
+    ``<app:target>`` xlink resolution in viewers.
     """
     records = _fetch_layer(session, "bag:pand", bbox=bbox)
     panden: list[Pand] = []
+    seen: set[str] = set()
     for feature in records:
         props = feature.get("properties") or {}
         identificatie = str(props.get("identificatie") or "").strip()
@@ -101,6 +111,9 @@ def fetch_panden(
             continue
         if cbs_code and not identificatie.startswith(cbs_code):
             continue
+        if identificatie in seen:
+            continue
+        seen.add(identificatie)
         panden.append(
             Pand(
                 identificatie=identificatie,
@@ -123,9 +136,13 @@ def fetch_verblijfsobjecten(
     Address fields (postcode, huisnummer, street name) are read directly
     from the WFS feature: the PDOK BAG WFS already joins Nummeraanduiding
     and OpenbareRuimte into each VBO response.
+
+    Results are deduplicated by ``identificatie`` (first occurrence wins);
+    see :func:`fetch_panden` for the rationale.
     """
     records = _fetch_layer(session, "bag:verblijfsobject", bbox=bbox)
     vbos: list[Verblijfsobject] = []
+    seen: set[str] = set()
     for feature in records:
         props = feature.get("properties") or {}
         identificatie = str(props.get("identificatie") or "").strip()
@@ -140,6 +157,9 @@ def fetch_verblijfsobjecten(
             continue
         if cbs_code and not identificatie.startswith(cbs_code):
             continue
+        if identificatie in seen:
+            continue
+        seen.add(identificatie)
         gebruiksdoel = props.get("gebruiksdoel") or []
         if isinstance(gebruiksdoel, str):
             gebruiksdoel = [gebruiksdoel]

@@ -148,3 +148,253 @@ def test_bulk_prefilter_tolerates_spaces_and_lowercase_postcodes() -> None:
     )
     assert len(labels) == 1
     assert labels[0].postcode == "7881AA"
+
+
+# ---------------------------------------------------------------------------
+# Extended column surface (P1 plumbing). Every column listed in the per-column
+# mapping in `docs/ep_online_data_model_mapping.md` § 5 with verdict Native /
+# Native (derived) / gen:Attribute is round-tripped through the parser.
+# ---------------------------------------------------------------------------
+
+# Full production-shape header: columns observed in the v20260401 EP-online
+# Mutatiebestand. Order matches `_REAL_HEADER` above plus the long tail of
+# classification + energy-flow numerics. Columns the pipeline marks
+# Skip-(latent) or Drop are still in the CSV but are not asserted by tests.
+_EXTENDED_HEADER = (
+    "Registratiedatum;Opnamedatum;GeldigTot;Certificaathouder;SoortOpname;"
+    "Status;Berekeningstype;OpBasisVanReferentiegebouw;Gebouwklasse;"
+    "Gebouwtype;Gebouwsubtype;SBICode;Postcode;Huisnummer;Huisletter;"
+    "Huisnummertoevoeging;BAGVerblijfsobjectID;Energieklasse;Bouwjaar;"
+    "GebruiksoppervlakteThermischeZone;Compactheid;Energiebehoefte;"
+    "Warmtebehoefte;PrimaireFossieleEnergie;AandeelHernieuwbareEnergie;"
+    "Temperatuuroverschrijding;BerekendeCO2Emissie;BerekendeEnergieverbruik\n"
+)
+
+
+def _extended_csv(*rows: str) -> str:
+    return _EXTENDED_HEADER + "\n".join(rows) + "\n"
+
+
+def test_extended_columns_round_trip_through_parser() -> None:
+    """A full production-shape row populates every surfaced field.
+
+    Guards every Native / Native (derived) / gen:Attribute target from
+    `docs/ep_online_data_model_mapping.md`. The Skip-(latent) and Drop
+    columns are present in the CSV but are not asserted: an
+    :class:`EnergyLabel` does not surface them.
+    """
+    csv_text = _extended_csv(
+        # Reg=2023-05-14, Opname=2023-05-01, Geldig=2033-12-31
+        "20230514;20230501;20331231;"
+        # Certificaathouder; SoortOpname; Status
+        "Energielabel Deskundige;Detailopname;Bestaand;"
+        # Berekeningstype; OpBasisVanReferentiegebouw; Gebouwklasse
+        "NTA 8800:2024 (detailopname woningbouw);Nee;W;"
+        # Gebouwtype; Gebouwsubtype; SBICode
+        "Rijwoning hoek;;;"
+        # Postcode;Huisnummer;Huisletter;Toevoeging;BAGVerblijfsobjectID
+        "7881AA;42;;;0114010000000001;"
+        # Energieklasse;Bouwjaar
+        "A++;1955;"
+        # GebruiksoppervlakteThermischeZone (Dutch comma decimal); Compactheid
+        "112,5;1,42;"
+        # Energiebehoefte;Warmtebehoefte;PrimaireFossieleEnergie
+        "28,5;25,1;63,0;"
+        # AandeelHernieuwbareEnergie;Temperatuuroverschrijding
+        "42;312;"
+        # BerekendeCO2Emissie;BerekendeEnergieverbruik
+        "14,7;35,4"
+    )
+    labels = parse_csv(csv_text)
+    assert len(labels) == 1
+    label = labels[0]
+
+    # Identifying / certifying metadata.
+    assert label.energieklasse == "A++"
+    assert label.berekeningstype == "NTA 8800:2024 (detailopname woningbouw)"
+    assert label.soort_opname == "Detailopname"
+    assert label.registratiedatum == date(2023, 5, 14)
+    assert label.opnamedatum == date(2023, 5, 1)
+    assert label.geldig_tot == date(2033, 12, 31)
+
+    # Building classification + physics.
+    assert label.gebouwtype == "Rijwoning hoek"
+    assert label.bouwjaar == 1955
+    assert label.gebruiksoppervlakte_thermische_zone == 112.5
+
+    # Energy-flow metrics. Dutch comma decimals must come through as float.
+    assert label.energiebehoefte == 28.5
+    assert label.warmtebehoefte == 25.1
+    assert label.primaire_fossiele_energie == 63.0
+    assert label.berekende_energieverbruik == 35.4
+    assert label.berekende_co2_emissie == 14.7
+    assert label.aandeel_hernieuwbare_energie == 42.0
+
+
+def test_minimal_header_backward_compatible() -> None:
+    """The pre-extension 9-column header still parses; new fields are ``None``.
+
+    Guards the documented "every default is ``None``" contract on the
+    extended dataclass: a CSV missing the new columns must continue to
+    work, and existing test fixtures (which use the 9-column header) must
+    not need updating.
+    """
+    minimal_csv = _csv("2628CD;42;;;;A;20240101;;")
+    labels = parse_csv(minimal_csv)
+    assert len(labels) == 1
+    label = labels[0]
+
+    # New fields all default to None when the column is absent.
+    assert label.soort_opname is None
+    assert label.gebouwtype is None
+    assert label.bouwjaar is None
+    assert label.gebruiksoppervlakte_thermische_zone is None
+    assert label.energiebehoefte is None
+    assert label.warmtebehoefte is None
+    assert label.primaire_fossiele_energie is None
+    assert label.berekende_energieverbruik is None
+    assert label.berekende_co2_emissie is None
+    assert label.aandeel_hernieuwbare_energie is None
+
+
+def test_decimal_comma_parses_to_float() -> None:
+    """``_parse_decimal`` swaps the Dutch comma decimal marker."""
+    from citygml_energy.city_builder.fetchers.eponline import _parse_decimal
+
+    assert _parse_decimal("28,5") == 28.5
+    assert _parse_decimal("0,0") == 0.0
+    assert _parse_decimal("1") == 1.0
+    # Dutch thousands separator (rare for energy values, defensively handled).
+    assert _parse_decimal("1.234,56") == 1234.56
+    # Defensive: dot-decimal still works in case the format ever shifts.
+    assert _parse_decimal("28.5") == 28.5
+    # Empty / whitespace / malformed: None.
+    assert _parse_decimal("") is None
+    assert _parse_decimal("   ") is None
+    assert _parse_decimal("not-a-number") is None
+
+
+# ---------------------------------------------------------------------------
+# Full 42-column production-shape header. Locks down that ``_resolve_column_indices``
+# walks the entire header and that no column-position drift in the long tail
+# (the 24 columns past Energieklasse) silently breaks the alias resolution.
+# ---------------------------------------------------------------------------
+
+# 42 columns matching the EP-online v20260401 Mutatiebestand. The first 18
+# follow the order documented in `_REAL_HEADER` above (Postcode at column 12,
+# Energieklasse at column 17). The remaining 24 chain the §5 mapping-doc
+# categories — building physics + energy-flow + BENG thresholds + BAG
+# cross-references + project metadata — each in the order the spec lists
+# them. Skip-(latent) and Drop columns are still in the header (because the
+# real CSV ships them) but the parser silently ignores them.
+_PRODUCTION_HEADER_42 = (
+    "Registratiedatum;Opnamedatum;GeldigTot;Certificaathouder;SoortOpname;"
+    "Status;Berekeningstype;OpBasisVanReferentiegebouw;Gebouwklasse;"
+    "Gebouwtype;Gebouwsubtype;SBICode;Postcode;Huisnummer;Huisletter;"
+    "Huisnummertoevoeging;BAGVerblijfsobjectID;Energieklasse;Bouwjaar;"
+    "GebruiksoppervlakteThermischeZone;Compactheid;EnergieIndex;"
+    "EnergieIndexEMGForfaitair;Energiebehoefte;Warmtebehoefte;"
+    "PrimaireFossieleEnergie;PrimaireFossieleEnergieEMGForfaitair;"
+    "AandeelHernieuwbareEnergie;AandeelHernieuwbareEnergieEMGForfaitair;"
+    "BerekendeCO2Emissie;BerekendeEnergieverbruik;Temperatuuroverschrijding;"
+    "EisEnergiebehoefte;EisPrimaireFossieleEnergie;"
+    "EisAandeelHernieuwbareEnergie;EisTemperatuuroverschrijding;"
+    "BAGLigplaatsID;BAGStandplaatsID;BAGPandIDs;Projectnaam;Projectobject;"
+    "Detailaanduiding\n"
+)
+
+
+def test_full_42_column_production_header_parses_every_surfaced_field() -> None:
+    """A 42-column production-shape row populates every Native / gen:Attribute target.
+
+    Skip-(latent) and Drop columns occupy the long tail (Compactheid, the
+    legacy ``EnergieIndex*``, the EMG-Forfaitair variants, BENG ``Eis*``
+    thresholds, BAG-Ligplaats / Standplaats / PandIDs, project metadata)
+    and must be present in the header without breaking column-index
+    resolution; their values are silently dropped because they are not
+    surfaced on :class:`EnergyLabel`.
+    """
+    # Header has 42 columns; the data row mirrors the same 42 fields. Skip-
+    # (latent) / Drop cells carry plausible values to prove the parser
+    # tolerates them without parsing them.
+    row = (
+        # Registratiedatum;Opnamedatum;GeldigTot;Certificaathouder
+        "20230514;20230501;20331231;Energielabel Deskundige BV;"
+        # SoortOpname;Status;Berekeningstype;OpBasisVanReferentiegebouw
+        "Detailopname;Bestaand;NTA 8800:2024 (detailopname woningbouw);Nee;"
+        # Gebouwklasse;Gebouwtype;Gebouwsubtype;SBICode
+        "W;Rijwoning hoek;;;"
+        # Postcode;Huisnummer;Huisletter;Huisnummertoevoeging;BAGVerblijfsobjectID
+        "7881AA;42;;;0114010000000001;"
+        # Energieklasse;Bouwjaar;GebruiksoppervlakteThermischeZone;Compactheid
+        "A++;1955;112,5;1,42;"
+        # EnergieIndex;EnergieIndexEMGForfaitair;Energiebehoefte;Warmtebehoefte
+        "0,82;0,80;28,5;25,1;"
+        # PrimaireFossieleEnergie;PrimaireFossieleEnergieEMGForfaitair
+        "63,0;61,2;"
+        # AandeelHernieuwbareEnergie;AandeelHernieuwbareEnergieEMGForfaitair
+        "42;38;"
+        # BerekendeCO2Emissie;BerekendeEnergieverbruik;Temperatuuroverschrijding
+        "14,7;35,4;312;"
+        # EisEnergiebehoefte;EisPrimaireFossieleEnergie
+        "55;160;"
+        # EisAandeelHernieuwbareEnergie;EisTemperatuuroverschrijding
+        "50;450;"
+        # BAGLigplaatsID;BAGStandplaatsID;BAGPandIDs
+        ";;0114100000000001;"
+        # Projectnaam;Projectobject;Detailaanduiding
+        "Naam Project;Object;Detailaanduiding tekst"
+    )
+    csv_text = _PRODUCTION_HEADER_42 + row + "\n"
+
+    labels = parse_csv(csv_text)
+    assert len(labels) == 1
+    label = labels[0]
+
+    # Address keys + VBO id (filter-only but still exposed on the dataclass).
+    assert label.postcode == "7881AA"
+    assert label.huisnummer == 42
+    assert label.bag_verblijfsobject_id == "0114010000000001"
+
+    # Identifying / certifying metadata.
+    assert label.energieklasse == "A++"
+    assert label.berekeningstype == "NTA 8800:2024 (detailopname woningbouw)"
+    assert label.soort_opname == "Detailopname"
+    assert label.registratiedatum == date(2023, 5, 14)
+    assert label.opnamedatum == date(2023, 5, 1)
+    assert label.geldig_tot == date(2033, 12, 31)
+
+    # Building classification + physics.
+    assert label.gebouwtype == "Rijwoning hoek"
+    assert label.bouwjaar == 1955
+    assert label.gebruiksoppervlakte_thermische_zone == 112.5
+
+    # Energy-flow metrics.
+    assert label.energiebehoefte == 28.5
+    assert label.warmtebehoefte == 25.1
+    assert label.primaire_fossiele_energie == 63.0
+    assert label.berekende_energieverbruik == 35.4
+    assert label.berekende_co2_emissie == 14.7
+    assert label.aandeel_hernieuwbare_energie == 42.0
+
+
+def test_decimal_preserves_zero_distinct_from_missing() -> None:
+    """``"0"`` is a real zero, not a missing measurement.
+
+    A zero renewable share or zero CO₂ emission is meaningful in the EPC
+    register (BENG-3 reports ``0`` for buildings with no renewable
+    contribution). It must round-trip as ``0.0`` and not collapse to
+    ``None``, which would swallow valid data.
+    """
+    csv_text = _extended_csv(
+        "20240101;;20340101;;;;;;;;;;7777ZZ;1;;;;C;;;;0;0;0;0;;0;0"
+    )
+    labels = parse_csv(csv_text)
+    assert len(labels) == 1
+    label = labels[0]
+    assert label.energiebehoefte == 0.0
+    assert label.warmtebehoefte == 0.0
+    assert label.primaire_fossiele_energie == 0.0
+    assert label.aandeel_hernieuwbare_energie == 0.0
+    assert label.berekende_co2_emissie == 0.0
+    assert label.berekende_energieverbruik == 0.0

@@ -8,8 +8,9 @@ downloads the ZIP and unpacks the single CSV inside. Access requires an
 API token sent via the ``Authorization`` header.
 
 The CSV uses Dutch conventions: semicolon separators, YYYYMMDD dates,
-Dutch column names. We normalise into :class:`EnergyLabel` records with
-snake_case fields that downstream code can join on.
+Dutch decimal commas, Dutch column names. We normalise into
+:class:`EnergyLabel` records with snake_case fields that downstream code
+can join on.
 
 **Filter-on-parse is the fast path.** The city pipeline only cares about
 labels that match the VBOs inside a BBOX (usually a few hundred rows out
@@ -19,10 +20,15 @@ before materialising a dataclass: no 5 M-row list, no multi-GB pickle,
 no O(N) post-scan. Passing no filter falls back to the full parse,
 which is what tests and scripts that want the whole register rely on.
 
-:class:`EnergyLabel` is deliberately minimal: only the fields that end
-up in the CityGML output (``energieklasse`` → EPC label + colour,
-``registratiedatum`` / ``geldig_tot`` → ``validFrom`` / ``validTo``,
-``opnamedatum`` → duplicate-row ordering) plus the address keys.
+:class:`EnergyLabel` carries the columns that end up in the CityGML
+output, both directly (``energieklasse`` → EPC label, dates → validFrom /
+validTo, ``berekeningstype`` / ``soort_opname`` → ``certificationMethod``,
+``gebouwtype`` → ``nrg3:bdgType``, the energy-flow numerics → ``nrg3:Energy``
+resources) and indirectly (``opnamedatum`` is the address-match
+tiebreaker). Skip-(latent) columns from
+[`docs/ep_online_data_model_mapping.md`](../../../docs/ep_online_data_model_mapping.md)
+are deliberately not surfaced; adding them later is a one-line change to
+:data:`_COLUMN_ALIASES` and the dataclass.
 """
 
 from __future__ import annotations
@@ -62,6 +68,18 @@ _HUISNUMMER_RE = re.compile(
 # ``csv.reader`` on the 5 M-row file: we pay the column-name lookup once
 # per header and then index every row by integer. Aliases accommodate
 # EP-online version drift.
+#
+# Logical names group into three buckets:
+#
+# * Address keys + VBO id used for joining BAG ↔ EP-online.
+# * Identifying / certifying metadata that lands on
+#   ``nrg3:EnergyPerformanceCertificate`` directly (``energieklasse``,
+#   the three dates, ``berekeningstype``, ``soort_opname``).
+# * Building-physics / energy-flow numerics that drive the
+#   ``nrg3:Zone`` + ``nrg3:Energy`` resources built in
+#   :mod:`citygml_energy.city_builder.energy_resources`. NL convention is
+#   semicolon separators with comma decimal markers (``28,5`` not ``28.5``);
+#   :func:`_parse_decimal` normalises that.
 _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     "postcode": ("Postcode",),
     "huisnummer": ("Huisnummer",),
@@ -77,6 +95,33 @@ _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     # ``nrg3:EnergyPerformanceCertificate/certificationMethod`` so the
     # provenance of the label is legible to downstream tools.
     "berekeningstype": ("Berekeningstype",),
+    # SoortOpname = the inspection rigour ("Basisopname" / "Detailopname").
+    # Concatenated into ``certificationMethod`` alongside Berekeningstype.
+    "soort_opname": ("SoortOpname",),
+    # Gebouwtype = RVO building-type taxonomy (e.g. "Rijwoning hoek"); maps
+    # via lookup to ``nrg3:bdgType`` (Energy ADE BuildingTypeValue codelist).
+    "gebouwtype": ("Gebouwtype",),
+    # Bouwjaar = EP-online's recorded year of construction. Frequently
+    # disagrees with BAG; both are emitted under explicit source-named
+    # generic attributes (see § 5h of the mapping doc).
+    "bouwjaar": ("Bouwjaar",),
+    # Thermal-zone floor area: the denominator that every per-m² energy
+    # metric below is normalised against. Drives ``nrg3:Zone/area`` as a
+    # ``QualifiedArea`` with type ``netFloorArea``.
+    "gebruiksoppervlakte_thermische_zone": ("GebruiksoppervlakteThermischeZone",),
+    # Energy-flow metrics → ``nrg3:Energy`` resources. NL convention is
+    # kWh/m²·jaar; the parent Energy carries ``referencePeriod="year"`` and
+    # the uom is ``kWh/m2/a`` (see § 7 of the mapping doc).
+    "energiebehoefte": ("Energiebehoefte",),
+    "warmtebehoefte": ("Warmtebehoefte",),
+    "primaire_fossiele_energie": ("PrimaireFossieleEnergie",),
+    "berekende_energieverbruik": ("BerekendeEnergieverbruik",),
+    # CO₂ emission per m² per year → ``co2Equivalent`` on the BENG-2 Energy
+    # resource (uom ``kg/m2/a``).
+    "berekende_co2_emissie": ("BerekendeCO2Emissie",),
+    # Renewable-energy share (BENG-3, %). No native Energy ADE slot; lives
+    # as a ``gen:measureAttribute`` on the EPC.
+    "aandeel_hernieuwbare_energie": ("AandeelHernieuwbareEnergie",),
 }
 
 
@@ -84,25 +129,51 @@ _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
 class EnergyLabel:
     """One EP-online energy-label record, normalised to Python types.
 
-    Intentionally minimal (see module docstring). Every attribute here
-    is consumed by :mod:`address_match` (joining to BAG) or
-    :mod:`builders` (populating ``nrg3:EnergyPerformanceCertificate``).
+    Surfaces every column that
+    [`docs/ep_online_data_model_mapping.md`](../../../docs/ep_online_data_model_mapping.md)
+    classifies as ``Native`` / ``Native (derived)`` / ``gen:Attribute`` (i.e.
+    everything that ends up in the GML output, plus the address keys used
+    for joining). Skip-(latent) and Drop columns are deliberately not
+    represented here; reviving any of them is a one-line addition.
+
+    All energy-flow numerics (``energiebehoefte`` … ``berekende_co2_emissie``)
+    are stored as :class:`float` after :func:`_parse_decimal` has handled
+    the Dutch comma decimal marker.
     """
 
+    # --- address keys + VBO id (join inputs) -------------------------------
     postcode: str
     huisnummer: int
     huisletter: str | None
     toevoeging: str | None
     bag_verblijfsobject_id: str | None
+    # --- identifying / certifying metadata --------------------------------
     energieklasse: str | None
     registratiedatum: date | None
     opnamedatum: date | None
     geldig_tot: date | None
-    # ``berekeningstype`` defaults to ``None`` so callers that construct
-    # EnergyLabel fixtures (tests, one-off scripts) do not have to care
-    # about the field. The CSV parser always populates it, so the default
-    # is only exercised by hand-built instances.
+    # ``berekeningstype`` and every field below default to ``None`` so
+    # callers that construct EnergyLabel fixtures (tests, one-off scripts)
+    # do not have to enumerate them. The CSV parser always populates the
+    # ones the production header carries, so the defaults only appear on
+    # hand-built instances and on minimal-header CSVs (e.g. the
+    # backward-compat fixtures in :mod:`tests.test_city_eponline`).
     berekeningstype: str | None = None
+    soort_opname: str | None = None
+    # --- building classification + physics --------------------------------
+    gebouwtype: str | None = None
+    bouwjaar: int | None = None
+    gebruiksoppervlakte_thermische_zone: float | None = None
+    # --- energy-flow metrics (NL convention: kWh/m²·jaar; CO₂ as kg/m²·jaar)
+    energiebehoefte: float | None = None
+    warmtebehoefte: float | None = None
+    primaire_fossiele_energie: float | None = None
+    berekende_energieverbruik: float | None = None
+    berekende_co2_emissie: float | None = None
+    # Renewable-energy share (BENG-3): an integer percentage in the source CSV
+    # but stored as float so the pipeline never has to choose between
+    # rounding and a `gen:intAttribute`/`gen:measureAttribute` mismatch.
+    aandeel_hernieuwbare_energie: float | None = None
 
     def address_key(self) -> AddressKey:
         """Return the ``(postcode, huisnummer, huisletter, toevoeging)`` tuple.
@@ -614,12 +685,24 @@ def _iter_matching_rows(
     i_opn = idx["opnamedatum"]
     i_geld = idx["geldig_tot"]
     i_berek = idx["berekeningstype"]
+    i_opname = idx["soort_opname"]
+    i_gtype = idx["gebouwtype"]
+    i_bouw = idx["bouwjaar"]
+    i_floor = idx["gebruiksoppervlakte_thermische_zone"]
+    i_e_demand = idx["energiebehoefte"]
+    i_heat_demand = idx["warmtebehoefte"]
+    i_primary = idx["primaire_fossiele_energie"]
+    i_final = idx["berekende_energieverbruik"]
+    i_co2 = idx["berekende_co2_emissie"]
+    i_renewable = idx["aandeel_hernieuwbare_energie"]
 
     # Local aliases for micro-opt in the hot loop.
     norm_postcode = normalise_postcode
     norm_letter = normalise_letter
     split_huisnummer = _split_huisnummer
     parse_ymd = _parse_yyyymmdd
+    parse_int = _parse_int_or_none
+    parse_dec = _parse_decimal
 
     for row in reader:
         row_len = len(row)
@@ -676,6 +759,34 @@ def _iter_matching_rows(
             berekeningstype=(
                 row[i_berek].strip() if 0 <= i_berek < row_len else ""
             ) or None,
+            soort_opname=(
+                row[i_opname].strip() if 0 <= i_opname < row_len else ""
+            ) or None,
+            gebouwtype=(
+                row[i_gtype].strip() if 0 <= i_gtype < row_len else ""
+            ) or None,
+            bouwjaar=parse_int(row[i_bouw] if 0 <= i_bouw < row_len else ""),
+            gebruiksoppervlakte_thermische_zone=parse_dec(
+                row[i_floor] if 0 <= i_floor < row_len else ""
+            ),
+            energiebehoefte=parse_dec(
+                row[i_e_demand] if 0 <= i_e_demand < row_len else ""
+            ),
+            warmtebehoefte=parse_dec(
+                row[i_heat_demand] if 0 <= i_heat_demand < row_len else ""
+            ),
+            primaire_fossiele_energie=parse_dec(
+                row[i_primary] if 0 <= i_primary < row_len else ""
+            ),
+            berekende_energieverbruik=parse_dec(
+                row[i_final] if 0 <= i_final < row_len else ""
+            ),
+            berekende_co2_emissie=parse_dec(
+                row[i_co2] if 0 <= i_co2 < row_len else ""
+            ),
+            aandeel_hernieuwbare_energie=parse_dec(
+                row[i_renewable] if 0 <= i_renewable < row_len else ""
+            ),
         )
 
 
@@ -716,5 +827,41 @@ def _parse_yyyymmdd(raw: str) -> date | None:
         return None
     try:
         return date(int(text[0:4]), int(text[4:6]), int(text[6:8]))
+    except ValueError:
+        return None
+
+
+def _parse_int_or_none(raw: str) -> int | None:
+    """Parse an EP-online integer column; tolerate empty / malformed cells."""
+    text = (raw or "").strip()
+    if not text:
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        return None
+
+
+def _parse_decimal(raw: str) -> float | None:
+    """Parse a Dutch-decimal numeric cell (e.g. ``"28,5"``) to ``float``.
+
+    EP-online's CSV is semicolon-separated and uses the Dutch comma
+    decimal marker for every numeric column. The thousands separator
+    (``"."``) is irrelevant in practice for the energy-domain columns
+    (Energiebehoefte, primary energy, CO₂ emission, renewable share are
+    all in 0-1000 range), but the implementation strips it defensively
+    anyway in case a future vintage adds wider quantities.
+
+    Empty / whitespace-only / unparseable cells return ``None`` rather
+    than raising, mirroring :func:`_parse_yyyymmdd` and the rest of this
+    module's "tolerate-then-skip" stance toward malformed cells.
+    """
+    text = (raw or "").strip()
+    if not text:
+        return None
+    # Strip the Dutch thousands separator, then swap the decimal comma.
+    text = text.replace(".", "").replace(",", ".") if "," in text else text
+    try:
+        return float(text)
     except ValueError:
         return None

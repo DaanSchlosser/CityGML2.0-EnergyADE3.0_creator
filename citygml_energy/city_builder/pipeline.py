@@ -40,6 +40,8 @@ from .appearance import (
 from .bgt_match import match_trees_to_bgt
 from .boundary import load_boundary_polygon
 from .builders import (
+    apply_bag_year_metadata_to_building,
+    apply_eponline_year_to_building,
     attach_building_units_to_building,
     build_building,
     build_solitary_vegetation_object,
@@ -942,6 +944,17 @@ def _build_pand_artifacts(
         srs_name=build_params.srs_name,
         srs_dimension=build_params.srs_dimension,
     )
+    # Building-level year of construction: BAG metadata for
+    # bldg:yearOfConstruction, plus the EP-online ``Bouwjaar`` as a
+    # gen:intAttribute (with its own Metadata block) when at least one
+    # VBO under this Pand has an EP-online label that carries Bouwjaar.
+    # Year of construction is structurally a Pand-level fact (one
+    # bouwjaar per physical building); the rest of EP-online's
+    # classification (Gebouwtype, renewable share, energy metrics) is
+    # genuinely per-VBO and lives on each BuildingUnit, attached inside
+    # build_building_unit.
+    apply_bag_year_metadata_to_building(building)
+    apply_eponline_year_to_building(building, inputs.resolved)
     if inputs.pv_panels:
         attach_pv_collectors_to_building(
             building,
