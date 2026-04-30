@@ -33,7 +33,7 @@
     },
     "boundary": {
       "type": "object",
-      "description": "Optional free-form (possibly concave) polygon. When set, the fetch extent is derived from the polygon's own bounds, and buildings whose 2D LoD 0 footprint does not intersect the polygon are dropped. Mutually exclusive with 'bbox'. Two formats are accepted, dispatched on file extension: '.gpkg' (GeoPackage, requires 'layer' + 'fid') and '.geojson' / '.json' (single-feature or 'fid'-disambiguated).",
+      "description": "Optional free-form (possibly concave) polygon. When set, the fetch extent is derived from the polygon's own bounds, and buildings whose 2D LoD 0 footprint does not intersect the polygon are dropped. Mutually exclusive with 'bbox'. Must be a GeoJSON file (.geojson / .json) containing a single Feature with a Polygon or MultiPolygon geometry in EPSG:28992.",
       "additionalProperties": false,
       "required": [
         "path"
@@ -42,17 +42,7 @@
         "path": {
           "type": "string",
           "minLength": 1,
-          "description": "Path to a GeoPackage (.gpkg) or GeoJSON (.geojson / .json) in EPSG:28992 (or srs_id 0/-1 for 'undefined'), absolute or relative to this JSON file."
-        },
-        "layer": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Required for .gpkg: name of the features table holding the boundary polygon(s). Ignored for GeoJSON (which has no layer concept)."
-        },
-        "fid": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Required for .gpkg: feature id of the polygon to use. Optional for GeoJSON: when given, selects the feature whose 'id' or 'properties.id'/'fid' matches; when omitted, the first (Multi)Polygon feature is used."
+          "description": "Path to a GeoJSON (.geojson / .json) file in EPSG:28992 with a single Feature polygon, absolute or relative to this JSON file."
         }
       }
     },

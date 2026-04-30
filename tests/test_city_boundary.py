@@ -2,26 +2,23 @@
 
 Covers:
 
-* :func:`load_boundary_polygon` reads one feature by ``fid`` from a
-  real 1-feature GPKG, and raises actionable errors when the layer
-  is missing, the fid is absent, or the SRS id is wrong.
+* :func:`load_boundary_polygon` reads a single GeoJSON Feature and raises
+  actionable errors on FeatureCollection input, wrong CRS, or bad geometry.
 * :func:`_filter_by_boundary` keeps only buildings whose 2D LoD 0
   footprint intersects the polygon, using "any overlap" semantics.
-* Config validation rejects ``bbox`` + ``boundary`` set simultaneously
-  and accepts the ``boundary`` block on its own.
+* Config validation rejects ``bbox`` + ``boundary`` set simultaneously,
+  rejects non-GeoJSON paths, and accepts a ``boundary`` block on its own.
 """
 
 from __future__ import annotations
 
-import sqlite3
-import struct
 from pathlib import Path
 
 import pytest
 
 pytest.importorskip("shapely")
 
-from shapely.geometry import MultiPolygon, Polygon
+from shapely.geometry import Polygon
 
 from citygml_energy._step import GeometryPolygon
 from citygml_energy.city_builder.boundary import (
@@ -32,91 +29,10 @@ from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticP
 from citygml_energy.city_builder.config import CityBuildError, load_city_config
 from citygml_energy.city_builder.pipeline import _filter_by_boundary
 
-# ---------------------------------------------------------------------------
-# Minimal GPKG fixture (mirrors test_city_pv_panels._make_minimal_gpkg so the
-# two boundary + PV paths share an identical on-disk shape)
-# ---------------------------------------------------------------------------
-
-
-def _write_boundary_gpkg(
-    path: Path,
-    features: list[tuple[int, list[tuple[float, float]]]],
-    *,
-    srs_id: int = 28992,
-) -> None:
-    """Write one GPKG with N features (fid, MultiPolygon of one outer ring)."""
-    from shapely import wkb as shapely_wkb
-
-    con = sqlite3.connect(path)
-    try:
-        con.execute("PRAGMA application_id = 1196444487")  # 'GPKG'
-        con.execute("PRAGMA user_version = 10300")
-        con.executescript(
-            """
-            CREATE TABLE gpkg_spatial_ref_sys (
-                srs_name TEXT, srs_id INTEGER PRIMARY KEY,
-                organization TEXT, organization_coordsys_id INTEGER,
-                definition TEXT, description TEXT
-            );
-            CREATE TABLE gpkg_contents (
-                table_name TEXT PRIMARY KEY, data_type TEXT, identifier TEXT,
-                description TEXT, last_change DATETIME DEFAULT CURRENT_TIMESTAMP,
-                min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE,
-                srs_id INTEGER
-            );
-            CREATE TABLE gpkg_geometry_columns (
-                table_name TEXT, column_name TEXT, geometry_type_name TEXT,
-                srs_id INTEGER, z TINYINT, m TINYINT
-            );
-            CREATE TABLE grid2 (fid INTEGER PRIMARY KEY, geom BLOB);
-            """
-        )
-        con.execute(
-            "INSERT INTO gpkg_spatial_ref_sys VALUES ('RD New', 28992, 'EPSG', 28992, 'WKT', '')"
-        )
-        con.execute(
-            "INSERT INTO gpkg_contents (table_name, data_type, srs_id) "
-            "VALUES ('grid2', 'features', ?)",
-            (srs_id,),
-        )
-        con.execute(
-            "INSERT INTO gpkg_geometry_columns VALUES "
-            "('grid2', 'geom', 'MULTIPOLYGON', ?, 0, 0)",
-            (srs_id,),
-        )
-        for fid, coords in features:
-            mp = MultiPolygon([Polygon(coords)])
-            wkb_bytes = shapely_wkb.dumps(mp, byte_order=1, include_srid=False)
-            # GPKG binary header: "GP" magic, version 0, flags 0x01 (LE), SRS id.
-            header = struct.pack("<2sBBi", b"GP", 0, 0x01, srs_id)
-            con.execute(
-                "INSERT INTO grid2 (fid, geom) VALUES (?, ?)", (fid, header + wkb_bytes)
-            )
-        con.commit()
-    finally:
-        con.close()
-
 
 # ---------------------------------------------------------------------------
 # load_boundary_polygon
 # ---------------------------------------------------------------------------
-
-
-def test_load_boundary_polygon_returns_requested_fid(tmp_path: Path) -> None:
-    gpkg = tmp_path / "grid2.gpkg"
-    _write_boundary_gpkg(
-        gpkg,
-        [
-            (1, [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0), (0.0, 0.0)]),
-            (2, [(100.0, 100.0), (105.0, 100.0), (105.0, 105.0), (100.0, 105.0), (100.0, 100.0)]),
-        ],
-    )
-    geom1 = load_boundary_polygon(BoundarySource(path=gpkg, layer="grid2", fid=1))
-    geom2 = load_boundary_polygon(BoundarySource(path=gpkg, layer="grid2", fid=2))
-    # fid=1 is the 10x10 at origin; fid=2 is the 5x5 at (100,100). Bounds
-    # are the cleanest way to tell them apart without depending on ring order.
-    assert geom1.bounds == (0.0, 0.0, 10.0, 10.0)
-    assert geom2.bounds == (100.0, 100.0, 105.0, 105.0)
 
 
 def test_load_boundary_polygon_heals_concave_self_intersecting_ring(tmp_path: Path) -> None:
@@ -124,50 +40,21 @@ def test_load_boundary_polygon_heals_concave_self_intersecting_ring(tmp_path: Pa
     non-noded; the loader must heal them with ``buffer(0)`` rather than
     propagating an invalid geometry into the intersection test.
     """
-    gpkg = tmp_path / "boundary.gpkg"
+    import json
+
     # Bowtie ring: crosses itself at (1, 0.5). Shapely marks that invalid.
-    _write_boundary_gpkg(
-        gpkg, [(1, [(0, 0), (2, 0), (0, 1), (2, 1), (0, 0)])]
-    )
-    geom = load_boundary_polygon(BoundarySource(path=gpkg, layer="grid2", fid=1))
+    path = tmp_path / "boundary.geojson"
+    doc = {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [2, 0], [0, 1], [2, 1], [0, 0]]],
+        },
+    }
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    geom = load_boundary_polygon(BoundarySource(path=path))
     assert geom.is_valid
-
-
-def test_load_boundary_raises_for_missing_fid(tmp_path: Path) -> None:
-    gpkg = tmp_path / "grid2.gpkg"
-    _write_boundary_gpkg(
-        gpkg, [(1, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])]
-    )
-    with pytest.raises(ValueError, match=r"boundary\.fid=99 not found"):
-        load_boundary_polygon(BoundarySource(path=gpkg, layer="grid2", fid=99))
-
-
-def test_load_boundary_raises_for_missing_layer(tmp_path: Path) -> None:
-    gpkg = tmp_path / "grid2.gpkg"
-    _write_boundary_gpkg(
-        gpkg, [(1, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])]
-    )
-    with pytest.raises(ValueError, match="not declared in gpkg_contents"):
-        load_boundary_polygon(BoundarySource(path=gpkg, layer="nope", fid=1))
-
-
-def test_load_boundary_raises_for_wrong_crs(tmp_path: Path) -> None:
-    """Only EPSG:28992 (or 'undefined' 0/-1) is accepted, to match 3DBAG."""
-    gpkg = tmp_path / "grid2.gpkg"
-    _write_boundary_gpkg(
-        gpkg,
-        [(1, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])],
-        srs_id=28992,
-    )
-    # Force the declared SRS to WGS84.
-    con = sqlite3.connect(gpkg)
-    try:
-        con.execute("UPDATE gpkg_contents SET srs_id = 4326 WHERE table_name = 'grid2'")
-        con.commit()
-    finally:
-        con.close()
-    with pytest.raises(ValueError, match=r"srs_id=4326"):
-        load_boundary_polygon(BoundarySource(path=gpkg, layer="grid2", fid=1))
 
 
 # ---------------------------------------------------------------------------
@@ -263,50 +150,28 @@ def _write_config(tmp_path: Path, **extras: object) -> Path:
 
 
 def test_config_accepts_boundary_block(tmp_path: Path) -> None:
-    path = _write_config(
-        tmp_path,
-        boundary={
-            "path": "../inputs/pv_panels/grid2.gpkg",
-            "layer": "grid2",
-            "fid": 1,
-        },
-    )
+    geojson = tmp_path / "area.geojson"
+    _write_geojson(geojson, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])
+    path = _write_config(tmp_path, boundary={"path": str(geojson)})
     config = load_city_config(path)
     assert config.boundary_source is not None
-    assert config.boundary_source.layer == "grid2"
-    assert config.boundary_source.fid == 1
+    assert config.boundary_source.path == geojson
 
 
 def test_config_rejects_bbox_and_boundary_together(tmp_path: Path) -> None:
+    geojson = tmp_path / "area.geojson"
+    _write_geojson(geojson, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])
     path = _write_config(
         tmp_path,
         bbox=[0.0, 0.0, 100.0, 100.0],
-        boundary={
-            "path": "../inputs/pv_panels/grid2.gpkg",
-            "layer": "grid2",
-            "fid": 1,
-        },
+        boundary={"path": str(geojson)},
     )
     with pytest.raises(CityBuildError, match="mutually exclusive"):
         load_city_config(path)
 
 
-def test_config_rejects_non_integer_fid(tmp_path: Path) -> None:
-    path = _write_config(
-        tmp_path,
-        boundary={
-            "path": "../inputs/pv_panels/grid2.gpkg",
-            "layer": "grid2",
-            "fid": "1",
-        },
-    )
-    with pytest.raises(CityBuildError, match=r"boundary\.fid must be"):
-        load_city_config(path)
-
-
 # ---------------------------------------------------------------------------
-# GeoJSON boundary reader (added alongside .gpkg to drop per-area GPKG
-# dependency for simple single-polygon AOIs like emmer_compascuum_area.geojson)
+# GeoJSON boundary reader
 # ---------------------------------------------------------------------------
 
 
@@ -315,61 +180,39 @@ def _write_geojson(
     coords: list[tuple[float, float]],
     *,
     crs: str | None = "urn:ogc:def:crs:EPSG::28992",
-    wrap: str = "feature_collection",
-    extra_feature: dict | None = None,
+    geojson_type: str = "Feature",
 ) -> None:
-    """Write a minimal single-feature GeoJSON in the given CRS.
+    """Write a minimal GeoJSON file in the given CRS.
 
-    *wrap* selects between a ``FeatureCollection`` and a bare ``Feature``
-    so we can exercise both code paths in ``_load_from_geojson``.
+    *geojson_type* controls the root ``type`` field so tests can verify
+    that non-Feature roots are rejected.
     """
     import json
 
     geometry = {"type": "Polygon", "coordinates": [[list(p) for p in coords]]}
     feature = {"type": "Feature", "properties": {}, "geometry": geometry}
-    if wrap == "feature":
+    if geojson_type == "Feature":
         doc: dict = feature
     else:
-        doc = {"type": "FeatureCollection", "features": [feature]}
-        if extra_feature is not None:
-            doc["features"].append(extra_feature)
+        doc = {"type": geojson_type, "features": [feature]}
     if crs is not None:
         doc["crs"] = {"type": "name", "properties": {"name": crs}}
     path.write_text(json.dumps(doc), encoding="utf-8")
 
 
-def test_load_boundary_from_geojson_single_feature_collection(tmp_path: Path) -> None:
+def test_load_boundary_from_geojson_feature(tmp_path: Path) -> None:
     path = tmp_path / "area.geojson"
     _write_geojson(path, [(0, 0), (10, 0), (10, 10), (0, 10), (0, 0)])
     geom = load_boundary_polygon(BoundarySource(path=path))
     assert geom.bounds == (0.0, 0.0, 10.0, 10.0)
 
 
-def test_load_boundary_from_geojson_bare_feature(tmp_path: Path) -> None:
-    """A plain Feature (no enclosing FeatureCollection) is a legal GeoJSON root."""
+def test_load_boundary_rejects_feature_collection(tmp_path: Path) -> None:
+    """A FeatureCollection is not a single-polygon boundary and must be rejected."""
     path = tmp_path / "area.geojson"
-    _write_geojson(path, [(0, 0), (5, 0), (5, 5), (0, 5), (0, 0)], wrap="feature")
-    geom = load_boundary_polygon(BoundarySource(path=path))
-    assert geom.bounds == (0.0, 0.0, 5.0, 5.0)
-
-
-def test_load_boundary_from_geojson_picks_by_fid(tmp_path: Path) -> None:
-    path = tmp_path / "area.geojson"
-    _write_geojson(
-        path,
-        [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)],
-        extra_feature={
-            "type": "Feature",
-            "id": 7,
-            "properties": {"id": 7},
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [[[100, 100], [101, 100], [101, 101], [100, 101], [100, 100]]],
-            },
-        },
-    )
-    geom = load_boundary_polygon(BoundarySource(path=path, fid=7))
-    assert geom.bounds == (100.0, 100.0, 101.0, 101.0)
+    _write_geojson(path, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)], geojson_type="FeatureCollection")
+    with pytest.raises(ValueError, match="single"):
+        load_boundary_polygon(BoundarySource(path=path))
 
 
 def test_load_boundary_from_geojson_rejects_non_rd_crs(tmp_path: Path) -> None:
@@ -391,22 +234,17 @@ def test_load_boundary_from_geojson_accepts_missing_crs(tmp_path: Path) -> None:
     assert geom.is_valid
 
 
-def test_config_accepts_geojson_boundary_without_layer_or_fid(tmp_path: Path) -> None:
-    """A `.geojson` path is single-feature by convention; layer + fid are optional."""
+def test_config_accepts_geojson_boundary(tmp_path: Path) -> None:
     geojson = tmp_path / "area.geojson"
     _write_geojson(geojson, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)])
     cfg = _write_config(tmp_path, boundary={"path": str(geojson)})
     loaded = load_city_config(cfg)
     assert loaded.boundary_source is not None
-    assert loaded.boundary_source.layer is None
-    assert loaded.boundary_source.fid is None
+    assert loaded.boundary_source.path == geojson
 
 
-def test_config_rejects_gpkg_boundary_missing_layer_or_fid(tmp_path: Path) -> None:
-    """`.gpkg` is ambiguous without layer + fid and must fail loudly at load time."""
-    cfg = _write_config(tmp_path, boundary={"path": "some.gpkg", "layer": "grid2"})
-    with pytest.raises(CityBuildError, match="fid is required"):
-        load_city_config(cfg)
-    cfg = _write_config(tmp_path, boundary={"path": "some.gpkg", "fid": 0})
-    with pytest.raises(CityBuildError, match="layer is required"):
+def test_config_rejects_gpkg_boundary(tmp_path: Path) -> None:
+    """Only .geojson is accepted; .gpkg must fail at config-load time."""
+    cfg = _write_config(tmp_path, boundary={"path": "some.gpkg"})
+    with pytest.raises(CityBuildError, match=r"\.geojson"):
         load_city_config(cfg)
