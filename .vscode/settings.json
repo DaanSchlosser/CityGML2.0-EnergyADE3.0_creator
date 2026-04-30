@@ -2,6 +2,11 @@
   // ── Python ───────────────────────────────────────────────────────────
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
 
+  // ── Markdown ─────────────────────────────────────────────────────────
+  "workbench.editorAssociations": {
+    "*.md": "vscode.markdown.preview.editor"
+  },
+
   // ── Ruff (linting + formatting) ─────────────────────────────────────
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
