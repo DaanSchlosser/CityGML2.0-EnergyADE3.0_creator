@@ -37,7 +37,7 @@ real-world testing, extension, and de-facto standardisation.
 
 | Pipeline | Input | Purpose in RenoDAT |
 |---|---|---|
-| **Per-building** | Hand-authored `schema_version: 2` JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport — zones, schedules, devices, layered constructions, material libraries, per-surface appearances — for one dwelling? The included [owner-occupier reference building](inputs/owner_occupier_building.json) (a single-family residence in Delft, modelled LoD 0–3 with thermal zone parts) is the worked example. |
+| **Per-building** | Hand-authored `schema_version: 2` JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport — zones, schedules, devices, layered constructions, material libraries, per-surface appearances — for one dwelling? The included [owner-occupier reference building](inputs/buildings/owner_occupier_building.json) (a single-family residence in Delft, modelled LoD 0–3 with thermal zone parts) is the worked example. |
 | **City-scale** | `schema_version: "city-1"` config naming a Dutch municipality | Does the same data model scale to the dwelling stock? Fetches BAG + 3DBAG + EP-online (+ optional PV panels, BGT tree register, CFTree vegetation) for an entire area and assembles one GML file. |
 
 Both pipelines emit the **same** CityGML 2.0 + Energy ADE 3.0 wire
@@ -80,7 +80,7 @@ Python: `python --version` (must be ≥ 3.12).
 Custom paths:
 
 ```powershell
-python examples/create_building.py --input inputs/owner_occupier_building.json --output generated/owner_occupier_building.gml
+python examples/create_building.py --input inputs/buildings/owner_occupier_building.json --output generated/owner_occupier_building.gml
 ```
 
 Requirements: Python 3.12+ and `lxml >= 5.0`. Dev extras add `pytest`,
@@ -103,7 +103,7 @@ framing):
 ## 3. The input file
 
 Everything the generator needs lives in a single JSON document
-([inputs/owner_occupier_building.json](inputs/owner_occupier_building.json)). It has eight
+([inputs/buildings/owner_occupier_building.json](inputs/buildings/owner_occupier_building.json)). It has eight
 top-level keys (plus an optional `$schema`):
 
 ```jsonc
@@ -178,7 +178,7 @@ Field-by-field semantics:
 - **`$schema`** *(optional)*: pointer to
   [schemas/citygml_energy_input.schema.json](schemas/citygml_energy_input.schema.json)
   for VS Code autocomplete and inline validation while editing. The
-  canonical [inputs/owner_occupier_building.json](inputs/owner_occupier_building.json) does
+  canonical [inputs/buildings/owner_occupier_building.json](inputs/buildings/owner_occupier_building.json) does
   not currently set it; add it manually if you want editor assistance.
 - **`srs_name`** *(optional, defaults to
   `urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109`)*: the CRS URN
@@ -202,8 +202,8 @@ the source).
 
 ```mermaid
 flowchart TD
-    J["inputs/owner_occupier_building.json"]:::input
-    S["inputs/*.stp<br/>(STEP geometry, parsed in stage 4)"]:::input
+    J["inputs/buildings/owner_occupier_building.json"]:::input
+    S["inputs/stp/*.stp<br/>(STEP geometry, parsed in stage 4)"]:::input
 
     subgraph Load["<b>load_feature_collection</b> &nbsp;·&nbsp; read + validate"]
         direction TB
@@ -637,7 +637,7 @@ nothing else should spell out schema names in string literals.
 
 Glue layer exposing `generate_city_model(input_path)` and
 `generate_gml_file(input_path, output_path)` with sensible defaults
-pointing at [inputs/owner_occupier_building.json](inputs/owner_occupier_building.json) and
+pointing at [inputs/buildings/owner_occupier_building.json](inputs/buildings/owner_occupier_building.json) and
 [generated/owner_occupier_building.gml](generated/owner_occupier_building.gml).
 
 ### 6.10 `citygml_energy.errors`
@@ -663,7 +663,7 @@ working without changes.
 ### 7.1 [examples/create_building.py](examples/create_building.py)
 
 Canonical CLI + library entry point. With no arguments it reads
-[inputs/owner_occupier_building.json](inputs/owner_occupier_building.json) and writes
+[inputs/buildings/owner_occupier_building.json](inputs/buildings/owner_occupier_building.json) and writes
 [generated/owner_occupier_building.gml](generated/owner_occupier_building.gml). Both paths are
 overridable via `--input` / `--output`. Importable functions:
 `create_building()`, `write_building_gml_file()`.
@@ -901,11 +901,18 @@ tools/
 └── bench.py                   Benchmarking utilities
 
 inputs/
-├── owner_occupier_building.json         Per-building reference input (§3)
-├── owner_occupier_building_sample.json  Shareable sanitised sample (same shape, placeholder values)
-├── Owner-Occupier1_*.stp                STEP geometry, LOD 0–3 + 2 thermal zone parts
-├── city_example.json                    Full-city config (§12)
-└── city_smoke_test.json                 Small-bbox smoke-test config
+├── buildings/                           Per-building feature-collection JSONs (schema_version: 2, §3)
+│   ├── owner_occupier_building.json         Reference input
+│   └── owner_occupier_building_sample.json  Shareable sanitised sample (same shape, placeholder values)
+├── stp/                                 STEP geometry referenced by the per-building JSONs
+│   └── Owner-Occupier1_*.stp                LOD 0–3 + 2 thermal zone parts
+├── cities/                              City-scale configs (schema_version: city-1, §12)
+│   ├── emmer-compascuum_small-area.json     Default smoke test (boundary + PV + vegetation)
+│   ├── emmer-compascuum_small-area_pv-only.json  Same boundary, no vegetation
+│   └── delft.json / groningen.json / zwolle.json  Full-municipality configs
+├── boundaries/                          GeoJSON AOI polygons used by city configs
+│   └── emmer-compascuum_small-area.geojson
+└── pv_panels/                           PV panel GeoPackage (UoG Zenodo 14860030, CC-BY-4.0)
 
 schemas/
 ├── citygml_energy_input.schema.json   Generated by tools/generate_input_schema.py
@@ -973,8 +980,8 @@ CityGML + Energy ADE file for an entire Dutch municipality by combining:
   [`docs/vegetation_integration_report.md`](docs/vegetation_integration_report.md).
 
 The workflow lives behind its own JSON config
-([`inputs/city_example.json`](inputs/city_example.json)) with a separate
-schema version (`schema_version: "city-1"`). It does **not** use any of
+([`inputs/cities/emmer-compascuum_small-area.json`](inputs/cities/emmer-compascuum_small-area.json))
+with a separate schema version (`schema_version: "city-1"`). It does **not** use any of
 the code paths in §3–§9, so you can change one without touching the other.
 
 ### 12.1 Quick start
@@ -984,10 +991,11 @@ python -m pip install -e ".[city]"
 
 # optional: set EP_ONLINE_API_KEY in .env at project root if you want energy labels
 # (the config will fall back to this env var automatically)
-python examples/create_city.py --input inputs/city_example.json
+python examples/create_city.py --input inputs/cities/emmer-compascuum_small-area.json
 ```
 
-**Environment setup for EP-online:** If `inputs/city_example.json` has
+**Environment setup for EP-online:** If
+`inputs/cities/emmer-compascuum_small-area.json` has
 `include_energy_labels: true`, the pipeline will attempt to fetch energy
 labels from the EP-online register. To enable this:
 
@@ -1001,9 +1009,8 @@ Without a valid API key the pipeline raises a `CityBuildError` when
 
 The first run fills `cache_dir` with the BAG responses, the 3DBAG
 FlatGeoBuf tile index + CityJSON tiles, and the EP-online mutatiebestand
-ZIP; subsequent runs are near-instant. For local iteration use
-[`inputs/city_smoke_test.json`](inputs/city_smoke_test.json) (a small
-bbox covering a residential slice of Delft).
+ZIP; subsequent runs are near-instant. The default config above (~41.5 ha
+Emmer-Compascuum AOI) doubles as the canonical smoke test.
 
 ### 12.2 Config reference
 
@@ -1011,15 +1018,15 @@ Every key is optional unless noted:
 
 ```jsonc
 {
-  "$schema": "../schemas/city_input.schema.json",
+  "$schema": "../../schemas/city_input.schema.json",
   "schema_version": "city-1",               // required
   "municipality": "Delft",                   // required; PDOK name match
   "bbox": [84000, 445000, 86000, 447000],    // optional EPSG:28992 clip
   "lods": [0, 1, 2],                         // subset of {0,1,2}
   "include_addresses": true,
   "include_energy_labels": true,             // requires EP_ONLINE_API_KEY in .env or env var
-  "cache_dir": "../.cache/citygml_energy_city",
-  "output": "../generated/delft.gml",        // required
+  "cache_dir": "../../.cache/citygml_energy_city",
+  "output": "../../generated/delft.gml",     // required
   "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
   "srs_dimension": 3,
   "city_model": { "name": "Delft", "description": "..." },

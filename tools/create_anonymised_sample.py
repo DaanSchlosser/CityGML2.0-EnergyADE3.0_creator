@@ -2,8 +2,9 @@
 
 Pipeline:
   1. Generate a CityGML 2.0 + EnergyADE 3.0 file from
-     ``inputs/owner_occupier_building_sample.json`` (a structural clone of the real
-     per-building input file where every data value is a placeholder).
+     ``inputs/buildings/owner_occupier_building_sample.json`` (a structural
+     clone of the real per-building input file where every data value is a
+     placeholder).
   2. Drop every LOD geometry subtree so the output carries no coordinates.
 
 The resulting ``generated/owner_occupier_building_sample.gml`` is safe to attach to
@@ -31,7 +32,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from citygml_energy import generate_gml_file
 
-DEFAULT_INPUT = REPO_ROOT / "inputs" / "owner_occupier_building_sample.json"
+DEFAULT_INPUT = REPO_ROOT / "inputs" / "buildings" / "owner_occupier_building_sample.json"
 DEFAULT_OUTPUT = REPO_ROOT / "generated" / "owner_occupier_building_sample.gml"
 
 NS = {

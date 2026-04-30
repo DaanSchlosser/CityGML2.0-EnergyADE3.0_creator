@@ -217,7 +217,7 @@ def test_building_unit_with_label_emits_epc_with_valid_from() -> None:
 def test_building_carries_bag_pand_identifier_with_codespace() -> None:
     """The Pand identificatie is exposed as an nrg3:identifier with the
     Dutch BAG linked-data URL as its codeSpace, matching the per-building-input
-    sample at ``inputs/owner_occupier_building.json:35``. Concatenating the
+    sample at ``inputs/buildings/owner_occupier_building.json:35``. Concatenating the
     codeSpace + value reconstructs the full dereferenceable URL.
     """
     from citygml_energy.namespaces import CS_BAG_PAND

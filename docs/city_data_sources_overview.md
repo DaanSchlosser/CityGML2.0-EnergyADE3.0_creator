@@ -22,9 +22,9 @@ Each table has three legend columns:
 | **(blank)** | fetched but ignored |
 
 The canonical config used throughout is
-[`inputs/emmer_compascuum.json`](../inputs/emmer_compascuum.json);
-concrete counts come from a fresh end-to-end run on the grid2
-Emmer-Compascuum AOI (41.5 ha, 674 buildings, 652 trees).
+[`inputs/cities/emmer-compascuum_small-area.json`](../inputs/cities/emmer-compascuum_small-area.json);
+concrete counts come from a fresh end-to-end run on the
+Emmer-Compascuum small-area AOI (41.5 ha, 674 buildings, 652 trees).
 
 ---
 
@@ -84,7 +84,7 @@ Emmer-Compascuum AOI (41.5 ha, 674 buildings, 652 trees).
 
 | WFS property | Example | Read | CityGML target | Notes |
 |---|---|---|---|---|
-| `identificatie` | `"0114100000202542"` | ✓ | `bldg:Building/@gml:id` (via `pand_` prefix) + `nrg3:identifier` with `codeSpace=CS_BAG_PAND` | The `identifier` emission matches the owner-occupier-building pattern at [`inputs/owner_occupier_building.json:35`](../inputs/owner_occupier_building.json); concatenating `codeSpace + value` reconstructs the full dereferenceable BAG URL (the same URL the WFS `rdf_seealso` column exposes), so the pipeline does not need to round-trip `rdf_seealso` itself. |
+| `identificatie` | `"0114100000202542"` | ✓ | `bldg:Building/@gml:id` (via `pand_` prefix) + `nrg3:identifier` with `codeSpace=CS_BAG_PAND` | The `identifier` emission matches the owner-occupier-building pattern at [`inputs/buildings/owner_occupier_building.json:35`](../inputs/buildings/owner_occupier_building.json); concatenating `codeSpace + value` reconstructs the full dereferenceable BAG URL (the same URL the WFS `rdf_seealso` column exposes), so the pipeline does not need to round-trip `rdf_seealso` itself. |
 | `bouwjaar` | `1955` | ✓ | `bldg:yearOfConstruction` | Wins over any `oorspronkelijkbouwjaar` on the 3DBAG Building attribute dict. |
 | `rdf_seealso` | `"http://bag.basisregistraties.overheid.nl/bag/id/pand/<id>"` | ⚙ (implicit) | — | Not read per-feature, but its known URL structure **is** what drives the fixed `CS_BAG_PAND` codeSpace used for the `identifier` emission. |
 | `status` | `"Pand in gebruik"` | ⚙ | merged into `ParsedBuilding.attributes["status"]` but **not written to any CityGML element today** | Latent; a future `bldg:condition`-like field could consume this. |
@@ -177,8 +177,9 @@ The CSV has **42 columns** plus two header meta-lines (`PublicatieDatum`, `Laats
 | `Opnamedatum` | ✓ | — | Tie-breaker for duplicate rows in `address_match` (latest opname wins). |
 | `Berekeningstype` | ✓ | `nrg3:EnergyPerformanceCertificate/certificationMethod` (concatenated with `SoortOpname` via `" / "`) | Raw NTA-8800 variant string. Now joined with `SoortOpname` so the EPC's certification method carries both the inspection rigour and the calculation variant. |
 | `SoortOpname` | ✓ | `nrg3:EnergyPerformanceCertificate/certificationMethod` (prepended to `Berekeningstype`) | Inspection rigour ("Basisopname" / "Detailopname"). Native (derived); see [`docs/ep_online_data_model_mapping.md`](ep_online_data_model_mapping.md) §5d. |
-| `Gebouwtype` | ✓ | `gen:stringAttribute name="bdgTypeEPOnline"` on each `nrg3:BuildingUnit` (English-mapped Energy ADE `BuildingTypeValue.xml` value, looked up via [`citygml_energy/city_builder/gebouwtype_lookup.py`](../citygml_energy/city_builder/gebouwtype_lookup.py)) | RVO building-type taxonomy → English Energy ADE codelist. Per-VBO; the native `nrg3:bdgType` element substitutes onto Building only, so the per-VBO version is encoded as a generic string attribute (mapping doc §5e). |
-| `Bouwjaar` | ✓ | `gen:intAttribute name="yearOfConstructionEPOnline"` on the **Building** (Pand level, picked from the most-recently-registered cert across the Pand's VBOs). One `nrg3:Metadata` block on the Building attributes EP-online; the BAG-source block sits next to it. | Year-of-construction is a Pand-level fact regardless of which register reports it; EP-online ships it per-VBO only because the CSV is row-per-cert. Mapping doc §5h. |
+| `Gebouwtype` | ✓ | native `nrg3:bdgType` on the **Building** (Pand-level, Dutch RVO term verbatim, `@codeSpace = CS_RVO_GEBOUWTYPE` pointing at the EP-online publication that defines the vocabulary). Picked from the most-recently-registered cert across the Pand's VBOs that carries `Gebouwtype`. | The primary building type is a Pand-level fact: a structure has one primary type regardless of how many VBOs sit inside. Dutch term verbatim because the Energy-ADE 3.0 `BuildingTypeValue.xml` codelist is too coarse for the NTA-8800 typology (mapping doc §5e). |
+| `Gebouwsubtype` | ✓ | `gen:stringAttribute name="bdgSubtypeEPOnline"` on each `nrg3:BuildingUnit`, value = Dutch RVO term verbatim. | Per-VBO secondary qualifier (e.g. `appartement-portiekflat`); two VBOs in one Pand can carry different subtypes. EnergyADE 3.0 has no native `nrg3:bdgSubtype` element (mapping doc §5e). |
+| `Bouwjaar` | ✓ | `gen:intAttribute name="yearOfConstructionEPOnline"` on the **Building** (Pand level, picked from the most-recently-registered cert across the Pand's VBOs). The EP-online `nrg3:Metadata` block on the Building covers both `yearOfConstructionEPOnline` and `nrg3:bdgType`; the BAG-source block sits next to it. | Year-of-construction is a Pand-level fact regardless of which register reports it; EP-online ships it per-VBO only because the CSV is row-per-cert. Mapping doc §5h. |
 | `GebruiksoppervlakteThermischeZone` | ✓ | `nrg3:Zone/area` as a `QualifiedArea` (type `netFloorArea`, source attributing EP-online) on a per-VBO Zone hosted under the Building, xlink-referencing the BuildingUnit. uom `m2`. | Anchor for every per-m² energy metric. Mapping doc §5h. |
 | `Energiebehoefte` | ✓ | `nrg3:Energy` resource on the BuildingUnit via `nrg3:resource`: type `netEnergy`, endUse `spaceHeating`, normalised against the thermal-zone area. uom `kWh/m2/a`. | BENG-1, heating + cooling combined. Mapping doc §5i. |
 | `Warmtebehoefte` | ✓ | sibling `nrg3:Energy` resource: type `netEnergy`, distinguished from BENG-1 by the `description` field. | NTA 8800 net heating demand. Mapping doc §5i. |
@@ -190,7 +191,7 @@ The CSV has **42 columns** plus two header meta-lines (`PublicatieDatum`, `Laats
 | `PublicatieDatum` (meta row 1) | | | Date of this Mutatiebestand vintage. Not parsed. |
 | `LaatstVerwerkteMutatievolgnummer` (meta row 2) | | | Opaque RVO mutation counter. Not parsed. |
 | `Opnamedatum` | ⚙ | — | Inspection date. Used as the address-match tiebreak only; deliberately not emitted (Skip-(latent), mapping doc §5b). |
-| `Certificaathouder`, `Status`, `OpBasisVanReferentiegebouw`, `Gebouwklasse`, `Gebouwsubtype`, `SBICode`, `Detailaanduiding`, `Projectnaam`, `Projectobject`, `Bouwjaar` agreement diff | | | Skip-(latent) or Drop per the mapping doc §5d, §5e, §5f, §5g. Each has a documented potential target in case of revisit. |
+| `Certificaathouder`, `Status`, `OpBasisVanReferentiegebouw`, `Gebouwklasse`, `SBICode`, `Detailaanduiding`, `Projectnaam`, `Projectobject`, `Bouwjaar` agreement diff | | | Skip-(latent) or Drop per the mapping doc §5d, §5e, §5f, §5g. Each has a documented potential target in case of revisit. |
 | `Compactheid` | | | Surface-to-volume ratio. Skip-(latent); potentially useful for a future thermal-modelling extension. Mapping doc §5h. |
 | `EnergieIndex`, `EnergieIndexEMGForfaitair` | | | Pre-NTA-8800 (legacy). Dropped: mathematically incompatible with BENG metrics. Mapping doc §5i. |
 | `PrimaireFossieleEnergieEMGForfaitair`, `AandeelHernieuwbareEnergieEMGForfaitair` | | | Same physical quantity computed under a different convention; not modelled. Dropped (mapping doc §5j). |
@@ -301,7 +302,7 @@ BGT carries **no biological attributes** (no species, leaf class, planting year,
 
 ## 10. Boundary polygon (`.gpkg` or `.geojson`)
 
-**Source:** local file pointed to by the `boundary.path` config. The canonical default is [`inputs/emmer_compascuum_area.geojson`](../inputs/emmer_compascuum_area.geojson).
+**Source:** local file pointed to by the `boundary.path` config. The canonical default is [`inputs/boundaries/emmer-compascuum_small-area.geojson`](../inputs/boundaries/emmer-compascuum_small-area.geojson).
 **Loader:** [`boundary.py`](../citygml_energy/city_builder/boundary.py).
 
 | Supply | Read | Used for |
@@ -359,7 +360,7 @@ removed or rejected source without knowing the reasoning.
 
 | Rejected source | Why |
 |---|---|
-| **OpenStreetMap** `natural=tree` | On the Emmer-Compascuum grid2 run, 20 OSM nodes fell inside the AOI; every single one carried *only* the `natural=tree` tag and no species / leaf_type / leaf_cycle / start_date. Zero semantic data, and non-Dutch-government source. Removed. |
+| **OpenStreetMap** `natural=tree` | On the Emmer-Compascuum small-area run, 20 OSM nodes fell inside the AOI; every single one carried *only* the `natural=tree` tag and no species / leaf_type / leaf_cycle / start_date. Zero semantic data, and non-Dutch-government source. Removed. |
 | **Landelijk Register Monumentale Bomen** (Bomenstichting) | 0 entries in the Emmer-Compascuum AOI (expected — typical village has no nationally-listed specimens). Also: the Bomenstichting is an NGO, not a government register, so out of scope. |
 | **Boomregister.nl** (Geodan / NEO / COBRA / WUR cooperative) | The only candidate with crown polygons + heights per tree nationwide. License-gated; no public API; redistribution prohibited. Incompatible with a publicly-reproducible pipeline. |
 | **AHN5 / AHN6 LAZ for NE Netherlands** | AHN5 skipped the NE (verified against `bladwijzer.gpkg`). AHN6 is inventoried but not yet publicly downloadable for this area. Pinned to AHN4 in CFTree. |
@@ -434,7 +435,7 @@ Three concrete additions, all non-attribute:
    CFTree reconstruction is almost certainly a private garden tree
    (or, rarely, a LiDAR false positive). Encoded via the presence /
    absence of the `externalReference` — no dedicated boolean field
-   needed. On the Emmer-Compascuum grid2 run: 225 of 652 CFTree trees
+   needed. On the Emmer-Compascuum small-area run: 225 of 652 CFTree trees
    are BGT-matched (~35 %), which roughly tracks the public /
    private split in that AOI.
 3. **`bgtCreationDate`.** Not a planting date, but the date the tree
