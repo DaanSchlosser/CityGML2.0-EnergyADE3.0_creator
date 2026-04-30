@@ -19,15 +19,14 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 import pickle
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .._step import Coord3D
 from ..core import CityModel
 from ..gml_builders import build_envelope
+from . import pand_executor
 from . import pv_panels as pv_panels_module
 from . import vegetation as vegetation_module
 from .address_key import address_key_from_vbo
@@ -39,13 +38,7 @@ from .appearance import (
 )
 from .bgt_match import match_trees_to_bgt
 from .boundary import load_boundary_polygon
-from .builders import (
-    apply_bag_year_metadata_to_building,
-    apply_eponline_year_to_building,
-    attach_building_units_to_building,
-    build_building,
-    build_solitary_vegetation_object,
-)
+from .builders import build_solitary_vegetation_object
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 from .cityjson_trees_parse import ParsedTree
 from .config import CityBuildConfig, CityBuildError, load_city_config
@@ -623,27 +616,19 @@ def _assemble_city_model(
         gml_name=config.city_model_name,
     )
 
-    inputs_per_pand = _bundle_per_pand_inputs(
+    inputs_per_pand = pand_executor.bundle_per_pand_inputs(
         panden=panden,
         resolved_per_pand=resolved_per_pand,
         pv_matches_per_pand=pv_matches_per_pand or {},
     )
-    workers = _assembly_worker_count(len(panden))
-    if workers > 1:
-        build_results = _build_pand_artifacts_parallel(
-            config=config,
-            panden=panden,
-            parsed_by_id=parsed_by_id,
-            inputs_per_pand=inputs_per_pand,
-            workers=workers,
-        )
-    else:
-        build_results = _build_pand_artifacts_sequential(
-            config=config,
-            panden=panden,
-            parsed_by_id=parsed_by_id,
-            inputs_per_pand=inputs_per_pand,
-        )
+    workers = pand_executor.assembly_worker_count(len(panden))
+    build_results = pand_executor.run_per_pand_build(
+        config=config,
+        panden=panden,
+        parsed_by_id=parsed_by_id,
+        inputs_per_pand=inputs_per_pand,
+        workers=workers,
+    )
 
     all_coords: list[Coord3D] = []
     building_label_pairs: list[tuple[Any, list[ResolvedAddress]]] = []
@@ -744,251 +729,5 @@ def _attach_trees_to_model(
     return appearance_targets
 
 
-def _assembly_worker_count(n_panden: int) -> int:
-    """Return the effective worker count, respecting the opt-in env var.
-
-    ``CITYGML_ENERGY_ASSEMBLY_WORKERS`` > 1 enables process parallelism.
-    Silently capped at the pand count (no point spawning 16 workers for
-    20 buildings). Returns ``1`` (sequential) on any parsing error so a
-    malformed env var never breaks a run.
-    """
-    raw = os.environ.get("CITYGML_ENERGY_ASSEMBLY_WORKERS", "").strip()
-    if not raw:
-        return 1
-    try:
-        requested = int(raw)
-    except ValueError:
-        return 1
-    if requested < 2 or n_panden < 2:
-        return 1
-    return min(requested, n_panden)
-
-
-# Compact tuple type emitted by the per-pand build step: small, picklable,
-# and exactly what the main process needs to assemble the final CityModel.
-_PandArtifacts = tuple[Any, list[ResolvedAddress], list[str], list[Coord3D]]
-
-
-@dataclass(frozen=True, slots=True)
-class _PandInputs:
-    """Everything the per-pand build needs beyond geometry + config.
-
-    Bundling the two parallel per-pand dicts (``resolved_per_pand`` and
-    ``pv_matches_per_pand``) under one key keeps the worker-pool job
-    tuple flat and ready for any future "another thing per pand" input
-    (indicators, schedules, …) without re-plumbing every call site.
-    """
-
-    resolved: list[ResolvedAddress]
-    pv_panels: tuple[ProjectedPanel, ...]
-
-
-_EMPTY_INPUTS = _PandInputs(resolved=[], pv_panels=())
-
-
-def _bundle_per_pand_inputs(
-    *,
-    panden: list[bag_fetchers.Pand],
-    resolved_per_pand: dict[str, list[ResolvedAddress]],
-    pv_matches_per_pand: dict[str, list[ProjectedPanel]],
-) -> dict[str, _PandInputs]:
-    """Collapse the two per-pand dicts into a single dict of structs.
-
-    Only panden that appear in at least one of the sources get an
-    entry; everyone else falls through to :data:`_EMPTY_INPUTS` at
-    lookup time.
-    """
-    ids = {p.identificatie for p in panden}
-    ids &= set(resolved_per_pand) | set(pv_matches_per_pand)
-    return {
-        pid: _PandInputs(
-            resolved=resolved_per_pand.get(pid, []),
-            pv_panels=tuple(pv_matches_per_pand.get(pid, ())),
-        )
-        for pid in ids
-    }
-
-
-def _build_pand_artifacts_sequential(
-    *,
-    config: CityBuildConfig,
-    panden: list[bag_fetchers.Pand],
-    parsed_by_id: dict[str, ParsedBuilding],
-    inputs_per_pand: dict[str, _PandInputs],
-) -> list[_PandArtifacts]:
-    """Sequentially build the per-pand artifacts. Default path."""
-    build_params = _BuildParams.from_config(config)
-    return [
-        _build_pand_artifacts(
-            pand=pand,
-            parsed=parsed_by_id[pand.identificatie],
-            inputs=inputs_per_pand.get(pand.identificatie, _EMPTY_INPUTS),
-            build_params=build_params,
-        )
-        for pand in panden
-        if pand.identificatie in parsed_by_id
-    ]
-
-
-def _build_pand_artifacts_parallel(
-    *,
-    config: CityBuildConfig,
-    panden: list[bag_fetchers.Pand],
-    parsed_by_id: dict[str, ParsedBuilding],
-    inputs_per_pand: dict[str, _PandInputs],
-    workers: int,
-) -> list[_PandArtifacts]:
-    """Run the per-pand build in a ``multiprocessing.Pool``.
-
-    Only panden that have matching 3DBAG geometry are dispatched; the
-    chunk size is tuned so each worker churns through a reasonable batch
-    before hitting the IPC boundary (pickling xsdata Building objects
-    back to the main process is the main ongoing cost in this path).
-    """
-    import multiprocessing
-
-    build_params = _BuildParams.from_config(config)
-    jobs: list[tuple[Any, ...]] = [
-        (
-            pand,
-            parsed_by_id[pand.identificatie],
-            inputs_per_pand.get(pand.identificatie, _EMPTY_INPUTS),
-            build_params,
-        )
-        for pand in panden
-        if pand.identificatie in parsed_by_id
-    ]
-    if not jobs:
-        return []
-
-    # ``chunksize=max(1, len(jobs) // (workers * 4))`` is ``Pool.map``'s
-    # built-in default tuned down slightly. Batching amortises worker
-    # dispatch overhead without losing responsiveness on smaller runs.
-    chunksize = max(1, len(jobs) // (workers * 4))
-    _LOG.info(f"Assembly worker pool: {workers} processes × {chunksize} panden/chunk")
-    # ``spawn`` is the right start method here: fork-safety with xsdata's
-    # lazy registry and requests sessions is not guaranteed, and ``spawn``
-    # is the Windows default anyway. The child imports ``citygml_energy``
-    # fresh, which warms its bindings cache once per worker.
-    ctx = multiprocessing.get_context("spawn")
-    with ctx.Pool(processes=workers) as pool:
-        return pool.map(_build_pand_worker, jobs, chunksize=chunksize)
-
-
-@dataclass(frozen=True, slots=True)
-class _BuildParams:
-    """Immutable subset of :class:`CityBuildConfig` shared across workers.
-
-    Defined as a frozen dataclass so it pickles cheaply (one flat tuple,
-    no recursion through the full config) and because workers should not
-    be mutating pipeline-level settings by accident.
-    """
-
-    gml_id_prefix: str
-    lods: tuple[int, ...]
-    srs_name: str
-    srs_dimension: int
-    municipality: str
-
-    @classmethod
-    def from_config(cls, config: CityBuildConfig) -> _BuildParams:
-        return cls(
-            gml_id_prefix=config.gml_id_prefix,
-            lods=tuple(config.lods),
-            srs_name=config.srs_name,
-            srs_dimension=config.srs_dimension,
-            municipality=config.municipality,
-        )
-
-
-def _build_pand_worker(
-    job: tuple[bag_fetchers.Pand, ParsedBuilding, _PandInputs, _BuildParams],
-) -> _PandArtifacts:
-    """Worker entry point: must be module-level to be picklable on spawn."""
-    pand, parsed, inputs, build_params = job
-    return _build_pand_artifacts(
-        pand=pand, parsed=parsed, inputs=inputs, build_params=build_params,
-    )
-
-
-def _build_pand_artifacts(
-    *,
-    pand: bag_fetchers.Pand,
-    parsed: ParsedBuilding,
-    inputs: _PandInputs,
-    build_params: _BuildParams,
-) -> _PandArtifacts:
-    """Build the xsdata artefacts for one Pand.
-
-    Returned tuple is the minimal slice the main process needs to
-    assemble the city model: the xsdata Building object, the list of
-    matched addresses, the pre-collected appearance target ids, and the
-    flat coordinate sequence used to widen the model envelope. All four
-    values pickle cheaply across the worker-pool boundary.
-    """
-    _merge_attributes(parsed.attributes, pand)
-    targets: list[str] = []
-    building = build_building(
-        parsed,
-        gml_id_prefix=build_params.gml_id_prefix,
-        lods=build_params.lods,
-        srs_name=build_params.srs_name,
-        srs_dimension=build_params.srs_dimension,
-        surface_targets_out=targets,
-    )
-    attach_building_units_to_building(
-        building,
-        inputs.resolved,
-        gml_id_prefix=build_params.gml_id_prefix,
-        city_name=build_params.municipality,
-        srs_name=build_params.srs_name,
-        srs_dimension=build_params.srs_dimension,
-    )
-    # Building-level year of construction: BAG metadata for
-    # bldg:yearOfConstruction, plus the EP-online ``Bouwjaar`` as a
-    # gen:intAttribute (with its own Metadata block) when at least one
-    # VBO under this Pand has an EP-online label that carries Bouwjaar.
-    # Year of construction is structurally a Pand-level fact (one
-    # bouwjaar per physical building); the rest of EP-online's
-    # classification (Gebouwtype, renewable share, energy metrics) is
-    # genuinely per-VBO and lives on each BuildingUnit, attached inside
-    # build_building_unit.
-    apply_bag_year_metadata_to_building(building)
-    apply_eponline_year_to_building(building, inputs.resolved)
-    if inputs.pv_panels:
-        attach_pv_collectors_to_building(
-            building,
-            list(inputs.pv_panels),
-            srs_name=build_params.srs_name,
-            srs_dimension=build_params.srs_dimension,
-        )
-    coords: list[Coord3D] = []
-    _collect_coordinates(parsed, coords)
-    return building, inputs.resolved, targets, coords
-
-
-def _merge_attributes(parsed_attrs: dict[str, Any], pand: bag_fetchers.Pand) -> None:
-    """Merge BAG Pand attributes into the parsed CityJSON attributes.
-
-    3DBAG already carries ``oorspronkelijkbouwjaar`` but BAG sometimes
-    has a newer / corrected value. BAG wins when present: direct
-    assignment so the BAG value always overwrites the 3DBAG value.
-    """
-    if pand.bouwjaar is not None:
-        parsed_attrs["oorspronkelijkbouwjaar"] = pand.bouwjaar
-    if pand.status and "status" not in parsed_attrs:
-        parsed_attrs["status"] = pand.status
-
-
-def _collect_coordinates(
-    parsed: ParsedBuilding, sink: list[Coord3D]
-) -> None:
-    for polygons in parsed.geometries.values():
-        for sp in polygons:
-            _extend_polygon_coords(sp, sink)
-
-
-def _extend_polygon_coords(sp: SemanticPolygon, sink: list[Coord3D]) -> None:
-    sink.extend(sp.polygon.exterior)
-    for ring in sp.polygon.interiors:
-        sink.extend(ring)
+# Per-Pand build execution (sequential vs multiprocessing pool) lives
+# in ``pand_executor`` so this module stays a recipe-style orchestrator.
