@@ -524,13 +524,16 @@ def test_building_accepts_zero_storeys_above_ground() -> None:
 
 
 # ---------------------------------------------------------------------------
-# EP-online classification (P2a, per-VBO): bdgTypeEPOnline + yearOfConstruction
-# EPOnline as generic attributes on the BuildingUnit, plus a single
-# nrg3:Metadata block per VBO documenting the EP-online source. The
-# Building gets a separate nrg3:Metadata block attributing BAG for its
-# bldg:yearOfConstruction. Locks the field-level shape the user
-# directed: "EP-online classification, and its attributes, is always at
-# the building unit level".
+# EP-online attribution split:
+#
+# * Pand-level on the Building (one nrg3:Metadata block):
+#   - ``gen:intAttribute name="yearOfConstructionEPOnline"`` (from Bouwjaar)
+#   - native ``nrg3:bdgType`` with the Dutch Gebouwtype verbatim and the
+#     RVO codespace.
+# * Per-VBO on each BuildingUnit (one nrg3:Metadata block per unit):
+#   - ``gen:stringAttribute name="bdgSubtypeEPOnline"`` (from Gebouwsubtype,
+#     Dutch verbatim — there is no native ``nrg3:bdgSubtype``).
+#   - renewable share, thermal-zone area, Energy resources.
 # ---------------------------------------------------------------------------
 
 
@@ -555,24 +558,38 @@ def _resolved_with(label: EnergyLabel | None) -> ResolvedAddress:
     return ResolvedAddress(vbo=_vbo(), energy_label=label)
 
 
-def test_eponline_gebouwtype_lands_on_building_unit() -> None:
-    """``Gebouwtype`` is per-VBO → ``gen:stringAttribute`` on BuildingUnit.
+def test_eponline_gebouwsubtype_lands_on_building_unit_verbatim() -> None:
+    """``Gebouwsubtype`` → ``gen:stringAttribute name="bdgSubtypeEPOnline"`` on BuildingUnit.
 
-    NTA 8800's Gebouwtype classifies the dwelling unit's typology
-    ("Rijwoning hoek" = corner unit in a row), which can differ across
-    VBOs in a mixed-use Pand. Per-VBO encoding is therefore correct.
-    Native ``nrg3:bdgType`` is structurally Building-level only (XSD
-    line 1599), so the per-VBO version uses a generic string attribute
-    with the same English-mapped value.
+    Per-VBO because two VBOs in one Pand can carry different subtypes
+    (mixed-use, partial conversion). The Dutch RVO term is written
+    verbatim: there is no translation step and no native
+    ``nrg3:bdgSubtype`` element in EnergyADE 3.0.
+    """
+    from citygml_energy.city_builder.builders import build_building_unit
+
+    label = _label_with(gebouwsubtype="appartement-portiekflat")
+    unit = build_building_unit(_resolved_with(label))
+
+    subtypes = [a for a in unit.string_attribute if a.name == "bdgSubtypeEPOnline"]
+    assert len(subtypes) == 1
+    assert subtypes[0].value == "appartement-portiekflat"
+
+
+def test_eponline_gebouwtype_does_not_land_on_building_unit() -> None:
+    """``Gebouwtype`` is Pand-level → must NOT appear on the BuildingUnit.
+
+    The primary building type is fixed at the structure level; encoding
+    it per-VBO would falsely imply that two VBOs of the same Pand can
+    have different primary types. The per-VBO secondary qualifier is
+    ``Gebouwsubtype`` instead.
     """
     from citygml_energy.city_builder.builders import build_building_unit
 
     label = _label_with(gebouwtype="Vrijstaande woning")
     unit = build_building_unit(_resolved_with(label))
 
-    bdg_types = [a for a in unit.string_attribute if a.name == "bdgTypeEPOnline"]
-    assert len(bdg_types) == 1
-    assert bdg_types[0].value == "singleFamilyHouse"
+    assert all(a.name != "bdgTypeEPOnline" for a in unit.string_attribute)
 
 
 def test_bouwjaar_does_not_land_on_building_unit() -> None:
@@ -594,35 +611,18 @@ def test_bouwjaar_does_not_land_on_building_unit() -> None:
     )
 
 
-def test_eponline_classification_drops_unmapped_gebouwtype(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Unmapped Gebouwtype: warning + no emission of bdgTypeEPOnline."""
-    from citygml_energy.city_builder.builders import build_building_unit
-
-    label = _label_with(gebouwtype="Een nieuw RVO type dat niet in de lookup zit")
-    import logging
-    with caplog.at_level(logging.WARNING):
-        unit = build_building_unit(_resolved_with(label))
-
-    assert all(a.name != "bdgTypeEPOnline" for a in unit.string_attribute)
-    assert any(
-        "no Energy ADE BuildingTypeValue lookup" in record.getMessage()
-        for record in caplog.records
-    )
-
-
 def test_building_unit_carries_eponline_source_metadata_when_classified() -> None:
     """A single EP-online Metadata block on the BuildingUnit attributes the source.
 
-    Emitted whenever any per-VBO EP-online value lands (Gebouwtype
-    mapping, renewable share, or any of the four Energy resources). The
-    qualityDescription explicitly notes that ``yearOfConstructionEPOnline``
-    is at the Building level (because Bouwjaar is a Pand-level fact).
+    Emitted whenever any per-VBO EP-online value lands (Gebouwsubtype,
+    renewable share, thermal-zone area, or any of the four Energy
+    resources). The qualityDescription explicitly notes that
+    ``yearOfConstructionEPOnline`` and ``nrg3:bdgType`` are at the
+    Building level (Pand-level facts).
     """
     from citygml_energy.city_builder.builders import build_building_unit
 
-    label = _label_with(gebouwtype="Vrijstaande woning")
+    label = _label_with(gebouwsubtype="rijwoning-tussen")
     unit = build_building_unit(_resolved_with(label))
 
     metadata_blocks = [
@@ -630,10 +630,11 @@ def test_building_unit_carries_eponline_source_metadata_when_classified() -> Non
     ]
     assert len(metadata_blocks) == 1
     quality = metadata_blocks[0].quality_description or ""
-    assert "bdgTypeEPOnline" in quality
-    # Confirm the Building-level placement of yearOfConstructionEPOnline
+    assert "bdgSubtypeEPOnline" in quality
+    # Confirm the Building-level placement of the Pand-level emissions
     # is documented in the per-VBO Metadata block.
     assert "yearOfConstructionEPOnline" in quality
+    assert "nrg3:bdgType" in quality
     assert "Building level" in quality
 
 
@@ -660,14 +661,15 @@ def test_building_unit_metadata_omitted_when_no_eponline_emissions() -> None:
     """A label with no per-VBO EP-online emissions produces no Metadata.
 
     Lock the empty case: a label with energieklasse and dates but no
-    Gebouwtype, renewable share, or energy metrics gets no per-VBO
+    Gebouwsubtype, renewable share, or energy metrics gets no per-VBO
     EP-online Metadata block on the BuildingUnit. (Year-of-construction
-    metadata, when applicable, lives on the Building.)
+    and bdgType metadata, when applicable, live on the Building.)
     """
     from citygml_energy.city_builder.builders import build_building_unit
 
     label = _label_with(
         gebouwtype=None,
+        gebouwsubtype=None,
         bouwjaar=None,
         aandeel_hernieuwbare_energie=None,
         energiebehoefte=None,
@@ -716,51 +718,54 @@ def test_apply_bag_year_metadata_no_op_when_year_unset() -> None:
     assert building.metadata == []
 
 
-def test_per_vbo_classification_does_not_aggregate() -> None:
-    """Two VBOs in one Pand each emit their own ``bdgTypeEPOnline``.
+def test_per_vbo_subtype_does_not_aggregate() -> None:
+    """Two VBOs in one Pand each emit their own ``bdgSubtypeEPOnline``.
 
-    Gebouwtype is genuinely per-VBO (NTA 8800 typology classifies the
-    dwelling unit), so there is no Pand-level reduction. Both VBOs
-    surface their own classification independently.
+    Gebouwsubtype is genuinely per-VBO: a mixed-use Pand can host VBOs
+    with different secondary qualifiers (e.g. one apartment and one
+    ground-floor shop unit). There is no Pand-level reduction at the
+    subtype scope; both VBOs surface their own subtype independently.
     """
     from citygml_energy.city_builder.builders import build_building_unit
 
     older = _label_with(
         registratiedatum=date(2020, 1, 1),
-        gebouwtype="Galerijflat",
+        gebouwsubtype="appartement-galerijflat",
     )
     newer = _label_with(
         registratiedatum=date(2024, 1, 1),
-        gebouwtype="Vrijstaande woning",
+        gebouwsubtype="rijwoning-tussen",
     )
     older_unit = build_building_unit(_resolved_with(older))
     newer_unit = build_building_unit(_resolved_with(newer))
 
-    older_bdg = next(
-        a.value for a in older_unit.string_attribute if a.name == "bdgTypeEPOnline"
+    older_subtype = next(
+        a.value for a in older_unit.string_attribute if a.name == "bdgSubtypeEPOnline"
     )
-    newer_bdg = next(
-        a.value for a in newer_unit.string_attribute if a.name == "bdgTypeEPOnline"
+    newer_subtype = next(
+        a.value for a in newer_unit.string_attribute if a.name == "bdgSubtypeEPOnline"
     )
-    assert older_bdg == "multiFamilyHouse"
-    assert newer_bdg == "singleFamilyHouse"
+    assert older_subtype == "appartement-galerijflat"
+    assert newer_subtype == "rijwoning-tussen"
 
 
 # ---------------------------------------------------------------------------
-# yearOfConstructionEPOnline is Pand-level: emitted on Building, with its own
-# nrg3:Metadata block, picked from the most-recently-registered cert.
+# Pand-level emissions on the Building: yearOfConstructionEPOnline (from
+# Bouwjaar) and native nrg3:bdgType (from Gebouwtype, Dutch verbatim with
+# the RVO codespace), each picked from the most-recently-registered cert
+# that carries the field, sharing one nrg3:Metadata block.
 # ---------------------------------------------------------------------------
 
 
 def test_apply_eponline_year_emits_int_attribute_on_building() -> None:
     """Single VBO with Bouwjaar → ``gen:intAttribute`` on the Building."""
     from citygml_energy.city_builder.builders import (
-        apply_eponline_year_to_building,
+        apply_eponline_pand_attribution_to_building,
     )
 
     building = build_building(_parsed())  # BAG year = 1985 from _parsed()
     label = _label_with(bouwjaar=1986)
-    apply_eponline_year_to_building(building, [_resolved_with(label)])
+    apply_eponline_pand_attribution_to_building(building, [_resolved_with(label)])
 
     int_attrs = [
         a for a in building.int_attribute if a.name == "yearOfConstructionEPOnline"
@@ -769,26 +774,55 @@ def test_apply_eponline_year_emits_int_attribute_on_building() -> None:
     assert int_attrs[0].value == 1986
 
 
-def test_apply_eponline_year_emits_metadata_block_on_building() -> None:
-    """The EP-online year emission rides with its own Building-level Metadata.
+def test_apply_eponline_bdg_type_emits_dutch_value_on_building() -> None:
+    """Gebouwtype lands on the Building as native ``nrg3:bdgType``.
 
-    Lives on the Building because ``Bouwjaar`` is a Pand-level fact.
-    Distinct from the BAG-source Metadata block — both can co-exist on
-    the Building when both years are present.
+    Dutch RVO term verbatim, no translation. The ``@codeSpace``
+    identifies the EP-online publication that defines the vocabulary
+    so a downstream reader does not mistake the value for an Energy-ADE
+    ``BuildingTypeValue.xml`` codelist member.
+    """
+    from citygml_energy.city_builder.builders import (
+        apply_eponline_pand_attribution_to_building,
+    )
+    from citygml_energy.namespaces import CS_RVO_GEBOUWTYPE
+
+    building = build_building(_parsed())
+    label = _label_with(gebouwtype="Vrijstaande woning")
+    apply_eponline_pand_attribution_to_building(building, [_resolved_with(label)])
+
+    assert len(building.bdg_type) == 1
+    assert building.bdg_type[0].value == "Vrijstaande woning"
+    assert building.bdg_type[0].code_space == CS_RVO_GEBOUWTYPE
+
+
+def test_apply_eponline_pand_attribution_emits_one_shared_metadata_block() -> None:
+    """One ``nrg3:Metadata`` block covers both Pand-level emissions.
+
+    The block lists every Pand-level field it backs in
+    ``qualityDescription`` so the auditor can see at a glance what the
+    EP-online source is responsible for. Distinct from the BAG-source
+    Metadata block — both can co-exist on the Building when both
+    sources contribute.
     """
     from citygml_energy.city_builder.builders import (
         apply_bag_year_metadata_to_building,
-        apply_eponline_year_to_building,
+        apply_eponline_pand_attribution_to_building,
     )
 
     building = build_building(_parsed())
-    label = _label_with(bouwjaar=1986)
+    label = _label_with(bouwjaar=1986, gebouwtype="Vrijstaande woning")
     apply_bag_year_metadata_to_building(building)
-    apply_eponline_year_to_building(building, [_resolved_with(label)])
+    apply_eponline_pand_attribution_to_building(building, [_resolved_with(label)])
 
-    sources = [m.source for m in building.metadata]
-    assert any("BAG" in (s or "") for s in sources)
-    assert any("EP-online" in (s or "") for s in sources)
+    eponline_metas = [
+        m for m in building.metadata if "EP-online" in (m.source or "")
+    ]
+    assert len(eponline_metas) == 1
+    quality = eponline_metas[0].quality_description or ""
+    assert "yearOfConstructionEPOnline" in quality
+    assert "nrg3:bdgType" in quality
+    assert any("BAG" in (m.source or "") for m in building.metadata)
 
 
 def test_apply_eponline_year_picks_most_recent_registratiedatum() -> None:
@@ -799,13 +833,13 @@ def test_apply_eponline_year_picks_most_recent_registratiedatum() -> None:
     de-duplicates labels on the same address.
     """
     from citygml_energy.city_builder.builders import (
-        apply_eponline_year_to_building,
+        apply_eponline_pand_attribution_to_building,
     )
 
     older = _label_with(registratiedatum=date(2020, 1, 1), bouwjaar=1970)
     newer = _label_with(registratiedatum=date(2024, 1, 1), bouwjaar=1955)
     building = build_building(_parsed())
-    apply_eponline_year_to_building(
+    apply_eponline_pand_attribution_to_building(
         building, [_resolved_with(older), _resolved_with(newer)]
     )
 
@@ -815,38 +849,77 @@ def test_apply_eponline_year_picks_most_recent_registratiedatum() -> None:
     assert int_attrs[0].value == 1955  # newer wins
 
 
-def test_apply_eponline_year_no_op_when_no_bouwjaar() -> None:
-    """No EP-online Bouwjaar → no gen:intAttribute, no Metadata block.
+def test_apply_eponline_bdg_type_picks_most_recent_with_value() -> None:
+    """Bouwjaar and Gebouwtype are picked per-field.
 
-    Symmetric with the BAG path: only emit when there's an actual value
-    to attribute.
+    The newest cert may have Bouwjaar but leave Gebouwtype empty; an
+    older cert under the same Pand may carry Gebouwtype. The per-field
+    canonical pick keeps both values rather than coupling them to a
+    single canonical label and dropping whichever the newest cert lacks.
     """
     from citygml_energy.city_builder.builders import (
-        apply_eponline_year_to_building,
+        apply_eponline_pand_attribution_to_building,
+    )
+
+    older_with_type = _label_with(
+        registratiedatum=date(2020, 1, 1),
+        bouwjaar=None,
+        gebouwtype="Vrijstaande woning",
+    )
+    newer_with_year = _label_with(
+        registratiedatum=date(2024, 1, 1),
+        bouwjaar=1986,
+        gebouwtype=None,
+    )
+    building = build_building(_parsed())
+    apply_eponline_pand_attribution_to_building(
+        building,
+        [_resolved_with(older_with_type), _resolved_with(newer_with_year)],
+    )
+
+    assert len(building.bdg_type) == 1
+    assert building.bdg_type[0].value == "Vrijstaande woning"
+    int_attrs = [
+        a for a in building.int_attribute if a.name == "yearOfConstructionEPOnline"
+    ]
+    assert int_attrs[0].value == 1986
+
+
+def test_apply_eponline_pand_attribution_no_op_when_no_pand_level_fields() -> None:
+    """No Bouwjaar AND no Gebouwtype → no Building-level emissions, no Metadata.
+
+    Symmetric with the BAG path: only emit when there's an actual value
+    to attribute. A label that ships only per-VBO fields (e.g. only
+    Gebouwsubtype) must not trigger a Building-level Metadata block.
+    """
+    from citygml_energy.city_builder.builders import (
+        apply_eponline_pand_attribution_to_building,
     )
 
     building = build_building(_parsed())
-    label = _label_with(bouwjaar=None)
-    apply_eponline_year_to_building(building, [_resolved_with(label)])
+    label = _label_with(bouwjaar=None, gebouwtype=None, gebouwsubtype="rijwoning-tussen")
+    apply_eponline_pand_attribution_to_building(building, [_resolved_with(label)])
 
     assert all(
         a.name != "yearOfConstructionEPOnline" for a in building.int_attribute
     )
+    assert building.bdg_type == []
     assert all("EP-online" not in (m.source or "") for m in building.metadata)
 
 
-def test_apply_eponline_year_no_op_when_no_labels() -> None:
+def test_apply_eponline_pand_attribution_no_op_when_no_labels() -> None:
     """A Pand whose VBOs have no EP-online labels gets nothing extra."""
     from citygml_energy.city_builder.builders import (
-        apply_eponline_year_to_building,
+        apply_eponline_pand_attribution_to_building,
     )
 
     building = build_building(_parsed())
-    apply_eponline_year_to_building(building, [_resolved_with(None)])
+    apply_eponline_pand_attribution_to_building(building, [_resolved_with(None)])
 
     assert all(
         a.name != "yearOfConstructionEPOnline" for a in building.int_attribute
     )
+    assert building.bdg_type == []
 
 
 # ---------------------------------------------------------------------------
