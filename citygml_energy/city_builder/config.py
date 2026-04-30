@@ -19,7 +19,7 @@ from ..errors import CityBuildError
 from ..namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
 from .boundary import BoundarySource
 from .pv_panels import PvPanelsSource
-from .vegetation import DEFAULT_TREE_FILENAME, VegetationSource
+from .vegetation import VegetationSource
 
 PathLike = str | Path
 
@@ -100,11 +100,11 @@ class CityBuildConfig:
     pv_panels_source: PvPanelsSource | None = None
     boundary_source: BoundarySource | None = None
     vegetation_source: VegetationSource | None = None
-    """Optional CFTree output directory (from
-    https://github.com/NoahAlting/CFTree). When set, the pipeline walks
-    ``path/tiles/<tile_id>/trees_lod3.city.json`` and emits one
-    ``veg:SolitaryVegetationObject`` per tree inside the bbox /
-    boundary. See
+    """Optional path to a merged CFTree CityJSON file (produced by
+    :mod:`tools.merge_cftree_tiles` from
+    https://github.com/NoahAlting/CFTree output). When set, the pipeline
+    emits one ``veg:SolitaryVegetationObject`` per tree inside the bbox
+    / boundary. See
     :class:`citygml_energy.city_builder.vegetation.VegetationSource`."""
 
     @property
@@ -159,7 +159,7 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
 _ALLOWED_CITY_MODEL_KEYS: frozenset[str] = frozenset({"name", "description"})
 _ALLOWED_PV_PANELS_KEYS: frozenset[str] = frozenset({"path", "layer", "z_offset_m"})
 _ALLOWED_BOUNDARY_KEYS: frozenset[str] = frozenset({"path", "layer", "fid"})
-_ALLOWED_VEGETATION_KEYS: frozenset[str] = frozenset({"path", "tree_filename"})
+_ALLOWED_VEGETATION_KEYS: frozenset[str] = frozenset({"path"})
 
 
 def load_city_config(path: PathLike) -> CityBuildConfig:
@@ -409,14 +409,13 @@ def _validate_vegetation(
 ) -> VegetationSource | None:
     """Validate the optional ``vegetation`` block.
 
-    Returns ``None`` when unset. The referenced directory is resolved
-    relative to the config's parent, matching every other path in this
-    config. Presence of the directory / of any tile file inside is
-    **not** checked at config-load time: the CFTree pipeline is
-    typically run separately and its output directory may not yet
-    exist when the city config is edited. Missing-directory warnings
-    surface at build time via
-    :func:`citygml_energy.city_builder.vegetation.load_trees_in_bbox`.
+    Returns ``None`` when unset. The path is resolved relative to the
+    config's parent and must point at a ``.city.json`` file produced by
+    :mod:`tools.merge_cftree_tiles`. File existence is checked lazily at
+    build time via
+    :func:`citygml_energy.city_builder.vegetation.load_trees_in_bbox`,
+    so a config authored on a machine without the merged output still
+    validates.
     """
     if value is None:
         return None
@@ -434,15 +433,13 @@ def _validate_vegetation(
         raise CityBuildError(
             f"{source}: vegetation.path must be a non-empty string"
         )
-    tree_filename = value.get("tree_filename", DEFAULT_TREE_FILENAME)
-    if not isinstance(tree_filename, str) or not tree_filename.strip():
+    resolved_path = _resolve_path(path_raw, base_dir)
+    if not resolved_path.name.endswith(".city.json"):
         raise CityBuildError(
-            f"{source}: vegetation.tree_filename must be a non-empty string when provided"
+            f"{source}: vegetation.path must end in .city.json "
+            f"(got {resolved_path.name!r})"
         )
-    return VegetationSource(
-        path=_resolve_path(path_raw, base_dir),
-        tree_filename=tree_filename.strip(),
-    )
+    return VegetationSource(path=resolved_path)
 
 
 def _validate_boundary(

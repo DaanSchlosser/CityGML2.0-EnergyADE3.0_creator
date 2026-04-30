@@ -24,7 +24,6 @@ from citygml_energy.city_builder.config import (
     SCHEMA_VERSION,
 )
 from citygml_energy.city_builder.pv_panels import DEFAULT_Z_OFFSET_M
-from citygml_energy.city_builder.vegetation import DEFAULT_TREE_FILENAME
 from citygml_energy.namespaces import DEFAULT_SRS_NAME
 
 
@@ -219,14 +218,14 @@ def build_schema() -> dict[str, Any]:
             "vegetation": {
                 "type": "object",
                 "description": (
-                    "Optional CFTree (https://github.com/NoahAlting/CFTree) "
-                    "reconstruction output directory. When set, the pipeline "
-                    "walks 'path/tiles/<tile_id>/<tree_filename>' and emits one "
-                    "veg:SolitaryVegetationObject per tree inside the bbox or "
-                    "boundary polygon, with LoD3 crown + trunk MultiSurface "
-                    "geometry and CFTree morphometrics (height, trunkDiameter, "
-                    "crownDiameter, plus porosity/r50/median_z as "
-                    "gen:doubleAttribute)."
+                    "Optional path to a merged CFTree CityJSON file "
+                    "(https://github.com/NoahAlting/CFTree, pre-processed "
+                    "via tools/merge_cftree_tiles.py). When set, the "
+                    "pipeline emits one veg:SolitaryVegetationObject per "
+                    "tree inside the bbox or boundary polygon, with LoD3 "
+                    "crown + trunk MultiSurface geometry and CFTree "
+                    "morphometrics (height, trunkDiameter, crownDiameter, "
+                    "plus porosity/r50/median_z as gen:doubleAttribute)."
                 ),
                 "additionalProperties": False,
                 "required": ["path"],
@@ -234,20 +233,13 @@ def build_schema() -> dict[str, Any]:
                     "path": {
                         "type": "string",
                         "minLength": 1,
+                        "pattern": r"\.city\.json$",
                         "description": (
-                            "Path to a CFTree case output directory (typically "
-                            "CFTree's data/<case>), absolute or relative to this "
-                            "JSON file. The loader expects per-tile subdirectories "
-                            "below 'path/tiles/<tile_id>/'."
-                        ),
-                    },
-                    "tree_filename": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": (
-                            "Filename to read inside every tile directory. "
-                            f"Defaults to {DEFAULT_TREE_FILENAME!r}; override "
-                            "only if a future CFTree release renames the file."
+                            "Path to a merged CityJSON 2.0 file (must end "
+                            "in '.city.json'), absolute or relative to "
+                            "this JSON file. Produced by "
+                            "tools/merge_cftree_tiles.py from CFTree "
+                            "per-tile output."
                         ),
                     },
                 },
