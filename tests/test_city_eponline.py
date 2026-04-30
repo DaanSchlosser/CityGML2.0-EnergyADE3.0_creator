@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from citygml_energy.city_builder.fetchers.eponline import parse_csv
+from citygml_energy.city_builder.fetchers.eponline import EnergyLabel, parse_csv
 
 _CSV_HEADER = (
     "Postcode;Huisnummer;Huisletter;Huisnummertoevoeging;BAGVerblijfsobjectID;"
@@ -219,6 +219,7 @@ def test_extended_columns_round_trip_through_parser() -> None:
 
     # Building classification + physics.
     assert label.gebouwtype == "Rijwoning hoek"
+    assert label.gebouwsubtype is None  # column present, value empty in fixture
     assert label.bouwjaar == 1955
     assert label.gebruiksoppervlakte_thermische_zone == 112.5
 
@@ -229,6 +230,32 @@ def test_extended_columns_round_trip_through_parser() -> None:
     assert label.berekende_energieverbruik == 35.4
     assert label.berekende_co2_emissie == 14.7
     assert label.aandeel_hernieuwbare_energie == 42.0
+
+
+def test_gebouwsubtype_round_trips_when_populated() -> None:
+    """A populated ``Gebouwsubtype`` cell is surfaced verbatim on EnergyLabel.
+
+    The Dutch RVO term lands on the BuildingUnit downstream as
+    ``gen:stringAttribute name="bdgSubtypeEPOnline"`` (no native
+    ``nrg3:bdgSubtype`` slot in EnergyADE 3.0, no translation step).
+    """
+    csv_text = _extended_csv(
+        "20230514;20230501;20331231;"
+        "Energielabel Deskundige;Detailopname;Bestaand;"
+        "NTA 8800:2024 (detailopname woningbouw);Nee;W;"
+        # Gebouwtype; Gebouwsubtype; SBICode (subtype populated)
+        "Rijwoning hoek;rijwoning-hoek-kopgevel;;"
+        "7881AA;42;;;0114010000000001;"
+        "A++;1955;"
+        "112,5;1,42;"
+        "28,5;25,1;63,0;"
+        "42;312;"
+        "14,7;35,4"
+    )
+    labels = parse_csv(csv_text)
+    assert len(labels) == 1
+    assert labels[0].gebouwtype == "Rijwoning hoek"
+    assert labels[0].gebouwsubtype == "rijwoning-hoek-kopgevel"
 
 
 def test_minimal_header_backward_compatible() -> None:
@@ -247,6 +274,7 @@ def test_minimal_header_backward_compatible() -> None:
     # New fields all default to None when the column is absent.
     assert label.soort_opname is None
     assert label.gebouwtype is None
+    assert label.gebouwsubtype is None
     assert label.bouwjaar is None
     assert label.gebruiksoppervlakte_thermische_zone is None
     assert label.energiebehoefte is None
@@ -366,6 +394,7 @@ def test_full_42_column_production_header_parses_every_surfaced_field() -> None:
 
     # Building classification + physics.
     assert label.gebouwtype == "Rijwoning hoek"
+    assert label.gebouwsubtype is None  # column present, value empty in fixture
     assert label.bouwjaar == 1955
     assert label.gebruiksoppervlakte_thermische_zone == 112.5
 
@@ -398,3 +427,90 @@ def test_decimal_preserves_zero_distinct_from_missing() -> None:
     assert label.aandeel_hernieuwbare_energie == 0.0
     assert label.berekende_co2_emissie == 0.0
     assert label.berekende_energieverbruik == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Calculation-regime classification (EnergyLabel.calculation_regime /
+# co2_is_placeholder).
+#
+# The regime drives unit selection downstream
+# (:mod:`citygml_energy.city_builder.energy_resources`):
+# NTA 8800 → kWh/(m²·yr) per-m², legacy → MJ/yr total. Empirical
+# evidence behind these rules is in § 5i of the EP-online mapping doc.
+# ---------------------------------------------------------------------------
+
+
+def _label_with_method(berekeningstype: str | None) -> EnergyLabel:
+    """Return a minimal EnergyLabel carrying just the Berekeningstype to classify."""
+    return EnergyLabel(
+        postcode="7881AA",
+        huisnummer=42,
+        huisletter=None,
+        toevoeging=None,
+        bag_verblijfsobject_id=None,
+        energieklasse=None,
+        registratiedatum=None,
+        opnamedatum=None,
+        geldig_tot=None,
+        berekeningstype=berekeningstype,
+    )
+
+
+def test_calculation_regime_nta8800_variants() -> None:
+    """Every flavour of "NTA 8800:..." resolves to the ``nta8800`` regime."""
+    for method in (
+        "NTA 8800:2024 (basisopname woningbouw)",
+        "NTA 8800:2024 (detailopname woningbouw)",
+        "NTA 8800:2024 (basisopname utiliteitsbouw)",
+        "NTA 8800:2020 (detailopname utiliteitsbouw)",
+        "NTA 8800:2018",
+    ):
+        assert _label_with_method(method).calculation_regime() == "nta8800", method
+
+
+def test_calculation_regime_definitief_energielabel_is_legacy_total() -> None:
+    """The pre-NTA-8800 "Rekenmethodiek Definitief Energielabel" is legacy_total.
+
+    Specifically the v1.2 / 16 september 2014 string that ships in 1.44 M
+    rows of the production v20260401 vintage.
+    """
+    method = "Rekenmethodiek Definitief Energielabel, versie 1.2, 16 september 2014"
+    assert _label_with_method(method).calculation_regime() == "legacy_total"
+
+
+def test_calculation_regime_nader_voorschrift_is_legacy_total() -> None:
+    """Nader Voorschrift (ISSO 75.3 lineage, ~1.40 M rows) is legacy_total."""
+    for method in (
+        "Nader Voorschrift, versie 1.0, 1 februari 2014",
+        "ISSO75.3, versie 3.0, oktober 2011",
+        "ISSO 75.3 versie 4.0",
+        "ISSO82.3",
+    ):
+        assert _label_with_method(method).calculation_regime() == "legacy_total", method
+
+
+def test_calculation_regime_unknown_for_unrecognised_string() -> None:
+    """Unrecognised method string falls into ``unknown`` (no resources emitted)."""
+    assert _label_with_method("Some 2030 method we have not seen").calculation_regime() == "unknown"
+
+
+def test_calculation_regime_unknown_when_berekeningstype_missing() -> None:
+    """Empty / missing Berekeningstype is ``unknown`` (no scope to classify)."""
+    assert _label_with_method(None).calculation_regime() == "unknown"
+    assert _label_with_method("").calculation_regime() == "unknown"
+    assert _label_with_method("   ").calculation_regime() == "unknown"
+
+
+def test_co2_is_placeholder_only_for_definitief_energielabel() -> None:
+    """``BerekendeCO2Emissie=0`` is treated as data EXCEPT for the v1.2 branch.
+
+    Empirical: 99.997% of Definitief Energielabel rows ship 0,00 (the
+    method does not compute CO₂); other regimes compute it as data.
+    """
+    assert _label_with_method(
+        "Rekenmethodiek Definitief Energielabel, versie 1.2, 16 september 2014"
+    ).co2_is_placeholder() is True
+    assert _label_with_method("NTA 8800:2024 (basisopname woningbouw)").co2_is_placeholder() is False
+    assert _label_with_method("Nader Voorschrift, versie 1.0").co2_is_placeholder() is False
+    assert _label_with_method("ISSO75.3, versie 3.0, oktober 2011").co2_is_placeholder() is False
+    assert _label_with_method(None).co2_is_placeholder() is False
