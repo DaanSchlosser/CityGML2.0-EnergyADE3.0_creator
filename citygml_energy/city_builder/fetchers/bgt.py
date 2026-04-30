@@ -31,6 +31,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from .._helpers import bbox_cache_key
 from ..http import CachedSession
 
 __all__ = [
@@ -59,9 +60,9 @@ BGT_INFORMATION_SYSTEM_URL: str = (
 
 # The BGT OGC API Features ``items`` endpoint is capped at 1000 per
 # page (PDOK's server-side limit). For any single AOI in the
-# city-scale use case the grid2 test area returns ~715 boom points in
-# ~1 km², so a single page normally suffices; pagination below handles
-# the rare case where a larger AOI straddles that limit.
+# city-scale use case the small-area Emmer-Compascuum AOI returns ~715
+# boom points in ~1 km², so a single page normally suffices; pagination
+# below handles the rare case where a larger AOI straddles that limit.
 _PAGE_SIZE: int = 1000
 
 # Explicit URN for EPSG:28992 / RD New. PDOK's OGC API honours the
@@ -218,10 +219,7 @@ def _fetch_all_pages(
     page = 0
     while True:
         page += 1
-        cache_key = (
-            f"bgt_vegetatieobject_punt.{xmin:.2f}_{ymin:.2f}_{xmax:.2f}_{ymax:.2f}"
-            f".p{page}"
-        )
+        cache_key = bbox_cache_key("bgt_vegetatieobject_punt", bbox, page=page)
         data = session.get_json(url, params=params, cache_key=cache_key)
         page_features = data.get("features") or []
         collected.extend(page_features)

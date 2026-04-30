@@ -18,6 +18,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from .._helpers import bbox_cache_key, to_clean_str, to_float, to_int
 from ..http import CachedSession
 
 _LOGGER = logging.getLogger(__name__)
@@ -214,10 +215,11 @@ def _fetch_layer(
             "startIndex": start,
             "bbox": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]},EPSG:28992",
         }
+        page_index = start // BAG_PAGE_SIZE
         page = session.get_json(
             BAG_WFS_URL,
             params=params,
-            cache_key=f"{layer}_{int(bbox[0])}_{int(bbox[1])}_{int(bbox[2])}_{int(bbox[3])}_{start}",
+            cache_key=bbox_cache_key(layer, bbox, page=page_index),
         )
         batch = page.get("features") or []
         features.extend(batch)
@@ -273,26 +275,27 @@ def _extract_point(geometry: Any) -> tuple[float, float] | None:
 
 
 def _as_int(value: Any) -> int | None:
-    if value in (None, ""):
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError) as exc:
-        _LOGGER.warning("BAG integer field not coercible (%r): %s", value, exc)
-        return None
+    """BAG-tagged shim around :func:`_helpers.to_int`.
+
+    Kept as a thin wrapper so the warning log message keeps its
+    historical ``"BAG integer field …"`` prefix without forcing every
+    call site to repeat the label.
+    """
+    return to_int(value, logger=_LOGGER, label="BAG")
 
 
 def _as_float(value: Any) -> float | None:
-    if value in (None, ""):
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError) as exc:
-        _LOGGER.warning("BAG float field not coercible (%r): %s", value, exc)
-        return None
+    """BAG-tagged shim around :func:`_helpers.to_float`."""
+    return to_float(value, logger=_LOGGER, label="BAG")
 
 
 def _optional_str(value: Any) -> str | None:
-    if value in (None, ""):
-        return None
-    return str(value).strip() or None
+    """Strip-or-``None`` (BAG flavour: literal ``"None"`` is NOT dropped).
+
+    BAG's WFS rarely ships the literal placeholder, but if it ever does
+    we want to surface it rather than silently swallow it; that behaviour
+    differs from :data:`_helpers.to_clean_str` with
+    ``drop_literal_none=True``, which is the right behaviour for Emmen's
+    ArcGIS layer.
+    """
+    return to_clean_str(value)
