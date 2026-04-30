@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "name": "pv_panels_extent",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::28992"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pv_panels_extent",
+        "description": "Bounding box of the PV-panel polygon dataset (pv_panels.gpkg) over Emmer-Compascuum. Reference / documentation only; not consumed by the pipeline.",
+        "source": "Bounds of inputs/pv_panels/pv_panels.gpkg (EPSG:28992)",
+        "width_m": 4320.0,
+        "height_m": 3360.0,
+        "area_ha": 1451.52
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [264400.0, 535580.0],
+            [268720.0, 535580.0],
+            [268720.0, 538940.0],
+            [264400.0, 538940.0],
+            [264400.0, 535580.0]
+          ]
+        ]
+      }
+    }
+  ]
+}
