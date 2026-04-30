@@ -40,7 +40,7 @@ def normalise_postcode(raw: Any) -> str:
     """
     if not raw:
         return ""
-    if type(raw) is str:
+    if isinstance(raw, str):
         if " " not in raw:
             return raw if raw.isupper() else raw.upper()
         return raw.replace(" ", "").upper()

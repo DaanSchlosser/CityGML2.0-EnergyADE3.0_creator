@@ -7,8 +7,13 @@ same algorithm: for each :class:`ParsedTree`, find the closest
 candidate from a register within a fixed metric radius, with the
 ``gtid`` as the dictionary key. Lifting the loop here removes a
 straight copy-paste between the two callers and gives the algorithm a
-single home for any future tweak (e.g. switching to a KD-tree once
-register sizes warrant it, or adding bidirectional uniqueness).
+single home for any future tweak.
+
+The function uses :class:`shapely.STRtree` (O(N log M)) — shapely is a
+hard requirement of the ``[city]`` extras and is also used by every
+other spatial step in the pipeline (boundary filter, PV panel match,
+vegetation filter), so a separate brute-force fallback would be dead
+code.
 
 The function is deliberately register-agnostic: callers pass a
 ``candidate_xy`` callable that extracts the ``(x, y)`` coordinates
@@ -39,46 +44,47 @@ def match_nearest_within[C](
 ) -> dict[str, C]:
     """Return ``{gtid: candidate}`` for every tree within *radius_m* of one.
 
-    For each :class:`ParsedTree`, the closest candidate by squared 2D
-    distance wins; ties are broken deterministically by candidate input
-    order (the first-seen candidate in :func:`enumerate` order). Trees
-    with no candidate in range are absent from the returned dict so
-    callers can ``.get(gtid)`` and fall through to ``None`` without
-    branching.
+    For each :class:`ParsedTree`, the closest candidate by 2D distance
+    wins; ties are broken deterministically by candidate input order
+    (first-seen candidate in enumeration order). Trees with no candidate
+    in range are absent from the returned dict so callers can ``.get(gtid)``
+    and fall through to ``None`` without branching.
 
     Reciprocal uniqueness is *not* enforced: two trees within radius of
     a single candidate both inherit it, which is the right encoding when
     CFTree over-reconstructs one canopy as two crowns. The match radius
     is the same for both directions because the registers (BGT, BOR)
     nominally place each point at the trunk, while CFTree's centroid can
-    drift 1-3 m on a leaning or one-sided crown.
+    drift 1–3 m on a leaning or one-sided crown.
 
     *register_label* is used only in the coverage log line so a reader
     of the pipeline log can tell the BGT and BOR matches apart at a
     glance.
     """
+    from shapely import STRtree
+    from shapely.geometry import Point
+
     candidate_list = list(candidates)
     tree_list = list(trees)
     if not candidate_list or not tree_list:
         return {}
 
-    radius_sq = radius_m * radius_m
-    out: dict[str, C] = {}
+    cand_points = [Point(candidate_xy(c)) for c in candidate_list]
+    strtree = STRtree(cand_points)
 
+    out: dict[str, C] = {}
     for tree in tree_list:
         cx, cy, _cz = tree.centroid
-        best: C | None = None
-        best_d2 = radius_sq
-        for cand in candidate_list:
-            x, y = candidate_xy(cand)
-            dx = x - cx
-            dy = y - cy
-            d2 = dx * dx + dy * dy
-            if d2 < best_d2:
-                best_d2 = d2
-                best = cand
-        if best is not None:
-            out[tree.gtid] = best
+        pt = Point(cx, cy)
+        hits = strtree.query(pt, predicate="dwithin", distance=radius_m)
+        if len(hits) == 0:
+            continue
+        # Secondary sort by input index preserves the tie-breaking
+        # guarantee: when two candidates are equidistant, the one
+        # that appeared first in the input list wins. STRtree does
+        # not guarantee hit order, so we must enforce it explicitly.
+        best_idx = int(min(hits, key=lambda j: (pt.distance(cand_points[j]), j)))
+        out[tree.gtid] = candidate_list[best_idx]
 
     _LOG.info(
         "Matched %d of %d CFTree trees to a %s record (radius=%.1f m)",
