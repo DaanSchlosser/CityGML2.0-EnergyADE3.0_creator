@@ -324,10 +324,7 @@ def _maybe_load_boundary(config: CityBuildConfig) -> BaseGeometry | None:
     source = config.boundary_source
     if source is None:
         return None
-    _LOG.info(
-        f"Loading boundary polygon: {source.path.name} "
-        f"(layer={source.layer}, fid={source.fid})"
-    )
+    _LOG.info(f"Loading boundary polygon: {source.path.name}")
     return load_boundary_polygon(source)
 
 

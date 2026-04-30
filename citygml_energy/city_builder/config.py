@@ -158,7 +158,7 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
 
 _ALLOWED_CITY_MODEL_KEYS: frozenset[str] = frozenset({"name", "description"})
 _ALLOWED_PV_PANELS_KEYS: frozenset[str] = frozenset({"path", "layer", "z_offset_m"})
-_ALLOWED_BOUNDARY_KEYS: frozenset[str] = frozenset({"path", "layer", "fid"})
+_ALLOWED_BOUNDARY_KEYS: frozenset[str] = frozenset({"path"})
 _ALLOWED_VEGETATION_KEYS: frozenset[str] = frozenset({"path"})
 
 
@@ -448,16 +448,11 @@ def _validate_boundary(
     """Validate the optional ``boundary`` block.
 
     Returns ``None`` when unset. Path is resolved relative to the
-    config's directory (matching the handling of ``cache_dir`` /
-    ``output`` / ``pv_panels.path``). Existence of the file, of the
-    layer, and of the ``fid`` inside it are checked lazily at read
-    time in :func:`.boundary.load_boundary_polygon`, so a config
-    authored on a machine without the polygon file still validates.
-
-    ``layer`` and ``fid`` are required for ``.gpkg`` (a GeoPackage can
-    hold multiple candidate areas), but optional for ``.geojson`` /
-    ``.json`` (single-feature files are the expected case, and
-    multi-feature ones can still be disambiguated by supplying ``fid``).
+    config's directory. Only ``.geojson`` / ``.json`` files are
+    accepted; the file must be a single GeoJSON ``Feature``. Existence
+    and geometry are checked lazily at read time in
+    :func:`.boundary.load_boundary_polygon`, so a config authored on a
+    machine without the polygon file still validates.
     """
     if value is None:
         return None
@@ -474,35 +469,12 @@ def _validate_boundary(
     if not isinstance(path_raw, str) or not path_raw.strip():
         raise CityBuildError(f"{source}: boundary.path must be a non-empty string")
     resolved_path = _resolve_path(path_raw, base_dir)
-    is_gpkg = resolved_path.suffix.lower() == ".gpkg"
-
-    layer_raw = value.get("layer")
-    if layer_raw is None:
-        if is_gpkg:
-            raise CityBuildError(
-                f"{source}: boundary.layer is required for .gpkg files"
-            )
-        layer: str | None = None
-    else:
-        if not isinstance(layer_raw, str) or not layer_raw.strip():
-            raise CityBuildError(f"{source}: boundary.layer must be a non-empty string")
-        layer = layer_raw.strip()
-
-    fid_raw = value.get("fid")
-    if fid_raw is None:
-        if is_gpkg:
-            raise CityBuildError(
-                f"{source}: boundary.fid is required for .gpkg files"
-            )
-        fid: int | None = None
-    else:
-        if isinstance(fid_raw, bool) or not isinstance(fid_raw, int) or fid_raw < 0:
-            raise CityBuildError(
-                f"{source}: boundary.fid must be a non-negative integer (got {fid_raw!r})"
-            )
-        fid = fid_raw
-
-    return BoundarySource(path=resolved_path, layer=layer, fid=fid)
+    if resolved_path.suffix.lower() not in (".geojson", ".json"):
+        raise CityBuildError(
+            f"{source}: boundary.path must be a .geojson file "
+            f"(got {resolved_path.suffix!r})"
+        )
+    return BoundarySource(path=resolved_path)
 
 
 def _validate_bool(data: dict[str, Any], key: str, *, source: str, default: bool) -> bool:
