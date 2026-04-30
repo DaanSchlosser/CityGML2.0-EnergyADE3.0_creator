@@ -150,7 +150,7 @@
     },
     "vegetation": {
       "type": "object",
-      "description": "Optional CFTree (https://github.com/NoahAlting/CFTree) reconstruction output directory. When set, the pipeline walks 'path/tiles/<tile_id>/<tree_filename>' and emits one veg:SolitaryVegetationObject per tree inside the bbox or boundary polygon, with LoD3 crown + trunk MultiSurface geometry and CFTree morphometrics (height, trunkDiameter, crownDiameter, plus porosity/r50/median_z as gen:doubleAttribute).",
+      "description": "Optional path to a merged CFTree CityJSON file (https://github.com/NoahAlting/CFTree, pre-processed via tools/merge_cftree_tiles.py). When set, the pipeline emits one veg:SolitaryVegetationObject per tree inside the bbox or boundary polygon, with LoD3 crown + trunk MultiSurface geometry and CFTree morphometrics (height, trunkDiameter, crownDiameter, plus porosity/r50/median_z as gen:doubleAttribute).",
       "additionalProperties": false,
       "required": [
         "path"
@@ -159,12 +159,8 @@
         "path": {
           "type": "string",
           "minLength": 1,
-          "description": "Path to a CFTree case output directory (typically CFTree's data/<case>), absolute or relative to this JSON file. The loader expects per-tile subdirectories below 'path/tiles/<tile_id>/'."
-        },
-        "tree_filename": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Filename to read inside every tile directory. Defaults to 'trees_lod3.city.json'; override only if a future CFTree release renames the file."
+          "pattern": "\\.city\\.json$",
+          "description": "Path to a merged CityJSON 2.0 file (must end in '.city.json'), absolute or relative to this JSON file. Produced by tools/merge_cftree_tiles.py from CFTree per-tile output."
         }
       }
     }

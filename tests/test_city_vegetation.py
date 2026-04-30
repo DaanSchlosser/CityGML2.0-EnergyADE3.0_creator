@@ -4,8 +4,8 @@ Covers what the pv-panels and boundary tests cover for their feature:
 
 * :func:`cityjson_trees_parse.parse_cftree_tile` on a fixture CityJSON
   payload — quantization, centroid, Solid-to-polygons flattening.
-* :func:`vegetation.load_trees_in_bbox` — directory walk, bbox half-open
-  clip, malformed-tile skip.
+* :func:`vegetation.load_trees_in_bbox` — single-file load, bbox
+  half-open clip, malformed-file skip, missing-file fallback.
 * :func:`vegetation.filter_trees_by_boundary` — centroid-in-polygon.
 * :func:`builders.build_solitary_vegetation_object` — XSD-valid
   round-trip, native vs. generic attribute split.
@@ -46,7 +46,6 @@ from citygml_energy.city_builder.cityjson_trees_parse import (
 )
 from citygml_energy.city_builder.config import CityBuildError, load_city_config
 from citygml_energy.city_builder.vegetation import (
-    DEFAULT_TREE_FILENAME,
     VegetationSource,
     filter_trees_by_boundary,
     load_trees_in_bbox,
@@ -232,21 +231,88 @@ def test_parse_cftree_tile_rejects_wrong_top_level_type() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _write_tile(
-    case_dir: Path, tile_id: str, cityjson: dict[str, Any],
-    *, filename: str = DEFAULT_TREE_FILENAME,
-) -> None:
-    """Write a CityJSON tile to CFTree's on-disk layout."""
-    tile_dir = case_dir / "tiles" / tile_id
-    tile_dir.mkdir(parents=True, exist_ok=True)
-    (tile_dir / filename).write_text(json.dumps(cityjson))
+def _write_cftree_file(path: Path, cityjson: dict[str, Any]) -> None:
+    """Write a merged CFTree CityJSON file to disk."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(cityjson))
 
 
-def test_load_trees_in_bbox_walks_every_tile(tmp_path: Path) -> None:
-    _write_tile(tmp_path, "A", _cftree_cityjson(gtid=1))
-    _write_tile(tmp_path, "B", _cftree_cityjson(gtid=2))
-    source = VegetationSource(path=tmp_path)
-    trees = load_trees_in_bbox(source, bbox=(267000.0, 537700.0, 267100.0, 537800.0))
+def _multi_tree_cityjson(gtids: list[int]) -> dict[str, Any]:
+    """Build a multi-tree CityJSON 2.0 sharing one transform.
+
+    Each tree is offset by 5m east of the previous so spatial dedup or
+    bbox tests can target individual trees deterministically.
+    """
+    scale = 0.001
+    point_blocks: list[tuple[int, list[tuple[float, float, float]], list[tuple[float, float, float]]]] = []
+    for i, gtid in enumerate(gtids):
+        ox = i * 5.0
+        crown = [
+            (267050.0 + ox, 537780.0, 15.0),
+            (267051.0 + ox, 537780.0, 17.0),
+            (267050.5 + ox, 537780.5, 17.0),
+        ]
+        trunk = [
+            (267050.5 + ox, 537780.0, 12.0),
+            (267050.7 + ox, 537780.2, 14.0),
+            (267050.6 + ox, 537780.3, 14.0),
+        ]
+        point_blocks.append((gtid, crown, trunk))
+
+    flat = [p for _, c, t in point_blocks for p in (*c, *t)]
+    tx = min(p[0] for p in flat)
+    ty = min(p[1] for p in flat)
+    tz = min(p[2] for p in flat)
+
+    vertices: list[list[int]] = []
+    city_objects: dict[str, Any] = {}
+    for gtid, crown, trunk in point_blocks:
+        crown_idx = []
+        for x, y, z in crown:
+            crown_idx.append(len(vertices))
+            vertices.append([round((x - tx) / scale), round((y - ty) / scale), round((z - tz) / scale)])
+        trunk_idx = []
+        for x, y, z in trunk:
+            trunk_idx.append(len(vertices))
+            vertices.append([round((x - tx) / scale), round((y - ty) / scale), round((z - tz) / scale)])
+        city_objects[f"T_{gtid}"] = {
+            "type": "SolitaryVegetationObject",
+            "geometry": [
+                {"type": "Solid", "lod": 3.0, "boundaries": [[[crown_idx]]]},
+                {"type": "Solid", "lod": 3.0, "boundaries": [[[trunk_idx]]]},
+            ],
+            "attributes": {
+                "gtid": gtid,
+                "crown_width_m": 2.5,
+                "crown_median_z": 17.0,
+                "crown_r50_m": 0.14,
+                "crown_porosity": 0.45,
+                "trunk_H_m": 6.0,
+                "trunk_DBH_m": 0.12,
+                "trunk_radius_m": 0.06,
+                "trunk_base_height_m": 12.0,
+            },
+        }
+
+    return {
+        "type": "CityJSON",
+        "version": "2.0",
+        "transform": {"scale": [scale, scale, scale], "translate": [tx, ty, tz]},
+        "metadata": {
+            "referenceSystem": "https://www.opengis.net/def/crs/EPSG/0/28992",
+            "presentLoDs": [3.0],
+        },
+        "CityObjects": city_objects,
+        "vertices": vertices,
+    }
+
+
+def test_load_trees_in_bbox_loads_all_trees_in_file(tmp_path: Path) -> None:
+    """A merged CityJSON with N trees yields N ParsedTree records."""
+    file_path = tmp_path / "trees.city.json"
+    _write_cftree_file(file_path, _multi_tree_cityjson([1, 2]))
+    source = VegetationSource(path=file_path)
+    trees = load_trees_in_bbox(source, bbox=(267000.0, 537700.0, 267200.0, 537800.0))
     assert sorted(t.gtid for t in trees) == ["1", "2"]
 
 
@@ -258,8 +324,9 @@ def test_load_trees_in_bbox_clips_half_open(tmp_path: Path) -> None:
     sides of the bbox by a rounding unit.
     """
     # Centroid x ≈ 267050.5, y ≈ 537780.25 for this fixture.
-    _write_tile(tmp_path, "A", _cftree_cityjson(gtid=1))
-    source = VegetationSource(path=tmp_path)
+    file_path = tmp_path / "trees.city.json"
+    _write_cftree_file(file_path, _cftree_cityjson(gtid=1))
+    source = VegetationSource(path=file_path)
     # Bounds including the centroid exactly at minx edge.
     kept = load_trees_in_bbox(source, bbox=(267050.5, 537780.0, 267051.0, 537781.0))
     assert [t.gtid for t in kept] == ["1"]
@@ -268,21 +335,19 @@ def test_load_trees_in_bbox_clips_half_open(tmp_path: Path) -> None:
     assert dropped == []
 
 
-def test_load_trees_in_bbox_skips_malformed_tile(tmp_path: Path, caplog) -> None:
-    _write_tile(tmp_path, "good", _cftree_cityjson(gtid=1))
-    # Malformed JSON in a second tile.
-    bad_tile = tmp_path / "tiles" / "bad"
-    bad_tile.mkdir(parents=True)
-    (bad_tile / DEFAULT_TREE_FILENAME).write_text("not valid json {")
-    source = VegetationSource(path=tmp_path)
+def test_load_trees_in_bbox_skips_malformed_file(tmp_path: Path, caplog) -> None:
+    """Malformed JSON in the merged file degrades to an empty list with a warning."""
+    file_path = tmp_path / "trees.city.json"
+    file_path.write_text("not valid json {")
+    source = VegetationSource(path=file_path)
     trees = load_trees_in_bbox(source, bbox=(267000.0, 537700.0, 267100.0, 537800.0))
-    assert [t.gtid for t in trees] == ["1"]
+    assert trees == []
 
 
 def test_load_trees_in_bbox_empty_when_source_missing(tmp_path: Path) -> None:
     """Config-authoring machines that have not run CFTree must still build."""
     trees = load_trees_in_bbox(
-        VegetationSource(path=tmp_path / "does_not_exist"),
+        VegetationSource(path=tmp_path / "does_not_exist.city.json"),
         bbox=(0.0, 0.0, 1.0, 1.0),
     )
     assert trees == []
@@ -389,10 +454,22 @@ def test_build_tree_emits_lod3_multisurface_geometry() -> None:
 
 
 def test_build_tree_gml_id_prefix_yields_valid_ncname() -> None:
-    """CFTree's gtid is purely numeric and invalid as xs:ID; the ``tree_`` prefix fixes that."""
+    """CFTree's gtid is purely numeric and invalid as xs:ID; the ``tree_``
+    prefix fixes that. The merged-file pipeline guarantees gtids are
+    globally unique, so no tile namespacing is needed on top.
+    """
     tree = _parsed_tree_from_cityjson(gtid=99)
     obj = build_solitary_vegetation_object(tree, gml_id_prefix="city42")
     assert obj.id == "city42_tree_99"
+
+
+def test_build_tree_gml_id_uses_bare_gtid() -> None:
+    """The merged-file pipeline ensures gtids are unique across the AOI,
+    so the gml:id is just the gtid plus the ``tree_`` prefix.
+    """
+    tree = ParsedTree(gtid="7", centroid=(0.0, 0.0, 0.0), polygons=[], attributes={})
+    obj = build_solitary_vegetation_object(tree)
+    assert obj.id == "tree_7"
 
 
 def test_build_tree_round_trip_serializes_and_validates() -> None:
@@ -486,25 +563,23 @@ def _write_config(tmp_path: Path, extra: dict[str, Any]) -> Path:
 
 def test_config_accepts_vegetation_block(tmp_path: Path) -> None:
     cfg = _write_config(
-        tmp_path, {"vegetation": {"path": "./cftree_out"}},
+        tmp_path, {"vegetation": {"path": "./trees.city.json"}},
     )
     loaded = load_city_config(cfg)
     assert loaded.vegetation_source is not None
-    assert loaded.vegetation_source.tree_filename == DEFAULT_TREE_FILENAME
+    assert loaded.vegetation_source.path.name == "trees.city.json"
 
 
-def test_config_accepts_vegetation_with_custom_filename(tmp_path: Path) -> None:
-    cfg = _write_config(tmp_path, {
-        "vegetation": {"path": "./cftree_out", "tree_filename": "trees.v2.city.json"},
-    })
-    loaded = load_city_config(cfg)
-    assert loaded.vegetation_source is not None
-    assert loaded.vegetation_source.tree_filename == "trees.v2.city.json"
+def test_config_rejects_non_cityjson_vegetation_path(tmp_path: Path) -> None:
+    """Anything other than a .city.json file must fail loudly at load time."""
+    cfg = _write_config(tmp_path, {"vegetation": {"path": "./trees.gpkg"}})
+    with pytest.raises(CityBuildError, match=r"\.city\.json"):
+        load_city_config(cfg)
 
 
 def test_config_rejects_unknown_vegetation_key(tmp_path: Path) -> None:
     cfg = _write_config(tmp_path, {
-        "vegetation": {"path": "./cftree_out", "bogus": "x"},
+        "vegetation": {"path": "./trees.city.json", "bogus": "x"},
     })
     with pytest.raises(CityBuildError, match="unexpected vegetation key"):
         load_city_config(cfg)
