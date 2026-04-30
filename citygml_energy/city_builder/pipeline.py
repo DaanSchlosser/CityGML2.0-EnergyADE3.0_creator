@@ -47,8 +47,10 @@ from .fetchers import eponline as eponline_fetchers
 from .fetchers import municipality as muni_fetchers
 from .fetchers import threedbag
 from .fetchers.bgt import BgtTree, fetch_bgt_trees
+from .fetchers.emmen_bor import BorTree, fetch_bor_trees
 from .http import CachedSession
-from .pv_panels import ProjectedPanel, attach_pv_collectors_to_building
+from .pv_panels import ProjectedPanel
+from .tree_enrichment import match_trees_to_bor
 
 if TYPE_CHECKING:
     from shapely.geometry.base import BaseGeometry
@@ -149,6 +151,9 @@ def build_city_model(
     bgt_matches = _maybe_match_trees_to_bgt(
         session=session, trees=trees, bbox=bbox,
     )
+    bor_matches = _maybe_match_trees_to_bor(
+        session=session, trees=trees, bbox=bbox,
+    )
 
     _LOG.info("Assembling CityModel …")
     model = _assemble_city_model(
@@ -159,6 +164,7 @@ def build_city_model(
         pv_matches_per_pand=pv_matches_per_pand,
         trees=trees,
         bgt_matches=bgt_matches,
+        bor_matches=bor_matches,
     )
     building_count = sum(
         1 for m in model.xsd.city_object_member if m.building is not None
@@ -236,6 +242,33 @@ def _maybe_match_trees_to_bgt(
     _LOG.info(
         f"BGT cross-reference: {len(matches)} of {len(trees)} "
         f"CFTree trees matched a BGT boom record ({len(bgt_trees)} BGT "
+        f"features in bbox)"
+    )
+    return matches
+
+
+def _maybe_match_trees_to_bor(
+    *,
+    session: CachedSession,
+    trees: list[ParsedTree],
+    bbox: tuple[float, float, float, float],
+) -> dict[str, BorTree]:
+    """Fetch Gemeente Emmen's BOR tree register and join it onto CFTree trees.
+
+    Behaves identically to :func:`_maybe_match_trees_to_bgt`: empty
+    dict on no trees / empty bbox response, soft-failed fetch on
+    network or parse errors. Outside Emmen the bbox-restricted query
+    returns zero features (silently logged), which is the desired
+    no-op behaviour for the city pipeline's PoC scope.
+    """
+    if not trees:
+        return {}
+    _LOG.info("Fetching Gemeente Emmen BOR tree register …")
+    bor_trees = fetch_bor_trees(session, bbox)
+    matches = match_trees_to_bor(trees, bor_trees)
+    _LOG.info(
+        f"BOR enrichment: {len(matches)} of {len(trees)} "
+        f"CFTree trees matched a BOR record ({len(bor_trees)} BOR "
         f"features in bbox)"
     )
     return matches
@@ -598,6 +631,7 @@ def _assemble_city_model(
     pv_matches_per_pand: dict[str, list[ProjectedPanel]] | None = None,
     trees: list[ParsedTree] | None = None,
     bgt_matches: dict[str, BgtTree] | None = None,
+    bor_matches: dict[str, BorTree] | None = None,
 ) -> CityModel:
     """Assemble a :class:`CityModel` from parsed BAG/3DBAG/EP-online inputs.
 
@@ -657,6 +691,7 @@ def _assemble_city_model(
             srs_dimension=config.srs_dimension,
             coords_sink=all_coords,
             bgt_matches=bgt_matches or {},
+            bor_matches=bor_matches or {},
         )
         append_vegetation_appearance(model, targets=tree_appearance_targets)
 
@@ -680,6 +715,7 @@ def _attach_trees_to_model(
     srs_dimension: int,
     coords_sink: list[Coord3D],
     bgt_matches: dict[str, BgtTree],
+    bor_matches: dict[str, BorTree],
 ) -> list[str]:
     """Emit one ``veg:SolitaryVegetationObject`` per :class:`ParsedTree`.
 
@@ -687,10 +723,19 @@ def _attach_trees_to_model(
     (height, trunk diameter, crown diameter). When *bgt_matches*
     contains an entry keyed on the tree's gtid, the builder also
     attaches a ``core:externalReference`` pointing at the
-    authoritative BGT ``vegetatieobject_punt`` feature — the only
-    cross-link that the strictly-Dutch-government-data policy allows.
-    Unmatched trees carry plain geometry + CFTree morphometrics, which
-    is a valid CityGML vegetation object in its own right.
+    authoritative BGT ``vegetatieobject_punt`` feature. When
+    *bor_matches* contains an entry, the Latin scientific name fills
+    ``veg:species`` (the only typed CityGML 2.0 vegetation slot the
+    BOR layer can fill honestly), the planting year goes to
+    ``gen:intAttribute name="plantingYear"``, and the remaining
+    fields (Dutch common name, height/diameter class bands,
+    protection status, growth form, standplaats) become
+    ``gen:stringAttribute`` siblings, plus a second
+    ``core:externalReference`` keyed on ``boom_id``. See
+    ``builders.vegetation._apply_bor_enrichment`` and
+    ``docs/source_to_gml_mapping.md`` for the full mapping. The two
+    matches are independent: a tree may carry zero, one, or both
+    cross-references.
 
     Tree crown vertices also widen the city envelope: if we skipped
     them, a SolitaryVegetationObject extending past the building
@@ -711,6 +756,7 @@ def _attach_trees_to_model(
             srs_name=srs_name,
             srs_dimension=srs_dimension,
             bgt_match=bgt_matches.get(tree.gtid),
+            bor_match=bor_matches.get(tree.gtid),
         )
         model.add(obj)
         if obj.lod3_geometry is not None and obj.lod3_geometry.multi_surface is not None:
