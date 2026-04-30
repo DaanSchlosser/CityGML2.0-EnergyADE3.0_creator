@@ -371,6 +371,11 @@ def _validate_pv_panels(
     ``output``); existence and CRS are checked lazily at read time in
     :func:`citygml_energy.city_builder.pv_panels.load_panels_in_bbox`,
     so a config authored on a machine without the GPKG still validates.
+
+    The ``layer`` field is interpolated directly into the GeoPackage
+    SQL query (SQLite has no parameterised table-name syntax), so it is
+    validated against :data:`_NCNAME_RE` here to reject any string that
+    would inject SQL or escape a quoted identifier.
     """
     if value is None:
         return None
@@ -389,9 +394,16 @@ def _validate_pv_panels(
     layer = value.get("layer")
     if not isinstance(layer, str) or not layer.strip():
         raise CityBuildError(f"{source}: pv_panels.layer must be a non-empty string")
+    layer = layer.strip()
+    if not _NCNAME_RE.match(layer):
+        raise CityBuildError(
+            f"{source}: pv_panels.layer {layer!r} must start with a letter or underscore "
+            f"and contain only letters, digits, underscores, dots, or hyphens "
+            f"(unsafe characters would cause SQL injection via the GeoPackage query)"
+        )
     kwargs: dict[str, Any] = {
         "path": _resolve_path(path_raw, base_dir),
-        "layer": layer.strip(),
+        "layer": layer,
     }
     if "z_offset_m" in value:
         z_offset_raw = value["z_offset_m"]

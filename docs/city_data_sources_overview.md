@@ -6,12 +6,12 @@ source end up in the CityGML 2.0 + Energy ADE 3.0 output.
 
 **Completeness method.** Every "supply" row was obtained by parsing a
 real cached response (BAG, 3DBAG, EP-online, municipality, CFTree,
-BGT) or the actual GeoPackage schema (PV panels, boundary) — not from
-documentation, and not from memory. Every "demand" cell was verified
-by grepping the pipeline for reads of that field and linking to the
-call site. Field names reflect what the source actually emits; the
-commentary notes where the source documentation uses a different name
-or alias.
+BGT), the actual GeoPackage schema (PV panels), or a sample GeoJSON
+(boundary) — not from documentation, and not from memory. Every "demand"
+cell was verified by grepping the pipeline for reads of that field and
+linking to the call site. Field names reflect what the source actually
+emits; the commentary notes where the source documentation uses a
+different name or alias.
 
 Each table has three legend columns:
 
@@ -37,7 +37,7 @@ Emmer-Compascuum small-area AOI (41.5 ha, 674 buildings, 652 trees).
 | 3 | PDOK BAG `bag:pand` | 8 properties + geometry | 4 | `bldg:Building` |
 | 4 | PDOK BAG `bag:verblijfsobject` | 14 properties + geometry | 11 + geometry | `nrg3:BuildingUnit` + `core:Address` |
 | 5 | 3DBAG CityJSON tile | 62 `Building` attributes + LoD 0/1.2/2.2 geometries | 8 attributes + 3 LoD geometries | `bldg:lod0FootPrint` + `bldg:lod1Solid` + `bldg:boundedBy/lod2MultiSurface` + `bldg:measuredHeight` + `bldg:roofType` + `bldg:storeysAboveGround` + `nrg3:bdgVolume` |
-| 6 | EP-online `Mutatiebestand` CSV | 42 columns | 20 | `nrg3:EnergyPerformanceCertificate` + `app:Appearance` theme energyLabel + `nrg3:Zone` (per VBO) + `nrg3:Energy` resources (per VBO) + per-VBO `gen:*Attribute` classification + `nrg3:Metadata` source attribution |
+| 6 | EP-online `Mutatiebestand` CSV | 42 columns | 20 | `nrg3:EnergyPerformanceCertificate` + `app:Appearance` theme energyLabel + per-VBO `nrg3:QualifiedArea` (thermal-zone) + per-VBO `nrg3:Energy` resources (regime-aware) + native `nrg3:bdgType` (Pand level) + per-VBO `gen:*Attribute` classification + `nrg3:Metadata` source attribution |
 | 7 | PV panels GeoPackage | 2 columns + geometry | 2 + geometry | `nrg3:PhotovoltaicCollector` |
 | 8 | CFTree `trees_lod3.city.json` | 10 attributes + LoD 3 geometry | 9 + geometry | `veg:SolitaryVegetationObject` + `veg:lod3Geometry` |
 | 9 | BGT `vegetatieobject_punt` | 23 properties + geometry | 5 + geometry | `core:externalReference` + `gen:dateAttribute` |
@@ -180,14 +180,14 @@ The CSV has **42 columns** plus two header meta-lines (`PublicatieDatum`, `Laats
 | `Gebouwtype` | ✓ | native `nrg3:bdgType` on the **Building** (Pand-level, Dutch RVO term verbatim, `@codeSpace = CS_RVO_GEBOUWTYPE` pointing at the EP-online publication that defines the vocabulary). Picked from the most-recently-registered cert across the Pand's VBOs that carries `Gebouwtype`. | The primary building type is a Pand-level fact: a structure has one primary type regardless of how many VBOs sit inside. Dutch term verbatim because the Energy-ADE 3.0 `BuildingTypeValue.xml` codelist is too coarse for the NTA-8800 typology (mapping doc §5e). |
 | `Gebouwsubtype` | ✓ | `gen:stringAttribute name="bdgSubtypeEPOnline"` on each `nrg3:BuildingUnit`, value = Dutch RVO term verbatim. | Per-VBO secondary qualifier (e.g. `appartement-portiekflat`); two VBOs in one Pand can carry different subtypes. EnergyADE 3.0 has no native `nrg3:bdgSubtype` element (mapping doc §5e). |
 | `Bouwjaar` | ✓ | `gen:intAttribute name="yearOfConstructionEPOnline"` on the **Building** (Pand level, picked from the most-recently-registered cert across the Pand's VBOs). The EP-online `nrg3:Metadata` block on the Building covers both `yearOfConstructionEPOnline` and `nrg3:bdgType`; the BAG-source block sits next to it. | Year-of-construction is a Pand-level fact regardless of which register reports it; EP-online ships it per-VBO only because the CSV is row-per-cert. Mapping doc §5h. |
-| `GebruiksoppervlakteThermischeZone` | ✓ | `nrg3:Zone/area` as a `QualifiedArea` (type `netFloorArea`, source attributing EP-online) on a per-VBO Zone hosted under the Building, xlink-referencing the BuildingUnit. uom `m2`. | Anchor for every per-m² energy metric. Mapping doc §5h. |
-| `Energiebehoefte` | ✓ | `nrg3:Energy` resource on the BuildingUnit via `nrg3:resource`: type `netEnergy`, endUse `spaceHeating`, normalised against the thermal-zone area. uom `kWh/m2/a`. | BENG-1, heating + cooling combined. Mapping doc §5i. |
-| `Warmtebehoefte` | ✓ | sibling `nrg3:Energy` resource: type `netEnergy`, distinguished from BENG-1 by the `description` field. | NTA 8800 net heating demand. Mapping doc §5i. |
-| `PrimaireFossieleEnergie` | ✓ | `nrg3:Energy` resource: type `primaryEnergy`. | BENG-2. Mapping doc §5j. |
-| `AandeelHernieuwbareEnergie` | ✓ | `gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie"` on each `nrg3:BuildingUnit`. uom `percent` (NOT `%`). | BENG-3 renewable share. No native Energy ADE slot; the EPC cannot host generic attributes (extends AbstractFeatureWithLifeSpan, not CityObject), so the attribute lives on the BuildingUnit. Mapping doc §5j. |
-| `BerekendeCO2Emissie` | ✓ | `nrg3:Energy/co2Equivalent` on the BENG-2 (primary-energy) `nrg3:Energy` resource. uom `kg/m2/a`. | Emissions are a property of `AbstractResource`, not a standalone feature. Mapping doc §5k. |
-| `BerekendeEnergieverbruik` | ✓ | `nrg3:Energy` resource: type `finalEnergy`. uom `kWh/m2/a`. | Delivered final-energy figure. Distinct from BENG-1 (net) and BENG-2 (primary). Mapping doc §5k. |
-| **Source attribution** | ✓ | one `nrg3:Metadata` block on the Building (BAG-source for `bldg:yearOfConstruction`); one `nrg3:Metadata` block per BuildingUnit (EP-online-source for the per-VBO emissions on that unit) | Mapping doc §4 + §6. |
+| `GebruiksoppervlakteThermischeZone` | ✓ | second `nrg3:QualifiedArea` directly on the `nrg3:BuildingUnit` (sibling of the BAG `oppervlakte` entry, same `netFloorArea` type, distinct `source`). uom `m2`. NTA 8800 only — empty for ~100 % of legacy-regime rows. | Anchor for every per-m² energy metric. The earlier draft wrapped this in an `nrg3:Zone`; the wrapper added no information beyond the area itself, so it was dropped. Mapping doc §5h + §6.2. |
+| `Energiebehoefte` | ✓ | `nrg3:Energy` resource on the BuildingUnit via `nrg3:resource`: type `netEnergy`, endUse `spaceHeating`. uom `kWh/m2/a`, `isAmountNormalized=true` with no `normalizationValue` (the per-m² basis is already encoded in the uom). | BENG-1, heating + cooling combined. NTA 8800 only. Mapping doc §5i. |
+| `Warmtebehoefte` | ✓ | sibling `nrg3:Energy` resource: type `netEnergy`, distinguished from BENG-1 by the `description` field. uom `kWh/m2/a`. | NTA 8800 net heating demand. NTA 8800 only. Mapping doc §5i. |
+| `PrimaireFossieleEnergie` | ✓ | `nrg3:Energy` resource: type `primaryEnergy`. uom `kWh/m2/a`. | BENG-2. NTA 8800 only. Mapping doc §5j. |
+| `AandeelHernieuwbareEnergie` | ✓ | `gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie"` on each `nrg3:BuildingUnit`. uom `percent` (NOT `%`). | BENG-3 renewable share. NTA 8800 only. No native Energy ADE slot; the EPC cannot host generic attributes (extends AbstractFeatureWithLifeSpan, not CityObject), so the attribute lives on the BuildingUnit. Mapping doc §5j. |
+| `BerekendeCO2Emissie` | ✓ | **Regime-aware.** NTA 8800: `nrg3:Energy/co2Equivalent` on the BENG-2 resource, uom `kg/m2/a`. legacy_total Nader Voorschrift / ISSO: `co2Equivalent` on the legacy `finalEnergy` resource, uom `kg/a` (annual total). Definitief Energielabel: suppressed (the column is a structural ``0,00`` placeholder, not a measurement). | Emissions are a property of `AbstractResource`, not a standalone feature. Mapping doc §5k. |
+| `BerekendeEnergieverbruik` | ✓ | **Regime-aware.** NTA 8800: `nrg3:Energy` resource, type `finalEnergy`, uom `kWh/m2/a`. legacy_total: single `nrg3:Energy` resource, type `finalEnergy`, uom `MJ/a` (annual total, NEN 7120 lineage), `isAmountNormalized=false`. | The only column populated in BOTH regimes, but with divergent units (median 150 vs. 93 039 across 5.12 M rows). Mapping doc §5k. |
+| **Source attribution** | ✓ | Building level: one `nrg3:Metadata` block for BAG (`bldg:yearOfConstruction`) plus one EP-online-source block covering both `yearOfConstructionEPOnline` and `nrg3:bdgType` whenever either is emitted. BuildingUnit level: one EP-online-source `nrg3:Metadata` block per unit, covering `bdgSubtypeEPOnline`, the EP-online thermal-zone QualifiedArea, the renewable-share measure attribute, and the `nrg3:Energy` resources. | Mapping doc §4 + §6. |
 | `PublicatieDatum` (meta row 1) | | | Date of this Mutatiebestand vintage. Not parsed. |
 | `LaatstVerwerkteMutatievolgnummer` (meta row 2) | | | Opaque RVO mutation counter. Not parsed. |
 | `Opnamedatum` | ⚙ | — | Inspection date. Used as the address-match tiebreak only; deliberately not emitted (Skip-(latent), mapping doc §5b). |
@@ -300,18 +300,16 @@ BGT carries **no biological attributes** (no species, leaf class, planting year,
 
 ---
 
-## 10. Boundary polygon (`.gpkg` or `.geojson`)
+## 10. Boundary polygon (`.geojson` / `.json`)
 
-**Source:** local file pointed to by the `boundary.path` config. The canonical default is [`inputs/boundaries/emmer-compascuum_small-area.geojson`](../inputs/boundaries/emmer-compascuum_small-area.geojson).
+**Source:** local file pointed to by the `boundary.path` config. The canonical default is [`inputs/boundaries/emmer-compascuum_small-area.geojson`](../inputs/boundaries/emmer-compascuum_small-area.geojson). Only GeoJSON `Feature` documents are accepted; GeoPackage support was deliberately dropped to keep the loader's dependency footprint identical to the rest of the city builder (shapely only).
 **Loader:** [`boundary.py`](../citygml_energy/city_builder/boundary.py).
 
 | Supply | Read | Used for |
 |---|---|---|
-| GeoPackage row selected by `(layer, fid)` OR GeoJSON feature selected by `fid` / first polygon | ⚙ | (a) bbox → drives BAG / 3DBAG / EP-online / BGT fetch extent; (b) polygon → clips 3DBAG buildings + CFTree trees to the concave AOI |
-| GeoPackage `gpkg_contents.srs_id` (must be 28992 / 0 / -1) | ⚙ | CRS validation before the WKB is loaded |
+| GeoJSON `Feature` with `Polygon` or `MultiPolygon` geometry | ⚙ | (a) bbox → drives BAG / 3DBAG / EP-online / BGT fetch extent; (b) polygon → clips 3DBAG buildings + CFTree trees to the concave AOI |
 | GeoJSON top-level `crs.properties.name` | ⚙ | CRS validation (must contain `"28992"`); a missing `crs` block is accepted with a WARN log line because some QGIS / geopandas exports strip it |
-| GeoJSON `type` (`FeatureCollection` vs `Feature`) | ⚙ | Dispatch to the right feature-picking branch |
-| every other GeoJSON `properties.*` field | | | | Ignored (the file is consumed only for the polygon outline). |
+| every other GeoJSON `properties.*` field | | Ignored (the file is consumed only for the polygon outline). |
 
 **No feature is emitted in the GML for the boundary itself.**
 
@@ -340,16 +338,21 @@ The pipeline emits the tokens below, each cross-checked against the KIT FZKViewe
 | Token | Used on | Matched against UOMList | Status |
 |---|---|---|---|
 | `m` | `veg:height`, `veg:trunkDiameter`, `veg:crownDiameter` | `UOM name="METRE" id="m"` | primary id ✓ |
-| `m2` | `nrg3:moduleArea` on `PhotovoltaicCollector`, `nrg3:Zone/area`, `nrg3:Energy/normalizationValue` | `UOM name="SQUARE_METRE" id="m2"` | primary id ✓ |
+| `m2` | `nrg3:moduleArea` on `PhotovoltaicCollector`, `nrg3:QualifiedArea/value` on each `BuildingUnit` (BAG `oppervlakte` + EP-online thermal-zone) | `UOM name="SQUARE_METRE" id="m2"` | primary id ✓ |
 | `deg` | `nrg3:inclination`, `nrg3:azimuth` on `PhotovoltaicCollector` | `UOM name="DEGREE" id="grad"`, `altId=deg` | altId (canonical id is `grad`) ✓ |
 | `percent` | `gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie"` | `UOM name="PERCENTAGE" id="percent"` | primary id ✓ |
-| `kWh/m2/a` | `nrg3:Energy/amount` on the four EP-online resources (Energiebehoefte, Warmtebehoefte, PrimaireFossieleEnergie, BerekendeEnergieverbruik) | UOMList has `kWh/m2` (no per-annum) and `MWh/a` (no per-area) but not the composed token | new for this project, pending FZK UOMList revision |
-| `kg/m2/a` | `nrg3:Energy/co2Equivalent` on the BENG-2 (primary-energy) resource | UOMList has `kg`, `kg/m3`; no per-area-mass-per-annum | new for this project, pending FZK UOMList revision |
+| `kWh/m2/a` | `nrg3:Energy/amount` on the four NTA-8800 EP-online resources (Energiebehoefte, Warmtebehoefte, PrimaireFossieleEnergie, BerekendeEnergieverbruik) | UOMList has `kWh/m2` (no per-annum) and `MWh/a` (no per-area) but not the composed token | new for this project, pending FZK UOMList revision |
+| `kg/m2/a` | `nrg3:Energy/co2Equivalent` on the BENG-2 (primary-energy) resource for NTA-8800 rows | UOMList has `kg`, `kg/m3`; no per-area-mass-per-annum | new for this project, pending FZK UOMList revision |
+| `MJ/a` | `nrg3:Energy/amount` on the single legacy `finalEnergy` resource for legacy_total rows (`Rekenmethodiek Definitief Energielabel`, Nader Voorschrift / ISSO75 / ISSO82) | UOMList has `MWh/a` but not `MJ/a` | new for this project, pending FZK UOMList revision |
+| `kg/a` | `nrg3:Energy/co2Equivalent` on the legacy `finalEnergy` resource for the Nader Voorschrift / ISSO branch (annual total CO₂) | UOMList has `kg` but not `kg/a` | new for this project, pending FZK UOMList revision |
 
-The two `*/a` tokens are NL convention (NTA 8800 reports BENG metrics in
-kWh/m²·jaar and CO₂ in kg/m²·jaar). They are documented as gaps to be
-communicated upstream to the FZK developers; until the UOMList catches
-up, viewers fall back to displaying the raw token verbatim.
+The four `*/a` tokens are NL convention (NTA 8800 reports BENG metrics
+in kWh/m²·jaar; the legacy NEN 7120 lineage reports its totals in
+MJ/jaar and kg/jaar). They are documented as gaps to be communicated
+upstream to the FZK developers; until the UOMList catches up, viewers
+fall back to displaying the raw token verbatim. The regime asymmetry
+that requires both per-area (NTA 8800) and absolute-total (legacy)
+tokens is documented in [`ep_online_data_model_mapping.md` § 5.0](ep_online_data_model_mapping.md#50-calculation-regimes-and-field-availability-read-first).
 
 ---
 

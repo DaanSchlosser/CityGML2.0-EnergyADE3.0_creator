@@ -17,6 +17,7 @@ CLIs configure a handler; library callers can silence with standard
 
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import logging
 import pickle
@@ -87,48 +88,73 @@ def build_city_model(
 
     boundary_geom = _maybe_load_boundary(config)
 
-    _LOG.info(f"Fetching municipality outline: {config.municipality}")
+    _LOG.info("Fetching municipality outline: %s", config.municipality)
     outline = muni_fetchers.fetch_municipality_outline(
         session, name=config.municipality
     )
     bbox = _resolve_bbox(config, outline=outline, boundary_geom=boundary_geom)
     cbs_code = outline.cbs_code or None
-    _LOG.info(f"CBS code: {cbs_code!r}  bbox: {bbox}")
+    _LOG.info("CBS code: %r  bbox: %s", cbs_code, bbox)
 
-    _LOG.info("Fetching BAG panden …")
-    panden = bag_fetchers.fetch_panden(session, bbox=bbox, cbs_code=cbs_code)
+    # BAG panden, BAG VBOs (optional), and 3DBAG tiles are all I/O-bound
+    # network fetches that depend only on bbox. Running them concurrently
+    # converts three serial waits into one, cutting cold-cache wall time
+    # by roughly the duration of the slowest two fetches. The shared
+    # CachedSession is safe here: its underlying urllib3 connection pool
+    # is thread-safe for read-only GETs, and each fetcher's cache writes
+    # land under a disjoint cache-key prefix so there is no shared-file
+    # race.
+    _LOG.info("Fetching BAG panden, VBOs, and 3DBAG tiles concurrently …")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        fut_panden = pool.submit(
+            bag_fetchers.fetch_panden, session, bbox=bbox, cbs_code=cbs_code
+        )
+        fut_vbos = (
+            pool.submit(
+                bag_fetchers.fetch_verblijfsobjecten, session, bbox=bbox, cbs_code=cbs_code
+            )
+            if config.include_addresses
+            else None
+        )
+        fut_3dbag = pool.submit(
+            _fetch_parsed_buildings, session, outline=outline, bbox=bbox
+        )
+
+    # The ThreadPoolExecutor's __exit__ already waited for every submitted
+    # future, so each .result() either returns immediately or re-raises
+    # the worker's exception. Calling .result() outside the with block
+    # (rather than inline among the submits) keeps the submission and
+    # collection phases visually distinct.
+    panden = fut_panden.result()
+    vbos = fut_vbos.result() if fut_vbos is not None else []
+    parsed_buildings = fut_3dbag.result()
+
     known_pand_ids = {pand.identificatie for pand in panden}
-    _LOG.info(f"{len(panden)} panden")
+    _LOG.info("%d panden", len(panden))
 
     resolved_per_pand: dict[str, list[ResolvedAddress]] = {}
     if config.include_addresses:
-        _LOG.info("Fetching BAG verblijfsobjecten …")
-        vbos = bag_fetchers.fetch_verblijfsobjecten(
-            session, bbox=bbox, cbs_code=cbs_code
-        )
-        _LOG.info(f"{len(vbos)} verblijfsobjecten")
+        _LOG.info("%d verblijfsobjecten", len(vbos))
 
         energy_labels = _maybe_fetch_energy_labels(session, config, vbos=vbos)
         if energy_labels is not None:
-            _LOG.info(f"{len(energy_labels)} EP-online labels matched")
+            _LOG.info("%d EP-online labels matched", len(energy_labels))
 
         resolved_per_pand = match_addresses(
             vbos=vbos,
             energy_labels=energy_labels,
         )
         matched_vbos = sum(len(v) for v in resolved_per_pand.values())
-        _LOG.info(f"{matched_vbos} VBOs matched to {len(resolved_per_pand)} panden")
+        _LOG.info("%d VBOs matched to %d panden", matched_vbos, len(resolved_per_pand))
 
-    _LOG.info("Fetching 3DBAG tiles …")
-    parsed_buildings = _fetch_parsed_buildings(session, outline=outline, bbox=bbox)
     parsed_by_id = {pb.pand_id: pb for pb in parsed_buildings if pb.pand_id in known_pand_ids}
     _LOG.info(
-        f"{len(parsed_buildings)} buildings from 3DBAG tiles; "
-        f"{len(parsed_by_id)} match known BAG panden"
+        "%d buildings from 3DBAG tiles; %d match known BAG panden",
+        len(parsed_buildings), len(parsed_by_id),
     )
     skipped = len(panden) - len(parsed_by_id)
     if skipped:
-        _LOG.info(f"{skipped} panden have no 3DBAG geometry (skipped)")
+        _LOG.info("%d panden have no 3DBAG geometry (skipped)", skipped)
 
     if boundary_geom is not None:
         before = len(parsed_by_id)
@@ -137,8 +163,8 @@ def build_city_model(
         kept_ids = set(parsed_by_id)
         panden = [p for p in panden if p.identificatie in kept_ids]
         _LOG.info(
-            f"Boundary polygon kept {len(parsed_by_id)} / {before} "
-            f"buildings ({dropped} outside)"
+            "Boundary polygon kept %d / %d buildings (%d outside)",
+            len(parsed_by_id), before, dropped,
         )
 
     pv_matches_per_pand = _maybe_match_pv_panels(
@@ -148,12 +174,21 @@ def build_city_model(
     trees = _maybe_load_trees(
         config=config, bbox=bbox, boundary_geom=boundary_geom,
     )
-    bgt_matches = _maybe_match_trees_to_bgt(
-        session=session, trees=trees, bbox=bbox,
-    )
-    bor_matches = _maybe_match_trees_to_bor(
-        session=session, trees=trees, bbox=bbox,
-    )
+    # BGT and BOR fetches are independent network calls; run them concurrently.
+    if trees:
+        _LOG.info("Fetching BGT and BOR tree register concurrently …")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            fut_bgt = pool.submit(
+                _maybe_match_trees_to_bgt, session=session, trees=trees, bbox=bbox
+            )
+            fut_bor = pool.submit(
+                _maybe_match_trees_to_bor, session=session, trees=trees, bbox=bbox
+            )
+        bgt_matches = fut_bgt.result()
+        bor_matches = fut_bor.result()
+    else:
+        bgt_matches = {}
+        bor_matches = {}
 
     _LOG.info("Assembling CityModel …")
     model = _assemble_city_model(
@@ -174,8 +209,8 @@ def build_city_model(
         if m.solitary_vegetation_object is not None
     )
     _LOG.info(
-        f"Done: {building_count} buildings + "
-        f"{vegetation_count} trees in model"
+        "Done: %d buildings + %d trees in model",
+        building_count, vegetation_count,
     )
     return model
 
@@ -197,7 +232,7 @@ def _maybe_load_trees(
     if source is None:
         return []
 
-    _LOG.info(f"Loading CFTree vegetation: {source.path}")
+    _LOG.info("Loading CFTree vegetation: %s", source.path)
     trees = vegetation_module.load_trees_in_bbox(source, bbox)
     if not trees:
         return []
@@ -205,11 +240,9 @@ def _maybe_load_trees(
     if boundary_geom is not None:
         before = len(trees)
         trees = vegetation_module.filter_trees_by_boundary(trees, boundary_geom)
-        _LOG.info(
-            f"Boundary polygon kept {len(trees)} / {before} trees"
-        )
+        _LOG.info("Boundary polygon kept %d / %d trees", len(trees), before)
     else:
-        _LOG.info(f"Loaded {len(trees)} trees inside bbox")
+        _LOG.info("Loaded %d trees inside bbox", len(trees))
 
     return trees
 
@@ -240,9 +273,9 @@ def _maybe_match_trees_to_bgt(
     bgt_trees = fetch_bgt_trees(session, bbox)
     matches = match_trees_to_bgt(trees, bgt_trees)
     _LOG.info(
-        f"BGT cross-reference: {len(matches)} of {len(trees)} "
-        f"CFTree trees matched a BGT boom record ({len(bgt_trees)} BGT "
-        f"features in bbox)"
+        "BGT cross-reference: %d of %d CFTree trees matched a BGT boom record "
+        "(%d BGT features in bbox)",
+        len(matches), len(trees), len(bgt_trees),
     )
     return matches
 
@@ -267,9 +300,9 @@ def _maybe_match_trees_to_bor(
     bor_trees = fetch_bor_trees(session, bbox)
     matches = match_trees_to_bor(trees, bor_trees)
     _LOG.info(
-        f"BOR enrichment: {len(matches)} of {len(trees)} "
-        f"CFTree trees matched a BOR record ({len(bor_trees)} BOR "
-        f"features in bbox)"
+        "BOR enrichment: %d of %d CFTree trees matched a BOR record "
+        "(%d BOR features in bbox)",
+        len(matches), len(trees), len(bor_trees),
     )
     return matches
 
@@ -295,7 +328,7 @@ def _maybe_match_pv_panels(
         )
         return {}
 
-    _LOG.info(f"Loading PV panels: {source.path.name} ({source.layer})")
+    _LOG.info("Loading PV panels: %s (%s)", source.path.name, source.layer)
     panels = pv_panels_module.load_panels_in_bbox(source, bbox)
     if not panels:
         _LOG.info("PV panels: 0 polygons inside bbox; skipping")
@@ -308,8 +341,8 @@ def _maybe_match_pv_panels(
     )
     total = sum(len(v) for v in matches.values())
     _LOG.info(
-        f"PV panels: {total} projected onto {len(matches)} buildings "
-        f"({skipped} skipped, no LoD 2 roof overlap)"
+        "PV panels: %d projected onto %d buildings (%d skipped, no LoD 2 roof overlap)",
+        total, len(matches), skipped,
     )
     return matches
 
@@ -324,7 +357,7 @@ def _maybe_load_boundary(config: CityBuildConfig) -> BaseGeometry | None:
     source = config.boundary_source
     if source is None:
         return None
-    _LOG.info(f"Loading boundary polygon: {source.path.name}")
+    _LOG.info("Loading boundary polygon: %s", source.path.name)
     return load_boundary_polygon(source)
 
 
@@ -365,12 +398,13 @@ def _filter_by_boundary(
     we prefer keeping them over cutting them in half.
 
     Buildings without a LoD 0 polygon (shouldn't happen for 3DBAG, but
-    defensively handled) are dropped with a log line so a silent data
-    gap is easy to spot.
+    defensively handled) are silently dropped, as are buildings whose
+    LoD 0 rings collapse to a degenerate footprint.
     """
     try:
         from shapely import prepare
         from shapely.geometry import Polygon as ShapelyPolygon
+        from shapely.ops import unary_union
     except ImportError as exc:  # pragma: no cover, optional dep
         raise RuntimeError(
             "Boundary filtering needs shapely; install with: pip install -e .[city]"
@@ -384,11 +418,19 @@ def _filter_by_boundary(
     kept: dict[str, ParsedBuilding] = {}
     for pand_id, pb in parsed_by_id.items():
         lod0 = pb.geometries.get("0") or []
-        if not lod0:
+        # Union all LoD0 polygons: a multi-part building (e.g. two
+        # detached units sharing one BAG pand_id) can have more than
+        # one LoD0 footprint polygon. Checking only ``lod0[0]`` would
+        # drop any building whose first polygon lies outside the
+        # boundary but whose second polygon crosses it.
+        parts = [
+            poly
+            for sp in lod0
+            if (poly := _footprint_xy(sp, ShapelyPolygon)) is not None
+        ]
+        if not parts:
             continue
-        footprint = _footprint_xy(lod0[0], ShapelyPolygon)
-        if footprint is None:
-            continue
+        footprint = parts[0] if len(parts) == 1 else unary_union(parts)
         if boundary_geom.intersects(footprint):
             kept[pand_id] = pb
     return kept
@@ -462,7 +504,7 @@ def _maybe_fetch_energy_labels(
     if cache_path is not None and cache_path.exists():
         labels = _try_load_filtered_labels(cache_path)
         if labels is not None:
-            _LOG.info(f"EP-online labels loaded from filter cache ({cache_path.name})")
+            _LOG.info("EP-online labels loaded from filter cache (%s)", cache_path.name)
             return labels
 
     labels = eponline_fetchers.fetch_energy_labels(
@@ -502,17 +544,18 @@ def _wanted_sets_digest(
 
 
 def _energy_label_shape_fingerprint() -> str:
-    """Stable short hash of :class:`EnergyLabel`'s field list.
+    """Stable short hash of :class:`EnergyLabel`'s field names **and types**.
 
     Folded into the filtered-labels cache key so that adding, removing,
-    or renaming a field on the dataclass automatically invalidates every
-    pre-existing pickle. Without this, a stale pickle produced before a
-    new field was added would unpickle into a slotted instance whose
-    new slot is never set, causing ``AttributeError`` the first time
-    the builder accesses it.
+    renaming, or retyping a field on the dataclass automatically invalidates
+    every pre-existing pickle. Hashing only names (the previous behaviour)
+    would miss a field whose type changed from ``str`` to ``str | None``:
+    the pickle unpickles silently but builder code that assumed a non-None
+    value would then fail at runtime on cached data.
     """
-    fields = getattr(eponline_fetchers.EnergyLabel, "__dataclass_fields__", {})
-    return hashlib.sha256("|".join(sorted(fields)).encode("utf-8")).hexdigest()[:8]
+    fields: dict = getattr(eponline_fetchers.EnergyLabel, "__dataclass_fields__", {})
+    parts = sorted(f"{name}:{fld.type}" for name, fld in fields.items())
+    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()[:8]
 
 
 def _filtered_labels_cache_path(

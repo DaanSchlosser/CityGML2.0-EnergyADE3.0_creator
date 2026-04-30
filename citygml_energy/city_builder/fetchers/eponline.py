@@ -85,10 +85,11 @@ _HUISNUMMER_RE = re.compile(
 #   ``nrg3:EnergyPerformanceCertificate`` directly (``energieklasse``,
 #   the three dates, ``berekeningstype``, ``soort_opname``).
 # * Building-physics / energy-flow numerics that drive the
-#   ``nrg3:Zone`` + ``nrg3:Energy`` resources built in
-#   :mod:`citygml_energy.city_builder.energy_resources`. NL convention is
-#   semicolon separators with comma decimal markers (``28,5`` not ``28.5``);
-#   :func:`_parse_decimal` normalises that.
+#   ``nrg3:Energy`` resources built in
+#   :mod:`citygml_energy.city_builder.energy_resources`, plus the
+#   per-VBO thermal-zone ``nrg3:QualifiedArea`` they normalise against.
+#   NL convention is semicolon separators with comma decimal markers
+#   (``28,5`` not ``28.5``); :func:`_parse_decimal` normalises that.
 _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     "postcode": ("Postcode",),
     "huisnummer": ("Huisnummer",),
@@ -129,8 +130,10 @@ _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     # generic attributes (see § 5h of the mapping doc).
     "bouwjaar": ("Bouwjaar",),
     # Thermal-zone floor area: the denominator that every per-m² energy
-    # metric below is normalised against. Drives ``nrg3:Zone/area`` as a
-    # ``QualifiedArea`` with type ``netFloorArea``.
+    # metric below is normalised against. Lands as a second
+    # ``nrg3:QualifiedArea`` on the BuildingUnit (sibling of the BAG
+    # ``oppervlakte`` entry, same ``netFloorArea`` type, distinct
+    # ``source``); see ``builders/building.py``.
     "gebruiksoppervlakte_thermische_zone": ("GebruiksoppervlakteThermischeZone",),
     # Energy-flow metrics → ``nrg3:Energy`` resources. NL convention is
     # kWh/m²·jaar; the parent Energy carries ``referencePeriod="year"`` and
