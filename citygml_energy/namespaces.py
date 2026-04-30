@@ -224,6 +224,36 @@ CS_BAG_VERBLIJFSOBJECT = "http://bag.basisregistraties.overheid.nl/bag/id/verbli
 # codespace documents the source enumeration correctly.
 CS_3DBAG_DAK_TYPE = "https://docs.3dbag.nl/en/schema/attributes/#b3_dak_type"
 
+# RVO NTA-8800 Gebouwtype vocabulary. The CSV column ``Gebouwtype`` in
+# the EP-online Mutatiebestand carries Dutch RVO terms such as "Rijwoning
+# hoek", "Vrijstaande woning", "Kantoorgebouw"; we surface them verbatim
+# on ``nrg3:bdgType`` rather than translating into the Energy-ADE 3.0
+# ``BuildingTypeValue.xml`` codelist (which is too coarse for the
+# NTA-8800 typology and would silently merge "Hoekwoning" /
+# "Tussenwoning" / "2-onder-1-kap" under one ``singleFamilyHouse``
+# member). RVO does not publish a dedicated codelist file; this URL is
+# the official RVO landing page for EP-online — the Mutatiebestand and
+# the surrounding NTA-8800 documentation are linked from this page, and
+# RVO's URL has been stable across content reorganisations. The
+# previously-considered ``ep-online.nl/PublicData`` URL was rejected
+# because the host returns HTTP 404 for it (verified live); the rvo.nl
+# landing page returns 200 and is the authoritative source for EP-online.
+CS_RVO_GEBOUWTYPE = "https://www.rvo.nl/onderwerpen/wetten-en-regels-gebouwen/ep-online"
+
+# Gemeente Emmen ``bor_groen_bomen_beschermd`` FeatureServer. Used as
+# the ``codeSpace`` on ``veg:species`` for trees enriched from this
+# register; pointing at the ArcGIS REST endpoint is more honest than a
+# generic botanical authority (GBIF, ITIS) because the exact Latin
+# names land here as Emmen's BOR has them, not as a taxonomy authority
+# would canonicalise them. Other BOR fields (protection status, growth
+# form, height/diameter classes, …) do not reach typed CityGML slots
+# (see docs/source_to_gml_mapping.md), so this codespace is currently
+# only consumed by the species write.
+CS_EMMEN_BOR_TREES = (
+    "https://services3.arcgis.com/YaBq8GMTp0Kh437n/arcgis/rest/services/"
+    "bor_groen_bomen_beschermd/FeatureServer/0"
+)
+
 
 def _nrg3_cs_base() -> str:
     """Codespace base URL for Energy-ADE 3.0 codelists.

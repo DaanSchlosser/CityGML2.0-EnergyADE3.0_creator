@@ -23,9 +23,11 @@ which is what tests and scripts that want the whole register rely on.
 :class:`EnergyLabel` carries the columns that end up in the CityGML
 output, both directly (``energieklasse`` → EPC label, dates → validFrom /
 validTo, ``berekeningstype`` / ``soort_opname`` → ``certificationMethod``,
-``gebouwtype`` → ``nrg3:bdgType``, the energy-flow numerics → ``nrg3:Energy``
-resources) and indirectly (``opnamedatum`` is the address-match
-tiebreaker). Skip-(latent) columns from
+``gebouwtype`` → ``nrg3:bdgType`` on Building (Dutch verbatim, RVO
+codespace), ``gebouwsubtype`` → ``gen:stringAttribute
+name="bdgSubtypeEPOnline"`` on each BuildingUnit, the energy-flow
+numerics → ``nrg3:Energy`` resources) and indirectly (``opnamedatum``
+is the address-match tiebreaker). Skip-(latent) columns from
 [`docs/ep_online_data_model_mapping.md`](../../../docs/ep_online_data_model_mapping.md)
 are deliberately not surfaced; adding them later is a one-line change to
 :data:`_COLUMN_ALIASES` and the dataclass.
@@ -43,7 +45,7 @@ import zipfile
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from ..address_key import (
     AddressKey,
@@ -54,6 +56,13 @@ from ..address_key import (
     address_key as build_address_key,
 )
 from ..http import CachedSession
+
+# Calculation-regime classification of the ``Berekeningstype`` column.
+# Determines the unit and field-availability of the energy-flow numerics
+# downstream; see :meth:`EnergyLabel.calculation_regime` and § 5i-k of
+# the EP-online mapping doc for the empirical evidence and the
+# per-regime emission rules.
+CalculationRegime = Literal["nta8800", "legacy_total", "unknown"]
 
 DOWNLOAD_INFO_URL = (
     "https://public.ep-online.nl/api/v5/Mutatiebestand/DownloadInfo?fileType=csv&xmlVersion=4"
@@ -98,9 +107,23 @@ _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     # SoortOpname = the inspection rigour ("Basisopname" / "Detailopname").
     # Concatenated into ``certificationMethod`` alongside Berekeningstype.
     "soort_opname": ("SoortOpname",),
-    # Gebouwtype = RVO building-type taxonomy (e.g. "Rijwoning hoek"); maps
-    # via lookup to ``nrg3:bdgType`` (Energy ADE BuildingTypeValue codelist).
+    # Gebouwtype = RVO NTA-8800 building-type taxonomy (e.g. "Rijwoning hoek").
+    # Carried verbatim into ``nrg3:bdgType`` on the Building, with
+    # ``@codeSpace`` pointing at the EP-online publication that defines the
+    # vocabulary (see :data:`citygml_energy.namespaces.CS_RVO_GEBOUWTYPE`).
+    # No translation: Energy ADE 3.0's ``BuildingTypeValue.xml`` codelist is
+    # too coarse for the NTA-8800 typology and the round-trip through it
+    # would silently merge "Hoekwoning" / "Tussenwoning" / "2-onder-1-kap"
+    # under a single ``singleFamilyHouse`` member.
     "gebouwtype": ("Gebouwtype",),
+    # Gebouwsubtype = RVO secondary qualifier (e.g. "appartement-portiekflat",
+    # "rijwoning-tussen"). Per-VBO because two VBOs in one Pand can carry
+    # different subtypes (mixed-use, partial conversion). Lands as
+    # ``gen:stringAttribute name="bdgSubtypeEPOnline"`` on each BuildingUnit:
+    # there is no native ``nrg3:bdgSubtype`` element in EnergyADE 3.0, and
+    # the value is a Dutch RVO term so the EP-online suffix flags the
+    # vocabulary source.
+    "gebouwsubtype": ("Gebouwsubtype",),
     # Bouwjaar = EP-online's recorded year of construction. Frequently
     # disagrees with BAG; both are emitted under explicit source-named
     # generic attributes (see § 5h of the mapping doc).
@@ -162,6 +185,7 @@ class EnergyLabel:
     soort_opname: str | None = None
     # --- building classification + physics --------------------------------
     gebouwtype: str | None = None
+    gebouwsubtype: str | None = None
     bouwjaar: int | None = None
     gebruiksoppervlakte_thermische_zone: float | None = None
     # --- energy-flow metrics (NL convention: kWh/m²·jaar; CO₂ as kg/m²·jaar)
@@ -182,6 +206,77 @@ class EnergyLabel:
         so BAG and EP-online spellings stay in lockstep.
         """
         return build_address_key(self.postcode, self.huisnummer, self.huisletter, self.toevoeging)
+
+    def calculation_regime(self) -> CalculationRegime:
+        """Return the calculation regime identified from ``berekeningstype``.
+
+        Three regimes occur in production EP-online data (v20260401 vintage,
+        empirical counts across the full 5.12 M-row register):
+
+        * ``nta8800`` (~3.28 M certs, 64%): NTA 8800:2018-2024 family. All
+          four BENG metrics (``Energiebehoefte``, ``Warmtebehoefte``,
+          ``PrimaireFossieleEnergie``, ``BerekendeEnergieverbruik``) are
+          reported in **kWh/(m²·yr)**; ``BerekendeCO2Emissie`` in
+          **kg/(m²·yr)**, populated for ~99.99% of rows.
+          ``GebruiksoppervlakteThermischeZone`` populated 100%.
+        * ``legacy_total`` (~2.84 M certs, 55%): pre-NTA-8800 methods —
+          "Rekenmethodiek Definitief Energielabel" (NEN 7120 lineage),
+          "Nader Voorschrift", and ISSO 75.3 / 82.3 inspections. Only
+          ``BerekendeEnergieverbruik`` is populated, in **MJ per year
+          (TOTAL annual primary fossil energy, NOT per-m²)**.
+          ``GebruiksoppervlakteThermischeZone`` is empty 100%.
+          ``BerekendeCO2Emissie`` is a method-level placeholder ``0,00``
+          for the Definitief Energielabel branch (99.997% zero across
+          1.44 M rows) and is genuinely populated in **kg/yr (total)**
+          for the Nader Voorschrift / ISSO branch — see
+          :meth:`co2_is_placeholder` for the per-row decision.
+        * ``unknown``: any ``Berekeningstype`` this code has not seen,
+          including the empty / null case.
+
+        The empirical magnitude evidence (median 150 kWh/(m²·yr) for
+        NTA 8800 vs. median ~93 000 MJ/yr for Definitief Energielabel
+        v1.2) is documented with the 5.12 M-row distribution table in
+        § 5i of the EP-online mapping doc, alongside the unit derivation.
+        """
+        method = (self.berekeningstype or "").strip()
+        if not method:
+            return "unknown"
+        if "NTA 8800" in method:
+            return "nta8800"
+        legacy_markers = (
+            "Definitief Energielabel",
+            "Nader Voorschrift",
+            "ISSO75",
+            "ISSO 75",
+            "ISSO82",
+            "ISSO 82",
+        )
+        if any(marker in method for marker in legacy_markers):
+            return "legacy_total"
+        return "unknown"
+
+    def co2_is_placeholder(self) -> bool:
+        """True when ``BerekendeCO2Emissie`` is a method-level placeholder, not data.
+
+        The legacy "Rekenmethodiek Definitief Energielabel" branch records
+        ``0,00`` for every certificate (1 438 399 zero values out of
+        1 438 444 rows in the v20260401 vintage; 99.997%). This method
+        does not compute CO₂; the field is structural padding so the row
+        still has 42 columns. Emitting that ``0`` as ``co2Equivalent``
+        downstream would mislead consumers into treating it as a measured
+        value.
+
+        Other legacy methods (Nader Voorschrift, ISSO 75.3 / 82.3) DO
+        compute CO₂ and report it in **kg/yr (total)**, with normal
+        distribution; their zeros are real (~0.1% of rows). NTA 8800
+        certs also report CO₂ as data with vanishingly rare zeros (381
+        out of 3.28 M = 0.01%).
+
+        Decision rule: treat the ``0,00`` as placeholder *only* for the
+        Definitief Energielabel branch, where the empirical signal is
+        unambiguous.
+        """
+        return "Definitief Energielabel" in (self.berekeningstype or "")
 
 
 # ---------------------------------------------------------------------------
@@ -687,6 +782,7 @@ def _iter_matching_rows(
     i_berek = idx["berekeningstype"]
     i_opname = idx["soort_opname"]
     i_gtype = idx["gebouwtype"]
+    i_gsubtype = idx["gebouwsubtype"]
     i_bouw = idx["bouwjaar"]
     i_floor = idx["gebruiksoppervlakte_thermische_zone"]
     i_e_demand = idx["energiebehoefte"]
@@ -764,6 +860,9 @@ def _iter_matching_rows(
             ) or None,
             gebouwtype=(
                 row[i_gtype].strip() if 0 <= i_gtype < row_len else ""
+            ) or None,
+            gebouwsubtype=(
+                row[i_gsubtype].strip() if 0 <= i_gsubtype < row_len else ""
             ) or None,
             bouwjaar=parse_int(row[i_bouw] if 0 <= i_bouw < row_len else ""),
             gebruiksoppervlakte_thermische_zone=parse_dec(
