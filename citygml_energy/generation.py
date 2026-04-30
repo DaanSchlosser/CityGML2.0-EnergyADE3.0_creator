@@ -10,7 +10,7 @@ from .input_loader import load_city_model_from_feature_collection
 PathLike = str | Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INPUT_PATH = REPO_ROOT / "inputs" / "owner_occupier_building.json"
+DEFAULT_INPUT_PATH = REPO_ROOT / "inputs" / "buildings" / "owner_occupier_building.json"
 DEFAULT_OUTPUT_PATH = REPO_ROOT / "generated" / "owner_occupier_building.gml"
 
 

@@ -2,7 +2,7 @@
 
 Run with::
 
-    python examples/create_city.py --input inputs/city_example.json
+    python examples/create_city.py --input inputs/cities/emmer-compascuum_small-area.json
 
 Requires the ``city`` optional extras (``requests`` + ``shapely``)::
 
@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--input",
         type=Path,
-        default=REPO_ROOT / "inputs" / "city_example.json",
+        default=REPO_ROOT / "inputs" / "cities" / "emmer-compascuum_small-area.json",
         help="Path to a city-build JSON config (schema_version=city-1).",
     )
     parser.add_argument(

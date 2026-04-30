@@ -80,8 +80,8 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--city-input", type=Path,
-        default=REPO_ROOT / "inputs" / "city_smoke_test.json",
-        help="City-scale JSON config (default: inputs/city_smoke_test.json).",
+        default=REPO_ROOT / "inputs" / "cities" / "emmer-compascuum_small-area.json",
+        help="City-scale JSON config (default: inputs/cities/emmer-compascuum_small-area.json).",
     )
     return parser
 
