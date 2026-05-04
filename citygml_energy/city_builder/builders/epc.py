@@ -30,14 +30,20 @@ from ...bindings import (
     BdgType,
     CodeType,
     IntAttribute,
+    MeasureType,
     Metadata1,
     StringAttribute,
 )
 from ...mapping import resolve_class
-from ...namespaces import CS_NRG3_EPC_TYPE, CS_RVO_GEBOUWTYPE
+from ...namespaces import (
+    CS_NRG3_EPC_STATUS,
+    CS_NRG3_EPC_TYPE,
+    CS_RVO_GEBOUWTYPE,
+)
 from ...schema_types import ENERGY_PERFORMANCE_CERTIFICATE
 from .._helpers import safe_gml_id
 from ..address_match import ResolvedAddress
+from ..energy_resources import UOM_KWH_PER_M2_PER_A, UOM_MJ_PER_A
 from ..fetchers.eponline import EnergyLabel
 
 __all__ = [
@@ -266,18 +272,29 @@ def _apply_eponline_classification_to_building_unit(
       flags the source vocabulary so a downstream reader does not
       mistake the Dutch term for an Energy-ADE codelist member.
     * One ``nrg3:Metadata`` block on the BuildingUnit attributing the
-      EP-online source. Emitted whenever ``bdgSubtypeEPOnline`` lands or
-      whenever any per-VBO energy-flow values land (Energy resources,
-      renewable-share measure attribute, thermal-zone area), those
-      emissions live on the same BuildingUnit too, so a single
-      metadata block on the unit covers all of them.
+      EP-online source.  The ``qualityDescription`` enumerates only the
+      EP-online artefacts that actually landed on *this* BuildingUnit,
+      not the full universe of EP-online-derived fields the pipeline can
+      attach in principle. The three calculation regimes EP-online
+      covers (``nta8800``, ``legacy_total``, ``unknown``) populate
+      different subsets of fields per row — e.g.
+      ``GebruiksoppervlakteThermischeZone`` is empty for 100% of legacy
+      rows and 100% of unknown-regime rows, and BENG-1/2/3 are only
+      populated on NTA 8800 rows — so a generic boilerplate would
+      promise things like "the thermal-zone QualifiedArea" on units
+      where no such area was emitted. The per-cert enumeration here
+      keeps the metadata honest.
 
     No-op when *label* is ``None``.
     """
     if label is None:
         return
 
-    emitted_subtype = False
+    # ``description_parts`` accumulates one line per EP-online artefact
+    # actually written to this unit so the Metadata block enumerates
+    # only what's present, mirroring the pattern in
+    # :func:`apply_eponline_pand_attribution_to_building`.
+    description_parts: list[str] = []
 
     if label.gebouwsubtype:
         unit.string_attribute.append(
@@ -286,67 +303,80 @@ def _apply_eponline_classification_to_building_unit(
                 value=label.gebouwsubtype,
             )
         )
-        emitted_subtype = True
+        description_parts.append(
+            "gen:stringAttribute name=\"bdgSubtypeEPOnline\" "
+            "(Dutch RVO Gebouwsubtype, verbatim)"
+        )
 
-    # The Metadata block annotates the EP-online source for every
-    # per-VBO emission on this unit. We emit it whenever this VBO has
-    # actually received an EP-online-derived value: ``bdgSubtypeEPOnline``
-    # above, the renewable-share measure attribute (set in
-    # ``build_building_unit``), the thermal-zone QualifiedArea (also set
-    # in ``build_building_unit``), or any Energy resource (set by
-    # :func:`energy_resources.attach_energy_resources_to_building_unit`).
-    # Including the area in the trigger keeps the Metadata block paired
-    # with every EP-online artefact on the unit, even for the (rare)
-    # label that ships only ``gebruiksoppervlakte_thermische_zone`` and
-    # no other numerics.
-    #
-    # The ``has_energy`` test mirrors the regime dispatch in
-    # :func:`energy_resources.attach_energy_resources_to_building_unit`,
-    # for ``unknown`` regimes that emitter is a no-op, so we report
-    # no energy data even when the dataclass fields are populated.
-    # ``berekende_co2_emissie`` is intentionally excluded from the
-    # trigger because CO2 never lands on its own resource (it always
-    # rides on a BENG-2 / legacy-total Energy that requires its own
-    # ``amount``); a CO2-only label would otherwise emit a Metadata
-    # block annotating something that did not actually land.
-    has_renewable = label.aandeel_hernieuwbare_energie is not None
-    has_thermal_zone_area = (
+    # Renewable-share, thermal-zone area, and Energy resources are
+    # written elsewhere (``build_building_unit`` and
+    # ``attach_energy_resources_to_building_unit``); we mirror their
+    # emission predicates here so the boilerplate stays in sync.
+    if label.aandeel_hernieuwbare_energie is not None:
+        description_parts.append(
+            "gen:measureAttribute name=\"epOnlineAandeelHernieuwbareEnergie\" "
+            "(BENG-3 renewable-energy share, %)"
+        )
+    if (
         label.gebruiksoppervlakte_thermische_zone is not None
         and label.gebruiksoppervlakte_thermische_zone > 0
-    )
+    ):
+        description_parts.append(
+            "nrg3:QualifiedArea type=\"netFloorArea\" sourced from "
+            "GebruiksoppervlakteThermischeZone (NTA 8800 thermal-zone area)"
+        )
+    # The energy-resource enumeration mirrors the regime dispatch in
+    # :func:`energy_resources.attach_energy_resources_to_building_unit`.
+    # ``berekende_co2_emissie`` is deliberately excluded as a trigger:
+    # CO2 never lands as its own resource (it rides on a BENG-2 or
+    # legacy-total Energy that requires its own ``amount``), so a
+    # CO2-only label would otherwise emit a Metadata block annotating
+    # something that did not actually land.
     regime = label.calculation_regime()
     if regime == "nta8800":
-        has_energy = any(
-            v is not None
-            for v in (
-                label.energiebehoefte,
-                label.warmtebehoefte,
-                label.primaire_fossiele_energie,
-                label.berekende_energieverbruik,
+        nta_resources = []
+        if label.energiebehoefte is not None:
+            nta_resources.append("Energiebehoefte (BENG-1, net)")
+        if label.warmtebehoefte is not None:
+            nta_resources.append("Warmtebehoefte (NTA 8800 net heating demand)")
+        if label.primaire_fossiele_energie is not None:
+            nta_resources.append("PrimaireFossieleEnergie (BENG-2, primary)")
+        if label.berekende_energieverbruik is not None:
+            nta_resources.append(
+                "BerekendeEnergieverbruik (NTA 8800 delivered/finaal total)"
             )
-        )
+        if nta_resources:
+            description_parts.append(
+                "nrg3:Energy resources via nrg3:resource: "
+                + ", ".join(nta_resources)
+            )
     elif regime == "legacy_total":
-        has_energy = label.berekende_energieverbruik is not None
-    else:
-        has_energy = False
-    if emitted_subtype or has_renewable or has_thermal_zone_area or has_energy:
-        unit.metadata.append(
-            Metadata1(
-                source="EP-online Mutatiebestand v4 (RVO)",
-                quality_description=(
-                    "Source for the EP-online-derived per-VBO emissions "
-                    "on this BuildingUnit (bdgSubtypeEPOnline, "
-                    "epOnlineAandeelHernieuwbareEnergie, the EP-online "
-                    "thermal-zone nrg3:QualifiedArea, and the "
-                    "nrg3:Energy resources hosted via nrg3:resource). "
-                    "Year of construction (yearOfConstructionEPOnline) "
-                    "and the primary building type (nrg3:bdgType) are "
-                    "at the Building level: a Pand is constructed once "
-                    "and its primary type is fixed at the structure "
-                    "level."
-                ),
+        if label.berekende_energieverbruik is not None:
+            description_parts.append(
+                "nrg3:Energy resource via nrg3:resource: "
+                "BerekendeEnergieverbruik "
+                "(legacy NEN 7120 / Nader Voorschrift / ISSO 75.3-82.3 "
+                "primary-fossil EP_tot total, MJ/yr)"
             )
+    # ``unknown`` regime: no resources are attached, nothing to add.
+
+    if not description_parts:
+        return
+
+    unit.metadata.append(
+        Metadata1(
+            source="EP-online Mutatiebestand v4 (RVO)",
+            quality_description=(
+                "Source for the following EP-online-derived per-VBO "
+                "emissions on this BuildingUnit: "
+                + "; ".join(description_parts)
+                + ". Year of construction (yearOfConstructionEPOnline) "
+                "and the primary building type (nrg3:bdgType) are at "
+                "the Building level: a Pand is constructed once and "
+                "its primary type is fixed at the structure level."
+            ),
         )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -359,20 +389,94 @@ def _build_epc(
     *,
     gml_id_prefix: str,
 ) -> Any | None:
+    """Build a ``nrg3:EnergyPerformanceCertificate`` for *resolved*'s VBO.
+
+    The EPC is parented to the BuildingUnit via
+    ``nrg3:BuildingUnit/nrg3:energyPerformanceCertificate`` (XSD line 1527),
+    not to the Building. This is intentional and reflects how Dutch
+    energy labels actually work: EP-online issues one certificate
+    per-VBO (``BAGVerblijfsobjectID`` is the join key) so that, in a
+    mixed-use Pand or an apartment building, every dwelling can carry its
+    own letter (e.g. one apartment "A" while another in the same Pand
+    is "C"). The Energy ADE 3.0 XSD also exposes
+    ``energyPerformanceCertificate`` as an ADE property of
+    ``bldg:_AbstractBuilding`` (line 1627), and Alderaan
+    (``Energy_ADE-3.0beta8/test_data/Alderaan_Energy_ADE_All.gml``)
+    attaches its EPC there for a single-building demo — but that
+    placement aggregates away the per-dwelling resolution NL needs.
+    Keep this association on BuildingUnit unless the upstream certifying
+    body becomes per-Pand.
+
+    No-op when *resolved* has no matched EP-online label or when the
+    label has no ``Energieklasse`` letter (``EPC.label`` is ``xs:string``
+    and required by the XSD; an EPC without a letter would not validate).
+    """
     label = resolved.energy_label
     if label is None or label.energieklasse is None:
-        # EPC.label is xs:string and required, so skip when we have no letter.
         return None
 
     from xsdata.models.datatype import XmlDateTime
 
     epc_cls = resolve_class(ENERGY_PERFORMANCE_CERTIFICATE)
 
+    # ``EnergyPerformanceCertificate.type`` is ``EPCTypeValue.xml``-typed:
+    # it carries the *energy-domain scope* of the certificate (heating /
+    # cooling / domesticHotWater / totalEnergyDemand / other / unknown),
+    # NOT the issuing authority. NTA-8800 EPCs cover the full building
+    # energy budget (heating + cooling + ventilation + DHW + lighting +
+    # renewable share), so the codelist-honest scope is ``totalEnergyDemand``.
+    # The legacy methods (Definitief Energielabel v1.2 / Nader Voorschrift /
+    # ISSO 75.3 / 82.3) also report a total-building energy figure, so the
+    # same scope applies — the unit divergence (kWh/(m²·yr) vs MJ/yr,
+    # documented in mapping doc § 5i) is in the resource amounts, not in
+    # the certificate scope. The "EP-online" provenance lives on the
+    # accompanying ``nrg3:Metadata/source`` block emitted by
+    # :func:`_apply_eponline_classification_to_building_unit` and on the
+    # EPC's ``certificationMethod`` string composed below.
     epc = epc_cls(
         id=safe_gml_id(gml_id_prefix, "epc", resolved.vbo.identificatie),
-        type_value=CodeType(value="EP-online", code_space=CS_NRG3_EPC_TYPE),
+        type_value=CodeType(value="totalEnergyDemand", code_space=CS_NRG3_EPC_TYPE),
         label=label.energieklasse,
     )
+
+    # ``nrg3:status`` is inherited from ``AbstractFeatureWithLifeSpan``
+    # (XSD line 479, gml:CodeType, minOccurs=0). The EPCStatusValue
+    # codelist (``actual | potential | unknown``) distinguishes a
+    # registered, real certificate from a simulated forecast (Alderaan's
+    # demo EPCs are all ``simulated``, which is not a codelist member —
+    # likely a stale draft). Every cert in the EP-online Mutatiebestand
+    # is by definition the registered, legally-valid certificate for the
+    # VBO ("alleen deze geregistreerde labels zijn rechtsgeldig" — RVO
+    # Handleiding EP-online: opvragen van bestanden, v1.0 feb 2025, §1),
+    # so ``actual`` is the correct value.
+    epc.status = CodeType(value="actual", code_space=CS_NRG3_EPC_STATUS)
+
+    # Date columns:
+    #
+    # * ``Opnamedatum`` (date of the on-site inspection by the energy
+    #   advisor) -> ``creationDate`` (xs:date, inherited from
+    #   AbstractADEFeature, line 454). The certificate object comes into
+    #   existence as a document on the day of the inspection, before any
+    #   subsequent registration step.
+    # * ``Registratiedatum`` (date the cert was registered with RVO;
+    #   "Datum van registreren van het label. Dit hoeft niet gelijk te
+    #   zijn aan de opnamedatum." — RVO Handleiding § Bijlage 2) ->
+    #   ``validFrom`` (xs:dateTime). The cert becomes legally valid only
+    #   on registration: "alleen deze geregistreerde labels zijn
+    #   rechtsgeldig" (same RVO source). Cast date->datetime at midnight
+    #   Europe/Amsterdam (no offset; xsdata serialises naive dateTimes
+    #   without a timezone, matching the rest of the project).
+    # * ``Geldig_tot`` ("Geldigheid label = opnamedatum + 10 jaar" —
+    #   same source) -> ``validTo`` (xs:dateTime, also at midnight).
+    # * ``terminationDate`` (xs:date, line 455) is reserved for
+    #   Stuurcode-2 deletions in the Mutatiebestand and is NOT set
+    #   equal to ``validTo``: a cert that simply hits its expiry is
+    #   still in the totaalbestand and should not be terminated. Left
+    #   absent for active certs.
+    if label.opnamedatum is not None:
+        from xsdata.models.datatype import XmlDate
+
+        epc.creation_date = XmlDate.from_string(label.opnamedatum.isoformat())
     if label.registratiedatum is not None:
         epc.valid_from = XmlDateTime.from_string(
             f"{label.registratiedatum.isoformat()}T00:00:00"
@@ -381,6 +485,7 @@ def _build_epc(
         epc.valid_to = XmlDateTime.from_string(
             f"{label.geldig_tot.isoformat()}T00:00:00"
         )
+
     method = _certification_method_string(label)
     if method is not None:
         # ``Berekeningstype`` names the NTA-8800 variant used for the
@@ -393,6 +498,63 @@ def _build_epc(
         # parsers split on it. Picked over a separate field per the
         # Phase-0 spec § 5d direction.
         epc.certification_method = method
+
+    # ``nrg3:EnergyPerformanceCertificate.value`` is ``gml:MeasureType``
+    # (XSD line 1431, ``minOccurs="0"``): a single ``double`` plus a
+    # required ``@uom`` attribute. The schema deliberately leaves the
+    # unit unfixed so each EPC source can record its native numeric
+    # alongside the right unit, rather than forcing one canonical unit
+    # across heterogeneous regimes. The Alderaan reference EPC carries
+    # ``<nrg3:value uom="kWh/(m^2*a)">10</nrg3:value>`` (test_data/
+    # Alderaan_Energy_ADE_All.gml) — exactly this "any number with its
+    # uom" pattern.
+    #
+    # The letter (A++++ ... G) lives on ``nrg3:label`` (xs:string,
+    # required by XSD); ``value`` is the numeric backing it. Cross-regime
+    # comparability of the *number* is intentionally not a goal here —
+    # the regimes use different methodologies, different normalisers,
+    # and different units, and the ``@uom`` attribute is exactly what
+    # the schema provides to keep that auditable. Aggregate longitudinal
+    # analysis that wants a single common metric should aggregate from
+    # ``nrg3:resource``/``nrg3:Energy`` (where the regime-aware energy-
+    # type tagging already disambiguates ``primary`` vs ``final``), not
+    # from ``EPC.value``.
+    #
+    # Source column: ``BerekendeEnergieverbruik`` for both regimes —
+    # the only EP-online numeric that is populated for >99% of certs in
+    # both. Per-regime dispatch on :meth:`EnergyLabel.calculation_regime`
+    # picks the correct uom:
+    #
+    # * ``nta8800``  -> ``kWh/(m²·yr)`` (delivered/finaal energy per m²,
+    #   per RVO v5 PublicAPI Swagger). Same uom token as the matching
+    #   ``nrg3:Energy.amount`` resource (``UOM_KWH_PER_M2_PER_A``); the
+    #   two stay in lockstep through the shared constant.
+    # * ``legacy_total``  -> ``MJ/yr`` (total annual primary fossil
+    #   energy EP_tot, NEN 7120 §5 formula 5.9, NOT per-m²). Same
+    #   reasoning: shared ``UOM_MJ_PER_A`` constant pins the legacy
+    #   EPC.value uom to the legacy Energy.amount uom.
+    # * ``unknown``  -> skip; we will not invent a uom we cannot verify.
+    #
+    # Skipped entirely when ``BerekendeEnergieverbruik`` is missing
+    # (rare — ~0.01% of NTA 8800 rows, ~0% of legacy_total rows in the
+    # production v20260401 vintage).
+    if label.berekende_energieverbruik is not None:
+        regime = label.calculation_regime()
+        if regime == "nta8800":
+            epc.value = MeasureType(
+                value=float(label.berekende_energieverbruik),
+                uom=UOM_KWH_PER_M2_PER_A,
+            )
+        elif regime == "legacy_total":
+            epc.value = MeasureType(
+                value=float(label.berekende_energieverbruik),
+                uom=UOM_MJ_PER_A,
+            )
+        # ``unknown`` regime: leave value unset. Emitting a number
+        # without a defensible uom would mislead downstream consumers
+        # into treating one regime's units as the other's; the schema
+        # makes the field optional precisely for cases like this.
+
     return epc
 
 
