@@ -152,7 +152,7 @@ def test_bulk_prefilter_tolerates_spaces_and_lowercase_postcodes() -> None:
 
 # ---------------------------------------------------------------------------
 # Extended column surface (P1 plumbing). Every column listed in the per-column
-# mapping in `docs/ep_online_data_model_mapping.md` § 5 with verdict Native /
+# mapping in `docs/mapping_city.md` § 6.5 with verdict Native /
 # Native (derived) / gen:Attribute is round-tripped through the parser.
 # ---------------------------------------------------------------------------
 
@@ -179,7 +179,7 @@ def test_extended_columns_round_trip_through_parser() -> None:
     """A full production-shape row populates every surfaced field.
 
     Guards every Native / Native (derived) / gen:Attribute target from
-    `docs/ep_online_data_model_mapping.md`. The Skip-(latent) and Drop
+    `docs/mapping_city.md` § 6.5. The Skip-(latent) and Drop
     columns are present in the CSV but are not asserted: an
     :class:`EnergyLabel` does not surface them.
     """

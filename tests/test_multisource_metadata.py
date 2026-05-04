@@ -88,9 +88,35 @@ def test_diverging_gfa_entries_preserve_distinct_source_and_value(building):
         assert value > 0, f"area must be a positive magnitude, got {value}"
 
 
-def test_nfa_rides_in_its_own_bdg_area_entry(building):
-    """``netFloorArea`` occupies a separate ``bdgArea`` per QualifiedAreaType."""
-    nfa_entries = _qualified_areas_by_type(building, "netFloorArea")
+def test_nfa_lives_on_the_building_unit_not_the_building(building):
+    """``netFloorArea`` belongs to the BuildingUnit's ``nrg3:area``, not the Building.
+
+    Energy ADE 3.0 ``BuildingUnit`` extends ``AbstractCityObjectSpace``,
+    which natively carries ``area`` (``QualifiedAreaPropertyType``,
+    ``maxOccurs="unbounded"``). ``Building`` carries ``bdgArea`` only as
+    an ADE extension on ``bldg:_AbstractBuilding``. The per-VBO usable
+    floor area (the BAG ``oppervlakteverblijfsobject`` analogue) is
+    semantically a unit-level fact, so it lives on the BuildingUnit;
+    the Building's ``bdgArea`` is reserved for whole-Pand totals
+    (``grossFloorArea`` from BAG-register vs. measurement model).
+    """
+    # The Building should carry no ``netFloorArea`` ``bdgArea`` entry.
+    building_nfa = _qualified_areas_by_type(building, "netFloorArea")
+    assert building_nfa == [], (
+        "netFloorArea moved to BuildingUnit/area in the EnergyADE 3.0 idiomatic "
+        "shape; Building.bdgArea now hosts only Pand-level totals (grossFloorArea)"
+    )
+
+    # The BuildingUnit should carry exactly one ``netFloorArea`` entry on
+    # ``nrg3:area`` (not ``bdgArea`` -- BuildingUnit's slot is just ``area``).
+    unit_nfa = building.findall(
+        "nrg3:buildingUnit/nrg3:BuildingUnit/nrg3:area/nrg3:QualifiedArea",
+        NS,
+    )
+    nfa_entries = [
+        a for a in unit_nfa
+        if (t := a.find("nrg3:type", NS)) is not None and t.text == "netFloorArea"
+    ]
     assert len(nfa_entries) == 1
     value = nfa_entries[0].find("nrg3:value", NS)
     assert value.get("uom") == "m2"
