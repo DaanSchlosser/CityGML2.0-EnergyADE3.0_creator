@@ -93,7 +93,7 @@
       "type": "nrg3:BuildingUnit",
       "parent": "id_building_1",
       "id": "id_building_unit_1",
-      "description": "Sole verblijfsobject (VBO) inside the owner-occupier Pand. NL EP-online certificates are issued per-VBO, and the address, net floor area, occupants, and (when present) energy-performance certificate live at this unit-level rather than on the parent Building, so the structure is self-similar between the per-building and city-scale pipelines.",
+      "description": "Sole verblijfsobject (VBO) inside the owner-occupier Pand. NL EP-online certificates are issued per-VBO, and the address, net floor area, occupants, and energy-performance certificate live at this unit-level rather than on the parent Building, so the structure is self-similar between the per-building and city-scale pipelines.",
       "name": ["Han Solo's House"],
       "creation_date": "2026-04-04",
       "identifier": [{"value": "0000000000000002", "code_space": "http://bag.basisregistraties.overheid.nl/bag/id/verblijfsobject/"}],
@@ -113,9 +113,86 @@
       ]
     },
     {
+      "type": "core:Address",
+      "parent": "id_building_unit_1",
+      "id": "id_address_1",
+      "xal_address": {
+        "address_details": {
+          "country": {
+            "country_name_code": [
+              {"scheme": "iso.3166-1 alpha-2", "content": ["NL"]}
+            ],
+            "country_name": [
+              {"content": ["The Netherlands"]}
+            ],
+            "locality": {
+              "type_value": "Town",
+              "locality_name": [{"content": ["Delft"]}],
+              "thoroughfare": {
+                "type_value": "Street",
+                "thoroughfare_number": [
+                  {"number_type": "Single", "content": ["134"]}
+                ],
+                "thoroughfare_name": [{"content": ["Julianalaan"]}]
+              },
+              "postal_code": {
+                "postal_code_number": [{"content": ["2628 BZ"]}]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "nrg3:EnergyPerformanceCertificate",
+      "parent": "id_building_unit_1",
+      "id": "id_epc_1",
+      "description": "EP-online energy-performance certificate for the VBO. Authored from the EP-online register entry; the registration ID is anonymised (the real ID is held by the owner) but the codeSpace remains `https://www.ep-online.nl/` so a downstream consumer can recognise the source register. Method `Detailopname / NTA 8800:2024 (woningbouw)` and the kWh/(m²·yr) BerekendeEnergieverbruik value identify this as an NTA 8800-regime cert; status `actual` reflects that EP-online registered labels are *rechtsgeldig* per RVO's Handleiding EP-online.",
+      "name": ["EP-online energy label"],
+      "creation_date": "2020-09-15",
+      "identifier": {"value": "000000003", "code_space": "https://www.ep-online.nl/"},
+      "valid_from": "2020-09-22T00:00:00",
+      "valid_to": "2030-09-22T00:00:00",
+      "status": {"value": "actual", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EPCStatusValue.xml"},
+      "type_value": {"value": "totalEnergyDemand", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EPCTypeValue.xml"},
+      "label": "A++",
+      "value": {"value": 30, "uom": "kWh/m2/a"},
+      "certification_method": "Detailopname / NTA 8800:2024 (woningbouw)"
+    },
+    {
+      "type": "nrg3:Energy",
+      "parent": "id_building_unit_1",
+      "id": "id_house_consumption_1",
+      "description": "Whole-house final-electricity consumption from smart-meter import readings, monthly aggregates Jan 2022 – Jun 2025 (42 months). Recorded at BuildingUnit (VBO) scope because the smart meter is per-VBO and no per-end-use breakdown was collected; `end_use=otherOrCombination` is the codelist-honest pick for mixed end-uses on a single carrier. Includes everything the meter sees (heat-pump, EV charging, appliances, lighting). The PV self-consumption is *not* netted out — these are gross household consumption figures.",
+      "name": ["House electricity consumption"],
+      "creation_date": "2026-05-04",
+      "operation_type": {"value": "demands", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
+      "is_amount_normalized": false,
+      "type_value": {"value": "final", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
+      "end_use": {"value": "otherOrCombination", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
+      "energy_carrier": {"value": "electricity", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
+      "source": {"value": "powerGrid", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
+    },
+    {
+      "type": "nrg3:MonthlyTimeSeries",
+      "parent": "id_house_consumption_1",
+      "parent_field": "time_dependent_amount",
+      "id": "id_monthly_ts_house_consumption_1",
+      "description": "Monthly whole-house electricity consumption for id_building_unit_1, derived from smart-meter import readings (P1-port import totals). Covers Jan 2022 – Jun 2025 (42 months); cadence and date range mirror the PV production series so the two can be paired month-by-month for net-energy analyses.",
+      "name": ["MonthlyTimeSeries house consumption"],
+      "interpolation_type": "averageInSucceedingInterval",
+      "start_date": "2022-01-01",
+      "end_date": "2025-07-01",
+      "values_list": {
+        "value": [687, 621, 687, 312, 322, 312, 497, 497, 481, 497, 481, 497, 648, 586, 648, 326, 337, 326, 338, 338, 327, 658, 637, 658, 620, 580, 620, 329, 340, 329, 317, 322, 311, 606, 682, 705, 697, 629, 697, 447, 292, 278],
+        "uom": "kWh"
+      }
+    },
+    {
       "type": "nrg3:PhotovoltaicCollector",
       "parent": "id_building_1",
       "id": "pv_panel_1",
+      "description": "36 × 270 Wp polycrystalline / monocrystalline silicon module array (cellType not on the panel datasheet collected from the owner-occupier, recorded as `unknown`). The `nominal_efficiency` (0.164 W/W) is the module-area-based efficiency consistent with 9720 W / 59.4 m² at 1000 W/m² STC; the `aperture_area` (55.8 m²) is the active light-receiving cell area, conventionally ≈ 94% of the module footprint for crystalline-silicon panels of this generation. Both values are typical-product estimates from the panel rating, not measured datasheet figures.",
       "name": ["PV collector (36x270 Wp)"],
       "creation_date": "2026-04-04",
       "model": "PV-16-270 PW",
@@ -124,6 +201,9 @@
       "installed_power": {"value": 9720, "uom": "W"},
       "azimuth": {"value": 235.65, "uom": "deg"},
       "inclination": {"value": 44.51, "uom": "deg"},
+      "module_area": {"value": 59.4, "uom": "m2"},
+      "aperture_area": {"value": 55.8, "uom": "m2"},
+      "nominal_efficiency": {"value": 0.164, "uom": "W/W"},
       "cell_type": {"value": "unknown", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml"},
       "installed_on": ["RoofSurface_01", "RoofSurface_02"]
     },
@@ -131,7 +211,7 @@
       "type": "nrg3:HeatPump",
       "parent": "id_building_1",
       "id": "heat_pump_1",
-      "description": "NIBE F1255 PC ground-source heat pump on a vertical ground collector (bodemwarmte). Source 24 \u00b0C / system 31 \u00b0C. Pipework is insulated. The unit sits inside the thermal envelope; EnergyADE 3.0 has no native attribute for in-envelope vs outside-envelope placement, so this is recorded here in the description.",
+      "description": "NIBE F1255 PC ground-source heat pump on a vertical ground collector (bodemwarmte). Source 24 \u00b0C / system 31 \u00b0C. Pipework is insulated. The unit sits inside the thermal envelope; EnergyADE 3.0 has no native attribute for in-envelope vs outside-envelope placement, so this is recorded here in the description. The COP value (5.5) is a representative mid-range figure estimated from NIBE F1255 PC datasheet performance curves (manufacturer typical: COP \u2248 4.7 at 0\u00b0C source / 35\u00b0C heating, COP \u2248 6.5 at 10\u00b0C source / 35\u00b0C heating); the 24\u00b0C source / 31\u00b0C operation pair recorded here implies an unusually small temperature lift and would in principle yield a higher COP, but no per-installation measurement was collected so a conservative middle of the typical range is used.",
       "name": ["NIBE F1255 PC"],
       "creation_date": "2026-04-13",
       "model": "NIBE F1255 PC",
@@ -140,7 +220,8 @@
       "installed_power": {"value": 6000, "uom": "W"},
       "heat_source": {"value": "verticalGroundCollector", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
       "cop_source_temperature": {"value": 24, "uom": "C"},
-      "cop_operation_temperature": {"value": 31, "uom": "C"}
+      "cop_operation_temperature": {"value": 31, "uom": "C"},
+      "nominal_efficiency": {"value": 5.5, "uom": "W/W"}
     },
     {
       "type": "nrg3:ThermalDistribution",
@@ -157,23 +238,23 @@
       "type": "nrg3:ThermalStorageDevice",
       "parent": "id_building_1",
       "id": "thermal_storage_1",
-      "description": "200 L domestic-hot-water buffer, water-filled, installed inside the thermal envelope. EnergyADE 3.0 has no native attribute for in-envelope vs outside-envelope placement, so this is recorded here in the description.",
+      "description": "200 L domestic-hot-water buffer, water-filled, installed inside the thermal envelope. EnergyADE 3.0 has no native attribute for in-envelope vs outside-envelope placement, so this is recorded here in the description. The `preparation_temperature` (32 °C) is read from the owner-occupier's thermal-storage stratification diagram (charged-state hot-side temperature), close to the heat pump's 31 °C operation temperature — i.e. this is a low-temperature buffer driven by the heat pump rather than a 60 °C+ DHW tank with separate legionella protection.",
       "name": ["DHW buffer 200 L"],
       "creation_date": "2026-05-02",
       "number_of_devices": 1,
       "volume": {"value": 0.2, "uom": "m3"},
-      "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"}
+      "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"},
+      "preparation_temperature": {"value": 32, "uom": "C"}
     },
     {
       "type": "nrg3:Occupants",
       "parent": "id_building_unit_1",
       "id": "id_occupants_1",
-      "description": "Residents of Han Solo's house. Parented to the BuildingUnit (not the Building) because in the EnergyADE 3.0 model `occupiedBy` is inherited from `AbstractBuildingSpace`, so it lives on whichever space-level unit actually houses the residents. For a single-VBO Pand that is the BuildingUnit; in a multi-unit Pand each apartment can carry its own Occupants record.",
+      "description": "Residents of Han Solo's house. Parented to the BuildingUnit (not the Building) because in the EnergyADE 3.0 model `occupiedBy` is inherited from `AbstractBuildingSpace`, so it lives on whichever space-level unit actually houses the residents. For a single-VBO Pand that is the BuildingUnit; in a multi-unit Pand each apartment can carry its own Occupants record. Only `numberOfOccupants` is recorded; per-occupant heat-dissipation, cohort-statistical attributes (diet / income / instruction level), and the occupancy schedule were deliberately not collected from the owner-occupier survey.",
       "name": ["Occupants 1"],
       "creation_date": "2026-04-04",
       "type_value": {"value": "residents", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml"},
-      "number_of_occupants": 6,
-      "heat_dissipation": {"value": 80, "uom": "W"}
+      "number_of_occupants": 6
     },
     {
       "type": "nrg3:EVChargingStation",
@@ -284,7 +365,7 @@
       "type": "nrg3:ZonePart",
       "parent": "zone_1",
       "id": "zone_part_1",
-      "description": "Ground floor, heated and cooled year-round at 22 \u00b0C, mechanically ventilated.",
+      "description": "Ground floor, set to 22 \u00b0C heating / 24 \u00b0C cooling year-round, mechanically ventilated. The 22 \u00b0C setpoint is the year-round target; in practice the heat pump only fires in winter (when outdoor temperatures push the slab below the setpoint) and the cooling circuit only fires on hot summer days.",
       "name": ["Ground floor"],
       "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
       "is_heated": true,
@@ -313,7 +394,7 @@
       "type": "nrg3:ZonePart",
       "parent": "zone_1",
       "id": "zone_part_2",
-      "description": "First floor, heated to 18 \u00b0C when cold outside, mechanically ventilated.",
+      "description": "First floor, heated to 18 \u00b0C year-round, mechanically ventilated. The first floor receives most of its heat passively from the heated ground floor below; the upstairs heating circuit only triggers when the slab-mediated warmth is insufficient. The 18 \u00b0C setpoint is therefore a floor (a minimum-comfort guarantee), not the operating set-temperature.",
       "name": ["First floor"],
       "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
       "is_heated": true,
@@ -343,7 +424,7 @@
       "parent": "id_pv_production_1",
       "parent_field": "time_dependent_amount",
       "id": "id_monthly_ts_pv_production_1",
-      "description": "Monthly PV energy production for pv_panel_1",
+      "description": "Monthly PV energy production for pv_panel_1, derived from smart-meter export readings (P1-port export totals minus self-consumption-correction inferred against the inverter logger). Covers Jan 2022 – Jun 2025 (42 months).",
       "name": ["MonthlyTimeSeries pv_panel_1"],
       "interpolation_type": "averageInSucceedingInterval",
       "start_date": "2022-01-01",
