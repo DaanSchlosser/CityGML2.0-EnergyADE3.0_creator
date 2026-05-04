@@ -591,11 +591,12 @@ def build_building_unit(
 ) -> Any:
     """Build an ``nrg3:BuildingUnit`` for one VBO.
 
-    The VBO's address is attached via ``bldg:address``; the EP-online
-    energy label (when matched) is attached via
-    ``nrg3:energyPerformanceCertificate``. The mandatory
-    ``nrg3:type`` element is filled with the first ``gebruiksdoel``
-    value (``woonfunctie``, ``kantoorfunctie``, …).
+    The VBO's address is attached via ``nrg3:address`` (the address
+    property on ``nrg3:BuildingUnit`` lives in the Energy ADE namespace,
+    not the ``bldg:`` namespace); the EP-online energy label (when
+    matched) is attached via ``nrg3:energyPerformanceCertificate``.
+    The mandatory ``nrg3:type`` element is filled with the first
+    ``gebruiksdoel`` value (``woonfunctie``, ``kantoorfunctie``, …).
 
     ``srs_name`` / ``srs_dimension`` are passed through to
     :func:`build_address` for the VBO ``geometriePunt`` (``core:Address/
