@@ -93,6 +93,24 @@ _FEATURE_KIND_SURFACE = "surface"
 _FEATURE_KIND_OPENING = "opening"
 _FEATURE_KIND_SOLAR = "solar"
 
+# ZonePart STEP shells follow the same author-facing CityGML 2.0 surface
+# vocabulary as building-level shells (``WallSurface_*``, ``GroundSurface_*``,
+# ``RoofSurface_*``, etc.) so that one Rhino export convention serves both.
+# When a zonepart source is processed, names are rewritten through this map
+# before classification so the matching XSD class is the EnergyADE
+# ``Zone…Surface`` subclass that ``nrg3:zoneBoundary`` accepts. Building
+# sources pass an empty remap and continue to use the ``bldg:_BoundarySurface``
+# subclasses directly.
+_BLDG_TO_ZONE_SURFACE_NAME_REMAP: dict[str, str] = {
+    "WallSurface": "ZoneWallSurface",
+    "GroundSurface": "ZoneGroundSurface",
+    "RoofSurface": "ZoneRoofSurface",
+    "FloorSurface": "ZoneOuterFloorSurface",
+    "CeilingSurface": "ZoneOuterCeilingSurface",
+    "IntermediateFloorSurface": "ZoneIntermediateFloorSurface",
+    "ClosureSurface": "ZoneClosureSurface",
+}
+
 
 # ---------------------------------------------------------------------------
 # Per-invocation rendering context
@@ -212,13 +230,20 @@ _ZONEPART_TARGET = TargetFieldSpec(xsd_type=ZONE_PART, required=True)
 def _build_source_specs() -> dict[str, GeometrySourceSpec]:
     specs: dict[str, GeometrySourceSpec] = {}
     for lod in range(5):
+        # PV geometry only exists at LoD 2 and 3 in the EnergyADE XSD
+        # (AbstractSolarCollectorType defines lod{2,3}MultiSurface and
+        # nothing else). Surface the constraint at the spec level so a
+        # mistakenly-placed ``target_pv_id`` on a LoD0/1/4 source is
+        # rejected by the input validator instead of silently dropped.
+        target_fields: dict[str, TargetFieldSpec] = {
+            "target_building_id": _BUILDING_TARGET,
+        }
+        if lod in (2, 3):
+            target_fields["target_pv_id"] = _PV_TARGET
         specs[f"step-building-lod{lod}"] = GeometrySourceSpec(
             source_type=f"step-building-lod{lod}",
             lod_level=lod,
-            target_fields={
-                "target_building_id": _BUILDING_TARGET,
-                "target_pv_id": _PV_TARGET,
-            },
+            target_fields=target_fields,
             handler="building",
         )
     for lod in range(4):
@@ -438,9 +463,10 @@ def _apply_building_source(
     buckets = _process_classified_features(
         ctx,
         features=features,
-        building=building,
+        parent_obj=building,
+        parent_list_field="bounded_by",
         surface_wrapper=surface_wrapper,
-        target_building_id=target_building_id,
+        parent_id_prefix=target_building_id,
         lod_level=spec.lod_level,
         source_path=step_path,
     )
@@ -448,7 +474,7 @@ def _apply_building_source(
     _attach_pending_openings(
         ctx,
         buckets=buckets,
-        target_building_id=target_building_id,
+        parent_id_prefix=target_building_id,
         lod_level=spec.lod_level,
         source_path=step_path,
     )
@@ -471,7 +497,16 @@ def _apply_zonepart_source(
     step_path: Path,
     source: dict[str, Any],
 ) -> list[Coord3D]:
-    """Handle one ``step-zonepart-lod{0..3}`` source."""
+    """Handle one ``step-zonepart-lod{0..3}`` source.
+
+    LoD 0/1 produce only the aggregate hull (footprint MultiSurface or
+    block Solid). LoD 2/3 additionally classify each named STEP shell into
+    a ``nrg3:Zone…Surface`` subclass and attach it as a ``zoneBoundary``
+    child of the ZonePart, with ``Window``/``Door`` openings punched into
+    walls. The aggregate Solid is still emitted at LoD 2/3 so viewers that
+    only consume the hull keep working; thermal-analysis consumers iterate
+    the per-face children for ``bdgBdrySurf*`` attributes.
+    """
     target_zone_part_id = str(source["target_zone_part_id"])
     polygons, all_coordinates = parse_all_polygons(step_path, origin=ctx.origin)
     if not polygons:
@@ -494,7 +529,78 @@ def _apply_zonepart_source(
             ),
         )
 
+    if spec.lod_level >= 2:
+        _apply_zonepart_boundary_surfaces(
+            ctx,
+            zone=zone,
+            zone_cls=zone_cls,
+            target_zone_part_id=target_zone_part_id,
+            step_path=step_path,
+            lod_level=spec.lod_level,
+        )
+
     return all_coordinates
+
+
+def _apply_zonepart_boundary_surfaces(
+    ctx: _RenderContext,
+    *,
+    zone: Any,
+    zone_cls: type,
+    target_zone_part_id: str,
+    step_path: Path,
+    lod_level: int,
+) -> None:
+    """Classify named STEP shells and attach them as ``zoneBoundary`` children.
+
+    Mirrors :func:`_apply_building_source` (LoD ≥ 2) but targets ZonePart's
+    ``zone_boundary`` slot and the ``nrg3:Zone…Surface`` taxonomy. Names
+    are remapped from the building-style STEP convention
+    (``WallSurface_*``) to the matching zone subclass name
+    (``ZoneWallSurface``) before classification — the convention deliberately
+    matches the building convention so one Rhino export style serves both
+    pipelines. ``Window_*`` / ``Door_*`` openings carry the same vocabulary
+    on both sides and need no remap.
+    """
+    surface_wrapper = _discover_wrapper(zone_cls, "zone_boundary")
+    if surface_wrapper is None:
+        raise RuntimeError(
+            "nrg3:ZonePart has no 'zone_boundary' list field in the current bindings"
+        )
+    surface_map = _discover_property_map(surface_wrapper)
+
+    shells = parse_named_shells(step_path, origin=ctx.origin)
+    features = [
+        _classify_shell(
+            step_path,
+            shell,
+            surface_map,
+            solar_panel_prefix="",  # ZoneParts never carry PV geometry
+            pv_target_declared=False,
+            surface_name_remap=_BLDG_TO_ZONE_SURFACE_NAME_REMAP,
+        )
+        for shell in shells
+    ]
+
+    buckets = _process_classified_features(
+        ctx,
+        features=features,
+        parent_obj=zone,
+        parent_list_field="zone_boundary",
+        surface_wrapper=surface_wrapper,
+        parent_id_prefix=target_zone_part_id,
+        lod_level=lod_level,
+        source_path=step_path,
+        register_surface_name_index=False,
+    )
+
+    _attach_pending_openings(
+        ctx,
+        buckets=buckets,
+        parent_id_prefix=target_zone_part_id,
+        lod_level=lod_level,
+        source_path=step_path,
+    )
 
 
 def _apply_aggregate_building_geometry(
@@ -541,6 +647,7 @@ def _classify_shell(
     solar_panel_prefix: str,
     *,
     pv_target_declared: bool = False,
+    surface_name_remap: dict[str, str] | None = None,
 ) -> _ClassifiedFeature:
     """Classify one STEP shell against the parent's surface taxonomy.
 
@@ -550,10 +657,22 @@ def _classify_shell(
     aggregated-array LoD exports where Rhino emits a single unnamed
     ``shell_1`` for the whole PV field instead of N named
     ``SolarPanelSurface_*`` panels.
+
+    *solar_panel_prefix* is treated as "no solar handling" when empty (used
+    by zonepart sources, which never carry PV geometry).
+
+    *surface_name_remap* rewrites a recognised shell-name prefix before the
+    surface-map lookup, so a single STEP authoring vocabulary
+    (``WallSurface_*``, ``GroundSurface_*``, …) can target either the
+    ``bldg:_BoundarySurface`` taxonomy (no remap) or the EnergyADE
+    ``nrg3:Zone…Surface`` taxonomy (remap via
+    :data:`_BLDG_TO_ZONE_SURFACE_NAME_REMAP`).
     """
     classified_name = _strip_lod_prefix(shell.object_name)
+    if surface_name_remap:
+        classified_name = _apply_surface_name_remap(classified_name, surface_name_remap)
 
-    if classified_name.startswith(solar_panel_prefix):
+    if solar_panel_prefix and classified_name.startswith(solar_panel_prefix):
         return _ClassifiedFeature(
             object_name=shell.object_name,
             parent_name=shell.parent_name,
@@ -623,18 +742,22 @@ def _process_classified_features(
     ctx: _RenderContext,
     *,
     features: list[_ClassifiedFeature],
-    building: Any,
+    parent_obj: Any,
+    parent_list_field: str,
     surface_wrapper: type,
-    target_building_id: str,
+    parent_id_prefix: str,
     lod_level: int,
     source_path: Path,
+    register_surface_name_index: bool = True,
 ) -> _AttachmentBuckets:
     """Walk classified STEP features, attaching surfaces and collecting the rest.
 
-    Surfaces become children of *building* immediately so they are visible
-    to subsequent opening-matching; openings and solar panels are queued
-    for the dedicated helpers below. Every exterior and interior vertex
-    seen along the way contributes to the envelope bounding box.
+    Surfaces become children of *parent_obj* (under ``parent_list_field``,
+    which is ``"bounded_by"`` for buildings and ``"zone_boundary"`` for
+    zoneparts) immediately so they are visible to subsequent
+    opening-matching; openings and solar panels are queued for the
+    dedicated helpers below. Every exterior and interior vertex seen along
+    the way contributes to the envelope bounding box.
     """
     buckets = _AttachmentBuckets(
         surface_data={},
@@ -665,12 +788,14 @@ def _process_classified_features(
             _attach_surface(
                 ctx,
                 feature=feature,
-                building=building,
+                parent_obj=parent_obj,
+                parent_list_field=parent_list_field,
                 surface_wrapper=surface_wrapper,
                 lod_field=lod_field,
                 lod_level=lod_level,
-                target_building_id=target_building_id,
+                parent_id_prefix=parent_id_prefix,
                 buckets=buckets,
+                register_surface_name_index=register_surface_name_index,
             )
             continue
 
@@ -689,16 +814,30 @@ def _attach_surface(
     ctx: _RenderContext,
     *,
     feature: _ClassifiedFeature,
-    building: Any,
+    parent_obj: Any,
+    parent_list_field: str,
     surface_wrapper: type,
     lod_field: str,
     lod_level: int,
-    target_building_id: str,
+    parent_id_prefix: str,
     buckets: _AttachmentBuckets,
+    register_surface_name_index: bool = True,
 ) -> None:
-    """Build one boundary surface, append it to ``building.bounded_by``."""
+    """Build one boundary surface, append it to the parent's surface list.
+
+    *register_surface_name_index* controls whether the STEP layer name is
+    exposed on the model-wide ``surface_name_index`` for ``installed_on``
+    resolution. Set to False for ZonePart sources: zonepart faces are an
+    internal thermal-envelope description, not the publicly-attachable
+    surface vocabulary that devices physically sit on (a roof-mounted PV
+    is "installedOn" the building's ``bldg:RoofSurface``, not on the
+    upstairs ZonePart's ``ZoneRoofSurface``). Indexing zonepart shells
+    under the same STEP names would silently overwrite the building
+    entries (the canonical input has ``RoofSurface_01`` shells in both
+    the building's LoD3 export and the upstairs ZonePart export).
+    """
     assert feature.entry is not None
-    gml_id = ctx.next_gml_id(target_building_id, feature.entry.element_cls)
+    gml_id = ctx.next_gml_id(parent_id_prefix, feature.entry.element_cls)
     surface = feature.entry.element_cls(
         id=gml_id,
         **{
@@ -710,21 +849,24 @@ def _attach_surface(
             )
         },
     )
-    building.bounded_by.append(surface_wrapper(**{feature.entry.field_name: surface}))
+    getattr(parent_obj, parent_list_field).append(
+        surface_wrapper(**{feature.entry.field_name: surface})
+    )
     buckets.surface_data[feature.object_name] = _SurfaceRecord(
         surface=surface, polygons=feature.polygons, gml_id=gml_id
     )
-    # Expose STEP-name ↔ gml:id mapping on the model-wide index so JSON-
-    # declared relations (installed_on, …) can resolve against author-
-    # facing STEP layer names instead of auto-generated gml:ids.
-    ctx.surface_name_index[feature.object_name] = gml_id
+    if register_surface_name_index:
+        # Expose STEP-name ↔ gml:id mapping on the model-wide index so JSON-
+        # declared relations (installed_on, …) can resolve against author-
+        # facing STEP layer names instead of auto-generated gml:ids.
+        ctx.surface_name_index[feature.object_name] = gml_id
 
 
 def _attach_pending_openings(
     ctx: _RenderContext,
     *,
     buckets: _AttachmentBuckets,
-    target_building_id: str,
+    parent_id_prefix: str,
     lod_level: int,
     source_path: Path,
 ) -> None:
@@ -740,7 +882,7 @@ def _attach_pending_openings(
             )
         parent_surface = buckets.surface_data[parent_step_name].surface
 
-        gml_id = ctx.next_gml_id(target_building_id, feature.entry.element_cls)
+        gml_id = ctx.next_gml_id(parent_id_prefix, feature.entry.element_cls)
         opening_obj = feature.entry.element_cls(
             id=gml_id,
             **{
@@ -848,6 +990,24 @@ def _ring_vertex_key(
 def _strip_lod_prefix(name: str) -> str:
     """Strip an optional leading ``lod{N}_`` prefix (case-insensitive)."""
     return _LOD_PREFIX_RE.sub("", name)
+
+
+def _apply_surface_name_remap(name: str, remap: dict[str, str]) -> str:
+    """Rewrite the leading surface-class token in *name* via *remap*.
+
+    Matches whole-token only (``"WallSurface_01"`` rewrites to
+    ``"ZoneWallSurface_01"`` under ``{"WallSurface": "ZoneWallSurface"}``;
+    ``"WallSurfaceish_01"`` does not match). Unknown names pass through
+    unchanged so opening shells (``Window_*``, ``Door_*``) — which use the
+    same vocabulary on building and zonepart — fall through to the
+    opening-map lookup downstream.
+    """
+    for src, dst in remap.items():
+        if name == src:
+            return dst
+        if name.startswith(src + "_"):
+            return dst + name[len(src):]
+    return name
 
 
 # ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from .boundary_attributes import attach_boundary_surface_attributes
 from .core import CityModel
 from .errors import InputFileError
 from .geometry import (
@@ -347,6 +348,17 @@ def build_city_model_from_feature_collection(
     construction_mapping = data.get("construction_mapping")
     if construction_mapping is not None:
         apply_construction_mapping(model, construction_mapping)
+
+    # Energy ADE 3.0 per-surface descriptors (``bdgBdrySurf*`` and
+    # ``bdgOpn*``) are computed last so the boundary attribute attacher
+    # can read both the geometry attached above and the
+    # ``layeredConstruction`` xlinks just resolved by
+    # :func:`apply_construction_mapping`. The attacher is a no-op for any
+    # surface or opening that has neither geometry nor a mapped
+    # construction, so a model authored without a construction_mapping
+    # block still gets clean Area / Inclination / Azimuth on every
+    # surface that has geometry.
+    attach_boundary_surface_attributes(model)
 
     return model
 
