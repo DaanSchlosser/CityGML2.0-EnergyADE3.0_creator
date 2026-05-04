@@ -37,6 +37,43 @@ import sys
 import tempfile
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
+# Post-generation patching
+# ---------------------------------------------------------------------------
+
+# xsdata generates ``xlink:type`` as a fixed ``init=False`` attribute that
+# defaults to ``TypeType.SIMPLE`` on every GML property-wrapper type. On
+# *inline* elements (no ``xlink:href``) this is meaningless noise that bloats
+# output files. We keep the attribute on link objects by setting it explicitly
+# in the three call sites that construct href-based references; everywhere
+# else we want it absent so it isn't serialised.
+#
+# The patch changes the generated default from ``TypeType.SIMPLE`` to ``None``
+# and widens the annotation to ``TypeType | None``. xsdata's serialiser skips
+# None attributes, so inline elements stop emitting ``xlink:type="simple"``.
+_XLINK_TYPE_SIMPLE_RE = re.compile(
+    r"(type_value: )TypeType( = field\(\s*\n\s*init=False,\s*\n\s*default=)TypeType\.SIMPLE,",
+)
+
+
+def _patch_bindings(output_file: Path) -> int:
+    """Strip ``xlink:type="simple"`` default from inline property-wrapper types.
+
+    Returns the number of substitutions made; raises ``RuntimeError`` if none
+    are found (guards against xsdata changing its generated output in a way
+    that silently breaks the patch).
+    """
+    text = output_file.read_text(encoding="utf-8")
+    patched, n = _XLINK_TYPE_SIMPLE_RE.subn(r"\1TypeType | None\2None,", text)
+    if n == 0:
+        raise RuntimeError(
+            f"_patch_bindings: expected at least one 'TypeType.SIMPLE' default "
+            f"in {output_file} but found none. xsdata may have changed its "
+            f"generated output; review and update _XLINK_TYPE_SIMPLE_RE."
+        )
+    output_file.write_text(patched, encoding="utf-8")
+    return n
+
 from lxml import etree
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -291,6 +328,10 @@ def main() -> int:
         print()
 
         result = subprocess.run(cmd, cwd=str(REPO_ROOT))
+
+    if result.returncode == 0:
+        n = _patch_bindings(output_file)
+        print(f"Post-generation patch: stripped xlink:type='simple' default from {n} property-wrapper field(s).")
 
     return result.returncode
 

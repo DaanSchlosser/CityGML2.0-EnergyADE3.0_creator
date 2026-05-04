@@ -4614,9 +4614,9 @@ class MetaDataPropertyType1:
             "namespace": "##any",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -4744,9 +4744,9 @@ class ReferenceType:
     class Meta:
         target_namespace = "http://www.opengis.net/gml"
 
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -4862,9 +4862,9 @@ class StringOrRefType:
         target_namespace = "http://www.opengis.net/gml"
 
     value: str = field(default="")
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -4963,9 +4963,9 @@ class SymbolType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -5839,9 +5839,9 @@ class Simple:
         name = "simple"
         target_namespace = "http://www.w3.org/1999/xlink"
 
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -9634,9 +9634,9 @@ class DirectionPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -14153,9 +14153,9 @@ class TextureAssociationType:
             "type": "Attribute",
         }
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -14265,9 +14265,9 @@ class GraphStylePropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -14372,9 +14372,9 @@ class LabelStylePropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -14600,9 +14600,9 @@ class RangeParametersType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -15249,9 +15249,9 @@ class CoordinateSystemAxisRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -15330,9 +15330,9 @@ class EllipsoidRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -15442,9 +15442,9 @@ class PointPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -15523,9 +15523,9 @@ class PrimeMeridianRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -15850,9 +15850,9 @@ class AbstractGeneralOperationParameterRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -16117,9 +16117,9 @@ class OperationParameterRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -16219,9 +16219,9 @@ class TimeInstantPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -18408,9 +18408,9 @@ class GeometryStylePropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -18953,9 +18953,9 @@ class TopologyStylePropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -20007,9 +20007,9 @@ class CurvePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -20102,9 +20102,9 @@ class DirectedNodePropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -20201,9 +20201,9 @@ class LineStringPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -20327,9 +20327,9 @@ class MultiPointPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -20457,9 +20457,9 @@ class TimeGeometricPrimitivePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -20541,9 +20541,9 @@ class TimeNodePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -20617,9 +20617,9 @@ class TimePeriodPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -20799,9 +20799,9 @@ class CartesianCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -20958,9 +20958,9 @@ class CoordinateSystemRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21040,9 +21040,9 @@ class CylindricalCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21122,9 +21122,9 @@ class EllipsoidalCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21268,9 +21268,9 @@ class LinearCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21350,9 +21350,9 @@ class ObliqueCartesianCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21488,9 +21488,9 @@ class OperationMethodRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21569,9 +21569,9 @@ class OperationParameterGroupRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21651,9 +21651,9 @@ class PolarCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21733,9 +21733,9 @@ class SphericalCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21815,9 +21815,9 @@ class TemporalCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -21985,9 +21985,9 @@ class UserDefinedCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -22067,9 +22067,9 @@ class VerticalCsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -22834,9 +22834,9 @@ class FeatureStylePropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -22974,9 +22974,9 @@ class TimeCalendarEraPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -23058,9 +23058,9 @@ class TimeEdgePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -23158,9 +23158,9 @@ class TimePrimitivePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -23250,9 +23250,9 @@ class TimeTopologyPrimitivePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -23359,9 +23359,9 @@ class CompositeCurvePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -23441,9 +23441,9 @@ class DirectedEdgePropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -23525,9 +23525,9 @@ class IsolatedPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -23612,9 +23612,9 @@ class MultiLineStringPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -24244,9 +24244,9 @@ class TimeCalendarPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -24334,9 +24334,9 @@ class TimeTopologyComplexPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -24549,9 +24549,9 @@ class DefaultStylePropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -24695,9 +24695,9 @@ class TimeOrdinalEraPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -24872,9 +24872,9 @@ class PolygonPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -25161,9 +25161,9 @@ class TimeClockPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -25596,9 +25596,9 @@ class MultiCurvePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -25961,9 +25961,9 @@ class MultiPolygonPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -26182,9 +26182,9 @@ class EngineeringDatumRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -26263,9 +26263,9 @@ class GeodeticDatumRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -26344,9 +26344,9 @@ class ImageDatumRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -26540,9 +26540,9 @@ class VerticalDatumRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -26652,9 +26652,9 @@ class DatumRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -26733,9 +26733,9 @@ class TemporalDatumRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -26903,9 +26903,9 @@ class TinPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -27171,9 +27171,9 @@ class SurfacePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -27487,9 +27487,9 @@ class EngineeringCrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -27616,9 +27616,9 @@ class GeocentricCrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -27698,9 +27698,9 @@ class GeographicCrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -27780,9 +27780,9 @@ class ImageCrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -27912,9 +27912,9 @@ class VerticalCrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -28058,9 +28058,9 @@ class CrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -28201,9 +28201,9 @@ class CoordinateReferenceSystemRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -28305,9 +28305,9 @@ class SolidPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -28387,9 +28387,9 @@ class TemporalCrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -28498,9 +28498,9 @@ class CompositeSurfacePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -28580,9 +28580,9 @@ class DirectedFacePropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -29409,9 +29409,9 @@ class CompositeSolidPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -29491,9 +29491,9 @@ class CompoundCrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -29718,9 +29718,9 @@ class GeometricPrimitivePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -29906,9 +29906,9 @@ class ContainerPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -29994,9 +29994,9 @@ class DirectedTopoSolidPropertyType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -30098,9 +30098,9 @@ class MultiSurfacePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -30245,9 +30245,9 @@ class TopoPrimitiveMemberType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -30373,9 +30373,9 @@ class ConversionRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -30454,9 +30454,9 @@ class GeneralConversionRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -30535,9 +30535,9 @@ class GeneralTransformationRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -30657,9 +30657,9 @@ class OperationRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -30738,9 +30738,9 @@ class TransformationRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -30914,9 +30914,9 @@ class GeometricComplexPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -31597,9 +31597,9 @@ class GeometryPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -31682,9 +31682,9 @@ class MultiSolidPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -31934,9 +31934,9 @@ class TopoComplexMemberType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -32116,9 +32116,9 @@ class PassThroughOperationRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -32220,9 +32220,9 @@ class SingleOperationRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -32345,9 +32345,9 @@ class ImplicitRepresentationPropertyType:
             "namespace": "http://www.opengis.net/citygml/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -32427,9 +32427,9 @@ class DerivedCrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -32515,9 +32515,9 @@ class ProjectedCrsrefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -32660,9 +32660,9 @@ class ReferenceSystemRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -33041,9 +33041,9 @@ class DomainSetType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -33348,9 +33348,9 @@ class LocationPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -33481,9 +33481,9 @@ class MultiGeometryPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -34940,9 +34940,9 @@ class ConcatenatedOperationRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -35045,9 +35045,9 @@ class CoordinateOperationRefType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -35557,9 +35557,9 @@ class DictionaryEntryType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -36271,9 +36271,9 @@ class AddressPropertyType:
             "namespace": "http://www.opengis.net/citygml/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -37066,9 +37066,9 @@ class SurfaceDataPropertyType:
             "namespace": "http://www.opengis.net/citygml/appearance/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -37150,9 +37150,9 @@ class GridPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -37309,9 +37309,9 @@ class AppearancePropertyType:
             "namespace": "http://www.opengis.net/citygml/appearance/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -39592,9 +39592,9 @@ class AssociationType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -40976,9 +40976,9 @@ class FeaturePropertyType:
             "namespace": "http://www.opengis.net/citygml/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -42089,9 +42089,9 @@ class EnergyPerformanceCertificatePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -42171,9 +42171,9 @@ class InterventionPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -42494,9 +42494,9 @@ class UtilityNetworkConnectionPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -42586,9 +42586,9 @@ class AbstractMaterialPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -42674,9 +42674,9 @@ class GasPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -42756,9 +42756,9 @@ class IrregularTimeSeriesPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -42832,9 +42832,9 @@ class LiquidPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -42914,9 +42914,9 @@ class MonthlyTimeSeriesPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -42996,9 +42996,9 @@ class RegularTimeSeriesPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43072,9 +43072,9 @@ class SensorConnectionPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43148,9 +43148,9 @@ class SolidMaterialPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43230,9 +43230,9 @@ class TypicalValuesIrregularTimeSeriesPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43312,9 +43312,9 @@ class TypicalValuesMonthlyTimeSeriesPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43394,9 +43394,9 @@ class TypicalValuesRegularTimeSeriesPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43531,9 +43531,9 @@ class AbstractTimeSeriesFilePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43703,9 +43703,9 @@ class AbstractTimeSeriesPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43779,9 +43779,9 @@ class ConstantValueSchedulePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43855,9 +43855,9 @@ class DualValueSchedulePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -43931,9 +43931,9 @@ class IrregularTimeSeriesFilePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -44026,9 +44026,9 @@ class MonthlyTimeSeriesFilePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -44102,9 +44102,9 @@ class RegularTimeSeriesFilePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -44178,9 +44178,9 @@ class TypicalValuesIrregularTimeSeriesFilePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -44254,9 +44254,9 @@ class TypicalValuesMonthlyTimeSeriesFilePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -44330,9 +44330,9 @@ class TypicalValuesRegularTimeSeriesFilePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -44471,9 +44471,9 @@ class LayerPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -44582,9 +44582,9 @@ class AbstractAtomicSchedulePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -44682,9 +44682,9 @@ class AbstractSchedulePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -44847,9 +44847,9 @@ class TimeSeriesSchedulePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -45208,9 +45208,9 @@ class SensorDataPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -45284,9 +45284,9 @@ class WeatherDataPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -45482,9 +45482,9 @@ class LayeredConstructionPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -45683,9 +45683,9 @@ class DeviceOperationPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -45771,9 +45771,9 @@ class OccupantsPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -45867,9 +45867,9 @@ class ScheduleComponentPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46009,9 +46009,9 @@ class AbstractResourcePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46101,9 +46101,9 @@ class ConstructionMaterialPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46177,9 +46177,9 @@ class EnergyPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46253,9 +46253,9 @@ class FoodPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46329,9 +46329,9 @@ class OtherResourcePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46411,9 +46411,9 @@ class UrbanSpacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46487,9 +46487,9 @@ class WastePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46563,9 +46563,9 @@ class WaterPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46654,9 +46654,9 @@ class AbstractLayeredConstructionPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -46736,9 +46736,9 @@ class ReverseLayeredConstructionPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -47116,9 +47116,9 @@ class AbstractAdefeaturePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -47448,9 +47448,9 @@ class AbstractFeatureWithLifeSpanPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -47524,9 +47524,9 @@ class CompositeSchedulePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -51807,9 +51807,9 @@ class WeatherStationPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -51917,9 +51917,9 @@ class InteriorFurniturePropertyType1:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52016,9 +52016,9 @@ class InteriorFurniturePropertyType2:
             "namespace": "http://www.opengis.net/citygml/building/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52148,9 +52148,9 @@ class InteriorFurniturePropertyType3:
             "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52324,9 +52324,9 @@ class AbstractLibraryPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52400,9 +52400,9 @@ class BoilerPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52484,9 +52484,9 @@ class EvchargingStationPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52560,9 +52560,9 @@ class ElectricalStorageDevicePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52636,9 +52636,9 @@ class GenericDevicePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52712,9 +52712,9 @@ class GenericElectricalDevicePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52794,9 +52794,9 @@ class GenericStorageDevicePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52870,9 +52870,9 @@ class HeatPumpPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -52946,9 +52946,9 @@ class LayeredConstructionLibraryPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53022,9 +53022,9 @@ class LightingDevicePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53098,9 +53098,9 @@ class MaterialLibraryPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53174,9 +53174,9 @@ class MovableShadingDevicePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53262,9 +53262,9 @@ class PowerDistributionPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53338,9 +53338,9 @@ class ScheduleLibraryPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53420,9 +53420,9 @@ class ThermalDistributionPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53496,9 +53496,9 @@ class ThermalStorageDevicePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53572,9 +53572,9 @@ class UrbanFunctionAreaPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53676,9 +53676,9 @@ class OpeningPropertyType1:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53783,9 +53783,9 @@ class ReliefComponentPropertyType:
             "namespace": "http://www.opengis.net/citygml/relief/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53867,9 +53867,9 @@ class AuxiliaryTrafficAreaPropertyType:
             "namespace": "http://www.opengis.net/citygml/transportation/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -53950,9 +53950,9 @@ class TrafficAreaPropertyType:
             "namespace": "http://www.opengis.net/citygml/transportation/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54042,9 +54042,9 @@ class OpeningPropertyType3:
             "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54143,9 +54143,9 @@ class BoundedByWaterSurfacePropertyType:
             "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54339,9 +54339,9 @@ class AbstractDevicePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54439,9 +54439,9 @@ class AbstractSolarCollectorPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54523,9 +54523,9 @@ class AbstractZoneOpeningPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54599,9 +54599,9 @@ class BuildingUnitPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54675,9 +54675,9 @@ class GenericSolarCollectorPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54751,9 +54751,9 @@ class PhotovoltaicCollectorPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54827,9 +54827,9 @@ class PhotovoltaicThermalCollectorPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54903,9 +54903,9 @@ class SolarThermalCollectorPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -54979,9 +54979,9 @@ class ZoneDoorPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -55055,9 +55055,9 @@ class ZoneWindowPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -55212,9 +55212,9 @@ class OpeningPropertyType2:
             "namespace": "http://www.opengis.net/citygml/building/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -56342,9 +56342,9 @@ class BoundarySurfacePropertyType1:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -56556,9 +56556,9 @@ class BoundarySurfacePropertyType3:
             "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57228,9 +57228,9 @@ class AbstractZoneBoundarySurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57304,9 +57304,9 @@ class ZoneAtticFloorSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57380,9 +57380,9 @@ class ZoneBasementCeilingSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57456,9 +57456,9 @@ class ZoneClosureSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57532,9 +57532,9 @@ class ZoneGroundSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57608,9 +57608,9 @@ class ZoneIntermediateFloorSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57684,9 +57684,9 @@ class ZoneOuterCeilingSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57760,9 +57760,9 @@ class ZoneOuterFloorSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57836,9 +57836,9 @@ class ZoneRoofSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57912,9 +57912,9 @@ class ZoneUndergroundWallSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -57988,9 +57988,9 @@ class ZoneWallSurfacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -58239,9 +58239,9 @@ class BoundarySurfacePropertyType2:
             "namespace": "http://www.opengis.net/citygml/building/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -58485,9 +58485,9 @@ class BridgeConstructionElementPropertyType:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -58569,9 +58569,9 @@ class BridgeInstallationPropertyType:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -58653,9 +58653,9 @@ class IntBridgeInstallationPropertyType:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -58893,9 +58893,9 @@ class IntTunnelInstallationPropertyType:
             "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -58977,9 +58977,9 @@ class TunnelInstallationPropertyType:
             "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -59251,9 +59251,9 @@ class BuildingInstallationPropertyType:
             "namespace": "http://www.opengis.net/citygml/building/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -59335,9 +59335,9 @@ class IntBuildingInstallationPropertyType:
             "namespace": "http://www.opengis.net/citygml/building/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -59417,9 +59417,9 @@ class ZonePartPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -59500,9 +59500,9 @@ class InteriorBridgeRoomPropertyType:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -59664,9 +59664,9 @@ class InteriorHollowSpacePropertyType:
             "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -60242,9 +60242,9 @@ class InteriorRoomPropertyType:
             "namespace": "http://www.opengis.net/citygml/building/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -60363,9 +60363,9 @@ class AbstractBuildingSpacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -60455,9 +60455,9 @@ class AbstractCityObjectSpacePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -60539,9 +60539,9 @@ class AbstractZonePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -60615,9 +60615,9 @@ class ZonePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -60729,9 +60729,9 @@ class BridgePartPropertyType:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -60812,9 +60812,9 @@ class TunnelPartPropertyType:
             "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -62201,9 +62201,9 @@ class AbstractCityObjectPropertyType:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -63157,9 +63157,9 @@ class GeneralizationRelationType:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -63240,9 +63240,9 @@ class BuildingPartPropertyType:
             "namespace": "http://www.opengis.net/citygml/building/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -64201,9 +64201,9 @@ class CityObjectGroupMemberType:
             "type": "Attribute",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -65161,9 +65161,9 @@ class CityObjectGroupParentType:
             "namespace": "http://www.opengis.net/citygml/bridge/2.0",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -66753,9 +66753,9 @@ class TargetPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
@@ -73811,9 +73811,9 @@ class ValuePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    type_value: TypeType = field(
+    type_value: TypeType | None = field(
         init=False,
-        default=TypeType.SIMPLE,
+        default=None,
         metadata={
             "name": "type",
             "type": "Attribute",
