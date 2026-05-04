@@ -108,19 +108,64 @@ def test_single_building_as_city_object_member(reference_building_root):
 
 
 def test_all_devices_attached_to_building(reference_building_root):
-    """Input declares 3 devices (PV, HeatPump, EV); all must be nested under the building."""
-    devices = reference_building_root.findall(".//bldg:Building/nrg3:device", NS)
-    assert len(devices) == 3
+    """Input declares 5 building-level devices (PV, HeatPump, ThermalDistribution,
+    ThermalStorageDevice, EV) and 5 unit-level GenericElectricalDevices
+    (cooktop, microwave, cooker tap, coffee machine, dishwasher); each must be
+    nested under its declared parent.
+    """
+    building_devices = reference_building_root.findall(".//bldg:Building/nrg3:device", NS)
+    assert len(building_devices) == 5
 
     assert len(reference_building_root.findall(".//nrg3:device/nrg3:PhotovoltaicCollector", NS)) == 1
     assert len(reference_building_root.findall(".//nrg3:device/nrg3:HeatPump", NS)) == 1
+    assert len(reference_building_root.findall(".//nrg3:device/nrg3:ThermalDistribution", NS)) == 1
+    assert len(reference_building_root.findall(".//nrg3:device/nrg3:ThermalStorageDevice", NS)) == 1
     assert len(reference_building_root.findall(".//nrg3:device/nrg3:EVChargingStation", NS)) == 1
 
+    unit_appliances = reference_building_root.findall(
+        ".//nrg3:BuildingUnit/nrg3:device/nrg3:GenericElectricalDevice", NS,
+    )
+    assert len(unit_appliances) == 5
 
-def test_occupants_attached_to_building(reference_building_root):
-    """Input declares 1 Occupants feature; it must be nested under the building."""
-    occupants = reference_building_root.findall(".//bldg:Building/nrg3:occupiedBy/nrg3:Occupants", NS)
+
+def test_occupants_attached_to_building_unit(reference_building_root):
+    """Input declares 1 Occupants feature; it must be nested under the BuildingUnit.
+
+    Energy ADE 3.0 inherits ``occupiedBy`` from ``AbstractBuildingSpace``,
+    so it is available on ``BuildingUnit`` (and on ``Zone``) — both more
+    specific than ``Building``. For a single-VBO Pand the canonical
+    location is the BuildingUnit; in a multi-unit Pand each apartment
+    can carry its own ``Occupants`` record.
+    """
+    occupants = reference_building_root.findall(
+        ".//nrg3:BuildingUnit/nrg3:occupiedBy/nrg3:Occupants", NS,
+    )
     assert len(occupants) == 1
+    # And nothing on the Building itself (would be a duplicate).
+    occupants_on_bldg = reference_building_root.findall(
+        ".//bldg:Building/nrg3:occupiedBy/nrg3:Occupants", NS,
+    )
+    assert occupants_on_bldg == []
+
+
+def test_singular_building_unit_attached_to_building(reference_building_root):
+    """Single-VBO Pand carries exactly one ``nrg3:BuildingUnit`` under the Building.
+
+    The BuildingUnit hosts the per-VBO net floor area, occupants,
+    address (when populated), ownership, and (when present) the
+    ``nrg3:EnergyPerformanceCertificate`` — mirroring the city-scale
+    pipeline so a downstream consumer sees the same shape regardless
+    of authoring path.
+    """
+    units = reference_building_root.findall(
+        ".//bldg:Building/nrg3:buildingUnit/nrg3:BuildingUnit", NS,
+    )
+    assert len(units) == 1
+    unit = units[0]
+    # Mandatory ``nrg3:type`` (gml:CodeType) — the BAG ``gebruiksdoel``
+    # ``woonfunctie`` for a residential VBO.
+    type_el = unit.find("nrg3:type", NS)
+    assert type_el is not None and type_el.text == "woonfunctie"
 
 
 def test_zone_with_two_heated_zone_parts(reference_building_root):
@@ -135,6 +180,24 @@ def test_zone_with_two_heated_zone_parts(reference_building_root):
 
     zone_parts = zones[0].findall("nrg3:zonePart/nrg3:ZonePart", NS)
     assert len(zone_parts) == 2
+
+
+def test_zone_hull_coincidence_flags_are_false(reference_building_root):
+    """Zone carries coincidesWithLod2Hull and coincidesWithLod3Hull, both false.
+
+    The building has LoD 2 geometry but the thermal zone does not exactly
+    coincide with the building hull. No LoD 3 hull exists. Both flags are
+    explicitly false; ``findtext`` with default="false" handles both the
+    case where xsdata emits the element and the case where it relies on the
+    XSD-declared default.
+    """
+    zone = reference_building_root.find(".//nrg3:Zone", NS)
+    assert zone is not None
+
+    lod2 = zone.findtext("nrg3:coincidesWithLod2Hull", default="false", namespaces=NS)
+    lod3 = zone.findtext("nrg3:coincidesWithLod3Hull", default="false", namespaces=NS)
+    assert lod2 == "false", f"coincidesWithLod2Hull: expected false, got {lod2!r}"
+    assert lod3 == "false", f"coincidesWithLod3Hull: expected false, got {lod3!r}"
 
 
 def test_heating_and_cooling_schedules_on_zone_parts(reference_building_root):
