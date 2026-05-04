@@ -5,7 +5,7 @@ Produces a ``{gtid: BorTree}`` mapping that
 consumes to enrich the ``veg:SolitaryVegetationObject`` with a Latin
 species name (``veg:species``) plus ``gen:*Attribute`` siblings for
 fields that have no native CityGML 2.0 slot
-(see ``docs/source_to_gml_mapping.md`` and § 3.3 of
+(see ``docs/mapping_city.md`` and § 3.3 of
 ``docs/vegetation_integration_report.md``).
 
 History note: this file was previously a documentation stub recording

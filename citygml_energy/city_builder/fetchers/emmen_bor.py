@@ -134,7 +134,7 @@ class BorTree:
         protection_status: ``"Bijzondere boom"`` or ``"Monumentale boom"``.
             Targets ``gen:stringAttribute name="protectionStatus"``;
             this is a legal / heritage status, not a horticultural
-            ``veg:function`` (see docs/source_to_gml_mapping.md).
+            ``veg:function`` (see docs/mapping_city.md).
         protection_status_detail: optional sub-classification (e.g.
             ``"Bomenlijst boom"``, ``"Bomenstructuur boom"``).
         growth_form: Emmen ``type`` field (``"Boom vrij uitgroeiend"``

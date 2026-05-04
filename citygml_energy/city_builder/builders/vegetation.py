@@ -15,7 +15,7 @@ Three concerns live in this module:
    ``core:externalReference`` (the layer carries no per-tree
    attributes); Emmen BOR additionally fills ``veg:species`` plus
    ``gen:*Attribute`` siblings for fields without a native CityGML
-   2.0 slot. See ``docs/source_to_gml_mapping.md`` for the full
+   2.0 slot. See ``docs/mapping_city.md`` for the full
    per-field mapping rationale.
 """
 
@@ -150,7 +150,7 @@ def build_solitary_vegetation_object(
         vegetation module has no native slots for protection regimes,
         growth-form descriptors, planting years, ecological
         standplaats, or class-band measurements. See
-        ``docs/source_to_gml_mapping.md`` for the per-field rationale.
+        ``docs/mapping_city.md`` for the per-field rationale.
         In summary:
 
         * ``veg:species`` ← ``soortnaam`` (Latin binomial)
@@ -239,7 +239,7 @@ def _apply_bgt_cross_reference(obj: Any, bgt_match: BgtTree) -> None:
 def _apply_bor_enrichment(obj: Any, bor: BorTree) -> None:
     """Attach Emmen BOR attributes to *obj* in their CityGML 2.0 slots.
 
-    Slot reasoning, per ``docs/source_to_gml_mapping.md``:
+    Slot reasoning, per ``docs/mapping_city.md``:
 
     * ``veg:species`` is the only typed CityGML 2.0 vegetation slot
       that fits an Emmen field honestly. ``soortnaam`` is a Latin
