@@ -35,6 +35,7 @@ def _vbo(point: tuple[float, float] | None) -> Verblijfsobject:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        woonplaats=None,
         point=point,
         properties={},
     )

@@ -29,6 +29,7 @@ def _vbo(
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam=street,
+        woonplaats=None,
         point=point,
         properties={},
     )
@@ -76,6 +77,7 @@ def test_vbo_without_postcode_is_dropped() -> None:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        woonplaats=None,
         point=None,
         properties={},
     )
@@ -94,6 +96,7 @@ def test_vbo_without_huisnummer_is_dropped() -> None:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        woonplaats=None,
         point=None,
         properties={},
     )
