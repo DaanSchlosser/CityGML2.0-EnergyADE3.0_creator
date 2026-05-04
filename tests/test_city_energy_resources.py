@@ -5,10 +5,10 @@ Warmtebehoefte, BerekendeEnergieverbruik, with BENG-2 carrying
 ``co2Equivalent``) and the per-BuildingUnit thermal-zone QualifiedArea
 that sits alongside the BAG ``oppervlakte`` area. Locks the field-level
 shape committed in
-[`docs/ep_online_data_model_mapping.md`](../docs/ep_online_data_model_mapping.md)
-§ 5h, § 5i, § 5j, § 5k, including the regime-aware unit handling
-introduced in the v2 mapping (NTA 8800 in kWh/(m²·yr) vs. legacy NEN 7120
-in MJ/yr total).
+[`docs/mapping_city.md`](../docs/mapping_city.md)
+§ 6.5h, § 6.5i, § 6.5j, § 6.5k, including the regime-aware unit handling
+(NTA 8800 in kWh/(m²·yr) vs. legacy NEN 7120 in MJ/yr total) documented
+in § 6.3.
 """
 
 from __future__ import annotations
@@ -18,10 +18,10 @@ from datetime import date
 from citygml_energy.city_builder.address_match import ResolvedAddress
 from citygml_energy.city_builder.builders import build_building_unit
 from citygml_energy.city_builder.energy_resources import (
+    UOM_KWH_PER_M2_PER_A,
+    UOM_MJ_PER_A,
     _UOM_KG_PER_A,
     _UOM_KG_PER_M2_PER_A,
-    _UOM_KWH_PER_M2_PER_A,
-    _UOM_MJ_PER_A,
     attach_energy_resources_to_building_unit,
 )
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
@@ -45,6 +45,7 @@ def _vbo(vbo_id: str = "0114010000000042") -> Verblijfsobject:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Hoofdkanaal WZ",
+        woonplaats=None,
         point=None,
         properties={},
     )
@@ -142,10 +143,12 @@ def test_four_energy_resources_emitted_when_all_metrics_set() -> None:
     """A complete NTA 8800 label produces all four BENG Energy resources.
 
     Lock the resource count + their type-value distribution: BENG-1
-    (netEnergy / Energiebehoefte), Warmtebehoefte (netEnergy), BENG-2
-    (primaryEnergy + co2Equivalent), and finalEnergy
+    (``net`` / Energiebehoefte), Warmtebehoefte (``net``), BENG-2
+    (``primary`` + co2Equivalent), and ``final``
     (BerekendeEnergieverbruik). The order is documentation-only and not
-    asserted; the sibling pattern is what matters.
+    asserted; the sibling pattern is what matters. Type values match
+    EnergyTypeValue.xml exactly (``net | primary | final``); the older
+    ``*Energy`` suffix was a codelist mismatch fixed in the audit.
     """
     label = _label(
         gebruiksoppervlakte_thermische_zone=112.5,
@@ -163,12 +166,16 @@ def test_four_energy_resources_emitted_when_all_metrics_set() -> None:
     by_type: dict[str, list] = {}
     for e in energies:
         by_type.setdefault(e.type_value.value, []).append(e)
-    assert sorted(by_type) == ["finalEnergy", "netEnergy", "primaryEnergy"]
-    assert len(by_type["netEnergy"]) == 2  # BENG-1 + Warmtebehoefte
+    assert sorted(by_type) == ["final", "net", "primary"]
+    assert len(by_type["net"]) == 2  # BENG-1 + Warmtebehoefte
 
 
 def test_energiebehoefte_has_the_expected_envelope() -> None:
     """BENG-1 Energy resource: type/end-use/uom + per-area normalisation.
+
+    BENG-1 mixes heating and cooling demand, so its ``endUse`` lands in
+    ``otherOrCombination`` (the EnergyEndUseValue.xml bucket for multi-
+    end-use figures); only Warmtebehoefte is genuinely ``spaceHeating``.
 
     The kWh/(m²·yr) uom encodes the per-m² normalisation; we set
     ``isAmountNormalized=True`` but **omit** ``normalizationValue``
@@ -188,14 +195,14 @@ def test_energiebehoefte_has_the_expected_envelope() -> None:
     ]
     assert len(energies) == 1
     e = energies[0]
-    assert e.type_value.value == "netEnergy"
+    assert e.type_value.value == "net"
     assert e.type_value.code_space.endswith("EnergyTypeValue.xml")
-    assert e.end_use.value == "spaceHeating"
+    assert e.end_use.value == "otherOrCombination"
     assert e.end_use.code_space.endswith("EnergyEndUseValue.xml")
     assert e.operation_type.value == "demands"
     assert e.reference_period.value == "year"
     assert e.amount.value == 28.5
-    assert e.amount.uom == _UOM_KWH_PER_M2_PER_A
+    assert e.amount.uom == UOM_KWH_PER_M2_PER_A
     assert e.is_amount_normalized is True
     assert e.normalization_value is None
     assert e.normalization_parameter is None
@@ -213,7 +220,7 @@ def test_co2_equivalent_rides_on_primary_energy_only() -> None:
 
     primary = next(
         r.energy for r in unit.resource
-        if r.energy is not None and r.energy.type_value.value == "primaryEnergy"
+        if r.energy is not None and r.energy.type_value.value == "primary"
     )
     assert primary.co2_equivalent is not None
     assert primary.co2_equivalent.value == 14.7
@@ -221,17 +228,21 @@ def test_co2_equivalent_rides_on_primary_energy_only() -> None:
 
     net = next(
         r.energy for r in unit.resource
-        if r.energy is not None and r.energy.type_value.value == "netEnergy"
+        if r.energy is not None and r.energy.type_value.value == "net"
     )
     assert net.co2_equivalent is None
 
 
-def test_warmtebehoefte_distinguished_from_energiebehoefte_via_description() -> None:
-    """Two ``netEnergy`` resources sit side by side; description disambiguates.
+def test_warmtebehoefte_distinguished_from_energiebehoefte_via_description_and_end_use() -> None:
+    """Two ``net`` resources sit side by side; ``endUse`` + description split them.
 
-    The ``endUse`` codelist has no "combined heating + cooling" entry, so
-    BENG-1 and Warmtebehoefte both use ``spaceHeating``. The Dutch source
-    name in ``description`` is the only schema-valid disambiguator.
+    Warmtebehoefte is genuinely heating-only -> ``endUse=spaceHeating``.
+    Energiebehoefte (BENG-1) covers heating + cooling -> the codelist
+    bucket ``otherOrCombination``. The Dutch source name on
+    ``description`` keeps both human-readable. (Before the audit both
+    metrics shared ``spaceHeating`` as a flat fallback, which mislabelled
+    BENG-1 as a heating-only figure for any consumer that read
+    ``endUse``; the per-metric routing is the fix.)
     """
     label = _label(
         gebruiksoppervlakte_thermische_zone=112.5,
@@ -242,11 +253,19 @@ def test_warmtebehoefte_distinguished_from_energiebehoefte_via_description() -> 
 
     netenergies = [
         r.energy for r in unit.resource
-        if r.energy is not None and r.energy.type_value.value == "netEnergy"
+        if r.energy is not None and r.energy.type_value.value == "net"
     ]
-    descriptions = [_desc(e) for e in netenergies]
-    assert any("Energiebehoefte" in d and "BENG-1" in d for d in descriptions)
-    assert any("Warmtebehoefte" in d for d in descriptions)
+    assert len(netenergies) == 2
+
+    by_end_use: dict[str, list] = {}
+    for e in netenergies:
+        by_end_use.setdefault(e.end_use.value, []).append(e)
+    assert sorted(by_end_use) == ["otherOrCombination", "spaceHeating"]
+
+    space_heating_desc = _desc(by_end_use["spaceHeating"][0])
+    other_desc = _desc(by_end_use["otherOrCombination"][0])
+    assert "Warmtebehoefte" in space_heating_desc
+    assert "Energiebehoefte" in other_desc and "BENG-1" in other_desc
 
 
 def test_no_metric_no_resource() -> None:
@@ -311,8 +330,8 @@ def test_nta8800_co2_only_does_not_emit_degenerate_energy() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_legacy_definitief_energielabel_emits_one_mj_resource_no_co2() -> None:
-    """Definitief Energielabel v1.2 row → one finalEnergy resource in MJ/yr, no CO₂.
+def test_legacy_definitief_energielabel_emits_one_primary_mj_resource_no_co2() -> None:
+    """Definitief Energielabel v1.2 row → one primary-energy resource in MJ/yr, no CO₂.
 
     Reproduces the real Hoofdkanaal WZ 38 (VBO 0114010000280857) shape
     that surfaced this regime asymmetry: a 2019 cert with the legacy
@@ -320,6 +339,12 @@ def test_legacy_definitief_energielabel_emits_one_mj_resource_no_co2() -> None:
     BerekendeCO2Emissie=0.0 (placeholder), and every NTA 8800 BENG field
     empty. The 0.0 CO₂ MUST be suppressed (it is not a measurement) and
     the energy value MUST land in MJ/yr (not kWh/(m²·yr)).
+
+    The legacy ``BerekendeEnergieverbruik`` is *primary* fossil energy
+    (NEN 7120 §5 formula 5.9, EP_tot), NOT delivered/finaal. The same
+    column name on NTA 8800 rows carries delivered energy; the
+    cross-regime divergence is intentional and lives in
+    :mod:`citygml_energy.city_builder.energy_resources`'s docstring.
     """
     label = _label(
         berekeningstype=(
@@ -338,9 +363,10 @@ def test_legacy_definitief_energielabel_emits_one_mj_resource_no_co2() -> None:
     energies = [r.energy for r in unit.resource if r.energy is not None]
     assert len(energies) == 1
     e = energies[0]
-    assert e.type_value.value == "finalEnergy"
+    assert e.type_value.value == "primary"
+    assert e.end_use.value == "otherOrCombination"
     assert e.amount.value == 293361.52
-    assert e.amount.uom == _UOM_MJ_PER_A
+    assert e.amount.uom == UOM_MJ_PER_A
     assert e.is_amount_normalized is False
     assert e.normalization_value is None
     assert e.normalization_parameter is None
@@ -370,7 +396,7 @@ def test_legacy_nader_voorschrift_emits_co2_alongside_total_energy() -> None:
     energies = [r.energy for r in unit.resource if r.energy is not None]
     assert len(energies) == 1
     e = energies[0]
-    assert e.amount.uom == _UOM_MJ_PER_A
+    assert e.amount.uom == UOM_MJ_PER_A
     assert e.amount.value == 68956.31
     assert e.co2_equivalent is not None
     assert e.co2_equivalent.value == 3684.02

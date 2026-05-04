@@ -271,7 +271,7 @@ def test_energy_resource_validates(xsd_schema):
         id="energy_1",
         operation_type=CodeType(value="demands", code_space=CS_NRG3_RESOURCE_OPERATION_TYPE),
         is_amount_normalized=False,
-        type_value=CodeType(value="finalEnergy", code_space=CS_NRG3_ENERGY_TYPE),
+        type_value=CodeType(value="final", code_space=CS_NRG3_ENERGY_TYPE),
         end_use=CodeType(value="mobility", code_space=CS_NRG3_ENERGY_END_USE),
         amount=MeasureType(value=1.125, uom="MWh/a"),
     )
@@ -364,7 +364,7 @@ def test_monthly_time_series_validates(xsd_schema):
         id="energy_1",
         operation_type=CodeType(value="produces", code_space=CS_NRG3_RESOURCE_OPERATION_TYPE),
         is_amount_normalized=False,
-        type_value=CodeType(value="finalEnergy", code_space=CS_NRG3_ENERGY_TYPE),
+        type_value=CodeType(value="final", code_space=CS_NRG3_ENERGY_TYPE),
         end_use=CodeType(value="electricalAppliances", code_space=CS_NRG3_ENERGY_END_USE),
         time_dependent_amount=AbstractTimeSeriesPropertyType(
             monthly_time_series=ts,
