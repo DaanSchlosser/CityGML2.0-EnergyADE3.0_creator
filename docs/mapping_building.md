@@ -1,0 +1,684 @@
+# Per-building pipeline: JSON input → CityGML 2.0 / Energy ADE 3.0 mapping
+
+**Purpose.** This document is the single answer to "where does field *X* land in the GML?" for the per-building pipeline (`citygml_energy.generation.generate_city_model`), which consumes hand-authored JSON feature collections plus STEP geometry files and emits a CityGML 2.0 + Energy ADE 3.0 file. Each per-class table enumerates the JSON fields **exercised by the canonical input** (and their GML targets); the loader additionally accepts every typed slot in the bindings, because `build_from_dict` introspects the dataclass fields directly. So the tables describe the contract for the canonical input shape; the underlying schema surface is wider. Required fields per class are catalogued in [Appendix A](#appendix-a--required-json-fields-per-feature-class) so authors do not discover them via build-time errors.
+
+**Companion documents.**
+
+- [`mapping_city.md`](mapping_city.md): the same level of per-field detail for the city-scale pipeline (BAG + 3DBAG + EP-online + PV + CFTree + BGT + BOR + municipality + boundary). The two pipelines share the bindings and the `core.CityModel` object but consume different inputs and emit different feature subsets.
+- [`README.md` § 3 / § 4 / § 6.4](../README.md): authoring guide, pipeline-stage walkthrough, and module reference. This document focuses on the *mapping*; the README covers the *mechanics* of the pipeline (when to run what, file layout, geometry source semantics).
+
+**Reference inputs.** [`inputs/buildings/owner_occupier_building.json`](../inputs/buildings/owner_occupier_building.json) is the canonical thesis-grade input; [`inputs/buildings/owner_occupier_building_sample.json`](../inputs/buildings/owner_occupier_building_sample.json) is a placeholder-data clone for sharing in upstream issue trackers (KIT FZKViewer, etc.). Both share the same structural shape; this doc references both interchangeably.
+
+## Conventions
+
+| Concept | Meaning |
+|---|---|
+| **Native slot** | An XSD element typed for the value (e.g. `bldg:yearOfConstruction` is `xs:gYear`, `nrg3:Energy/amount` is `gml:MeasureType`). Native slots get the typed value. |
+| **JSON feature** | One dict in the top-level `features` array, identified by `type` (e.g. `"bldg:Building"`, `"nrg3:Zone"`) and `id` (the GML id). Other dict keys are xsdata-style attribute names (`year_of_construction`) or XML names (`yearOfConstruction`); both are accepted. |
+| **`parent` / `parent_field`** | Optional feature-level keys that direct child attachment. `parent` names the parent feature's `id`; `parent_field` disambiguates which of several candidate slots to attach into (e.g. `heating_schedule` vs `cooling_schedule` on a ZonePart). Children with no `parent` are model roots. |
+| **`installed_on`** | Pseudo-field on device features (`nrg3:PhotovoltaicCollector`, `nrg3:HeatPump`, `nrg3:EVChargingStation`, etc.) that lists author-facing surface refs. Resolved post-build by [`device_relations.apply_device_relations`](../citygml_energy/device_relations.py) into `nrg3:CityObjectRelation` entries with `relationType="installedOn"`. |
+| **`construction_mapping`** | Top-level block mapping each surface (by gml:id or by XSD type name) to a `nrg3:LayeredConstruction` library entry. Resolved post-build by [`construction_mapping.apply_construction_mapping`](../citygml_energy/construction_mapping.py) into xlink hrefs on every dataclass with a `layered_construction` field. |
+| **Library xlink** | Materials and constructions live in JSON-authored library features (`nrg3:MaterialLibrary`, `nrg3:LayeredConstructionLibrary`). Layers reference materials via `{"href": "#mat_*"}`; surfaces reference constructions via the `construction_mapping` block. |
+| **Two cardinality regimes for `identifier` / `validFrom` / `validTo` / `status`** | These four fields exist on most features but their cardinality depends on which abstract type the feature inherits from. **CityObject regime** (Building, BuildingUnit, Zone, ZonePart, every Device, MaterialLibrary, LayeredConstructionLibrary): the field is multi-valued (`list[Identifier]`, `list[ValidFrom]`, `list[ValidTo]`, `list[Status]`) because the substituted element rides on `core:_GenericApplicationPropertyOfCityObject`. The XSD's substitution-group default permits unbounded occurrences, and the bindings therefore expose a Python `list[...]`. The **UML cardinality is 0..1** (`taggedValue tag="maxOccurs">1</taggedValue>` in the appinfo on each substituting element), so the engineering convention is single-element lists almost always; multiple entries are only XSD-legal, never UML-honest. Author as a JSON list. **FeatureWithLifeSpan regime** (Energy, Occupants, every TimeSeries, every Schedule, EnergyPerformanceCertificate, SolidMaterial, Gas, LayeredConstruction, Layer): the field is single-valued (`CodeType` / `XmlDateTime`) because it comes directly from `nrg3:AbstractFeatureWithLifeSpanType`. Author as a single JSON object (or scalar). Authoring a list on a Regime-2 feature raises a `_coerce` TypeError at build time. The per-feature tables below show the actual cardinality on each row. |
+| **`metadata` cardinality and placement** | `nrg3:Metadata` is a substitution for `gml:metaDataProperty` (XSD line 347), not for `core:_GenericApplicationPropertyOfCityObject`. Two consequences: (1) it serialises **inside** the host element's `gml:metaDataProperty` slot, before `gml:description` and `gml:name` in the GML output (this is the gml:AbstractGML content order, not a pipeline choice); (2) it is multi-valued by GML rules because `gml:metaDataProperty` itself has `maxOccurs="unbounded"`. There is *also* a separate `nrg3:metadata` element substituting onto `core:_GenericApplicationPropertyOfCityObject` (XSD line 1349), with the same `MetadataPropertyType`; the canonical input takes the regime-1 path through the bindings field also named `metadata`, which is what the loader writes. |
+
+## Pipeline order
+
+[`generation.py::generate_city_model`](../citygml_energy/generation.py) drives:
+
+1. **Load** the JSON via [`input_loader.load_city_model_from_feature_collection`](../citygml_energy/input_loader.py). Validates the schema (top-level keys, feature shapes, parent cycles, geometry-source paths), then resolves geometry-source paths against the input file's parent directory.
+2. **Build** every feature into an xsdata dataclass via the schema-agnostic [`mapping.build_from_dict`](../citygml_energy/mapping.py). Two-phase: first construct + index by id, then attach children via [`mapping.attach_child`](../citygml_energy/mapping.py) (so a parent can appear after its child in the JSON).
+3. **Apply geometry** via [`geometry.apply_geometry_sources`](../citygml_energy/geometry.py): import each STEP file, attach LoD slots to the right Building / ZonePart, build BoundarySurfaces / Openings from STEP layer names, populate the model's `surface_name_index`.
+4. **Apply device relations** via [`device_relations.apply_device_relations`](../citygml_energy/device_relations.py): resolve `installed_on` references against the `surface_name_index` (then fallback to the gml:id index) and emit `nrg3:CityObjectRelation` entries on each device's `related_to` slot. Unresolved references raise loudly.
+5. **Apply construction mapping** via [`construction_mapping.apply_construction_mapping`](../citygml_energy/construction_mapping.py): iterate every dataclass that has a `layered_construction` list field; resolve a construction id via `by_id` (gml:id keyed) or `by_type` (XSD-element-name keyed); append a `LayeredConstruction2` xlink wrapper.
+6. **Attach boundary attributes** via [`boundary_attributes.attach_boundary_surface_attributes`](../citygml_energy/boundary_attributes.py): compute and write five `bdgBdrySurf*` attributes per BoundarySurface and three `bdgOpn*` per Opening from the geometry and the layered-construction xlinks set in step 5.
+
+Steps 4-6 must run **after** step 3 (geometry populates the `surface_name_index` that step 4 reads, and the polygon vertices that step 6 measures). Step 6 must run **after** step 5 (it reads the layeredConstruction xlinks that step 5 sets). Steps 5 and 6 are no-ops on features that lack the relevant data.
+
+## At-a-glance: feature classes the pipeline knows
+
+| JSON `type` | Bindings class | Where it parents | Native GML target |
+|---|---|---|---|
+| `bldg:Building` | `Building` | model root | `bldg:Building` (Pand or single building) |
+| `nrg3:BuildingUnit` | `BuildingUnit` | Building | `nrg3:BuildingUnit` |
+| `nrg3:Zone` | `Zone` | Building | `nrg3:Zone` |
+| `nrg3:ZonePart` | `ZonePart` | Zone (enforced) | `nrg3:ZonePart` |
+| `nrg3:ConstantValueSchedule` | `ConstantValueSchedule` | ZonePart (`heating_schedule` / `cooling_schedule`) | `nrg3:ConstantValueSchedule` |
+| `nrg3:PhotovoltaicCollector` | `PhotovoltaicCollector` | Building | `nrg3:PhotovoltaicCollector` |
+| `nrg3:SolarThermalCollector` | `SolarThermalCollector` | Building | `nrg3:SolarThermalCollector` |
+| `nrg3:HeatPump` | `HeatPump` | Building | `nrg3:HeatPump` |
+| `nrg3:ThermalDistribution` | `ThermalDistribution` | Building | `nrg3:ThermalDistribution` |
+| `nrg3:ThermalStorageDevice` | `ThermalStorageDevice` | Building | `nrg3:ThermalStorageDevice` |
+| `nrg3:Boiler` | `Boiler` | Building | `nrg3:Boiler` |
+| `nrg3:EVChargingStation` | `EvchargingStation` | Building | `nrg3:EVChargingStation` |
+| `nrg3:GenericElectricalDevice` | `GenericElectricalDevice` | Building or BuildingUnit | `nrg3:GenericElectricalDevice` |
+| `nrg3:Occupants` | `Occupants` | BuildingUnit | `nrg3:Occupants` |
+| `nrg3:Energy` | `Energy` | any AbstractCityObject (Building, BuildingUnit, Device) via `nrg3:resource` | `nrg3:Energy` |
+| `nrg3:MonthlyTimeSeries` / `nrg3:RegularTimeSeries` / `nrg3:IrregularTimeSeries` (and their `TypicalValues*` / `*File` variants) | corresponding TimeSeries class | Energy (`time_dependent_amount`) | `nrg3:*TimeSeries` |
+| `nrg3:MaterialLibrary` | `MaterialLibrary` | model root | `nrg3:MaterialLibrary` (top-level library) |
+| `nrg3:LayeredConstructionLibrary` | `LayeredConstructionLibrary` | model root | `nrg3:LayeredConstructionLibrary` (top-level library) |
+
+The list above is the set actually exercised in the canonical input. Any other Energy ADE 3.0 feature class declared in the bindings can also be authored: the pipeline's `build_from_dict` + `attach_child` machinery is XSD-driven and discovers field slots via type introspection, so adding a new feature requires no code changes (only a `type` value matching the bindings class). [`README.md` § 11](../README.md) maintains the live list.
+
+## Top-level JSON shape
+
+```json
+{
+  "schema_version": 2,
+  "city_model": {"name": "...", "description": "..."},
+  "coordinate_origin": [x, y, z],
+  "construction_mapping": {
+    "by_type": {"WallSurface": "constr_external_wall", ...},
+    "by_id":   {"id_building_1_Door2_1": "constr_front_door", ...}
+  },
+  "geometry_sources": [
+    {"type": "step-building-lod0", "path": "...", "target_building_id": "..."},
+    {"type": "step-building-lod2", "path": "...", "target_building_id": "...", "target_pv_id": "..."},
+    {"type": "step-zonepart-lod3", "path": "...", "target_zone_part_id": "..."}
+  ],
+  "features": [ /* the feature collection */ ],
+  "srs_name": "EPSG:28992",
+  "srs_dimension": 3
+}
+```
+
+| Top-level key | Required | Purpose |
+|---|---|---|
+| `schema_version` | ✓ | Currently `2`. Bump signals an incompatible authoring change. |
+| `city_model` | ✓ | Wrapper for `gml:name` and `gml:description` on the root `<core:CityModel>`. |
+| `features` | ✓ | Flat list of feature dicts. Each dict carries `type`, `id`, optional `parent` / `parent_field` / `installed_on`, and the XSD-typed attributes for that class. |
+| `coordinate_origin` | optional (default `[0,0,0]`) | Offset added to every imported STEP vertex; lets STEP files authored at the origin land in real-world RD New / NAP coordinates. |
+| `construction_mapping` | optional | See [§ Construction mapping](#construction-mapping). |
+| `geometry_sources` | optional (no geometry if absent) | List of `{"type": "step-...", "path": "...", "target_*_id": "..."}` entries. Spec registry: [`geometry.GEOMETRY_SOURCE_SPECS`](../citygml_energy/geometry.py). |
+| `srs_name`, `srs_dimension` | optional (defaults `"EPSG:28992"`, `3`) | Stamped on every `gml:Polygon` / `gml:MultiSurface` / `gml:Solid`. |
+
+`_FEATURE_META_KEYS = {"type", "parent", "parent_field", "installed_on"}` are stripped from each feature dict before `build_from_dict` sees it; all other keys are passed through to the dataclass coercer.
+
+---
+
+## 1. `bldg:Building`
+
+The Pand-equivalent container. One per building file (the per-building pipeline is single-Pand by convention; multi-Pand inputs are accepted by the loader but the city pipeline is the right tool for that scope).
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `bldg:Building/@gml:id` | Required. NCName-validated. |
+| `name` | list[str] | `gml:name[]` | |
+| `description` | str | `gml:description` | |
+| `creation_date` | date | `core:creationDate` | |
+| `class_value` | CodeType | `bldg:class` | SIG3D codespace `_AbstractBuilding_class.xml` (residential / commercial / etc.). |
+| `function` | list[CodeType] | `bldg:function[]` | SIG3D codespace `_AbstractBuilding_function.xml`. Multi-valued. |
+| `usage` | list[CodeType] | `bldg:usage[]` | SIG3D codespace `_AbstractBuilding_usage.xml`. Multi-valued. |
+| `year_of_construction` | gYear (string `"YYYY"`) | `bldg:yearOfConstruction` | `xs:gYear`. |
+| `year_of_demolition` | gYear | `bldg:yearOfDemolition` | |
+| `roof_type` | CodeType | `bldg:roofType` | SIG3D codespace `_AbstractBuilding_roofType.xml`. Same vocabulary as the city pipeline. |
+| `storeys_above_ground` | int | `bldg:storeysAboveGround` | `xs:nonNegativeInteger`. |
+| `storeys_below_ground` | int | `bldg:storeysBelowGround` | |
+| `measured_height` | Measure | `bldg:measuredHeight` | uom `m`. |
+| `identifier` | list[Identifier] | `nrg3:identifier[]` | `{value, code_space}`. The `code_space + value` concatenation should reconstruct a dereferenceable register URL: keep a trailing slash on `code_space` so `<base>/<id>` parses cleanly (the canonical input uses `http://bag.basisregistraties.overheid.nl/bag/id/pand/` for Pand and `.../verblijfsobject/` for VBO, matching [`citygml_energy.namespaces.CS_BAG_PAND`](../citygml_energy/namespaces.py) and `CS_BAG_VERBLIJFSOBJECT`). |
+| `metadata` | list[Metadata] | `nrg3:Metadata[]` | `{author, acquisition_method, owner, quality_description, source}`. Multiple Metadata blocks document multiple data sources for the same Building. |
+| `bdg_is_protected` | list[bool] | `nrg3:bdgIsProtected[]` | Heritage / conservation flag. |
+| `bdg_number_of_building_units` | list[int] | `nrg3:bdgNumberOfBuildingUnits[]` | |
+| `bdg_type` | list[CodeType] | `nrg3:bdgType[]` | Energy ADE primary building-type codelist (e.g. `singleFamilyHouse` from `BuildingTypeValue.xml`). The per-building pipeline can use either the EnergyADE codelist or the RVO Dutch verbatim term (the city pipeline uses the latter; either is schema-permissible because `gml:CodeType` is open and the `@codeSpace` names the vocabulary). |
+| `bdg_area` | list[QualifiedArea] | `nrg3:bdgArea[]` (Building-level aggregate area) | Multi-source pattern: each entry is `{description, source, value: {value, uom}, type_value: {value, code_space}}`. Repeating with different `source` strings is the documented way to record register vs measured values for the same physical quantity. |
+| `bdg_height` | list[QualifiedHeight] | `nrg3:bdgHeight[]` | Same multi-source pattern. `type_value` from `HeightTypeValue.xml` (`topOfConstruction`, `highestPoint`, `generalEave`, `bottomOfConstruction`, etc. — see the codelist for the full vocabulary). |
+| `bdg_volume` | list[QualifiedVolume] | `nrg3:bdgVolume[]` | Same multi-source pattern. `type_value` from `VolumeTypeValue.xml` (`grossVolume`, etc.). |
+
+All `bdgArea` / `bdgHeight` / `bdgVolume` values are themselves `QualifiedAttribute` (XSD line 227) and therefore carry their own `description` + `source` (so a downstream consumer can quantify how often two registers disagree on the same building's footprint area, for instance).
+
+---
+
+## 2. `nrg3:BuildingUnit`
+
+Parents to a Building. One BuildingUnit per VBO-equivalent (apartment / commercial unit). The per-VBO BuildingUnit hosts the per-occupier energy-performance certificate (in city-pipeline runs) or any per-unit Occupants / Energy resources (in per-building runs).
+
+The XSD permits `nrg3:energyPerformanceCertificate` on **both** AbstractBuilding (XSD line 1627) and BuildingUnit (XSD line 1527). This pipeline always parents the EPC to the BuildingUnit because in the Netherlands the EP-online register issues one certificate **per VBO** (the BAG `verblijfsobject`, the legal usable-area unit inside a Pand), not per Pand. A multi-VBO Pand (apartment block) ends up with one EPC per unit, each with its own letter and registration-method metadata; collapsing them at Building level would lose the per-occupier provenance the register is designed around. For non-NL inputs the same slot lives on the Building, so authors targeting other registers can attach the EPC there if their cadastre keeps certificates Pand-level.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `nrg3:BuildingUnit/@gml:id` | |
+| `name`, `description`, `creation_date` | as on Building | `gml:name`, `gml:description`, `core:creationDate` | |
+| `identifier` | list[Identifier] | `nrg3:identifier[]` | |
+| `type_value` | CodeType | `nrg3:type` | E.g. `woonfunctie` (BAG `gebruiksdoel` codespace) for a Dutch dwelling. |
+| `number_of_rooms` | int | `nrg3:numberOfRooms` | |
+| `owner_name` | str | `nrg3:ownerName` | |
+| `ownership_type` | CodeType | `nrg3:ownershipType` | `OwnershipTypeValue.xml`. |
+| `area` | list[QualifiedArea] | `nrg3:area[]` (BuildingUnit-level area) | Same multi-source pattern as Building's `bdgArea`. Typically one entry for the per-VBO usable area. |
+| `energy_performance_certificate` | list[EPC] | `nrg3:EnergyPerformanceCertificate[]` | The EPC slot. See [`mapping_city.md` § 6](mapping_city.md#6-ep-online-mutatiebestand-csv--dutch-energy-label-register) for the regime-aware EP-online mapping; the per-building pipeline can author an EPC directly in JSON with the same field shape (`type_value`, `label`, `value: {value, uom}`, `certification_method`, `creation_date`, `valid_from`, `valid_to`, `status`). |
+
+---
+
+## 3. `nrg3:Zone` and `nrg3:ZonePart`
+
+The Energy ADE 3.0 thermal-zone hierarchy is `Building → Zone → ZonePart`. The XSD permits `Building → ZonePart` directly via the `ZonePropertyType` slot, but the conceptual model says zones group zone-parts. The validator enforces `nrg3:ZonePart` parents to `nrg3:Zone` ([`input_loader._ALLOWED_PARENT_TYPES`](../citygml_energy/input_loader.py)) so authoring slips are caught before they corrupt the hierarchy.
+
+Zone and ZonePart inherit from the same `nrg3:AbstractZoneType`, so **everything in the ZonePart table is also legal on a Zone** per the XSD: `is_heated`, `is_cooled`, `is_mechanically_ventilated`, `infiltration_rate`, `heat_capacity`, `internal_heat_gains` (+ convective / latent / radiant fractions), `number_of_building_units`, `building_unit`, `heating_schedule`, `cooling_schedule`, `mechanical_ventilation_schedule`, `zone_boundary`, plus the AbstractCityObjectSpace LoD slots (`lod0_multi_surface`, `lod{1,2,3}_solid`) and `area` / `volume`. The Zone table below lists only what the canonical input puts on the Zone level; richer authoring is permitted. The conceptual rule (Zone groups ZoneParts; thermal-envelope geometry and per-room schedules live on ZonePart, with the Zone aggregating across them) is a modelling convention, not an XSD constraint.
+
+### `nrg3:Zone`
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `nrg3:Zone/@gml:id` | |
+| `name`, `description` | as above | `gml:name`, `gml:description` | |
+| `type_value` | CodeType | `nrg3:type` | `CurrentUseValue.xml` (e.g. `residential`). |
+| `coincides_with_lod2_hull` | bool | `nrg3:coincidesWithLod2Hull` | Whether the Zone spatially equals the building's LoD 2 outer shell. |
+| `coincides_with_lod3_hull` | bool | `nrg3:coincidesWithLod3Hull` | Same for LoD 3. |
+
+Geometry: Zones rarely carry their own geometry; their LoD geometry is usually inherited via the ZonePart children's surfaces.
+
+### `nrg3:ZonePart`
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `nrg3:ZonePart/@gml:id` | |
+| `type_value` | CodeType | `nrg3:type` | `CurrentUseValue.xml`. |
+| `is_heated` | bool | `nrg3:isHeated` | |
+| `is_cooled` | bool | `nrg3:isCooled` | |
+| `is_mechanically_ventilated` | bool | `nrg3:isMechanicallyVentilated` | |
+| `coincides_with_lod*_hull` | bool | as above | |
+| `heating_schedule` (via child Schedule with `parent_field="heating_schedule"`) | xlink to ConstantValueSchedule | `nrg3:heatingSchedule` | See § 4. |
+| `cooling_schedule` (same pattern) | xlink to ConstantValueSchedule | `nrg3:coolingSchedule` | See § 4. |
+| `lod0_multi_surface` / `lod{1,2,3}_solid` | inline GML geometry | `nrg3:lod0MultiSurface` / `nrg3:lod{1,2,3}Solid` | Aggregate hull of the ZonePart. Populated from a `step-zonepart-lod{0,1,2,3}` source whose `target_zone_part_id` matches this ZonePart's `id`. ZonePart has no aggregated `volumeGeometry` slot; the standard CityGML LoD ladder fills the same role. |
+| ZoneBoundary surfaces (children, attached via STEP geometry) | inline GML | `nrg3:zoneBoundary` (one ZoneWallSurface / ZoneGroundSurface / ZoneRoofSurface / ZoneIntermediateFloorSurface / etc. per ZonePart face; openings as `bldg:Window` / `bldg:Door` children of the parent face) | Built by `apply_geometry_sources` for `step-zonepart-lod{2,3}` sources from each STEP layer name. The classifier maps the building-style STEP layer names (`WallSurface_*`, `GroundSurface_*`, `RoofSurface_*`) to the matching `nrg3:Zone…Surface` subclass; `Window_*` / `Door_*` shells parented (via STEP `|parent=…`) to a wall become `bldg:opening` children of the matched ZoneWallSurface. |
+
+ZonePart is the natural carrier of per-room thermal-envelope geometry: a multi-zone building (e.g. a heated living area + an unheated attic) maps to one `nrg3:Zone` per thermal regime and one `nrg3:ZonePart` per geometric subdivision inside it. The aggregate Solid and the per-face ZoneBoundary children are emitted together: a viewer that needs the closed hull uses the Solid, a thermal-analysis consumer iterates the ZoneBoundary children for per-face thermal-envelope attributes (the ADE `bdgBdrySurf*` attribute computation in [`boundary_attributes.py`](../citygml_energy/boundary_attributes.py) is binding-driven and runs against ZoneBoundary children too).
+
+---
+
+## 4. `nrg3:ConstantValueSchedule`
+
+Parents to a ZonePart via `parent_field` set to either `heating_schedule` or `cooling_schedule` (both fields are `[0..1]` on the parent so the slot disambiguation is mandatory).
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `nrg3:ConstantValueSchedule/@gml:id` | |
+| `type_value` | CodeType | `nrg3:type` | `ScheduleTypeValue.xml` (`typicalYear`, etc.). |
+| `value` | Measure | `nrg3:value` | uom `C` for setpoint temperatures. |
+
+Energy ADE 3.0 defines four `AbstractAtomicSchedule` subclasses: `nrg3:ConstantValueSchedule` (used here), `nrg3:DualValueSchedule` (idle / usage values with day-time switch points), `nrg3:TimeSeriesSchedule` (wraps any `AbstractTimeSeries` so a periodic profile drives the schedule), plus the aggregating `nrg3:CompositeSchedule` (a sequence of `nrg3:ScheduleComponent` references, with per-component repetition counts and gaps) and `nrg3:ScheduleLibrary` for shareable templates. The loader accepts any of them via the same `parent_field` mechanism. Daily resolution is expressed as a `RegularTimeSeries` with `timeInterval = P1D` rather than a dedicated daily class; there is no `DailyPatternSchedule` or `DailyTimeSeries` in this XSD revision.
+
+---
+
+## 5. Devices
+
+Six device types are exercised in the canonical input: `PhotovoltaicCollector`, `HeatPump`, `ThermalDistribution`, `ThermalStorageDevice`, `EVChargingStation`, `GenericElectricalDevice`. The two further device classes documented below (`SolarThermalCollector`, `Boiler`) are not exercised but documented for symmetry with the XSD. `Occupants` was previously colocated here in early revisions of this document; it is now [§ 6](#6-nrg3occupants), since `nrg3:Occupants` does **not** extend `nrg3:AbstractDevice` (it extends `nrg3:AbstractFeatureWithLifeSpan` directly, and lives in a different cardinality regime accordingly).
+
+All device classes below extend `nrg3:AbstractDevice`, so they share inherited slots: `name`, `description`, `creation_date`, `model`, `year_of_installation`, `year_of_manufacture`, `number_of_devices`, `installed_power`, `nominal_efficiency`, `efficiency_indicator`, `heat_dissipation` (+ convective / latent / radiant fractions), `device_operation`, `identifier` (multi-valued via the CityObject regime), `metadata`, `valid_from` / `valid_to` / `status` (also multi-valued via CityObject regime), `related_to`, plus the JSON pseudo-field `installed_on`. They add device-specific slots on top. EnergyADE 3.0 has no `installed_in` slot; in-envelope vs outside-envelope placement has to be encoded via the `description` or via a project-defined `nrg3:CityObjectRelation` to the relevant Zone.
+
+### 5.1. `nrg3:PhotovoltaicCollector`
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `@gml:id` | |
+| `name`, `description`, `creation_date`, `model`, `year_of_installation`, `number_of_devices`, `installed_power` (Measure, uom `W`) | inherited | inherited slots | |
+| `azimuth` | Measure | `nrg3:azimuth` | uom `deg`, compass bearing of horizontal projection of the panel normal (0° = N). |
+| `inclination` | Measure | `nrg3:inclination` | uom `deg`, [0, 90]. 0 = flat. |
+| `cell_type` | CodeType | `nrg3:cellType` | `CellTypeValue.xml`. |
+| `module_area` | Measure | `nrg3:moduleArea` | uom `m2`. |
+| `nominal_efficiency` | Measure | `nrg3:nominalEfficiency` | |
+| `aperture_area` | Measure | `nrg3:apertureArea` | |
+| `installed_on` (pseudo-field) | list[str] | resolved to `nrg3:relatedTo[] / CityObjectRelation(relationType="installedOn")` xlinks | See [§ 10](#10-installed_on-device-to-surface-relations). |
+| `lod{2,3}_multi_surface` | inline GML MultiSurface | `nrg3:lod2MultiSurface` / `nrg3:lod3MultiSurface` | Populated from a `step-building-lod{2,3}` source whose `target_pv_id` matches this PV id; the per-LoD MultiSurface is built from the STEP shells classified as solar (layer-name prefix `SolarPanelSurface_`, or fallback for unnamed shells when `target_pv_id` is set). The XSD's `AbstractSolarCollectorType` defines geometry only at LoD 2 and LoD 3 (no LoD 0 / 1 / 4). |
+
+### 5.2. `nrg3:SolarThermalCollector`
+
+Solar collector subclass (XSD class `nrg3:SolarThermalCollector`, **not** `SolarThermalSystem`). Inherits the LoD2/LoD3 MultiSurface slots, `azimuth`, `inclination`, `module_area`, `aperture_area` from `AbstractSolarCollectorType`. Adds the slots below; not exercised in the canonical input.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `type_value` | CodeType (REQUIRED) | `nrg3:type` | `SolarCollectorTypeValue.xml` (`flatPlate`, `evacuatedTube`, etc.). |
+| `optical_efficiency` | Measure (`gml:ScaleType`, dimensionless [0, 1]) | `nrg3:opticalEfficiency` | The `η₀` zero-loss intercept of the collector's efficiency curve. |
+| `linear_heat_loss_coefficient` | float | `nrg3:linearHeatLossCoefficient` | `a₁` in the EN 12975 efficiency curve, W/(K·m²). |
+| `quadratic_heat_loss_coefficient` | float | `nrg3:quadraticHeatLossCoefficient` | `a₂` in the EN 12975 efficiency curve, W/(K²·m²). |
+
+`nominal_efficiency` is inherited from `AbstractDevice` and remains available, but the EN 12975 triple (`opticalEfficiency`, `linearHeatLossCoefficient`, `quadraticHeatLossCoefficient`) is the schema-honest way to characterise a thermal collector: those three are what plug into the standard solar-thermal yield equation. EnergyADE 3.0 has **no** `heat_storage` or `peak_thermal_power` slot on this class; storage is modelled separately as a child `nrg3:ThermalStorageDevice` ([§ 5.7](#57-nrg3thermalstoragedevice)) and peak thermal output is implied by `installed_power` (inherited from `AbstractDevice`).
+
+### 5.3. `nrg3:HeatPump`
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| inherited device fields | — | inherited slots | |
+| `heat_source` | CodeType | `nrg3:heatSource` | `HeatSourceValue.xml`. Codelist values: `unknown`, `ambientAir`, `aquifer`, `exhaustAir`, `horizontalGroundCollector`, `verticalGroundCollector`. The `code_space` URL names the vocabulary; off-codelist values remain schema-permissible (`gml:CodeType` is open) but stay inside the codelist when a fitting term exists. |
+| `cop_source_temperature` | Measure | `nrg3:copSourceTemperature` | uom `C`. |
+| `cop_operation_temperature` | Measure | `nrg3:copOperationTemperature` | uom `C`. |
+| `nominal_efficiency` | Measure | `nrg3:nominalEfficiency` | The COP at the (source temp, operation temp) pair above. |
+
+**Mapping gap: in-envelope vs outside-envelope placement.** EnergyADE 3.0 has no native attribute on `AbstractDevice` (or any subclass) for whether a device sits inside the building's thermal envelope. For an in-envelope heat pump, pipework insulation, or a hot-water buffer, this fact has nowhere structured to live. The canonical input records it in `gml:description`; a more rigorous solution would be a `nrg3:CityObjectRelation` to the relevant `Zone` with a project-defined relation type, but the EnergyADE codelists (`RelationTypeValue.xml`, `OtherRelationTypeValue.xml` = `installedOn` / `connectedTo` / `serving`) do not yet include an `isInsideThermalEnvelope`-style entry.
+
+### 5.4. `nrg3:Boiler`
+
+Inherited device fields plus a single Boiler-specific slot:
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `has_condensation` | bool | `nrg3:hasCondensation` | Whether the boiler is a condensing unit. |
+
+`nominal_efficiency` (combustion efficiency) is inherited from `AbstractDevice`, not Boiler-specific. EnergyADE 3.0 has **no** `fuel_type` slot on Boiler; the fuel is encoded indirectly via the `energy_carrier` field on the Boiler's child `nrg3:Energy` resources (e.g. `naturalGas`, `electricity`). Boiler-emitted `nrg3:Energy` resources typically attach via `parent: "<boiler_id>"` so the demand reads as a property of the device. Not exercised in the canonical input.
+
+### 5.5. `nrg3:EVChargingStation`
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| inherited device fields | — | inherited slots | |
+| `valid_from` | dateTime (string `"YYYY-MM-DDTHH:MM:SS"`) | `nrg3:validFrom[]` | Multi-valued via the CityObject regime. The canonical input sets a single `valid_from` to mark when the device entered service; authored as a scalar, the loader wraps it in a singleton list. |
+| `type_value` | CodeType | `nrg3:type` | `EVChargingStationTypeValue.xml` (e.g. `AC`). |
+| `charging_speed_level` | CodeType | `nrg3:chargingSpeedLevel` | `EVChargingSpeedLevelValue.xml`. The canonical input emits `Level 2` (the IEC 61851 / SAE J1772 Mode-3 AC speed bracket, 7-22 kW), which is the verbatim codelist member. |
+| `connector_type` | CodeType | `nrg3:connectorType` | `EVChargingConnectorTypeValue.xml`. |
+| `has_load_management` | bool | `nrg3:hasLoadManagement` | |
+| `access` | CodeType | `nrg3:access` | `EVChargingAccessTypeValue.xml` (`private`, `public`, etc.). |
+
+### 5.6. `nrg3:ThermalDistribution`
+
+Hydronic / air distribution circuit fed by a heat source. Exercised in the canonical input as the floor-heating circuit driven by the heat pump.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| inherited device fields | — | inherited slots | |
+| `medium` | CodeType | `nrg3:medium` | `MediumTypeValue.xml` (`water`, `air`, `steam`, `unknown`). |
+| `supply_temperature` | Measure | `nrg3:supplyTemperature` | uom `C`. The temperature delivered to the emitter side. |
+| `return_temperature` | Measure | `nrg3:returnTemperature` | uom `C`. Optional; not collected in the canonical input. |
+| `nominal_flow` | Measure | `nrg3:nominalFlow` | Optional. |
+| `is_circulation` | bool | `nrg3:isCirculation` | Whether the circuit recirculates DHW (`true` for closed loops). Optional. |
+| `distribution_perimeter` | CodeType | `nrg3:distributionPerimeter` | `DistributionPerimeterTypeValue.xml`. Optional. |
+| `thermal_losses_factor` | Measure | `nrg3:thermalLossesFactor` | Optional. |
+
+### 5.7. `nrg3:ThermalStorageDevice`
+
+Hot- or cold-water buffer (DHW tank, ice store, etc.). Exercised in the canonical input as the 200-litre DHW buffer downstream of the heat pump.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| inherited device fields | — | inherited slots | |
+| `medium` | CodeType | `nrg3:medium` | `MediumTypeValue.xml`. |
+| `volume` | Volume | `nrg3:volume` | uom `m3`. Storage capacity. |
+| `preparation_temperature` | Measure | `nrg3:preparationTemperature` | uom `C`. Optional. |
+| `thermal_losses_factor` | Measure | `nrg3:thermalLossesFactor` | Optional. |
+
+### 5.8. `nrg3:GenericElectricalDevice`
+
+Catch-all for electrical appliances that have no dedicated EnergyADE class (cooktops, microwaves, dishwashers, kettles, coffee machines, etc.). The XSD adds **no** device-specific slots: a `GenericElectricalDevice` is exactly an `AbstractDevice` with no extras. Exercised in the canonical input as five appliance instances under the BuildingUnit. Useful for completeness even when no per-device energy figures are recorded — the `description` carries the human-readable identification of what the appliance is.
+
+---
+
+## 6. `nrg3:Occupants`
+
+Parents to a `BuildingUnit` (not a Building): occupants are a property of a dwelling unit, not the structure. `nrg3:Occupants` extends `nrg3:AbstractFeatureWithLifeSpan` directly (XSD line 1445), not `AbstractDevice`, so it lives in the FeatureWithLifeSpan cardinality regime: `identifier` / `valid_from` / `valid_to` / `status` are single-valued (Regime-2). The XSD slots `nrg3:occupiedBy` (the *attachment* slot on AbstractBuildingSpace, XSD line 1489) and `nrg3:occupiedBy` substituted onto `bldg:_GenericApplicationPropertyOfAbstractBuilding` (XSD line 1606) both accept this feature; the canonical input parents to BuildingUnit and the loader walks the XSD to land the occupant in `nrg3:occupiedBy` on the unit.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `@gml:id` | |
+| `type_value` | CodeType (REQUIRED) | `nrg3:type` | `OccupantsTypeValue.xml` (`residents`, `employees`, etc.). |
+| `number_of_occupants` | int | `nrg3:numberOfOccupants` | |
+| `heat_dissipation` | Measure | `nrg3:heatDissipation` | uom `W`, internal heat gain per occupant. |
+| `heat_dissipation_convective_fraction` / `_latent_fraction` / `_radiant_fraction` | Scale (`gml:ScaleType`) | `nrg3:heatDissipation*Fraction` | Three-way split of `heat_dissipation` for thermal-comfort modelling; not exercised in the canonical input. |
+| `average_diet_type` / `average_income_level` / `average_instruction_level` | CodeType | `nrg3:averageDietType` / `nrg3:averageIncomeLevel` / `nrg3:averageInstructionLevel` | Cohort-statistical attributes (`DietTypeValue.xml`, `IncomeLevelValue.xml`, `InstructionLevelValue.xml`); not exercised. |
+| `occupancy_schedule` (via child Schedule with `parent_field="occupancy_schedule"`) | xlink to AbstractSchedule | `nrg3:occupancySchedule` | The presence-fraction profile that scales `number_of_occupants` over time. |
+
+---
+
+## 7. `nrg3:Energy` (resource)
+
+Attaches via the `nrg3:resource` substitution slot on **any** `core:AbstractCityObject` (XSD line 1366). Every Building, BuildingUnit, Zone, and Device hosts it. In per-building inputs, `Energy` resources usually hang off a Device (the demand or production *of* that device); in city-pipeline inputs they hang off a BuildingUnit (the EP-online metrics *for* that VBO).
+
+**`end_use` is required, even for production-side resources.** EnergyADE 3.0 makes both `type` and `endUse` mandatory on `EnergyType` (XSD lines 2137-2138), but the `EnergyEndUseValue.xml` codelist only enumerates *consumption* end-uses (`spaceHeating`, `domesticHotWater`, `lighting`, `electricalAppliances`, `mobility`, `otherOrCombination`, etc.). For an `operation_type=produces` resource (e.g. PV electricity injected into the grid + appliance load), there is no clean codelist member for "fed back to the grid + serves whatever consumer". The canonical input picks `electricalAppliances` for the PV production, which overstates the routing; `otherOrCombination` is closer to honest. **This is a codelist gap in the schema, not a pipeline gap**: a future `EnergyADE` revision could add a production-oriented end-use member (`gridInjection`, `selfConsumption`, etc.) or drop the `endUse` requirement on `produces`-typed resources. Worth flagging when consumers query "where does this energy go?" against produced flows.
+
+**`amount` is optional; the time-series can carry the data alone.** The canonical input's PV `Energy` omits `amount` entirely and only emits `time_dependent_amount` (a 42-month MonthlyTimeSeries). Schema-valid (`amount` is `minOccurs=0`), but downstream tooling that expects a scalar annual figure has to sum the values list itself.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `@gml:id` | |
+| `name`, `description`, `creation_date` | as above | `gml:name`, `gml:description`, `core:creationDate` | |
+| `operation_type` | CodeType | `nrg3:operationType` | `ResourceOperationTypeValue.xml` (`demands`, `produces`). |
+| `reference_period` | CodeType | `nrg3:referencePeriod` | `ReferencePeriodValue.xml` (`year`, `month`, `day`). |
+| `amount` | Measure | `nrg3:amount` | The carrier of the value. uom must match the `reference_period`: `kWh/m2/a` or `MWh/a` for annual, `kWh` for monthly time-series amounts, etc. |
+| `year` | int | `nrg3:year` | The year the figure refers to. |
+| `is_amount_normalized` | bool | `nrg3:isAmountNormalized` | `true` when `amount`'s uom encodes a per-area (or per-volume / per-occupant) intensity; `false` for absolute totals. |
+| `normalization_value` | Measure | `nrg3:normalizationValue` | Optional; the normaliser (e.g. the building's net floor area). Omitted when the uom string already encodes the basis (city-pipeline NTA 8800 emissions do this; § 6.3 in `mapping_city.md` documents the rationale). |
+| `normalization_parameter` | str | `nrg3:normalizationParameter` | E.g. `"netFloorArea"`. |
+| `type_value` | CodeType | `nrg3:type` | `EnergyTypeValue.xml`: `net`, `primary`, `final`. |
+| `end_use` | CodeType | `nrg3:endUse` | `EnergyEndUseValue.xml`: `spaceHeating`, `spaceCooling`, `domesticHotWater`, `lighting`, `electricalAppliances`, `mobility`, `otherOrCombination`. |
+| `energy_carrier` | CodeType | `nrg3:energyCarrier` | `EnergyCarrierValue.xml`: `electricity`, `naturalGas`, `districtHeat`, `solarThermal`, etc. |
+| `source` | CodeType | `nrg3:source` | `EnergySourceValue.xml`: `powerGrid`, `photovoltaicPanels`, `boiler`, etc. |
+| `maximum_load` | Measure | `nrg3:maximumLoad` | uom `kW`. Peak demand. |
+| `co2_equivalent` | Measure | `nrg3:co2Equivalent` | Inherited from `AbstractResource` (XSD line 646). uom `kg/a` or `kg/m2/a` per the regime. |
+| `time_dependent_amount` (via child TimeSeries with `parent_field="time_dependent_amount"`) | xlink to TimeSeries | `nrg3:timeDependentAmount` | See [§ 8](#8-time-series). |
+
+---
+
+## 8. Time series
+
+Parents to an Energy resource (or any other AbstractResource subclass, or to a `nrg3:TimeSeriesSchedule`) via `parent_field="time_dependent_amount"`. Carries the periodic profile that backs the Energy's scalar `amount`.
+
+EnergyADE 3.0 beta 8 defines six concrete TimeSeries classes (plus six `*File` companions for out-of-line CSV / netCDF backed series); there is **no** `DailyTimeSeries`. Daily resolution is expressed as a `RegularTimeSeries` with `timeInterval = P1D`.
+
+| Class | When to use | Distinguishing fields |
+|---|---|---|
+| `nrg3:RegularTimeSeries` | Fixed sampling interval, arbitrary start / end timestamps. | `start_timestamp`, `end_timestamp`, `time_interval` (gml:TimeIntervalLengthType, e.g. `P1D` for daily, `PT1H` for hourly), `values_list`. |
+| `nrg3:MonthlyTimeSeries` (canonical input) | Calendar-month sampling, dates rather than timestamps. | `start_date`, `end_date`, `values_list`. |
+| `nrg3:IrregularTimeSeries` | Variable spacing between samples. | `uom`, `contains` (≥ 1 `TimestampedValue`, each carrying its own `time` and `value`). |
+| `nrg3:TypicalValuesRegularTimeSeries` | Repeating typical-day / typical-week pattern at regular intervals. | `start_time` / `start_day` / `start_month` (optional), `temporal_extent`, `time_interval`, `values_list`. |
+| `nrg3:TypicalValuesMonthlyTimeSeries` | 12 typical-month values (one per month). | `start_month` (optional), `temporal_extent`, `values_list`. |
+| `nrg3:TypicalValuesIrregularTimeSeries` | Repeating typical-day pattern at irregular intervals. | `uom`, `contains` (≥ 1 `GenericTimeValue`, each carrying its own time-of-day / day-of-month / month and `value`). |
+
+Fields below describe the canonical input's `MonthlyTimeSeries` shape; the other subclasses substitute their own start / end / cadence slots per the table above.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `@gml:id` | |
+| `description` | str | `gml:description` | |
+| `interpolation_type` | str | `nrg3:interpolationType` | Inherited from `AbstractTimeSeries`; e.g. `averageInSucceedingInterval` (the 13 enumeration values are listed in the XSD `InterpolationTypeValueType` simpleType, line 81). |
+| `start_date`, `end_date` | date | `nrg3:startDate`, `nrg3:endDate` | Required on MonthlyTimeSeries. |
+| `values_list` | `{value: list[float], uom: str}` | `nrg3:valuesList` | One value per period; the period count must match `(end_date - start_date) / period`. The 42-monthly-value example in the canonical input covers Jan 2022 → Jul 2025. |
+
+---
+
+## 9. Material and construction libraries
+
+Both libraries are JSON-authored top-level features (`parent` is absent). They hold the reusable `LayeredConstruction` and `Material` definitions; the actual surface-to-construction wiring happens via the top-level `construction_mapping` block ([§ 11](#11-construction_mapping-surface-to-construction-wiring)).
+
+### 9.1. `nrg3:MaterialLibrary`
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `@gml:id` | |
+| `name`, `description`, `type_value` | as above | inherited | `type_value` typically `materialLibrary`. |
+| `library_member` | list[`{solid_material}` or `{gas}`] | `nrg3:libraryMember[]` | Each member wraps one `SolidMaterial` or `Gas`. |
+
+#### 9.1.1. `nrg3:SolidMaterial`
+
+Authored as `{"solid_material": {...}}` inside `library_member`.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `@gml:id` | The id used by Layer xlinks (`{"href": "#mat_*"}`). |
+| `name`, `description`, `type_value` | as above | inherited | |
+| `is_transparent` | bool | `nrg3:isTransparent` | True for glass; constrains the layer's role in opaque vs transparent assemblies. |
+| `thermal_conductivity` | Measure | `nrg3:thermalConductivity` | uom `W/K*m`. |
+| `density` | Measure | `nrg3:density` | uom `kg/m3`. |
+| `specific_heat_capacity` | Measure | `nrg3:specificHeatCapacity` | uom `J/K*kg`. |
+
+`density` and `specific_heat_capacity` together drive the per-surface heat-capacity computation in [`boundary_attributes.py`](../citygml_energy/boundary_attributes.py): a layer that omits either is excluded from the heat-capacity sum but **not** from the thickness sum (so a Gas pane in a window assembly contributes to total wall thickness without contributing to thermal mass; [§ 12](#12-boundary_attributes-per-surface-descriptors)).
+
+#### 9.1.2. `nrg3:Gas`
+
+Authored as `{"gas": {...}}` inside `library_member`.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id`, `name`, `description`, `type_value` | as above | inherited | |
+| `is_ventilated` | bool | `nrg3:isVentilated` | |
+| `r_value` | Measure | `nrg3:rValue` | uom `K*m2/W`. Insulating cavities pre-computed instead of derived from k / d / cp. |
+
+### 9.2. `nrg3:LayeredConstructionLibrary`
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `@gml:id` | |
+| `name`, `description`, `type_value` | as above | inherited | |
+| `library_member` | list[`{layered_construction}`] | `nrg3:libraryMember[]` | One construction per member. |
+
+#### 9.2.1. `nrg3:LayeredConstruction1` (the construction itself)
+
+Authored as `{"layered_construction": {...}}` inside `library_member`. The `1` suffix on the binding class is xsdata's de-collision suffix; XSD-wise this is `nrg3:LayeredConstruction`.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `@gml:id` | The id referenced by `construction_mapping.by_type` / `by_id` and resolved to xlink:href on each surface. |
+| `name`, `description`, `type_value` | as above | inherited | |
+| `u_value` | Measure | `nrg3:uValue` | uom `W/K*m2`. The pre-computed conductance through the assembly. |
+| `g_value` | Measure | `nrg3:gValue` | uom `scale`. Solar heat-gain coefficient (windows only). |
+| `glazing_ratio` | Measure | `nrg3:glazingRatio` | uom `scale`. The glazed fraction of a window assembly's frame-plus-pane area. |
+| `layer` | list[`{layer}`] | `nrg3:layer[]` | The ordered layer stack; first entry = inner face, last entry = outer face. |
+
+#### 9.2.2. `nrg3:Layer` (one layer in the construction)
+
+Authored as `{"layer": {...}}` inside the construction's `layer` list.
+
+| JSON field | Type | GML target | Notes |
+|---|---|---|---|
+| `id` | str | `@gml:id` | |
+| `description` | str | `gml:description` | |
+| `thickness` | Measure | `nrg3:thickness` | uom `m`. |
+| `material` | `{href: "#mat_*"}` | xlink to a SolidMaterial / Gas in the MaterialLibrary | Validated by [`input_loader._validate_construction_mapping`](../citygml_energy/input_loader.py): every xlink target must exist as a library member. |
+
+---
+
+## 10. `installed_on`: device-to-surface relations
+
+A device feature can declare a list of author-facing surface refs in `installed_on`, e.g.:
+
+```json
+{
+  "type": "nrg3:PhotovoltaicCollector",
+  "id": "pv_panel_1",
+  "installed_on": ["RoofSurface_01", "RoofSurface_02"],
+  ...
+}
+```
+
+Resolved post-build by [`device_relations.apply_device_relations`](../citygml_energy/device_relations.py). For each ref, the resolver:
+
+1. Looks up `model.surface_name_index[ref]` (populated during STEP import, keyed by STEP layer name like `"RoofSurface_01"`).
+2. Falls back to the gml:id-keyed feature index if the layer-name lookup misses.
+3. Emits one `nrg3:CityObjectRelation` per ref, with `relationType=CodeType(value="installedOn", code_space=CS_NRG3_RELATION_TYPE)` and the resolved gml:id as the related object.
+
+Unresolved refs raise `ValueError`: silent no-op would let JSON typos slip through as missing relations that nobody notices until a downstream consumer complains. Devices that lack a `related_to` field (i.e. the XSD does not allow ADE relations on that type) raise loudly too.
+
+The emitted GML is xlink-only; no geometry is duplicated. The resolved `xlink:href` is the auto-assigned `gml:id` from STEP import (which encodes the bindings class name, including xsdata's de-collision suffix, plus a per-type counter — e.g. `id_building_1_RoofSurface2_7`), not the author-facing STEP layer name:
+
+```xml
+<nrg3:relatedTo>
+  <nrg3:CityObjectRelation>
+    <nrg3:relationType codeSpace=".../RelationTypeValue.xml">installedOn</nrg3:relationType>
+    <nrg3:relatedTo xlink:type="simple" xlink:href="#id_building_1_RoofSurface2_7"/>
+  </nrg3:CityObjectRelation>
+</nrg3:relatedTo>
+```
+
+---
+
+## 11. `construction_mapping`: surface-to-construction wiring
+
+The top-level `construction_mapping` block declares which surfaces / openings carry which `LayeredConstruction`. Two routing strategies are tried in order:
+
+```json
+"construction_mapping": {
+  "by_type": {
+    "WallSurface": "constr_external_wall",
+    "GroundSurface": "constr_ground_floor",
+    "RoofSurface": "constr_reed_roof",
+    "Window": "constr_window_hr",
+    "Door": "constr_back_door"
+  },
+  "by_id": {
+    "id_building_1_Door2_1": "constr_front_door",
+    "id_building_1_Door2_2": "constr_front_door"
+  }
+}
+```
+
+Resolved post-build by [`construction_mapping.apply_construction_mapping`](../citygml_energy/construction_mapping.py). For every dataclass instance reachable from the model's GML root:
+
+1. If the instance has a `layered_construction` list field (per the bindings) AND the field's element type is the `nrg3:layeredConstruction` property-type wrapper, it becomes a candidate target.
+2. The construction id is resolved by:
+   - first trying `by_id[instance.gml_id]` (specific override),
+   - then falling back to `by_type[instance.xsd_element_name]` (e.g. `"WallSurface"`). The key is the **XSD element name** taken from the dataclass `Meta.name` (or the class name when `Meta.name` is absent; see [`construction_mapping._xsd_type_name`](../citygml_energy/construction_mapping.py)). xsdata's de-collision suffix (the `2` in `WallSurface2` / `Door2` etc.) is **not** part of the key: author against the schema element name (`WallSurface`, `Door`, `Window`, `RoofSurface`, `GroundSurface`, `ZoneWallSurface`, ...), never against the binding's class name.
+3. A `LayeredConstruction2` xlink:href wrapper is appended to the field's list:
+
+```xml
+<nrg3:layeredConstruction xlink:href="#constr_external_wall" xlink:type="simple"/>
+```
+
+**Binding-driven scope.** Every class with a `layered_construction: list[LayeredConstruction2PropertyType]` field in the bindings receives mapping coverage automatically (`bldg:WallSurface`, `bldg:GroundSurface`, `bldg:RoofSurface`, `bldg:Window`, `bldg:Door`, ZoneBoundary subclasses). Adding a new surface class to the bindings picks up matching mappings without code changes. The surface-class set is therefore controlled by the XSD, not by a hand-maintained taxonomy in `construction_mapping.py`.
+
+**Validation.** [`input_loader._validate_construction_mapping`](../citygml_energy/input_loader.py) checks at load time that every construction id referenced by `by_type` / `by_id` exists as a library member in some `LayeredConstructionLibrary` feature; an unmapped id raises before the build phase starts.
+
+---
+
+## 12. `boundary_attributes`: per-surface descriptors
+
+After geometry and construction mapping have run, [`boundary_attributes.attach_boundary_surface_attributes`](../citygml_energy/boundary_attributes.py) computes a fixed set of Energy ADE 3.0 `bdgBdrySurf*` and `bdgOpn*` attributes from the attached LoD MultiSurface and the resolved layered constructions. This is the per-building pipeline's main quantitative deliverable for surface-level thermal analysis.
+
+### 12.1. Per-surface attributes (BoundarySurface)
+
+Emitted on every `bldg:_BoundarySurface` (WallSurface / GroundSurface / RoofSurface / FloorSurface / OuterFloorSurface / OuterCeilingSurface / ClosureSurface) that carries an LoD MultiSurface.
+
+| Element | Computed from | uom | Skipped when |
+|---|---|---|---|
+| `nrg3:bdgBdrySurfTotalSurfaceArea` | exterior-ring area minus *true geometric holes* (interior rings that do not match any child opening's exterior ring; e.g. courtyards, tower intrusions). Interior rings punched into the parent wall to host a Window/Door opening are **not** subtracted: the total is the underlying face before openings are deducted. | `m2` | no LoD MultiSurface |
+| `nrg3:bdgBdrySurfOpaqueSurfaceArea` | `Total − Σ child_opening.bdgOpnArea`. Uses the opening's own MultiSurface area, not the parent's interior-ring area, so standalone-shell openings (LoD3+ without an interior ring on the parent) are handled correctly. | `m2` | no openings (the absence is the schema-honest signal that opaque area = total) |
+| `nrg3:bdgBdrySurfInclination` | angle between the outward normal and `+Z`: `0` for a flat roof, `90` for a vertical wall, `180` for a horizontal floor whose outward normal points down. Taken from the largest-area polygon in the surface's MultiSurface. | `deg` (range [0, 180]) | degenerate geometry (sub-µm edge scale) |
+| `nrg3:bdgBdrySurfAzimuth` | compass bearing of the outward normal's horizontal component (0° = N). | `deg` (range [0, 360)) | surface is effectively horizontal (azimuth geometrically undefined) |
+| `nrg3:bdgBdrySurfThickness` | Σ `Layer.thickness` over every layer of the LayeredConstruction the surface's `layeredConstruction` xlink points at. | `m` | no construction mapped, OR no layer has a thickness |
+| `nrg3:bdgBdrySurfHeatCapacity` | areal thermal mass: `Σᵢ thicknessᵢ · densityᵢ · cpᵢ / 1000` over every solid layer. Layers whose material lacks `density` or `specificHeatCapacity` (e.g. Gas argon panes) are excluded from the sum but **not** from `Thickness`. | `kJ/K*m2` | no solid layer carries both `density` AND `specificHeatCapacity` |
+
+### 12.2. Per-opening attributes (Window / Door)
+
+Same definitions as the boundary-surface analogues, computed from the opening's own `lod{0..4}MultiSurface`.
+
+| Element | Computed from | uom |
+|---|---|---|
+| `nrg3:bdgOpnArea` | sum of Polygon areas in the opening's MultiSurface | `m2` |
+| `nrg3:bdgOpnInclination` | angle between outward normal and `+Z` | `deg` |
+| `nrg3:bdgOpnAzimuth` | compass bearing of outward normal | `deg` (omitted when horizontal) |
+
+Openings deliberately do not get `Thickness` / `HeatCapacity` / `Opaque`: those are defined per assembly, not per opening face. The window's layered construction (`constr_window_hr` in the canonical input) carries the layered build-up; the per-surface attributes summarise it once at the wall level.
+
+### 12.3. uom + precision conventions
+
+Pinned to the existing project conventions ([`boundary_attributes.py`](../citygml_energy/boundary_attributes.py) `_UOM_*` and `_DEC_*` constants):
+
+| Quantity | uom | precision |
+|---|---|---|
+| Areas | `m2` | 3 dp |
+| Lengths | `m` | 3 dp |
+| Angles | `deg` (FZK UOMList altId; canonical id is `grad`) | 2 dp |
+| Heat capacity | `kJ/K*m2` | 3 dp |
+
+`kJ/K*m2` keeps numbers human-readable (a typical wall is 50–500 kJ/(K·m²)); J/(K·m²) would push to 5-6 digits. Coordinates entering this module were quantised to a micrometre grid in [`gml_builders.build_polygon`](../citygml_energy/gml_builders.py); precision past these would be spurious.
+
+### 12.4. Discovery mechanism
+
+Binding-driven: any dataclass that has a `bdg_bdry_surf_total_surface_area` *list* field is treated as a boundary-surface emit target; any class with a `bdg_opn_area` field is an opening target. Regenerating the bindings with new surface or opening classes therefore picks up matching emissions automatically.
+
+The function is a no-op for any surface or opening that has no LoD multisurface, an unrecognised construction xlink, or a degenerate (zero-area) polygon. It does not write placeholder values; an absent attribute on the output is the schema-honest signal that the value could not be derived from the inputs.
+
+### 12.5. Relationship to the city pipeline
+
+The city-builder uses an analogous geometry-only path ([`builders/building.py::_attach_planar_surface_ade_attributes`](../citygml_energy/city_builder/builders/building.py)) that fills `Total` / `Inclination` / `Azimuth` from 3DBAG LoD 2 polygons. That path **stops there**: the city pipeline has no source of layered constructions, so `Thickness` / `HeatCapacity` are deliberately absent. The per-building pipeline supersedes the city path for the additional thickness + heat-capacity computation; the two are not run together because a building authored in JSON does not also pass through the city builder.
+
+---
+
+## 13. Geometry sources
+
+JSON cannot author 3D geometry inline (the wire format would be unusable). Geometry comes from STEP files referenced under the `geometry_sources` list. The full registry lives in [`geometry.GEOMETRY_SOURCE_SPECS`](../citygml_energy/geometry.py); the table below covers what the canonical input exercises.
+
+| `type` | Target field | Output GML element | Notes |
+|---|---|---|---|
+| `step-building-lod0` | `target_building_id` | `bldg:lod0FootPrint` | Single MultiSurface (the footprint polygon). |
+| `step-building-lod1` | `target_building_id` | `bldg:lod1Solid` | Solid (assembled via `gml_builders.build_solid`). |
+| `step-building-lod2` | `target_building_id`, optional `target_pv_id` | thematic `bldg:boundedBy` (one BoundarySurface per STEP layer name); optionally `nrg3:lod2MultiSurface` on the PV collector if `target_pv_id` matches an authored PV feature. | **No `bldg:lod2Solid` is emitted** — only the per-face `boundedBy` children are. A consumer that wants the closed hull at LoD 2 must assemble it from the boundary surfaces. The STEP layer names (`WallSurface_01`, `RoofSurface_03`, etc.) drive both the BoundarySurface gml:id assignment and the `surface_name_index` that `installed_on` resolves against. |
+| `step-building-lod3` | `target_building_id`, optional `target_pv_id` | thematic `bldg:boundedBy` (with Window/Door openings punched into walls); optional `nrg3:lod3MultiSurface` on the PV collector. | **No `bldg:lod3Solid` is emitted.** The pipeline matches each Window/Door child to its parent wall by exterior-ring vertex equality (rounded to 0.1 mm) and emits an interior ring on the wall plus the opening as a `bldg:Opening`. |
+| `step-zonepart-lod0` | `target_zone_part_id` | `nrg3:lod0MultiSurface` | Aggregate footprint of the zone part. No per-face surfaces. |
+| `step-zonepart-lod1` | `target_zone_part_id` | `nrg3:lod1Solid` | Aggregate hull. No per-face surfaces. |
+| `step-zonepart-lod{2,3}` | `target_zone_part_id` | `nrg3:lod{2,3}Solid` (aggregate hull) **plus** `nrg3:zoneBoundary` children (one `nrg3:Zone…Surface` per STEP layer name; openings punched into walls as `bldg:Window` / `bldg:Door`). | The classifier maps building-style STEP layer names to their `nrg3:Zone…Surface` equivalents: `WallSurface_*` → `ZoneWallSurface`, `GroundSurface_*` → `ZoneGroundSurface`, `RoofSurface_*` → `ZoneRoofSurface`, `CeilingSurface_*` → `ZoneOuterCeilingSurface`, `FloorSurface_*` → `ZoneOuterFloorSurface`, `IntermediateFloorSurface_*` → `ZoneIntermediateFloorSurface`. Openings (`Window_*`, `Door_*`) attach to their STEP `\|parent=…` wall as `bldg:opening` children of the matched ZoneWallSurface. The aggregate Solid is still emitted for viewers that want a closed hull; the per-face children carry the `bdgBdrySurf*` thermal-envelope attributes for analysis consumers. |
+
+Any STEP layer name encountered is registered in `model.surface_name_index[layer_name] = surface.gml_id`; this is what makes `installed_on: ["RoofSurface_01"]` work. Author-facing layer names are not duplicated into the GML (the `gml:id` is what gets written); the index only exists in memory for the duration of the build.
+
+### 13.1. Per-LoD distinct BoundarySurfaces (and the modelling-rules question)
+
+The canonical input drives both `step-building-lod2` and `step-building-lod3` against the same `target_building_id`. The pipeline emits **one `bldg:_BoundarySurface` per (physical face, LoD)**: the LoD 2 STEP shells produce one `bldg:WallSurface` / `bldg:GroundSurface` / `bldg:RoofSurface` per polygon with a `bldg:lod2MultiSurface`, and the LoD 3 STEP shells produce a separate set of thematic surfaces with `bldg:lod3MultiSurface` (and Window / Door openings). Each set has independent gml:ids.
+
+**This is intentional**, not a duplication bug: the LoD 2 hull and the LoD 3 hull are not the same surfaces. LoD 3 splits a single LoD 2 façade into multiple smaller faces (a wall around windows + door, a chimney face, a dormer cheek), so the count of thematic surfaces *and* their per-face areas / azimuths legitimately differ between LoDs. Collapsing them into one BoundarySurface with both `lod2MultiSurface` and `lod3MultiSurface` populated would force the document to assert that the LoD 2 face and the LoD 3 face represent the same thematic surface, which is false when LoD 3 subdivides.
+
+CityGML 2.0 itself permits both shapes: one BoundarySurface carrying multiple LoD MultiSurfaces, **or** distinct BoundarySurfaces per LoD. Both are XSD-valid. The choice is a project-level modelling rule, not something the schema settles. Consequences for downstream consumers:
+
+- **Per-building totals**: a sum over `bdgBdrySurfTotalSurfaceArea` includes both LoD 2 and LoD 3 contributions and double-counts the underlying physical envelope. Filter by LoD before aggregating.
+- **`installed_on` resolution**: the `surface_name_index` is keyed by STEP layer name (e.g. `"RoofSurface_01"`). When the same layer name appears in both the LoD 2 and the LoD 3 STEP, the LoD 3 entry overwrites the LoD 2 entry (last write wins); device-to-surface xlinks therefore resolve to the LoD 3 face, which is usually the right answer for thermal-envelope analysis but worth knowing.
+- **Per-face thermal attributes**: `bdgBdrySurfThickness` / `bdgBdrySurfHeatCapacity` are construction-driven and identical across LoDs (same `constr_external_wall` xlink). `bdgBdrySurfTotalSurfaceArea` differs: LoD 2 is the simpler hull, LoD 3 has the openings deducted via the opaque-area mechanism ([§ 12.1](#121-per-surface-attributes-boundarysurface)).
+
+**Modelling rules will need to be written** to make these choices explicit for downstream users (which LoD's surfaces to consume for energy analysis, how to dedupe in totals, when collapsing into one BoundarySurface is appropriate vs when keeping LoDs distinct preserves a real semantic distinction). That is out of scope for this mapping doc; the point here is just to flag that "one BoundarySurface per (face, LoD)" is a *deliberate* shape, not an accident.
+
+---
+
+## 14. Cross-pipeline comparison
+
+| Aspect | Per-building pipeline | City pipeline |
+|---|---|---|
+| **Input source** | Hand-authored JSON feature dicts + STEP geometry files | Config file naming a Dutch municipality; fetches BAG + 3DBAG + EP-online + PV + CFTree + BGT + (optional) BOR |
+| **Layered constructions** | Full support: MaterialLibrary + LayeredConstructionLibrary authored in JSON; layer thickness, thermal conductivity, density, specific heat capacity all explicit; per-surface mapping via `construction_mapping`. | None: city pipeline has no source for layered constructions; only EP-online label + per-VBO Energy resources. |
+| **Devices (Boiler / HeatPump / PV / EVChargingStation / SolarThermal)** | Fully modelled: separate JSON features per device, wired with `installed_on` surface refs, Energy resources and device-specific parameters. | Partial: PV panels only (from optional UoG GeoPackage); heat sources inferred from EP-online label, not modelled as Device objects. |
+| **Thermal zones and zone parts** | Full: `Zone` → `ZonePart` hierarchy, LoD3 boundary surfaces from STEP, heating/cooling schedules, occupant loads on zone parts. | None: city pipeline does not author Zones at all. |
+| **Boundary surface attributes** | Six per-surface attributes computed (`Total` / `Opaque` / `Inclination` / `Azimuth` / `Thickness` / `HeatCapacity`) plus three per-opening (`Area` / `Inclination` / `Azimuth`). | Three per-surface attributes (`Total` / `Inclination` / `Azimuth`); no opaque-area or thickness/heat-capacity (no source). |
+| **Energy resources** | Devices carry Energy for demand / production; BuildingUnit can carry occupant heat; user-authored per device + per building. | BuildingUnit carries EP-online energy flows (regime-aware: kWh/(m²·yr) for NTA 8800, MJ/yr for legacy). See `mapping_city.md` § 6. |
+| **EP-online integration** | Possible but manual: EPC values can be authored directly under each BuildingUnit in JSON. | Automatic: 20 of 42 EP-online columns mapped, regime-aware emission, multi-VBO canonical-pick logic. |
+| **Geometry LoD levels** | Up to LoD 3 for buildings (step-building-lod0/1/2/3) + LoD3 for zone parts. Hand-modelled STEP files; quality is whatever the STEP author achieved. | LoD 0 / 1.2 / 2.2 from 3DBAG. No hand-modelled geometry; all procedural. |
+| **Appearance** | Author-controlled via JSON (per-feature `app:Appearance` xlinks via the schema-agnostic dict-to-dataclass coercer). | Three pipeline-controlled themes: `energyLabel` (per-Building EU palette colour from EPC letter), `pvPanels` (constant deep blue), `vegetation` (constant foliage green). |
+| **Address (`core:Address`)** | Optional; authored manually if at all. | Always populated from BAG VBO with full Dutch xAL structure. |
+
+The two pipelines are complementary: per-building authors a single, deeply-modelled building; city builds a large stock of shallowly-modelled buildings. Output GMLs from both pipelines validate against the same XSDs and can be merged downstream.
+
+---
+
+## 15. Schema gap analysis (per-building specific)
+
+This section catalogues gaps that affect the per-building pipeline specifically. The city pipeline has its own gap analysis in [`mapping_city.md` Appendix E](mapping_city.md#appendix-e--schema-gap-analysis-thesis-relevant); the gaps below are additive.
+
+1. **No native slot for inter-surface view factors.** Energy ADE 3.0's `BoundarySurface` has slots for `bdgBdrySurfTotalSurfaceArea`, `bdgBdrySurfOpaqueSurfaceArea`, `bdgBdrySurfThickness`, `bdgBdrySurfHeatCapacity`, `bdgBdrySurfInclination`, `bdgBdrySurfAzimuth`, `bdgBdrySurfIsShared`, `bdgBdrySurfAdditionalThermalBridgeUValue`, **plus** `bdgBdrySurfGroundViewFactor` and `bdgBdrySurfSkyViewFactor` (with `bdgOpnGroundViewFactor` / `bdgOpnSkyViewFactor` siblings on the opening side, XSD lines 2052-2098). What is **missing** is a per-surface-pair view factor: the geometric visibility coefficient between two specific surfaces inside the model, used in long-wave radiative coupling and detailed daylighting. The sky / ground pair captures the dominant terms for a typical residential thermal model; an inter-surface coupling matrix would need a new association type. Workaround: emit as `gen:doubleAttribute name="viewFactor_<otherSurfaceId>"` per pair; a future Energy ADE revision could add a `BoundarySurface/surfacePairViewFactor` association keyed by xlink to the partner.
+
+2. **`nrg3:Layer` has no `r_value` slot for solid materials.** Gas materials carry `r_value` (XSD line 2887) directly, but solid materials must be characterised via `thermal_conductivity` + `density` + `specific_heat_capacity` and have their R-value derived. For older renovation work where the thermal properties of an existing wall are *measured* (in situ R-value via heat-flux meters) but the layer composition is unknown, the model has to pretend the wall is one homogeneous layer with synthetic conductivity / density. Workaround: write the synthetic material plus a `gen:stringAttribute` describing the in-situ measurement provenance. A future EnergyADE revision adding `nrg3:SolidMaterial.rValue` would let the value land natively.
+
+3. **`construction_mapping` is global across all surfaces of a Pand**, not per-storey or per-orientation. A building with different external-wall constructions on the ground floor vs upper floors must encode each individually via `by_id`; there is no regex or multi-criteria matching. This is a tooling limitation rather than a schema gap, and acceptable because per-floor constructions are rare in residential renovation work; commercial or mixed-use buildings would need either richer mapping syntax or pre-resolved per-id entries.
+
+4. **No native slot for renovation-scenario branches.** A Building Renovation Passport stores both the *current* state of the building and one or more *proposed* renovation states (different insulation thicknesses, different heating systems, etc.). Energy ADE 3.0 has no concept of a scenario branch; the only schema-permissible way to encode "what would the heat capacity be if the wall were re-insulated to 200mm mineral wool" is to author multiple `LayeredConstruction` library entries and switch the `construction_mapping` between them by hand. A future Energy ADE revision adding a `Scenario` feature class (with a `description`, `validFrom`, and a list of `LayeredConstructionLibrary` / `Device` overrides) would let the BRP question land natively. **This is the most thesis-relevant gap** because BRPs are the primary use case the per-building pipeline is being tested against.
+
+5. **`nrg3:Layer.material` xlink can only point at a SolidMaterial or Gas, not a composite.** Modern building envelopes increasingly use *engineered* assemblies that are themselves layered (e.g. an insulation panel with integrated vapour barrier and finish layer) but treated as a single product line. The schema models them as the inner layered build-up, which means a manufacturer's product catalog cannot be one-to-one mapped onto a single `Material` entry. Workaround: expand the engineered assembly into its constituent layers in the JSON; the loss of "this is one product" framing is currently absorbed by the `description` field on the construction.
+
+6. **No native slot for installation date on the BoundarySurface.** A wall built in 1955 and re-insulated in 2018 has two relevant dates (the structural age and the thermal-envelope age). `core:creationDate` records when the *dataset record* was created, not when the structure was built; `bldg:yearOfConstruction` is on the Building level. A renovation passport that needs per-surface ages must author them as `gen:dateAttribute name="thermalEnvelopeRenovationDate"`. A future revision could add `nrg3:bdgBdrySurfInstallationDate` (or, more general, `BoundarySurface/lifecycle` with sub-dates per layer).
+
+7. **No native slot for layer-level material variants.** A `Layer` can xlink to one Material, but cannot easily encode "this layer is mineral wool + 2% binder" or "this layer is reclaimed timber sourced from..." style provenance / sustainability data. The Material itself could carry such metadata in its `description`, but the granularity is coarser than `Layer`. Workaround: extend the description; future LCA-driven extensions to Energy ADE would benefit from per-layer provenance.
+
+The first four gaps are the most thesis-relevant: they directly limit the BRP-storage capacity of the schema. The last three are research-grade (view factors, in-situ measurements, lifecycle dating) and would benefit any thermal-comfort / LCA work that builds on top of EnergyADE 3.0.
+
+---
+
+## Code reference legend
+
+The `Implementation` columns reference Python identifiers in the modules linked at the top of each section. `mapping_building.md`, like its city counterpart, is parsed by [`tests/test_mapping_index_in_sync.py`](../tests/test_mapping_index_in_sync.py) so that renaming a referenced symbol fails the test until the doc is updated.
+
+---
+
+## Appendix A: Required JSON fields per feature class
+
+This is the catalogue of fields the XSD makes mandatory (no `minOccurs="0"`) per class, so an author writing a new feature can budget the minimum payload up front instead of discovering omissions through build-time errors. All fields beyond `id` (which is mandatory on every gml-rooted feature via `gml:id`) come from the per-class XSD complexType or its inherited bases. Fields marked **(REQUIRED via inherited type)** sit on an abstract ancestor.
+
+| JSON `type` | Required JSON fields (besides `id`) |
+|---|---|
+| `bldg:Building` | (none on bldg:BuildingType: every native slot is `minOccurs="0"`) |
+| `nrg3:BuildingUnit` | `type_value` |
+| `nrg3:Zone` | `type_value` |
+| `nrg3:ZonePart` | `type_value` |
+| `nrg3:ConstantValueSchedule` | `type_value` (REQUIRED via inherited `AbstractScheduleType`), `value` |
+| `nrg3:PhotovoltaicCollector` | `cell_type` |
+| `nrg3:SolarThermalCollector` | `type_value` |
+| `nrg3:HeatPump` | `heat_source` |
+| `nrg3:Boiler` | `has_condensation` |
+| `nrg3:EVChargingStation` | `type_value` |
+| `nrg3:ThermalDistribution` | (none) |
+| `nrg3:ThermalStorageDevice` | (none) |
+| `nrg3:GenericElectricalDevice` | (none: `AbstractDevice` itself adds none) |
+| `nrg3:Occupants` | `type_value` |
+| `nrg3:Energy` | `operation_type` and `is_amount_normalized` (REQUIRED via inherited `AbstractResourceType`); `type_value` and `end_use` (own type) |
+| `nrg3:MonthlyTimeSeries` | `start_date`, `end_date`, `values_list` |
+| `nrg3:RegularTimeSeries` | `start_timestamp`, `end_timestamp`, `time_interval`, `values_list` |
+| `nrg3:MaterialLibrary` | at least one `library_member` |
+| `nrg3:LayeredConstructionLibrary` | at least one `library_member` |
+| `nrg3:LayeredConstruction1` (inside library) | `type_value` |
+| `nrg3:SolidMaterial` | `type_value`, `is_transparent` |
+| `nrg3:Gas` | `type_value` |
+| `nrg3:Layer` | `thickness`, `material` |
+| `QualifiedArea` / `QualifiedHeight` / `QualifiedVolume` (data type used inside `bdg_area` / `bdg_height` / `bdg_volume` / `area`) | `value`, `type_value` |
+
+`nrg3:Metadata` itself has no required subfields; every `author` / `acquisition_method` / `owner` / `quality_description` / `source` field is `minOccurs="0"`. The library's outer `nrg3:MaterialLibrary` and `nrg3:LayeredConstructionLibrary` require ≥ 1 `library_member` (the XSD models the wrapper as `minOccurs="1" maxOccurs="unbounded"`); the canonical input always populates one.
+
+**Cross-checking required fields against `gml:CodeType`-typed slots.** Most "required" entries above are `gml:CodeType`. The XSD's `CodeType` is open: any string is schema-accepted as long as the codeSpace identifies the vocabulary. In practice that means a missing required CodeType raises at build time (no value to write), but a *misspelled* value silently passes XSD validation; consumers are expected to validate against the codespace at consume time. The pipeline does not enforce codelist membership.
