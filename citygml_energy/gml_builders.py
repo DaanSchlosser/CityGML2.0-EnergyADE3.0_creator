@@ -20,7 +20,7 @@ those are pure 3D-math utilities that deserve focused unit tests.
 from __future__ import annotations
 
 from itertools import chain
-from math import inf
+from math import acos, atan2, degrees, inf, sqrt
 
 from ._step import Coord3D, GeometryPolygon, points_close
 from .bindings import (
@@ -56,7 +56,21 @@ __all__ = [
     "newell_normal",
     "open_ring",
     "orient_solid_polygons",
+    "planar_surface_attributes",
 ]
+
+
+# Below this magnitude the Newell normal is too small to derive a stable
+# orientation from. 1e-9 (m^2) corresponds to a polygon with sub-µm edge
+# scale; anything smaller is degenerate and the caller should drop or
+# warn rather than emit a meaningless azimuth.
+_DEGENERATE_AREA_EPS: float = 1e-9
+# When the unit normal's horizontal component is below this, the surface
+# is effectively horizontal and azimuth is geometrically undefined. The
+# threshold is intentionally generous (≈ 0.06° from vertical Z) so a
+# numerical wobble around a flat roof does not produce a high-variance
+# random bearing.
+_HORIZONTAL_NORMAL_EPS: float = 1e-6
 
 
 # Coordinates originate from lidar / photogrammetry at cm-accuracy at best.
@@ -346,6 +360,87 @@ def newell_normal(vertices: list[Coord3D]) -> Coord3D:
         ny += (curr[2] - nxt[2]) * (curr[0] + nxt[0])
         nz += (curr[0] - nxt[0]) * (curr[1] + nxt[1])
     return (nx, ny, nz)
+
+
+def planar_surface_attributes(
+    polygon_geometry: GeometryPolygon,
+) -> tuple[float, float | None, float] | None:
+    """Return ``(area_m2, azimuth_deg | None, inclination_deg)`` for *polygon_geometry*.
+
+    Pure 3D geometry. The returned values are exactly what the
+    Energy ADE 3.0 ``bdgBdrySurfTotalSurfaceArea``,
+    ``bdgBdrySurfAzimuth``, and ``bdgBdrySurfInclination`` elements
+    encode for a planar boundary surface; the schema mapping itself
+    lives at the call site (the city-builder building module). This
+    function is namespace-free so it stays usable for any future caller
+    that needs the same per-surface descriptors (per-building input
+    LoD 3, vegetation surfaces, …).
+
+    The exterior ring's Newell normal is used as the surface's outward
+    normal, **without flipping**. This relies on the CityJSON / 3DBAG
+    convention that exterior rings wind counter-clockwise viewed from
+    outside the solid, so the Newell normal already points outward
+    (down for a GroundSurface, horizontally for a WallSurface, up for a
+    RoofSurface). Inverting based on a centroid heuristic — as
+    :func:`orient_solid_polygons` does for solid assembly — would
+    flatten the up/down distinction this function exists to expose.
+
+    *area_m2* is ``|N(exterior)| / 2`` minus ``|N(hole_i)| / 2`` for
+    every interior ring, matching the GML 3.1.1 polygon-with-holes
+    area definition. Holes must be co-planar with the exterior (a GML
+    requirement); this function does not re-validate that.
+
+    *inclination_deg* is the angle between the outward normal and the
+    +Z axis, in ``[0, 180]``: ``0`` for a flat roof, ``90`` for a
+    vertical wall, ``180`` for a horizontal floor / ground slab whose
+    outward normal points down.
+
+    *azimuth_deg* is the compass bearing (``0`` = N, ``90`` = E,
+    clockwise from north) of the outward normal's horizontal
+    component, in ``[0, 360)``. Returned as ``None`` when the surface
+    is effectively horizontal: azimuth is geometrically undefined
+    there and the corresponding GML element should simply be omitted.
+
+    Returns ``None`` for a degenerate (collinear / zero-area) polygon
+    so the caller can drop the surface attribute attachment without
+    emitting a divide-by-zero NaN.
+    """
+    nx, ny, nz = newell_normal(polygon_geometry.exterior)
+    mag = sqrt(nx * nx + ny * ny + nz * nz)
+    if mag < _DEGENERATE_AREA_EPS:
+        return None
+
+    area_exterior = mag / 2.0
+    area_holes = 0.0
+    for ring in polygon_geometry.interiors:
+        hx, hy, hz = newell_normal(ring)
+        area_holes += sqrt(hx * hx + hy * hy + hz * hz) / 2.0
+    area_m2 = area_exterior - area_holes
+    if area_m2 < 0.0:
+        # A hole larger than the exterior would invert the polygon's
+        # net area. GML 3.1.1 forbids that, so any such input is
+        # pathological; clamp to 0 rather than ship a negative area.
+        area_m2 = 0.0
+
+    n_z = nz / mag
+    if n_z > 1.0:
+        n_z = 1.0
+    elif n_z < -1.0:
+        n_z = -1.0
+    inclination_deg = degrees(acos(n_z))
+
+    n_x = nx / mag
+    n_y = ny / mag
+    horizontal2 = n_x * n_x + n_y * n_y
+    if horizontal2 < _HORIZONTAL_NORMAL_EPS:
+        azimuth_deg: float | None = None
+    else:
+        # ``atan2(n_x, n_y)`` gives the clockwise angle from +Y (north)
+        # by construction, which is exactly the compass bearing convention
+        # the existing PV pipeline uses (see ``pv_panels._azimuth_from_normal``).
+        azimuth_deg = (degrees(atan2(n_x, n_y)) + 360.0) % 360.0
+
+    return area_m2, azimuth_deg, inclination_deg
 
 
 def mean_point(points: list[Coord3D]) -> Coord3D:

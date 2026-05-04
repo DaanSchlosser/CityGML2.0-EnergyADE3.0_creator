@@ -21,6 +21,7 @@ from citygml_energy.gml_builders import (
     newell_normal,
     open_ring,
     orient_solid_polygons,
+    planar_surface_attributes,
 )
 
 _SRS = "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109"
@@ -133,6 +134,118 @@ def test_orient_solid_polygons_flips_inward_facing_faces() -> None:
         )
         dot = normal[0] * outward[0] + normal[1] * outward[1] + normal[2] * outward[2]
         assert dot > 0, f"face with exterior {polygon.exterior} still points inward"
+
+
+# ---------------------------------------------------------------------------
+# planar_surface_attributes
+# ---------------------------------------------------------------------------
+
+
+def _quad(verts: list[tuple[float, float, float]]) -> GeometryPolygon:
+    return GeometryPolygon(exterior=verts)
+
+
+def test_planar_attributes_flat_horizontal_roof_has_zero_inclination_and_no_azimuth() -> None:
+    """A 1×1 m square at z=3, wound CCW viewed from above (3DBAG
+    convention for a flat RoofSurface) has its outward normal pointing
+    straight up: inclination 0°, azimuth undefined.
+    """
+    poly = _quad([(0.0, 0.0, 3.0), (1.0, 0.0, 3.0), (1.0, 1.0, 3.0), (0.0, 1.0, 3.0)])
+    area, azimuth, inclination = planar_surface_attributes(poly)
+    assert area == pytest.approx(1.0, abs=1e-9)
+    assert inclination == pytest.approx(0.0, abs=1e-9)
+    assert azimuth is None  # horizontal surface → omit nrg3:bdgBdrySurfAzimuth
+
+
+def test_planar_attributes_ground_surface_has_inclination_180_and_no_azimuth() -> None:
+    """3DBAG winds GroundSurface so the outward normal points DOWN.
+    Per the Energy ADE 3.0 / Alderaan-reference convention, the
+    inclination of an outward-down ground slab is 180°.
+    """
+    # Same square, reversed winding → Newell normal flips to (0, 0, -1).
+    poly = _quad([(0.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0), (1.0, 0.0, 0.0)])
+    area, azimuth, inclination = planar_surface_attributes(poly)
+    assert area == pytest.approx(1.0, abs=1e-9)
+    assert inclination == pytest.approx(180.0, abs=1e-9)
+    assert azimuth is None
+
+
+def test_planar_attributes_vertical_wall_has_inclination_90_and_compass_azimuth() -> None:
+    """A south-facing wall (outward normal in -Y direction): inclination
+    90° (vertical), azimuth 180° (compass-S).
+
+    The right-hand-rule winding for a normal pointing in -Y, viewed
+    from inside the building (i.e., from +Y looking toward -Y), goes
+    bottom-right → bottom-left → top-left → top-right. Equivalently:
+    bottom-left → bottom-right when traversed in the +X direction at
+    z=0, then up the +X edge.
+    """
+    # 1 m wide, 3 m tall wall on the y=0 plane facing -Y.
+    # Winding chosen so Newell(p) = (0, -3, 0) → outward = south.
+    poly = _quad([(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 3.0), (0.0, 0.0, 3.0)])
+    area, azimuth, inclination = planar_surface_attributes(poly)
+    assert area == pytest.approx(3.0, abs=1e-9)
+    assert inclination == pytest.approx(90.0, abs=1e-9)
+    assert azimuth is not None
+    assert azimuth == pytest.approx(180.0, abs=1e-9)
+
+
+def test_planar_attributes_45deg_south_facing_roof() -> None:
+    """A 1×√2 m square that rises from z=3 at y=0 to z=4 at y=1,
+    wound so the outward normal points up & -Y. dz/dy = +1 → 45° pitch
+    facing south.
+    """
+    poly = _quad([(0.0, 0.0, 3.0), (1.0, 0.0, 3.0), (1.0, 1.0, 4.0), (0.0, 1.0, 4.0)])
+    area, azimuth, inclination = planar_surface_attributes(poly)
+    # Sloped facet's true area: 1 m × √2 m = √2 m².
+    assert area == pytest.approx(2 ** 0.5, abs=1e-9)
+    assert inclination == pytest.approx(45.0, abs=1e-9)
+    assert azimuth is not None
+    assert azimuth == pytest.approx(180.0, abs=1e-9)
+
+
+def test_planar_attributes_subtracts_interior_ring_area() -> None:
+    """Polygon-with-hole: the hole's area must be deducted from
+    ``bdgBdrySurfTotalSurfaceArea`` per the GML 3.1.1 polygon-with-
+    holes area definition. Roofs with chimney/dormer cut-outs in
+    3DBAG LoD 2.2 hit this path (~0.8% of polygons in the AHN6
+    Emmer-Compascuum tile).
+    """
+    # 10×10 m flat roof with a 1×1 m hole in the middle. Holes wind
+    # opposite to the exterior; we pass the absolute Newell magnitude
+    # so the helper subtracts cleanly.
+    polygon = GeometryPolygon(
+        exterior=[(0.0, 0.0, 3.0), (10.0, 0.0, 3.0), (10.0, 10.0, 3.0), (0.0, 10.0, 3.0)],
+        interiors=[
+            [(4.0, 4.0, 3.0), (4.0, 5.0, 3.0), (5.0, 5.0, 3.0), (5.0, 4.0, 3.0)],
+        ],
+    )
+    area, _azimuth, _inclination = planar_surface_attributes(polygon)
+    assert area == pytest.approx(99.0, abs=1e-9)
+
+
+def test_planar_attributes_returns_none_for_collinear_ring() -> None:
+    """A ring whose vertices are colinear has zero Newell magnitude;
+    the helper must report degeneracy so the caller can skip emitting
+    bogus area / NaN angles.
+    """
+    poly = _quad([(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0), (3.0, 0.0, 0.0)])
+    assert planar_surface_attributes(poly) is None
+
+
+def test_planar_attributes_compass_bearings_match_pv_panel_convention() -> None:
+    """The new helper agrees with the PV panel's
+    :func:`citygml_energy.city_builder.pv_panels._azimuth_from_normal`
+    on the 0 = N, 90 = E compass convention. Spot-check a 45° west-
+    facing slope: ridge at the EAST (high), low side at the WEST,
+    outward normal up & west.
+    """
+    # Vertices wound so Newell normal = (-1, 0, 1) → up and west.
+    # Low side: x=0, z=3. High side: x=1, z=4.
+    poly = _quad([(0.0, 0.0, 3.0), (1.0, 0.0, 4.0), (1.0, 1.0, 4.0), (0.0, 1.0, 3.0)])
+    _area, azimuth, inclination = planar_surface_attributes(poly)
+    assert inclination == pytest.approx(45.0, abs=1e-9)
+    assert azimuth == pytest.approx(270.0, abs=1e-9)
 
 
 # ---------------------------------------------------------------------------

@@ -9,12 +9,15 @@ UOM tokens are pinned as constants so they match the KIT
 SDM_KITModelViewer ``Data/UOMList.xml`` ids exactly, the same convention
 used in :mod:`citygml_energy.city_builder.pv_panels`. Mismatched UOM
 strings render fine but the viewer's Properties panel then displays the
-raw token instead of a translated unit name. The two energy-domain
-tokens introduced for EP-online (``kWh/m2/a``, ``kg/m2/a``) live in
-:mod:`citygml_energy.city_builder.energy_resources` because that is the
-only call site for them; ``percent`` is shared between the renewable-
-share emission (BuildingUnit) and any future percentage attribute, so
-it lives here.
+raw token instead of a translated unit name. The energy-domain tokens
+introduced for EP-online (``kWh/m2/a``, ``kg/m2/a``, ``MJ/a``, ``kg/a``)
+live in :mod:`citygml_energy.city_builder.energy_resources` because that
+is where the regime semantics that motivate them are documented;
+``UOM_KWH_PER_M2_PER_A`` and ``UOM_MJ_PER_A`` are exported publicly
+from there because the EPC builder also reuses them on
+``EnergyPerformanceCertificate.value``. ``percent`` is shared between
+the renewable-share emission (BuildingUnit) and any future percentage
+attribute, so it lives here.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from ...mapping import get_fields
 
 __all__ = [
     "UOM_AREA_M2",
+    "UOM_DEGREES",
     "UOM_METRES",
     "UOM_PERCENT",
     "UOM_VOLUME_M3",
@@ -36,6 +40,11 @@ UOM_METRES: str = "m"  # METRE primary id
 UOM_AREA_M2: str = "m2"  # SQUARE_METRE primary id
 UOM_VOLUME_M3: str = "m3"  # CUBIC_METRE primary id
 UOM_PERCENT: str = "percent"  # PERCENTAGE primary id (NOT "%", which is a sign-glyph)
+# DEGREE altId in UOMList.xml (primary id is "grad"; "deg" is the more
+# common ASCII synonym and is what the viewer's Properties panel
+# accepts as input for filters. Both PV-collector orientations and the
+# Energy ADE 3.0 ``bdgBdrySurf{Azimuth,Inclination}`` use this token.
+UOM_DEGREES: str = "deg"
 
 
 @cache

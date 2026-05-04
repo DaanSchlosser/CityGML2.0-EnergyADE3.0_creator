@@ -53,9 +53,15 @@ from ..bindings import (
     Pos,
     ReferencePoint,
     RelatedTo,
+    TypeType,
 )
 from ..gml_builders import build_multi_surface, newell_normal
 from ..namespaces import CS_NRG3_CELL_TYPE, CS_NRG3_RELATION_TYPE
+from .builders._common import UOM_AREA_M2, UOM_DEGREES
+from .builders.building import (
+    iter_lod2_thematic_classification,
+    lod2_thematic_surface_gml_id,
+)
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 
 if TYPE_CHECKING:
@@ -78,13 +84,12 @@ DEFAULT_Z_OFFSET_M: float = 0.1
 _EXPECTED_SRS_ID: int = 28992
 _UNDEFINED_SRS_IDS: frozenset[int] = frozenset({0, -1})
 
-# uom tokens match the KIT SDM_KITModelViewer Data/UOMList.xml @id
-# values so the viewer recognises them in its Properties panel. The
-# XSD types @uom as xs:anyURI so the string is not schema-constrained;
-# this is a downstream-viewer compatibility choice. "deg" is the altId
-# of "grad" (DEGREE) and is accepted by the viewer.
-_UOM_AREA_M2: str = "m2"
-_UOM_DEGREES: str = "deg"
+# uom tokens are shared with the building builder via
+# :mod:`builders._common`; they pin the KIT SDM_KITModelViewer
+# UOMList.xml @id values so the viewer's Properties panel renders the
+# unit name rather than the raw token.
+_UOM_AREA_M2: str = UOM_AREA_M2
+_UOM_DEGREES: str = UOM_DEGREES
 
 # Below this, the roof is effectively horizontal and the azimuth is
 # numerically meaningless. 1e-6 is well below single-panel noise and
@@ -148,6 +153,16 @@ class ProjectedPanel:
     * ``inclination_deg`` — tilt from horizontal, 0 = flat, 90 = vertical.
     * ``reference_point`` — (x, y, z) of the panel centroid lifted to
       the offset plane; emitted as ``nrg3:referencePoint``.
+    * ``roof_index`` — 1-based index of the matched LoD 2 roof facet
+      among the building's RoofSurface polygons in source order, as
+      produced by
+      :func:`citygml_energy.city_builder.builders.building.iter_lod2_thematic_classification`.
+      The attach step feeds it back into
+      :func:`citygml_energy.city_builder.builders.building.lod2_thematic_surface_gml_id`
+      to derive the ``installedOn`` xlink target, so each panel points
+      at the specific facet it overlaps rather than at "the" roof of
+      the building (which no longer exists once LoD 2 surfaces are
+      split per planar polygon).
     """
 
     original_fid: int
@@ -156,6 +171,7 @@ class ProjectedPanel:
     azimuth_deg: float | None
     inclination_deg: float
     reference_point: tuple[float, float, float]
+    roof_index: int
 
 
 # ---------------------------------------------------------------------------
@@ -307,11 +323,20 @@ def _iter_candidate_rows(
 
 @dataclass(frozen=True, slots=True)
 class _RoofFacet:
-    """Internal: one LoD 2 RoofSurface polygon projected to its 2D footprint."""
+    """Internal: one LoD 2 RoofSurface polygon projected to its 2D footprint.
+
+    ``roof_index`` is the 1-based ordinal of this polygon among its
+    parent Pand's RoofSurface polygons (in source CityJSON order). It
+    matches the index the building builder uses when assigning gml:ids
+    to each per-planar ``bldg:RoofSurface`` element, which lets the
+    matcher hand the attach step a deterministic xlink target without
+    re-walking the xsdata tree.
+    """
 
     pand_id: str
     sp: SemanticPolygon
     xy_polygon: Any  # shapely Polygon; avoid top-level import for optional dep
+    roof_index: int
 
 
 def match_and_project_panels(
@@ -371,6 +396,7 @@ def match_and_project_panels(
                 azimuth_deg=projected.azimuth_deg,
                 inclination_deg=projected.inclination_deg,
                 reference_point=projected.reference_point,
+                roof_index=facet.roof_index,
             )
         )
     return matches, skipped
@@ -391,8 +417,14 @@ def _collect_roof_facets(
 
     facets: list[_RoofFacet] = []
     for pb in parsed_buildings:
-        for sp in pb.geometries.get("2") or ():
-            if sp.surface_type != "RoofSurface":
+        # The shared iterator assigns per-type 1-based indices in source
+        # order; we filter to the RoofSurface stream and carry each
+        # facet's ``roof_index`` forward so the attach step's xlink
+        # resolves to the gml:id the builder emits for this very polygon.
+        for surf_type, roof_index, sp in iter_lod2_thematic_classification(
+            pb.geometries.get("2") or (),
+        ):
+            if surf_type != "RoofSurface":
                 continue
             ring = sp.polygon.exterior
             if len(ring) < 3:
@@ -410,7 +442,14 @@ def _collect_roof_facets(
                 continue
             if poly.is_empty or poly.geom_type not in {"Polygon", "MultiPolygon"}:
                 continue
-            facets.append(_RoofFacet(pand_id=pb.pand_id, sp=sp, xy_polygon=poly))
+            facets.append(
+                _RoofFacet(
+                    pand_id=pb.pand_id,
+                    sp=sp,
+                    xy_polygon=poly,
+                    roof_index=roof_index,
+                )
+            )
     return facets
 
 
@@ -606,29 +645,48 @@ def attach_pv_collectors_to_building(
     * ``cellType = "unknown"`` — the aerial-imagery source has no
       module-level detail.
     * ``relatedTo[installedOn] → #<roof_gml_id>`` — intra-document
-      xlink to the Building's single LoD 2 RoofSurface.
+      xlink to the specific LoD 2 ``bldg:RoofSurface`` polygon the
+      panel was matched to. The target id is derived from
+      :func:`citygml_energy.city_builder.builders.building.lod2_thematic_surface_gml_id`
+      with the panel's stored ``roof_index``; that index comes out of
+      the same :func:`iter_lod2_thematic_classification` iterator the
+      builder consumes, so the xlink resolves to a real surface in the
+      output by construction.
 
-    Returns 0 when the building has no LoD 2 RoofSurface (e.g. the run
-    was configured with ``lods=[0, 1]``); the panels are silently dropped
-    because there is no valid xlink target inside the document.
+    Returns 0 when the building has no LoD 2 boundary surfaces (e.g.
+    the run was configured with ``lods=[0, 1]``); the panels are
+    silently dropped because there is no valid xlink target inside the
+    document. Per-panel index validation isn't required: the matcher
+    runs through the same :func:`iter_lod2_thematic_classification`
+    iterator the builder uses, so a ``roof_index`` produced by the
+    matcher always names a surface the builder will have emitted.
     """
     if not panels_for_pand:
         return 0
-    roof_gml_id = _find_roof_surface_id(building)
-    if roof_gml_id is None:
+    building_id = getattr(building, "id", None)
+    if building_id is None or not getattr(building, "bounded_by", None):
+        # ``bounded_by`` is empty exactly when the run was configured
+        # without LoD 2 (e.g. ``lods=[0, 1]``). The matcher would still
+        # have produced ``ProjectedPanel``\ s for any LoD 2 facets in
+        # the parsed CityJSON, but the builder never emitted them, so
+        # the xlink target the panel points at does not exist in the
+        # output document. Dropping the panels keeps the GML free of
+        # dangling hrefs.
         _LOG.warning(
-            "building %r has no LoD 2 RoofSurface; %d PV panel(s) dropped",
-            getattr(building, "id", None),
+            "building %r has no LoD 2 boundary surfaces; %d PV panel(s) dropped",
+            building_id,
             len(panels_for_pand),
         )
         return 0
 
-    building_id = getattr(building, "id", None) or "unknown"
     pand_id = (
         building_id.removeprefix("pand_") if building_id.startswith("pand_") else building_id
     )
 
     for panel in panels_for_pand:
+        roof_gml_id = lod2_thematic_surface_gml_id(
+            building_id, "RoofSurface", panel.roof_index,
+        )
         pv = _build_pv_collector(
             pv_gml_id=f"{_PV_ID_PREFIX}{pand_id}_{panel.original_fid}",
             roof_gml_id=roof_gml_id,
@@ -687,29 +745,16 @@ def _build_pv_collector(
         )
     )
 
+    _related_to_ref = AbstractCityObjectPropertyType(href=f"#{roof_gml_id}")
+    _related_to_ref.type_value = TypeType.SIMPLE
     pv.related_to.append(
         RelatedTo(
             city_object_relation=CityObjectRelation(
                 relation_type=_RELATION_INSTALLED_ON,
-                related_to=AbstractCityObjectPropertyType(href=f"#{roof_gml_id}"),
+                related_to=_related_to_ref,
             )
         )
     )
     return pv
 
 
-def _find_roof_surface_id(building: Any) -> str | None:
-    """Return the Building's LoD 2 RoofSurface gml:id, or ``None``.
-
-    The city builder emits exactly one ``bldg:RoofSurface`` per Building
-    at LoD 2 (all facets merged into one ``lod2MultiSurface``); see
-    :func:`citygml_energy.city_builder.builders._attach_lod2_thematic_surfaces`.
-    We introspect ``building.bounded_by`` rather than reconstructing the
-    id by string templating so a future rename of the id convention
-    doesn't silently break the xlinks we emit here.
-    """
-    for wrapper in getattr(building, "bounded_by", None) or []:
-        surf = getattr(wrapper, "roof_surface", None)
-        if surf is not None and getattr(surf, "id", None) is not None:
-            return surf.id
-    return None

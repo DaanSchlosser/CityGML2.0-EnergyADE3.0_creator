@@ -1058,9 +1058,15 @@ For every BAG Pand inside the municipality:
   (`xs:ID` cannot start with a digit, so a semantic prefix is prepended).
 - `yearOfConstruction` from 3DBAG `oorspronkelijkbouwjaar`.
 - `lod0FootPrint` (MultiSurface), `lod1Solid`, and (for LoD 2) one
-  thematic `bldg:boundedBy` surface per `GroundSurface` / `WallSurface`
-  / `RoofSurface`, each carrying its own `lod2MultiSurface`. The set
-  is filtered by the `lods` config.
+  thematic `bldg:boundedBy` surface per planar polygon
+  (`GroundSurface` / `WallSurface` / `RoofSurface`), each carrying a
+  single-polygon `lod2MultiSurface` plus the three Energy ADE 3.0
+  per-surface descriptors derivable from the polygon alone:
+  `nrg3:bdgBdrySurfTotalSurfaceArea` (m², holes subtracted),
+  `nrg3:bdgBdrySurfInclination` (deg, 0=flat-up, 90=vertical,
+  180=flat-down), and `nrg3:bdgBdrySurfAzimuth` (compass bearing,
+  omitted on horizontal surfaces). The set is filtered by the
+  `lods` config.
 - One `nrg3:BuildingUnit` per BAG VBO
   (`gml:id = "bu_<vbo_identificatie>"`), each carrying:
   - `bldg:address` (xAL street + house number + postcode),

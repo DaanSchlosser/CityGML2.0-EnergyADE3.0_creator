@@ -1015,11 +1015,6 @@
                 "type": "string",
                 "minLength": 1,
                 "description": "gml:id of the target bldg:Building feature."
-              },
-              "target_pv_id": {
-                "type": "string",
-                "minLength": 1,
-                "description": "gml:id of the target nrg3:PhotovoltaicCollector feature. Optional."
               }
             }
           },
@@ -1044,11 +1039,6 @@
                 "type": "string",
                 "minLength": 1,
                 "description": "gml:id of the target bldg:Building feature."
-              },
-              "target_pv_id": {
-                "type": "string",
-                "minLength": 1,
-                "description": "gml:id of the target nrg3:PhotovoltaicCollector feature. Optional."
               }
             }
           },
@@ -1131,11 +1121,6 @@
                 "type": "string",
                 "minLength": 1,
                 "description": "gml:id of the target bldg:Building feature."
-              },
-              "target_pv_id": {
-                "type": "string",
-                "minLength": 1,
-                "description": "gml:id of the target nrg3:PhotovoltaicCollector feature. Optional."
               }
             }
           },

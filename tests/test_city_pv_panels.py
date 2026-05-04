@@ -7,7 +7,7 @@ Covers:
   fixture shapely polygons, asserting that the emitted ``CityModel``
   carries ``nrg3:PhotovoltaicCollector`` features with the right
   ``lod2MultiSurface`` Z, ``moduleArea``, ``cellType``, and
-  ``installedOn`` xlink back to the Building's RoofSurface.
+  ``installedOn`` xlink back to the matched per-planar RoofSurface.
 * XSD validity of the serialised GML.
 * Panels that overlap no LoD 2 roof are silently skipped.
 
@@ -147,6 +147,7 @@ def _fixture_vbo() -> Verblijfsobject:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        woonplaats=None,
         point=(85000.0, 446500.0),
         properties={},
     )
@@ -362,6 +363,7 @@ def _fixture_projected_panel(
     *,
     azimuth_deg: float | None = 180.0,
     inclination_deg: float = 30.0,
+    roof_index: int = 1,
 ) -> ProjectedPanel:
     return ProjectedPanel(
         original_fid=original_fid,
@@ -380,6 +382,7 @@ def _fixture_projected_panel(
         azimuth_deg=azimuth_deg,
         inclination_deg=inclination_deg,
         reference_point=(0.5, 0.5, 3.35),
+        roof_index=roof_index,
     )
 
 
@@ -422,11 +425,13 @@ def test_attach_pv_emits_expected_xsd_structure() -> None:
     assert pt.pos.value == [0.5, 0.5, 3.35]
     assert pt.srs_dimension == 3
 
-    # installedOn href points at the building's RoofSurface gml:id.
+    # installedOn href points at the specific RoofSurface polygon the
+    # panel was matched to. With per-planar splitting the cube fixture
+    # has exactly one RoofSurface (index 1).
     assert len(pv.related_to) == 1
     cor = pv.related_to[0].city_object_relation
     assert cor.relation_type.value == "installedOn"
-    assert cor.related_to.href == f"#pand_{_PAND_ID}_roofsurface"
+    assert cor.related_to.href == f"#pand_{_PAND_ID}_roofsurface_1"
 
 
 def test_attach_omits_azimuth_on_flat_roof() -> None:
@@ -528,8 +533,10 @@ def test_pipeline_attaches_pv_collectors(
     pv_ids = {d.photovoltaic_collector.id for d in building.device}
     assert pv_ids == {f"pv_{_PAND_ID}_1", f"pv_{_PAND_ID}_2"}
 
-    # Every PV points installedOn → the Building's single RoofSurface id.
-    expected_href = f"#pand_{_PAND_ID}_roofsurface"
+    # Every PV points installedOn → the matched per-planar RoofSurface
+    # id. The cube fixture has exactly one RoofSurface, so both panels
+    # resolve to ``_roofsurface_1``.
+    expected_href = f"#pand_{_PAND_ID}_roofsurface_1"
     for d in building.device:
         cor = d.photovoltaic_collector.related_to[0].city_object_relation
         assert cor.related_to.href == expected_href
