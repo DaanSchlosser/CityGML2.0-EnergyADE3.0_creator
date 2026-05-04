@@ -163,8 +163,13 @@ Field-by-field semantics:
     accept an optional **`target_pv_id`** (used by LOD 3 to attach
     `SolarPanelSurface_*` faces to a `PhotovoltaicCollector`).
   - `step-zonepart-lod{0..3}` sources require **`target_zone_part_id`**:
-    the gml:id of an `nrg3:ZonePart` feature whose boundary surfaces
-    will be populated from the STEP file.
+    the gml:id of an `nrg3:ZonePart` feature whose geometry will be
+    populated from the STEP file. LoD 0 attaches an aggregate
+    `lod0MultiSurface` (footprint), LoD 1 an aggregate `lod1Solid`
+    (block hull); LoD 2/3 emit the aggregate `lod{2,3}Solid` *and*
+    classify each named STEP shell into a per-face
+    `nrg3:Zone…Surface` child under `zone_boundary`, with `Window` /
+    `Door` openings matched into walls by interior-ring geometry.
 
   Geometry-source paths may be relative (resolved against the JSON's
   parent directory) or absolute, and must point to a file that exists
@@ -216,10 +221,11 @@ flowchart TD
         direction TB
         P1["<b>Phase 1 (build)</b><br/>per feature: resolve_class + build_from_dict<br/>index every object by gml:id"]:::stage
         P2["<b>Phase 2 (attach)</b><br/>no parent → model.add (top-level)<br/>has parent → attach_child (field_hint, type matching)"]:::stage
-        G["<b>apply_geometry_sources</b><br/>STEP → polygons + coordinate_origin<br/>→ BoundarySurfaces / Solid / Envelope<br/>populates surface_name_index"]:::stage
+        G["<b>apply_geometry_sources</b><br/>STEP → polygons + coordinate_origin<br/>→ Building bounded_by + ZonePart zone_boundary<br/>+ openings + PV MultiSurface + Solid + Envelope<br/>populates surface_name_index"]:::stage
         D["<b>apply_device_relations</b><br/>installed_on → CityObjectRelation xlinks<br/>(needs surface_name_index from stage 4)"]:::stage
         C["<b>apply_construction_mapping</b><br/>by_id, then by_type fallback<br/>→ LayeredConstruction xlinks"]:::stage
-        P1 --> P2 --> G --> D --> C
+        B["<b>attach_boundary_surface_attributes</b><br/>per surface + opening: bdgBdrySurf* / bdgOpn*<br/>area, inclination, azimuth, thickness, heat capacity<br/>(reads geometry + resolved layeredConstruction xlinks)"]:::stage
+        P1 --> P2 --> G --> D --> C --> B
     end
 
     CM(["<b>CityModel</b><br/>xsdata-bound, in-memory"]):::model
@@ -230,7 +236,7 @@ flowchart TD
     J --> V1
     V2 --> P1
     S --> G
-    C --> CM
+    B --> CM
     CM --> W --> OUT
     OUT -.->|post-hoc| VAL
 
@@ -247,14 +253,14 @@ Every stage runs offline. No FME, no schema downloads, no XML templates.
 Each node in the diagram corresponds to a single function; here is
 what each one does and why it lives where it does.
 
-1. **`load_feature_collection(path)`** at
-   [input_loader.py:68](citygml_energy/input_loader.py#L68). Reads the
+1. **`load_feature_collection(path)`** in
+   [input_loader.py](citygml_energy/input_loader.py). Reads the
    JSON (UTF-8 with BOM tolerated), runs `validate_feature_collection`,
    and normalizes every `geometry_sources[*].path` against the JSON's
    parent directory. Returns a cleaned, absolute-path dict.
 
-2. **`validate_feature_collection(data)`** at
-   [input_loader.py:94](citygml_energy/input_loader.py#L94). Rejects
+2. **`validate_feature_collection(data)`** in
+   [input_loader.py](citygml_energy/input_loader.py). Rejects
    unknown top-level keys, asserts `schema_version == 2`, checks every
    feature has a valid XML NCName `id` and a `type` that
    `resolve_class` can locate, verifies every `parent` points to a
@@ -264,8 +270,8 @@ what each one does and why it lives where it does.
    STEP file exists on disk. The loader and the applier share the same
    spec registry, so they can never drift.
 
-3. **`build_city_model_from_feature_collection(data)`** at
-   [input_loader.py:192](citygml_energy/input_loader.py#L192). The
+3. **`build_city_model_from_feature_collection(data)`** in
+   [input_loader.py](citygml_energy/input_loader.py). The
    orchestrator. Creates an empty `CityModel(gml_name=...,
    gml_description=...)` (keyword-only; see §6.5 for full signature)
    and runs a **two-phase build**:
@@ -285,43 +291,66 @@ what each one does and why it lives where it does.
      wrappers. The two-phase split is required because a parent may
      appear *after* its child in the flat `features` list.
 
-4. **`apply_geometry_sources(model, sources, origin, srs)`** at
-   [geometry.py:324](citygml_energy/geometry.py#L324). For each STEP
-   source: parses the file via `_step.parse_named_shells` (LoD 3 with
-   layer names like `WallSurface_04`, `Window_05`,
+4. **`apply_geometry_sources(model, sources, origin, srs)`** in
+   [geometry.py](citygml_energy/geometry.py). For each STEP source:
+   parses the file via `_step.parse_named_shells` (LoD ≥ 2 with layer
+   names like `WallSurface_04`, `Window_05`,
    `SolarPanelSurface_*|parent=RoofSurface_02`) or
-   `_step.parse_all_polygons` (anonymous solids for LoD 1/2 and zone
-   parts), adds `coordinate_origin` to every coordinate, builds
+   `_step.parse_all_polygons` (anonymous solids for LoD 0/1 and the
+   zonepart hull), adds `coordinate_origin` to every coordinate, builds
    `gml:Polygon` / `gml:MultiSurface` / `gml:Solid` / `gml:Envelope`
    via `gml_builders`, and attaches the result to the target feature
    (building, zone part, PV collector) resolved by `gml:id`. Classifies
-   named shells against the auto-discovered `bounded_by` / `opening`
-   taxonomy; matches openings to parent surfaces by **interior-ring
-   geometry** rather than by layer name. Populates an internal
-   `surface_name_index` that stage 5 consumes.
+   named shells against the auto-discovered taxonomy on either
+   `bounded_by` (`bldg:Building` sources) or `zone_boundary`
+   (`nrg3:ZonePart` sources at LoD ≥ 2), with `opening` discovery
+   shared by both; matches openings to parent surfaces by
+   **interior-ring geometry** rather than by layer name. Populates an
+   internal `surface_name_index` that stage 5 consumes (zonepart
+   surfaces are deliberately excluded from that index — see §6.4).
 
-5. **`apply_device_relations(model, device_relations)`** at
-   [geometry.py:391](citygml_energy/geometry.py#L391). Resolves any
-   `installed_on` hints from phase 1 against the `surface_name_index`
-   and emits `nrg3:CityObjectRelation` xlinks (device → surface).
-   Deferred until after geometry attachment because the target surface
-   `gml:id`s don't exist until then.
+5. **`apply_device_relations(model, device_relations)`** in
+   [device_relations.py](citygml_energy/device_relations.py)
+   (re-exported from `geometry`). Resolves any `installed_on` hints
+   from phase 1 against the `surface_name_index` and emits
+   `nrg3:CityObjectRelation` xlinks (device → surface). Deferred until
+   after geometry attachment because the target surface `gml:id`s
+   don't exist until then.
 
-6. **`apply_construction_mapping(model, mapping)`** at
-   [geometry.py:459](citygml_energy/geometry.py#L459). Walks the model
-   with `mapping.iter_instances`, resolves each boundary surface /
-   opening against `by_id` first (wins for anything it covers) then
-   `by_type` as fallback, and appends a `LayeredConstruction2` xlink
-   into the in-document `LayeredConstructionLibrary`.
+6. **`apply_construction_mapping(model, mapping)`** in
+   [construction_mapping.py](citygml_energy/construction_mapping.py)
+   (re-exported from `geometry`). Walks the model with
+   `mapping.iter_instances`, resolves each boundary surface / opening
+   against `by_id` first (wins for anything it covers) then `by_type`
+   as fallback, and appends a `LayeredConstruction2` xlink into the
+   in-document `LayeredConstructionLibrary`.
 
-7. **`CityModel.write(output_path)`** in
+7. **`attach_boundary_surface_attributes(model)`** in
+   [boundary_attributes.py](citygml_energy/boundary_attributes.py).
+   Final pre-serialization pass. Walks every BoundarySurface and
+   Opening in the assembled model and attaches the Energy ADE 3.0
+   per-surface descriptors derivable from the now-resolved geometry
+   plus `layeredConstruction` xlinks: `bdgBdrySurfTotalSurfaceArea` and
+   `bdgBdrySurfOpaqueSurfaceArea` (m², holes vs. opening interior
+   rings handled separately), `bdgBdrySurfInclination` (deg, 0=flat
+   roof, 90=vertical, 180=ceiling-down), `bdgBdrySurfAzimuth` (compass
+   bearing, omitted on horizontal faces), `bdgBdrySurfThickness` (Σ
+   layer thickness), `bdgBdrySurfHeatCapacity` (kJ/(K·m²) areal mass),
+   plus `bdgOpnArea` / `bdgOpnInclination` / `bdgOpnAzimuth` on every
+   Window/Door. Discovery is binding-driven (any class with
+   `bdg_bdry_surf_total_surface_area` is a target), so regenerated
+   bindings pick up new surface taxa without code changes. No-op for
+   surfaces with no geometry, unmapped construction, or degenerate
+   polygons; never writes placeholder values.
+
+8. **`CityModel.write(output_path)`** in
    [core.py](citygml_energy/core.py). Serializes via the
    `XmlSerializer` wrapper (NSMAP + tab indent, xsdata's
    `SerializerConfig(indent="\t")`). Called from
    `generation.generate_gml_file`, *not* from the orchestrator;
    building a model in-memory and writing it are separate concerns.
 
-8. **`tools/validate_xsd.py generated/owner_occupier_building.gml`** in
+9. **`tools/validate_xsd.py generated/owner_occupier_building.gml`** in
    [tools/validate_xsd.py](tools/validate_xsd.py). Separate post-hoc
    script. Loads the Energy ADE 3.0 beta8 XSD with an lxml resolver
    that redirects every `http://schemas.opengis.net/...` import to its
@@ -339,7 +368,7 @@ builder classes with explicit `ELEMENT_ORDER` tuples and field-map dicts.
 They drifted out of sync with the XSD and were painful to extend. The
 current codebase generates all bindings from the official XSDs via xsdata,
 eliminating manual element-order bugs and giving full schema coverage. The
-trade-off is real: `bindings.py` is ~78k lines, IDE indexing on it is
+trade-off is real: `bindings.py` is ~84k lines, IDE indexing on it is
 slow, debugging into generated code is tedious, and binding regeneration
 becomes a build step. We accept that cost.
 
@@ -549,26 +578,58 @@ and the dispatch table in the applier cannot drift.
 
 | Source type            | Purpose                                                           |
 |------------------------|-------------------------------------------------------------------|
-| `step-building-lod0`    | Building footprint at LOD 0                                       |
-| `step-building-lod1`    | LOD 1 block model                                                 |
-| `step-building-lod2`    | LOD 2 with roof shape                                             |
-| `step-building-lod3`    | LOD 3 with semantic boundaries (walls, roofs, ground, openings, PV) |
-| `step-building-lod4`    | LOD 4 (interior detail)                                           |
-| `step-zonepart-lod0..3`| Thermal `ZonePart` boundary surface set at the matching LOD (uses `target_zone_part_id` instead of `target_building_id`) |
+| `step-building-lod0`    | Building `lod0FootPrint` MultiSurface                             |
+| `step-building-lod1`    | Building `lod1Solid` (block model)                                |
+| `step-building-lod2`    | Building LoD 2: per-face `bldg:_BoundarySurface` (walls, roofs, ground); optional aggregated PV |
+| `step-building-lod3`    | Building LoD 3: per-face `bldg:_BoundarySurface` with `Window` / `Door` openings; optional `SolarPanelSurface_*` panels |
+| `step-building-lod4`    | Building LoD 4 (interior detail)                                  |
+| `step-zonepart-lod0`    | ZonePart `lod0MultiSurface` (aggregate footprint)                 |
+| `step-zonepart-lod1`    | ZonePart `lod1Solid` (aggregate hull)                             |
+| `step-zonepart-lod2..3`| ZonePart aggregate `lod{2,3}Solid` *plus* per-face `nrg3:Zone…Surface` children under `zone_boundary` (with openings) |
+
+(Zonepart sources use `target_zone_part_id` instead of
+`target_building_id`. `target_pv_id` is only valid on
+`step-building-lod{2,3}` because Energy ADE's
+`AbstractSolarCollectorType` defines `lod{2,3}MultiSurface` only;
+the input validator surfaces this constraint.)
 
 Faces such as `WallSurface_04`, `RoofSurface_02`, `GroundSurface_01`,
 `Window_05`, `Door_01`, and `SolarPanelSurface_*|parent=RoofSurface_02`
 are classified against the bindings' surface and opening taxonomies
 (no hand-maintained list) and written as typed CityGML/Energy ADE
-elements. Parent linkage works as follows:
+elements. **One Rhino convention serves both pipelines**: zonepart
+sources use the same building-style layer names (`WallSurface_*`,
+`GroundSurface_*`, `RoofSurface_*`, `Window_*`, `Door_*`) and the
+classifier rewrites the surface tokens through
+`_BLDG_TO_ZONE_SURFACE_NAME_REMAP` (`WallSurface` → `ZoneWallSurface`,
+`GroundSurface` → `ZoneGroundSurface`, `RoofSurface` →
+`ZoneRoofSurface`, `FloorSurface` → `ZoneOuterFloorSurface`,
+`CeilingSurface` → `ZoneOuterCeilingSurface`,
+`IntermediateFloorSurface` → `ZoneIntermediateFloorSurface`,
+`ClosureSurface` → `ZoneClosureSurface`) before lookup so they target
+the EnergyADE `nrg3:Zone…Surface` taxonomy that `nrg3:zoneBoundary`
+accepts; opening names are unchanged on either side. Parent linkage
+works as follows:
 
 - **Openings** (`Window_*`, `Door_*`, `ZoneWindow_*`, `ZoneDoor_*`,
   …) are matched to their parent boundary surface by comparing the
   opening's exterior ring against every surface's interior rings
   (`_match_opening_to_parent`). The layer name carries no parent hint.
 - **Solar panels** (`SolarPanelSurface_*`) accept an optional
-  `|parent=<roof_layer>` suffix; when present, an `installedOn`
-  `CityObjectRelation` is added from the PV collector to that roof.
+  `|parent=<roof_layer>` suffix as authoring metadata; the suffix is
+  parsed but no longer drives attachment. Device-to-surface
+  `installedOn` relations are declared on devices via
+  `installed_on: [...]` in the JSON, not derived from STEP names (see
+  §6.4 `device_relations`).
+- **Zonepart surfaces are deliberately not registered on the
+  model-wide `surface_name_index`.** The index maps STEP layer names to
+  the gml:ids that JSON-declared `installed_on` relations resolve
+  against; zonepart faces describe an internal thermal envelope, not a
+  publicly-attachable surface (a roof-mounted PV is "installedOn" the
+  building's `bldg:RoofSurface`, not the upstairs ZonePart's
+  `ZoneRoofSurface`). The canonical input has `RoofSurface_01` shells
+  in both the LoD 3 building export and the upstairs ZonePart export;
+  indexing the latter would silently overwrite the former.
 
 The JSON's `coordinate_origin` is added to every point on import;
 `srs_name` and `srs_dimension` (also settable at the JSON top level)
@@ -881,6 +942,7 @@ citygml_energy/                Core package
 ├── geometry.py                STEP → xsdata attachment, auto-discovered taxonomy
 ├── device_relations.py        installed_on → nrg3:CityObjectRelation resolver
 ├── construction_mapping.py    nrg3:layeredConstruction xlink post-processor
+├── boundary_attributes.py     Energy ADE 3.0 bdgBdrySurf* / bdgOpn* descriptor post-processor (§4.1 stage 7)
 ├── _step.py                   ISO 10303-21 parser (xsdata-independent)
 ├── gml_builders.py            Pure gml:Polygon / MultiSurface / Solid / Envelope builders (with µm quantisation)
 ├── _xsdata_patches.py         Runtime patches for xsdata edge cases
@@ -909,9 +971,15 @@ inputs/
 ├── cities/                              City-scale configs (schema_version: city-1, §12)
 │   ├── emmer-compascuum_small-area.json     Default smoke test (boundary + PV + vegetation)
 │   ├── emmer-compascuum_small-area_pv-only.json  Same boundary, no vegetation
+│   ├── emmer_compascuum_pv_smoke.json       Tiny bbox PV smoke (Emmen)
+│   ├── city_smoke_test.json                 Tiny bbox smoke (Delft)
+│   ├── city_example.json                    Minimal Delft example, no boundary/bbox
 │   └── delft.json / groningen.json / zwolle.json  Full-municipality configs
 ├── boundaries/                          GeoJSON AOI polygons used by city configs
-│   └── emmer-compascuum_small-area.geojson
+│   ├── emmer-compascuum_small-area.geojson  Default smoke-test AOI
+│   └── emmer_compascuum_area.geojson        Wider Emmer-Compascuum AOI
+├── vegetation/                          CFTree LoD 3 tree meshes (CityJSON, AHN-derived)
+│   └── emmer-compascuum_small-area_AHN{4,6}.city.json
 └── pv_panels/                           PV panel GeoPackage (UoG Zenodo 14860030, CC-BY-4.0)
 
 schemas/
@@ -938,8 +1006,11 @@ generated/                      Pipeline output (git-ignored)
 The owner-occupier reference building input exercises the following types, each
 round-tripped through the loader and validated against the XSD:
 
-- `bldg:Building`
+- `bldg:Building`, `nrg3:BuildingUnit`, `core:Address`
+- `nrg3:EnergyPerformanceCertificate`
 - `nrg3:PhotovoltaicCollector`, `nrg3:HeatPump`, `nrg3:EVChargingStation`
+- `nrg3:ThermalDistribution`, `nrg3:ThermalStorageDevice`,
+  `nrg3:GenericElectricalDevice`
 - `nrg3:Occupants`, `nrg3:Energy`
 - `nrg3:Zone`, `nrg3:ZonePart`
 - `nrg3:ConstantValueSchedule`, `nrg3:MonthlyTimeSeries`
@@ -1069,11 +1140,38 @@ For every BAG Pand inside the municipality:
   `lods` config.
 - One `nrg3:BuildingUnit` per BAG VBO
   (`gml:id = "bu_<vbo_identificatie>"`), each carrying:
-  - `bldg:address` (xAL street + house number + postcode),
+  - `bldg:address` (xAL street + house number + postcode + country
+    wrapper, plus VBO `woonplaats` and structured huisletter /
+    toevoeging suffixes),
   - `nrg3:energyPerformanceCertificate` when EP-online had a match for
-    `(postcode, huisnummer, huisletter, toevoeging)`, populated with the
-    `label` letter, `valid_from` (registratiedatum), `valid_to`
-    (geldigTot), and EP-online as the `type` code.
+    `(postcode, huisnummer, huisletter, toevoeging)`, populated with
+    the `label` letter, `valid_from` (registratiedatum), `valid_to`
+    (geldigTot), `creationDate`, status, EP-online as the `type` code,
+    and the certificate's `totalEnergyDemand` numeric value,
+  - `nrg3:resource` substitutions carrying up to four `nrg3:Energy`
+    resources per certificate, regime-aware: NTA-8800 emits BENG-1
+    (`Energiebehoefte`, net), NTA heating demand (`Warmtebehoefte`,
+    net, `endUse=spaceHeating`), BENG-2 (`PrimaireFossieleEnergie`,
+    primary, with `co2Equivalent`), and final consumption
+    (`BerekendeEnergieverbruik`, final). See
+    [`energy_resources.py`](citygml_energy/city_builder/energy_resources.py)
+    for the full regime table.
+
+When `pv_panels` is configured, every panel polygon that intersects a
+LoD 2 roof is projected onto the roof plane and emitted as one
+`nrg3:PhotovoltaicCollector` (`gml:id = "pv_<pand_id>_<panel_fid>"`)
+under the building, carrying its own `lod2MultiSurface`,
+`nrg3:moduleArea`, `nrg3:referencePoint`, and an
+`nrg3:relatedTo[installedOn]` xlink targeting the LoD 2 thematic roof
+surface that hosts it.
+
+When `vegetation` is configured, every CFTree mesh inside the AOI is
+emitted as one `veg:SolitaryVegetationObject` (`gml:id =
+"<prefix>tree_<gtid>"`) with the LoD 3 crown + trunk geometry and
+CFTree morphometrics (height / crown / trunk fields native where the
+schema supports them, the rest as `gen:doubleAttribute` siblings),
+optionally enriched with BGT cross-references and Emmen BOR species
+data.
 
 On top of that, when `include_energy_labels` is enabled the city
 builder attaches a single `app:Appearance` (theme `"energyLabel"`) to
@@ -1083,7 +1181,9 @@ palette. The averaging and color mapping live in
 [`citygml_energy/city_builder/epc_score.py`](citygml_energy/city_builder/epc_score.py),
 and the appearance targeting in
 [`citygml_energy/city_builder/appearance.py`](citygml_energy/city_builder/appearance.py).
-Buildings with no EP-online match are rendered grey.
+Buildings with no EP-online match are rendered grey. Separate
+appearance themes are produced for PV panels and vegetation when those
+inputs are configured.
 
 Everything validates against the bundled XSD set; the end-to-end test
 `tests/test_city_pipeline.py::test_pipeline_output_validates_against_xsd`
@@ -1096,29 +1196,45 @@ citygml_energy/city_builder/
 ├── __init__.py                Public API
 ├── config.py                  JSON → CityBuildConfig + dotenv fallback
 ├── http.py                    CachedSession: requests + disk cache + retries
+├── _helpers.py                Pure helpers (type coercion, gml:id sanitisation, bbox cache key)
 ├── boundary.py                Concave-boundary GeoPackage / GeoJSON loader
 ├── cityjson_parse.py          CityJSON tile → ParsedBuilding (per-Pand LoDs)
 ├── cityjson_trees_parse.py    CityJSON tile → ParsedTree (CFTree per-tree meshes)
 ├── address_key.py             Address normalisation key for VBO ↔ EP-online join
 ├── address_match.py           VBO ↔ EP-online join keyed on normalised addr
 ├── epc_score.py               Label (A+++++ … G) ↔ kWh/m²/yr ↔ EU-palette RGB
+├── energy_resources.py        NTA-8800 / Energie-Index → nrg3:Energy resource builder (regime-aware)
 ├── appearance.py              app:Appearance builder (colors by avg EPC, PV theme, vegetation theme)
-├── builders.py                bldg:Building / core:Address / BuildingUnit / EPC / SolitaryVegetationObject
+├── builders/                  xsdata builders, split per CityGML domain
+│   ├── __init__.py                Public API re-exports
+│   ├── _common.py                 Cross-domain xsdata-aware helpers (inner_type, UoM constants)
+│   ├── building.py                bldg:Building, nrg3:BuildingUnit, LoD 0/1/2 geometry + thematic
+│   ├── address.py                 core:Address (xAL-flavoured, attached under BuildingUnit)
+│   ├── epc.py                     yearOfConstruction + nrg3:EnergyPerformanceCertificate
+│   └── vegetation.py              veg:SolitaryVegetationObject (CFTree morphometrics + BGT/BOR enrichment)
 ├── pv_panels.py               GeoPackage panel polygons → nrg3:PhotovoltaicCollector on LoD 2 roofs
 ├── vegetation.py              CFTree loader + bbox-and-boundary clip
-├── bgt_match.py               Nearest-neighbour match of CFTree trees to BGT register
-├── tree_enrichment.py         Optional CFTree attribute enrichment (placeholder)
+├── tree_matching.py           Generic shapely-STRtree nearest-neighbour join (BGT + BOR)
+├── bgt_match.py               BGT-specific cross-reference using tree_matching
+├── tree_enrichment.py         Optional CFTree attribute enrichment from Emmen BOR
+├── pand_executor.py           Per-Pand build executor (sequential / multiprocessing pool)
 ├── pipeline.py                Orchestrator; build_city_model(config)
 └── fetchers/
     ├── municipality.py        PDOK bestuurlijkegebieden → MunicipalityOutline
     ├── bag.py                 Pand / VBO (with embedded address fields)
     ├── threedbag.py           FlatGeoBuf tile index + CityJSON downloads
     ├── eponline.py            Bulk Mutatiebestand CSV (ZIP)
-    └── bgt.py                 BGT vegetatieobject_punt (authoritative tree register)
+    ├── bgt.py                 BGT vegetatieobject_punt (authoritative tree register)
+    └── emmen_bor.py           Gemeente Emmen BOR Beheer Openbare Ruimte tree register (species, planting year, …)
 
 examples/create_city.py              CLI + library entry point (-v for INFO, -vv for DEBUG)
 tools/generate_city_input_schema.py  Regenerate schemas/city_input.schema.json
 ```
+
+Per-Pand build can be parallelised over a multiprocessing pool by
+setting ``CITYGML_ENERGY_ASSEMBLY_WORKERS`` (defaults to ``1``,
+sequential — pickle/spawn cost only pays off past a few thousand
+panden; the executor in ``pand_executor.py`` decides at runtime).
 
 ### 12.5 Design choices
 
