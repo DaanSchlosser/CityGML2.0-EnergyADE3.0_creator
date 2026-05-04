@@ -49,8 +49,6 @@
       "storeys_below_ground": 0,
       "bdg_is_protected": [false],
       "bdg_number_of_building_units": [1],
-      "bdg_owner_name": ["Sample Owner"],
-      "bdg_ownership_type": [{"value": "occupantPrivateOwner", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml"}],
       "bdg_type": [{"value": "singleFamilyHouse", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/BuildingTypeValue.xml"}],
       "bdg_area": [
         {
@@ -68,14 +66,6 @@
             "value": {"value": 98.0, "uom": "m2"},
             "type_value": {"value": "grossFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
           }
-        },
-        {
-          "qualified_area": {
-            "description": "Sample net floor area.",
-            "source": "Sample measurement",
-            "value": {"value": 85.0, "uom": "m2"},
-            "type_value": {"value": "netFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
-          }
         }
       ],
       "bdg_height": [
@@ -84,7 +74,7 @@
             "description": "Sample building height.",
             "source": "Sample measurement",
             "value": {"value": 7.50, "uom": "m"},
-            "type_value": {"value": "maxHeightAboveGround", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeightTypeValue.xml"}
+            "type_value": {"value": "topOfConstruction", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeightTypeValue.xml"}
           }
         }
       ],
@@ -95,6 +85,29 @@
             "source": "Sample measurement",
             "value": {"value": 700.0, "uom": "m3"},
             "type_value": {"value": "grossVolume", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/VolumeTypeValue.xml"}
+          }
+        }
+      ]
+    },
+    {
+      "type": "nrg3:BuildingUnit",
+      "parent": "id_building_1",
+      "id": "id_building_unit_1",
+      "description": "Sole verblijfsobject (VBO) inside the sample Pand. Net floor area, occupants, ownership and (when present) energy-performance certificate live here, mirroring the city-scale pipeline's per-VBO BuildingUnit shape.",
+      "name": ["Sample Residence"],
+      "creation_date": "2000-01-01",
+      "identifier": [{"value": "SAMPLE-VBO-0000000000000000", "code_space": "https://example.invalid/register/verblijfsobject"}],
+      "type_value": {"value": "woonfunctie", "code_space": "http://bag.basisregistraties.overheid.nl/id/concept/Gebruiksdoel"},
+      "number_of_rooms": 4,
+      "owner_name": "Sample Owner",
+      "ownership_type": {"value": "occupantPrivateOwner", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml"},
+      "area": [
+        {
+          "qualified_area": {
+            "description": "Sample net floor area (per-VBO usable area).",
+            "source": "Sample measurement",
+            "value": {"value": 85.0, "uom": "m2"},
+            "type_value": {"value": "netFloorArea", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/AreaTypeValue.xml"}
           }
         }
       ]
@@ -118,22 +131,44 @@
       "type": "nrg3:HeatPump",
       "parent": "id_building_1",
       "id": "heat_pump_1",
-      "description": "Sample water-water heat pump.",
+      "description": "Sample ground-source heat pump on a vertical ground collector. Pipework is insulated. The unit sits inside the thermal envelope; EnergyADE 3.0 has no native attribute for in-envelope vs outside-envelope placement, so this is recorded here in the description.",
       "name": ["Sample heat pump"],
       "creation_date": "2000-01-03",
       "model": "sample-heatpump-model",
       "identifier": [{"value": "sample-heatpump-id", "code_space": "https://example.invalid/heatpump"}],
       "number_of_devices": 1,
       "installed_power": {"value": 4000.0, "uom": "W"},
-      "heat_source": {"value": "waterSource", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
+      "heat_source": {"value": "verticalGroundCollector", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
       "cop_source_temperature": {"value": 10.0, "uom": "C"},
       "cop_operation_temperature": {"value": 40.0, "uom": "C"}
     },
     {
-      "type": "nrg3:Occupants",
+      "type": "nrg3:ThermalDistribution",
       "parent": "id_building_1",
+      "id": "thermal_distribution_1",
+      "description": "Sample hydronic distribution circuit fed by heat_pump_1.",
+      "name": ["Sample heat distribution"],
+      "creation_date": "2000-01-03",
+      "number_of_devices": 1,
+      "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"},
+      "supply_temperature": {"value": 40.0, "uom": "C"}
+    },
+    {
+      "type": "nrg3:ThermalStorageDevice",
+      "parent": "id_building_1",
+      "id": "thermal_storage_1",
+      "description": "Sample 200 L domestic-hot-water buffer, water-filled, installed inside the thermal envelope.",
+      "name": ["Sample DHW buffer"],
+      "creation_date": "2000-01-03",
+      "number_of_devices": 1,
+      "volume": {"value": 0.2, "uom": "m3"},
+      "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"}
+    },
+    {
+      "type": "nrg3:Occupants",
+      "parent": "id_building_unit_1",
       "id": "id_occupants_1",
-      "description": "Sample residents.",
+      "description": "Sample residents. Parented to the BuildingUnit (not the Building); see the canonical input for the structural rationale.",
       "name": ["Sample occupants"],
       "creation_date": "2000-01-04",
       "type_value": {"value": "residents", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml"},
@@ -170,7 +205,7 @@
       "amount": {"value": 0.500, "uom": "MWh/a"},
       "year": 2000,
       "is_amount_normalized": false,
-      "type_value": {"value": "finalEnergy", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
+      "type_value": {"value": "final", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
       "end_use": {"value": "mobility", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
       "energy_carrier": {"value": "electricity", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
       "maximum_load": {"value": 2.0, "uom": "kW"},
@@ -185,10 +220,55 @@
       "creation_date": "2000-01-07",
       "operation_type": {"value": "produces", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
       "is_amount_normalized": false,
-      "type_value": {"value": "finalEnergy", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
+      "type_value": {"value": "final", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
       "end_use": {"value": "electricalAppliances", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
       "energy_carrier": {"value": "electricity", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
-      "source": {"value": "solarEnergy", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
+      "source": {"value": "photovoltaicPanels", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
+    },
+    {
+      "type": "nrg3:GenericElectricalDevice",
+      "parent": "id_building_unit_1",
+      "id": "appliance_cooktop_1",
+      "description": "Sample electric cooktop. Modelled as a GenericElectricalDevice for completeness.",
+      "name": ["Sample cooktop"],
+      "creation_date": "2000-01-08",
+      "number_of_devices": 1
+    },
+    {
+      "type": "nrg3:GenericElectricalDevice",
+      "parent": "id_building_unit_1",
+      "id": "appliance_microwave_oven_1",
+      "description": "Sample microwave oven. Modelled as a GenericElectricalDevice for completeness.",
+      "name": ["Sample microwave oven"],
+      "creation_date": "2000-01-08",
+      "number_of_devices": 1
+    },
+    {
+      "type": "nrg3:GenericElectricalDevice",
+      "parent": "id_building_unit_1",
+      "id": "appliance_cooker_tap_1",
+      "description": "Sample boiling-water tap. Modelled as a GenericElectricalDevice for completeness.",
+      "name": ["Sample boiling-water tap"],
+      "creation_date": "2000-01-08",
+      "number_of_devices": 1
+    },
+    {
+      "type": "nrg3:GenericElectricalDevice",
+      "parent": "id_building_unit_1",
+      "id": "appliance_coffee_machine_1",
+      "description": "Sample coffee machine. Modelled as a GenericElectricalDevice for completeness.",
+      "name": ["Sample coffee machine"],
+      "creation_date": "2000-01-08",
+      "number_of_devices": 1
+    },
+    {
+      "type": "nrg3:GenericElectricalDevice",
+      "parent": "id_building_unit_1",
+      "id": "appliance_dishwasher_1",
+      "description": "Sample dishwasher. Modelled as a GenericElectricalDevice for completeness.",
+      "name": ["Sample dishwasher"],
+      "creation_date": "2000-01-08",
+      "number_of_devices": 1
     },
     {
       "type": "nrg3:Zone",
@@ -198,7 +278,7 @@
       "name": ["Sample zone"],
       "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
       "coincides_with_lod2_hull": false,
-      "coincides_with_lod3_hull": true
+      "coincides_with_lod3_hull": false
     },
     {
       "type": "nrg3:ZonePart",
@@ -209,6 +289,7 @@
       "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
       "is_heated": true,
       "is_cooled": true,
+      "is_mechanically_ventilated": true,
       "coincides_with_lod2_hull": false,
       "coincides_with_lod3_hull": false
     },
@@ -237,6 +318,7 @@
       "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
       "is_heated": true,
       "is_cooled": true,
+      "is_mechanically_ventilated": true,
       "coincides_with_lod2_hull": false,
       "coincides_with_lod3_hull": false
     },
