@@ -4,9 +4,11 @@
 
 **Companion document.** [`mapping_building.md`](mapping_building.md) covers the per-building pipeline (hand-authored JSON + STEP geometry input). The two pipelines share data structures and bindings but consume different inputs and emit different feature subsets; mapping is split per pipeline so each table is self-contained.
 
-**Drift guard.** [`tests/test_mapping_index_in_sync.py`](../tests/test_mapping_index_in_sync.py) asserts that every code reference in this document resolves to an existing module and that every public `_apply_*` enrichment helper in [`citygml_energy/city_builder/`](../citygml_energy/city_builder/) is mentioned at least once below. A merge that adds a new helper or renames an existing one will fail that test until this doc is updated.
+**Drift guard.** [`tests/test_mapping_index_in_sync.py`](../tests/test_mapping_index_in_sync.py) asserts that every module path linked in this document exists, that a curated list of cited symbols is reachable in its module, and that every enrichment helper in [`citygml_energy/city_builder/`](../citygml_energy/city_builder/) — private (`_apply_bgt_*`, `_apply_bor_*`, `_apply_cftree_*`, `_apply_eponline_*`) and public (`apply_bag_*`, `apply_eponline_*`, `build_building*`, `build_address`, `build_solitary_vegetation_object`) — is mentioned at least once below. A merge that adds a new helper or renames an existing one will fail that test until this doc is updated. Inline line-number citations are not enforced by the test and may drift; the symbol names are authoritative.
 
 **Completeness method.** Every "supply" row was obtained by parsing a real cached response (BAG, 3DBAG, EP-online, municipality, CFTree, BGT), the actual GeoPackage schema (PV panels), or a sample GeoJSON (boundary). Field names reflect what the source actually emits; the commentary notes where the source documentation uses a different name or alias. Counts come from a fresh end-to-end run on the Emmer-Compascuum small-area AOI (41.5 ha, 674 buildings, 652 trees) using [`inputs/cities/emmer-compascuum_small-area.json`](../inputs/cities/emmer-compascuum_small-area.json).
+
+**Snapshot vintages.** Concrete counts in this document (building / tree counts, EP-online row distributions, BGT match ratios) were recorded against the **EP-online v20260401 mutatiebestand** and the BAG / 3DBAG / BGT responses cached on **2026-04-29**. Run `tests/test_mapping_index_in_sync.py` to verify the symbol-level invariants, but expect the absolute counts to drift with each upstream republication; the *shapes* (proportions, regime distributions) are stable.
 
 ## Conventions
 
@@ -23,7 +25,7 @@
 | **⚙** | The pipeline reads this field for joins, bbox clipping, or matching, but does not write it. |
 | **(blank)** | The source ships the field but the pipeline ignores it. |
 
-All `codeSpace` URLs are pinned in [`citygml_energy/namespaces.py`](../citygml_energy/namespaces.py). The codeSpace of a `gml:CodeType` identifies the vocabulary, not the field; off-codelist values are valid as long as the codeSpace names the vocabulary they belong to.
+All `codeSpace` URLs are pinned in [`citygml_energy/namespaces.py`](../citygml_energy/namespaces.py). The two `core:externalReference/informationSystem` URLs (`BGT_INFORMATION_SYSTEM_URL`, `BOR_INFORMATION_SYSTEM_URL`) are pinned in their respective fetcher modules ([`fetchers/bgt.py`](../citygml_energy/city_builder/fetchers/bgt.py), [`fetchers/emmen_bor.py`](../citygml_energy/city_builder/fetchers/emmen_bor.py)) because they are not codeSpaces. The codeSpace of a `gml:CodeType` identifies the vocabulary, not the field; off-codelist values are valid as long as the codeSpace names the vocabulary they belong to.
 
 **Output features.** Every BAG Pand becomes one `bldg:Building`; every BAG VBO becomes one `nrg3:BuildingUnit` parented to its Pand. Every CFTree reconstruction becomes one `veg:SolitaryVegetationObject`. Every PV panel polygon becomes one `nrg3:PhotovoltaicCollector` parented to a Building.
 
@@ -35,7 +37,7 @@ All `codeSpace` URLs are pinned in [`citygml_energy/namespaces.py`](../citygml_e
 | 2 | 3DBAG `tile_index.fgb` | 2 properties + geometry | 2 + geometry | (tile selection + download URL) |
 | 3 | PDOK BAG `bag:pand` | 8 properties + geometry | 4 | `bldg:Building` |
 | 4 | PDOK BAG `bag:verblijfsobject` | 14 properties + geometry | 11 + geometry | `nrg3:BuildingUnit` + `core:Address` |
-| 5 | 3DBAG CityJSON tile | 62 `Building` attributes + LoD 0/1.2/2.2 geometries | 8 attributes + 3 LoD geometries | `bldg:lod0FootPrint` + `bldg:lod1Solid` + `bldg:boundedBy/lod2MultiSurface` + `bldg:measuredHeight` + `bldg:roofType` + `bldg:storeysAboveGround` + `nrg3:bdgVolume` |
+| 5 | 3DBAG CityJSON tile | 62 `Building` attributes + LoD 0/1.2/2.2 geometries | 8 attributes + 3 LoD geometries | `bldg:lod0FootPrint` + `bldg:lod1Solid` + `bldg:boundedBy/lod2MultiSurface` + `nrg3:bdgHeight` (`QualifiedHeight`, `type="maxHeightAboveGround"`) + `bldg:roofType` + `bldg:storeysAboveGround` + `nrg3:bdgVolume` |
 | 6 | EP-online `Mutatiebestand` CSV | 42 columns | 20 | `nrg3:EnergyPerformanceCertificate` + `app:Appearance` (theme `energyLabel`) + per-VBO `nrg3:QualifiedArea` (thermal-zone) + per-VBO `nrg3:Energy` resources (regime-aware) + native `nrg3:bdgType` (Pand level) + per-VBO `gen:*Attribute` classification + `nrg3:Metadata` source attribution |
 | 7 | PV panels GeoPackage | 2 columns + geometry | 2 + geometry | `nrg3:PhotovoltaicCollector` |
 | 8 | CFTree `trees_lod3.city.json` | 10 attributes + LoD 3 geometry | 9 + geometry | `veg:SolitaryVegetationObject` + `veg:lod3Geometry` |
@@ -54,9 +56,9 @@ The outline drives the build (bbox + CBS code filter); none of its fields are wr
 
 | Property | Example | Read | Used for |
 |---|---|---|---|
-| `naam` | `"Emmen"` | ⚙ | Case-insensitive match against `config.municipality` (`_build_outline`, line 63) |
+| `naam` | `"Emmen"` | ⚙ | Case-insensitive match against `config.municipality` (in `_build_outline`'s caller loop). |
 | `naam_officieel` | usually absent | ⚙ | Fallback for `naam` in the name lookup |
-| `code` | `"0114"` | ⚙ | Normalised to 4-digit CBS prefix; filters BAG panden / VBOs to only those inside the municipality (`_normalise_cbs_code`, line 76) |
+| `code` | `"0114"` | ⚙ | Normalised to 4-digit CBS prefix; filters BAG panden / VBOs to only those inside the municipality (`_normalise_cbs_code`). |
 | `identificatie` | `"GM0114"` |   | Equivalent info to `code`; not separately consulted. |
 | `ligtInProvincieCode`, `ligtInProvincieNaam` | `"22"`, `"Drenthe"` |   | Unused. |
 | `geometry` (MultiPolygon) | — | ⚙ | (a) bbox drives BAG / 3DBAG fetch extent; (b) polygon clips 3DBAG buildings that fall outside the municipality. `_feature_bbox`, `pipeline._fetch_parsed_buildings`. |
@@ -89,7 +91,7 @@ Pand-level attributes go on the `bldg:Building` (one Pand per Building).
 
 | WFS property | Example | Read | CityGML target | Implementation |
 |---|---|---|---|---|
-| `identificatie` | `"0114100000202542"` | ✓ | `bldg:Building/@gml:id` (via `pand_` prefix) + `nrg3:identifier` with `codeSpace=CS_BAG_PAND` and `gml:name` | `build_building` |
+| `identificatie` | `"0114100000202542"` | ✓ | `bldg:Building/@gml:id` (via `pand_` prefix) + `nrg3:identifier` with `codeSpace=CS_BAG_PAND`. `gml:name` is **not set**: BAG carries no per-Pand human-readable label, and repeating the 16-digit identifier in a slot reserved for human-readable labels would mislead viewers (the authoritative identifier is already on `nrg3:identifier`). | `build_building` |
 | `bouwjaar` | `1955` | ✓ | `bldg:yearOfConstruction` (`xs:gYear`) | `build_building` (via `_apply_building_attributes` reading `oorspronkelijkbouwjaar` after `pand_executor._merge_attributes` overlays the BAG value over any 3DBAG fallback). BAG wins on ties. |
 | presence of `bouwjaar` | — | ✓ | `nrg3:Metadata` block on Building attributing BAG as the source of `bldg:yearOfConstruction` | [`builders/epc.py::apply_bag_year_metadata_to_building`](../citygml_energy/city_builder/builders/epc.py) |
 | `rdf_seealso` | `"http://bag.basisregistraties.overheid.nl/bag/id/pand/<id>"` | ⚙ (implicit) | — | Not read per-feature. The known URL structure is what drives `CS_BAG_PAND`; concatenating `codeSpace + identifier` reconstructs the dereferenceable URL. |
@@ -119,7 +121,7 @@ VBO-level attributes go on `nrg3:BuildingUnit` (one VBO per BuildingUnit, parent
 | `geometry` (Point) | — | ✓ | `core:Address/core:multiPoint` (`gml:MultiPoint`). | **Caveat**: the CityGML 2.0 docstring describes `multiPoint` as "locating the entrance(s)", but BAG `geometriePunt` is just a per-VBO address-locating point. It always lies inside the parent Pand but is not guaranteed to be at or near the entrance. Every Dutch BAG-to-CityGML converter populates the field this way. |
 | `woonplaats` | `"Emmer-Compascuum"` | ✓ | `core:Address/xAL:Country/xAL:Locality/xAL:LocalityName` (`Locality/@Type="Town"`). | The IMBAG-canonical locality component of a Dutch BAG address (a woonplaats can span multiple gemeenten, e.g. gemeente Emmen contains the woonplaatsen Emmen, Klazienaveen, Nieuw-Amsterdam). Falls back to the pipeline's caller-supplied `city_name` when the WFS record has no `woonplaats`. |
 | `postcode` | `"7881AD"` | ✓ | `xAL:PostalCode/xAL:PostalCodeNumber` | |
-| `huisnummer` | `73` | ✓ | `xAL:Thoroughfare/xAL:ThoroughfareNumber` (`@NumberType="Single"`). Mixed-content text **also** embeds huisletter + huisnummertoevoeging (joined by `-`) so a downstream consumer reading only this slot still sees the full identifier. | See the 3DCityDB tooling caveat below. |
+| `huisnummer` | `73` | ✓ | `xAL:Thoroughfare/xAL:ThoroughfareNumber` (`@NumberType="Single"`). Mixed-content text **also** embeds the flat form: huisnummer + huisletter (no separator) + toevoeging (prefixed by `-`). Example: `(38, "B", "rood")` → `"38B-rood"`. A downstream consumer reading only this slot still sees the full canonical identifier. | See the 3DCityDB tooling caveat below. |
 | `huisletter` | `""` or `"A"` | ✓ | `xAL:Thoroughfare/xAL:ThoroughfareNumberSuffix` with `@Type="huisletter"`. | The xAL XSD allows multiple `ThoroughfareNumberSuffix` siblings (`maxOccurs="unbounded"`); the `Type` attribute disambiguates the two suffix slots that BAG distinguishes. Empty string is normalised to `None`. |
 | `huisnummertoevoeging` (PDOK alias `toevoeging`) | `""` or `"003"` | ✓ | `xAL:Thoroughfare/xAL:ThoroughfareNumberSuffix` with `@Type="huisnummertoevoeging"` and `@NumberSuffixSeparator="-"`. | The hyphen separator mirrors BAG's canonical-string rendering (`38-rood`). |
 | `openbare_ruimte` | `"Hoofdkanaal WZ"` | ✓ | `xAL:Thoroughfare/xAL:ThoroughfareName` (`Thoroughfare/@Type="Street"`) | Street name. |
@@ -128,6 +130,8 @@ VBO-level attributes go on `nrg3:BuildingUnit` (one VBO per BuildingUnit, parent
 | `bouwjaar` | `1956` |   |   | Authoritative value already used via the Pand; VBO-level value is redundant. Ignored. |
 | `pandstatus` | `"Pand in gebruik"` |   |   | Redundant with the Pand's own `status`. Ignored. |
 | `rdf_seealso` | — |   |   | Linked-data URI; implicit (same URL shape as the Pand `rdf_seealso` drives the VBO codeSpace). |
+
+**Address property element is `nrg3:address`, not `bldg:address`.** The address attaches to `nrg3:BuildingUnit` via the Energy ADE-defined `address` element on `BuildingUnitType` (XSD line 1520, `core:AddressPropertyType`, `[0..*]`), not via the CityGML 2.0 `bldg:address` slot on `bldg:Building`. The `core:Address` payload inside is identical, but a consumer that walks CityGML 2.0 buildings looking for `bldg:address` will miss every Dutch address this pipeline emits; consumers should look under `nrg3:address` of each `nrg3:BuildingUnit` instead.
 
 **Tooling caveat for huisletter / huisnummertoevoeging.** 3DCityDB v5's `XALAddressWalker` overrides `visit()` for `ThoroughfareName` / `ThoroughfareNumber` / `LocalityName` / `PostalCodeNumber` / `CountryName` / `PostBoxNumber` only; the `ThoroughfareNumberSuffix` elements are never copied into the `HOUSE_NUMBER` column. Round-tripping a BAG address through 3DCityDB therefore loses the structured suffixes. The flat-form denormalisation embedded in `ThoroughfareNumber` (`38B-rood-2`) keeps the full identifier accessible to such consumers; the structured suffix elements remain available for tools that look for them.
 
@@ -147,10 +151,10 @@ VBO-level attributes go on `nrg3:BuildingUnit` (one VBO per BuildingUnit, parent
 |---|---|---|---|---|
 | `identificatie` | `"NL.IMBAG.Pand.0503100000000153"` | ⚙ | — | Bare BAG id (trailing `"NL.IMBAG.Pand."` stripped) is the join key back to BAG Pand. |
 | `oorspronkelijkbouwjaar` | `1933` | ✓ | `bldg:yearOfConstruction` | Only used when BAG's own `bouwjaar` is absent. BAG wins on ties (`pand_executor._merge_attributes`). |
-| `b3_h_maaiveld` | `0.175` | ✓ | (drives LoD 0 Z-lift) + feeds into `measuredHeight` | `_lift_lod0_to_ground` |
-| `b3_h_dak_max` | `9.925` | ✓ | feeds into `measuredHeight` | `_apply_building_attributes` computes `bldg:measuredHeight = b3_h_dak_max - b3_h_maaiveld` (uom `m`). Using `_max` (not `_70p`) so antennae and chimney tips register as part of the physical extent. Negative-height results are defensively dropped. |
+| `b3_h_maaiveld` | `0.175` | ✓ | (drives LoD 0 Z-lift) + feeds into `nrg3:bdgHeight` | `_lift_lod0_to_ground` |
+| `b3_h_dak_max` | `9.925` | ✓ | feeds into `nrg3:bdgHeight` | `_apply_building_attributes` computes `nrg3:bdgHeight` as a `QualifiedHeight` with `type="maxHeightAboveGround"` (codeSpace `CS_NRG3_HEIGHT_TYPE`), value = `b3_h_dak_max - b3_h_maaiveld`, uom `m`. The Energy ADE `QualifiedHeight` slot is used rather than the CityGML core `bldg:measuredHeight` because it carries source attribution and a typed height-class code. Using `_max` (not `_70p`) so antennae and chimney tips register as part of the physical extent. Negative-height results are defensively dropped. |
 | `b3_bouwlagen` | `3` | ✓ | `bldg:storeysAboveGround` (`xs:nonNegativeInteger`) | `_apply_building_attributes`. Direct 1-to-1 mapping. |
-| `b3_dak_type` | `"slanted"`, `"horizontal"`, `"multiple horizontal"` | ✓ | `bldg:roofType` (`gml:CodeType`, `codeSpace = CS_BUILDING_ROOFTYPE`, the SIG3D `_AbstractBuilding_roofType.xml` codelist URL). 3DBAG → SIG3D mapping in `_3DBAG_TO_SIG3D_ROOF_TYPE`: `horizontal` → `1000` (flat), `slanted` → `1030` (gabled, deterministic fallback for ambiguous pitched roofs), `multiple horizontal` → `1130` (combination of roof forms). | `_apply_building_attributes`, `_3DBAG_TO_SIG3D_ROOF_TYPE`. The lossiness on `slanted` is intrinsic to 3DBAG; consumers needing finer disambiguation must consult the LoD 2 roof geometry directly. |
+| `b3_dak_type` | `"slanted"`, `"horizontal"`, `"multiple horizontal"` | ✓ | `bldg:roofType` (`gml:CodeType`, `codeSpace = CS_BUILDING_ROOFTYPE`, the SIG3D `_AbstractBuilding_roofType.xml` codelist URL). 3DBAG → SIG3D mapping in `_3DBAG_TO_SIG3D_ROOF_TYPE`: `horizontal` → `1000` (flat), `slanted` → `1030` (gabled, deterministic fallback for ambiguous pitched roofs), `multiple horizontal` → `1130` (combination of roof forms). | `_apply_building_attributes`, `_3DBAG_TO_SIG3D_ROOF_TYPE`. The lossiness on `slanted` is intrinsic to 3DBAG; consumers needing finer disambiguation must consult the LoD 2 roof geometry directly. An alternative codespace constant `CS_3DBAG_DAK_TYPE` (`https://docs.3dbag.nl/en/schema/attributes/#b3_dak_type`) is defined in [`namespaces.py`](../citygml_energy/namespaces.py) and would carry the raw 3DBAG term verbatim under its own vocabulary; it is **not** wired up today (the SIG3D-mapped form is the canonical emission), but it stays in the namespace module so a future decision to drop the lossy mapping has a documented home. |
 | `b3_volume_lod22` | `752.575` | ✓ | `nrg3:bdgVolume` (Energy-ADE extension) as `QualifiedVolume` with `type="grossVolume"`, uom `m3` | `_apply_building_attributes`. Matches the per-building pipeline's `bdg_volume` pattern. `bldg:Building` has no native volume slot; Energy ADE adds one. |
 | `gebruiksdoel` | (when carried) | ✓ | `bldg:function` (CodeType, `CS_BUILDING_FUNCTION`) | Usually empty on 3DBAG Building nodes. |
 | `status` | `"Pand in gebruik"` | ⚙ | — | Passed through `_merge_attributes` but not written. |
@@ -193,7 +197,7 @@ A consolidated list of the destination types referenced in the per-column tables
 
 | Target | XSD location | Cardinality on parent | What it carries |
 |---|---|---|---|
-| `nrg3:EnergyPerformanceCertificate` | line 1424 | `[0..*]` natively on BuildingUnit (XSD line 1532, composition slot on `BuildingUnitType`); also `[0..*]` on Building via the `nrg3:energyPerformanceCertificate` substitution element (XSD line 1627). The pipeline uses the BuildingUnit slot because every EP-online cert is per-VBO. | Slots: `type`, `label`, optional `value` (`gml:MeasureType`), optional `certificationMethod`; inherited `validFrom` / `validTo`. |
+| `nrg3:EnergyPerformanceCertificate` | line 1424 | `[0..*]` natively on BuildingUnit (XSD line 1527, composition slot on `BuildingUnitType`); also `[0..*]` on Building via the `nrg3:energyPerformanceCertificate` substitution element (XSD line 1627). The pipeline uses the BuildingUnit slot because every EP-online cert is per-VBO. | Slots: `type`, `label`, optional `value` (`gml:MeasureType`), optional `certificationMethod`; inherited `validFrom` / `validTo`. |
 | `nrg3:Energy` (extends `AbstractResource`) | line 2133 | child of any `AbstractCityObject` via the `nrg3:resource` substitution element (line 1366) | One per (energy-type, end-use) pair. Slots: `type` (Code, e.g. `net` / `primary` / `final`), `endUse` (Code, e.g. `spaceHeating` / `spaceCooling` / `domesticHotWater`), `energyCarrier`, `source`. Inherited from `AbstractResource` (line 633): `amount` (Measure), `referencePeriod` (Code, e.g. `"year"`), `isAmountNormalized` (boolean, required), `normalizationValue` (Measure, optional), `normalizationParameter` (string, optional, e.g. `"netFloorArea"`), `co2Equivalent` (Measure, optional). |
 | `nrg3:QualifiedArea` | line 243 (extends `AbstractQualifiedAttribute` at line 227) | `[0..*]` on `nrg3:AbstractCityObjectSpace.area` | Single measure with `type` (Code), inherited `description` / `source` / `value` (Measure). Used for both the BAG `oppervlakte` and the EP-online `GebruiksoppervlakteThermischeZone` on each BuildingUnit, distinguished by `source`. |
 | `nrg3:bdgType` (extension on `_AbstractBuilding`) | line 1599 | XSD `[0..*]` on Building, but the UML `taggedValue` annotation on the element declares `maxOccurs=1`, so the conceptual cardinality is `[0..1]`; the pipeline emits exactly one canonical Pand-level value. | `gml:CodeType`. The `@codeSpace` attribute identifies the vocabulary; this pipeline uses the Dutch RVO NTA-8800 typology verbatim with `@codeSpace = CS_RVO_GEBOUWTYPE`. |
@@ -305,8 +309,8 @@ For every column, one verdict:
 
 | Column | Meaning | Target | Verdict | Rationale |
 |---|---|---|---|---|
-| `Registratiedatum` | Cert registration date | `nrg3:EnergyPerformanceCertificate.validFrom` (`xs:dateTime`, midnight Europe/Amsterdam) | Native | The day the cert became legally valid in the EP-online registry; only registered labels are *rechtsgeldig* per RVO's `Handleiding EP-online: opvragen van bestanden` (v1.0, feb 2025), §1. Implementation: [`builders/epc.py::_build_epc`](../citygml_energy/city_builder/builders/epc.py). Also drives multi-VBO tiebreak (§ 6.2). |
-| `GeldigTot` (= Opnamedatum + 10 years per RVO) | Cert expiry | `nrg3:EnergyPerformanceCertificate.validTo` (`xs:dateTime`, midnight) | Native | `_build_epc`. |
+| `Registratiedatum` | Cert registration date | `nrg3:EnergyPerformanceCertificate.validFrom` (`xs:dateTime`, midnight, naive — no timezone offset; xsdata serialises `T00:00:00` without a `Z` or `+HH:MM` suffix, matching the rest of the project) | Native | The day the cert became legally valid in the EP-online registry; only registered labels are *rechtsgeldig* per RVO's `Handleiding EP-online: opvragen van bestanden` (v1.0, feb 2025), §1. Implementation: [`builders/epc.py::_build_epc`](../citygml_energy/city_builder/builders/epc.py). Also drives multi-VBO tiebreak (§ 6.2). |
+| `GeldigTot` (= Opnamedatum + 10 years per RVO) | Cert expiry | `nrg3:EnergyPerformanceCertificate.validTo` (`xs:dateTime`, midnight, naive — same convention as `validFrom`) | Native | `_build_epc`. |
 | `Opnamedatum` | Energy-advisor inspection date | `nrg3:EnergyPerformanceCertificate.creationDate` (`xs:date`) | Native | The day the certificate document came into existence on-site, before registration. Distinct from `Registratiedatum`: the inspection may be months earlier (RVO Bijlage 2 documents the two as explicitly distinct dates). `_build_epc`. Also tie-breaker for duplicate rows in `address_match` (latest opname wins). |
 
 #### 6.5c. Label (1)
@@ -321,7 +325,8 @@ For every column, one verdict:
 |---|---|---|---|---|
 | `Berekeningstype` | NTA 8800 calculation variant string | `nrg3:EnergyPerformanceCertificate.certificationMethod` | Native | Verbatim string; no codelist in NTA 8800 maps cleanly. Joined with `SoortOpname` via ` / ` (no em dash). Implementation: [`builders/epc.py::_certification_method_string`](../citygml_energy/city_builder/builders/epc.py). |
 | `SoortOpname` | `Basisopname` / `Detailopname` | concatenated into `certificationMethod` (e.g. `"Basisopname / NTA 8800:2024 (basisopname woningbouw)"`) | Native (derived) | Inspection-rigour qualifier. Concatenation chosen over a separate field. |
-| `Status` | `Bestaand` / `Nieuwbouw` / `Verbouw` | none today; potential target = `gen:stringAttribute name="epOnlineStatus"` on the BuildingUnit, OR a future `bldg:condition`-style lifecycle field | Skip (latent) | Lifecycle signal at certification time. SIG3D's `bldg:class` is a CityGML usage codelist (residential / commercial), not a lifecycle one. No native Energy ADE lifecycle slot. |
+| (no source column) | XSD-required cert validity flag | `nrg3:EnergyPerformanceCertificate.status` (inherited from `nrg3:AbstractFeatureWithLifeSpan`, `gml:CodeType`, codeSpace = `EPCStatusValue.xml`) | Native (constant) | Hard-coded `"actual"` for every emitted cert. Every row in the EP-online Mutatiebestand is by definition the registered, legally-valid certificate for the VBO ("alleen deze geregistreerde labels zijn rechtsgeldig" — RVO Handleiding EP-online: opvragen van bestanden, v1.0 feb 2025, §1), so the codelist member `actual` (vs. `potential` / `unknown`) is correct unconditionally. Implementation: [`builders/epc.py::_build_epc`](../citygml_energy/city_builder/builders/epc.py) line ~452. Distinct from EP-online's `Status` column (Bestaand / Nieuwbouw / Verbouw) directly below — that is a *lifecycle* signal, not a *cert-validity* one. |
+| `Status` | `Bestaand` / `Nieuwbouw` / `Verbouw` | none today; potential target = `gen:stringAttribute name="epOnlineStatus"` on the BuildingUnit, OR a future `bldg:condition`-style lifecycle field | Skip (latent) | Lifecycle signal at certification time. SIG3D's `bldg:class` is a CityGML usage codelist (residential / commercial), not a lifecycle one. No native Energy ADE lifecycle slot. The cert-level `nrg3:status` row above is a *different* field and is always emitted. |
 | `OpBasisVanReferentiegebouw` | `Ja`/`Nee`: was the cert based on a reference building rather than measured | none today; potential target = `gen:stringAttribute name="epOnlineReferenceBuildingBased"` on the EPC | Skip (latent) | Quality flag. Important for thesis-grade interpretation but not load-bearing for the building-physics output. The information is also encodable as part of `certificationMethod` if needed later. |
 | `Certificaathouder` | Name of the certifying organisation | none | Drop | Personal-ish data and not load-bearing for energy modelling. The cert *type* (`type="totalEnergyDemand"` on the EPC) plus `nrg3:Metadata/source = "EP-online Mutatiebestand v4 (RVO)"` already attributes the source register; adding the certifier introduces FAIR-data noise without modelling value. |
 
@@ -381,7 +386,7 @@ For every column, one verdict:
 | Column | Meaning | Target | Verdict | Rationale |
 |---|---|---|---|---|
 | `BerekendeCO2Emissie` | Calculated CO₂ emission. **Unit depends on regime** (§ 6.3): kg/(m²·yr) for NTA 8800; placeholder `0,00` for Definitief Energielabel (skipped); kg/yr (total) for Nader Voorschrift / ISSO. | NTA 8800: `nrg3:Energy.co2Equivalent` on the `PrimaireFossieleEnergie` resource, uom `kg/m2/a`. legacy_total Nader Voorschrift / ISSO: `co2Equivalent` on the single legacy `primary` resource, uom `kg/a` (total). Definitief Energielabel: no emission (placeholder filtered via `co2_is_placeholder()`). | Native (regime-aware) | `co2Equivalent` is a property of `AbstractResource` (line 646), not a standalone feature. Attaching it to the regime's natural energy carrier (BENG-2 for NTA 8800, the legacy total for Nader Voorschrift / ISSO) is the conceptually correct place: emissions are downstream of fossil energy. The Definitief Energielabel branch reports `0,00` for 1 438 399 of 1 438 444 rows in the v20260401 vintage (99.997%); the field is structural padding rather than a measurement, so suppressing it avoids fabricating "zero CO₂ emission" claims for old houses that demonstrably emit CO₂. |
-| `BerekendeEnergieverbruik` | Calculated total annual energy use. **Unit depends on regime** (§ 6.3): kWh/(m²·yr) for NTA 8800 (delivered final energy); MJ/yr **total** for legacy_total (NEN 7120 lineage). | (1) `nrg3:Energy` resource via `nrg3:resource`. NTA 8800: `type="final"`, `amount` uom `kWh/m2/a`, `isAmountNormalized=true`, no `normalizationValue`. legacy_total: `type="primary"` (NEN 7120 §5 formula 5.9 EP_tot), `amount` uom `MJ/a`, `isAmountNormalized=false` (it is an absolute total, not per-m²); description marks it as "legacy NEN 7120 method, total annual primary fossil energy in MJ/yr" so a downstream consumer cannot mistake it for the NTA 8800 figure. (2) **Same value also lands on `nrg3:EnergyPerformanceCertificate.value`** (`gml:MeasureType`, optional, XSD line 1431) as the numeric backing the letter on `nrg3:label`. The `value` element uses the **same regime-aware uom** as the matching `nrg3:Energy.amount` (`kWh/m2/a` for NTA 8800, `MJ/a` for legacy_total) — both wired through the public `UOM_KWH_PER_M2_PER_A` / `UOM_MJ_PER_A` constants in `energy_resources.py`, so EPC.value and the Energy resource cannot drift apart. `unknown` regime: `EPC.value` skipped (no defensible uom). | Native (regime-aware) | The only column populated in BOTH regimes, but with **divergent units** (median 150 vs. 93 039 across 5.12 M rows; § 6.3 has the magnitude evidence). Distinct from `Energiebehoefte` (net) and `PrimaireFossieleEnergie` (primary): for NTA 8800 this is the delivered final-energy figure; for legacy this is the absolute primary-energy total in megajoules. Cross-regime numerical comparison is *not* a goal of `EPC.value`. `gml:MeasureType` requires `@uom` exactly so heterogeneous regimes can coexist without forcing a fictive common unit. Aggregate longitudinal analysis should aggregate from `nrg3:resource`/`nrg3:Energy` (where the `EnergyTypeValue` tagging already disambiguates `primary` vs `final`), not from `EPC.value`. |
+| `BerekendeEnergieverbruik` | Calculated total annual energy use. **Unit depends on regime** (§ 6.3): kWh/(m²·yr) for NTA 8800 (delivered final energy); MJ/yr **total** for legacy_total (NEN 7120 lineage). | (1) `nrg3:Energy` resource via `nrg3:resource`. NTA 8800: `type="final"`, `amount` uom `kWh/m2/a`, `isAmountNormalized=true`, no `normalizationValue`. legacy_total: `type="primary"` (NEN 7120 §5 formula 5.9 EP_tot), `amount` uom `MJ/a`, `isAmountNormalized=false` (it is an absolute total, not per-m²); description marks it as "legacy NEN 7120 method, total annual primary fossil energy in MJ/yr" so a downstream consumer cannot mistake it for the NTA 8800 figure. (2) **Same value also lands on `nrg3:EnergyPerformanceCertificate.value`** (`gml:MeasureType`, optional, XSD line 1430) as the numeric backing the letter on `nrg3:label`. The `value` element uses the **same regime-aware uom** as the matching `nrg3:Energy.amount` (`kWh/m2/a` for NTA 8800, `MJ/a` for legacy_total) — both wired through the public `UOM_KWH_PER_M2_PER_A` / `UOM_MJ_PER_A` constants in `energy_resources.py`, so EPC.value and the Energy resource cannot drift apart. `unknown` regime: `EPC.value` skipped (no defensible uom). | Native (regime-aware) | The only column populated in BOTH regimes, but with **divergent units** (median 150 vs. 93 039 across 5.12 M rows; § 6.3 has the magnitude evidence). Distinct from `Energiebehoefte` (net) and `PrimaireFossieleEnergie` (primary): for NTA 8800 this is the delivered final-energy figure; for legacy this is the absolute primary-energy total in megajoules. Cross-regime numerical comparison is *not* a goal of `EPC.value`. `gml:MeasureType` requires `@uom` exactly so heterogeneous regimes can coexist without forcing a fictive common unit. Aggregate longitudinal analysis should aggregate from `nrg3:resource`/`nrg3:Energy` (where the `EnergyTypeValue` tagging already disambiguates `primary` vs `final`), not from `EPC.value`. |
 | `Temperatuuroverschrijding` (BENG-4) | Summer overheating hours | none today; potential target = `gen:measureAttribute` on the BuildingUnit with uom `h`, OR a future Energy ADE `Zone/comfortIndicator` field | Skip (latent) | No thermal-comfort indicator slot in `AbstractZone` even though the type carries `isCooled` / `isMechanicallyVentilated`. |
 
 #### 6.5l. BENG / Bouwbesluit thresholds (4)
@@ -408,52 +413,152 @@ Structural distribution to keep in mind:
 - The remaining EP-online emissions (`bdgSubtypeEPOnline`, `epOnlineAandeelHernieuwbareEnergie`, and however many `nrg3:Energy` resources the regime emits) live on each `nrg3:BuildingUnit`.
 - One `nrg3:Metadata` block per BuildingUnit attributes EP-online for the per-VBO emissions on that unit.
 
+The snippet below is **schema-derived, not byte-verified against a city-pipeline run**: the surrounding fact tables are exercised by `tests/test_mapping_index_in_sync.py`, but the exact xsdata serialization order shown here has not been diffed against a fresh AOI output. Element ordering follows the XSD sequence as resolved by xsdata: inside `nrg3:Metadata`, `qualityDescription` precedes `source`; on `bldg:Building`, every `_GenericApplicationPropertyOfCityObject` substitution (`nrg3:Metadata`, `nrg3:identifier`, `gen:intAttribute`) appears *before* the `bldg:Building` sequence (`yearOfConstruction`, `roofType`, `storeysAboveGround`, `buildingUnit`), and every `_GenericApplicationPropertyOfAbstractBuilding` substitution (`nrg3:bdgType`, `nrg3:bdgVolume`, `nrg3:bdgHeight`) appears *after* it; on `nrg3:BuildingUnit`, children fall as `Metadata`, then resources, identifier, generic attributes, areas, type, address, EPC. No `gml:name` on the Building (BAG carries no per-Pand human-readable label, see §3); no `gml:id` on the `nrg3:Energy` resources (the code does not assign one). The four NTA 8800 resources are emitted in the order BENG-2 → BENG-1 → Warmtebehoefte → BerekendeEnergieverbruik (the order in [`_attach_nta8800_resources`](../citygml_energy/city_builder/energy_resources.py)). When this section is reconciled against a real city-AOI GML, any divergence should update the snippet rather than the code.
+
 ```xml
 <bldg:Building gml:id="pand_0114100000206140">
-  <gml:name>Hoofdkanaal WZ 73</gml:name>
-
   <!-- Year-of-construction is per-Pand: BAG and EP-online both report a single
        value for the whole building. Two Metadata blocks document each source. -->
   <nrg3:Metadata>
-    <nrg3:source>BAG bag:pand.bouwjaar (PDOK WFS v2.0)</nrg3:source>
     <nrg3:qualityDescription>Source for bldg:yearOfConstruction on this Pand.</nrg3:qualityDescription>
+    <nrg3:source>BAG bag:pand.bouwjaar (PDOK WFS v2.0)</nrg3:source>
   </nrg3:Metadata>
   <nrg3:Metadata>
-    <nrg3:source>EP-online Mutatiebestand v4 (RVO)</nrg3:source>
     <nrg3:qualityDescription>Source for the EP-online Pand-level emissions on this Building: gen:intAttribute name="yearOfConstructionEPOnline" and nrg3:bdgType (both picked from the most-recently-registered EP-online certificate across this Pand's VBOs that carries the field). The per-VBO Gebouwsubtype, renewable-energy share, thermal-zone area, and Energy resources have their own EP-online Metadata block on each BuildingUnit.</nrg3:qualityDescription>
+    <nrg3:source>EP-online Mutatiebestand v4 (RVO)</nrg3:source>
   </nrg3:Metadata>
-  <bldg:yearOfConstruction>1955</bldg:yearOfConstruction>
+  <nrg3:identifier codeSpace="http://bag.basisregistraties.overheid.nl/bag/id/pand/">0114100000206140</nrg3:identifier>
+
+  <!-- gen:intAttribute substitutes into _GenericApplicationPropertyOfCityObject,
+       which falls in the inherited core:CityObject sequence position — ahead of
+       bldg:Building's own sequence start (yearOfConstruction). -->
   <gen:intAttribute name="yearOfConstructionEPOnline">
     <gen:value>1956</gen:value>
   </gen:intAttribute>
 
-  <!-- Native nrg3:bdgType: Pand-level primary type, Dutch RVO term verbatim,
-       @codeSpace points at the EP-online publication that defines the vocabulary. -->
-  <nrg3:bdgType codeSpace="https://www.rvo.nl/onderwerpen/wetten-en-regels-gebouwen/ep-online">Rijwoning hoek</nrg3:bdgType>
+  <bldg:yearOfConstruction>1955</bldg:yearOfConstruction>
+
+  <!-- ...remaining 3DBAG-derived bldg:* attributes (bldg:roofType,
+       bldg:storeysAboveGround) and LoD 0/1/2 geometries elided for
+       brevity; see §5 for the full inventory... -->
 
   <nrg3:buildingUnit>
     <nrg3:BuildingUnit gml:id="bu_0114010000274521">
-      <bldg:address>...xAL...</bldg:address>
+
+      <nrg3:Metadata>
+        <nrg3:qualityDescription>Source for the EP-online-derived per-VBO emissions on this BuildingUnit: gen:stringAttribute name="bdgSubtypeEPOnline" (Dutch RVO Gebouwsubtype, verbatim); gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie" (BENG-3 renewable-energy share, %); nrg3:QualifiedArea type="netFloorArea" sourced from GebruiksoppervlakteThermischeZone (NTA 8800 thermal-zone area); nrg3:Energy resources via nrg3:resource: Energiebehoefte (BENG-1, net), Warmtebehoefte (NTA 8800 net heating demand), PrimaireFossieleEnergie (BENG-2, primary), BerekendeEnergieverbruik (NTA 8800 delivered/finaal total). Year of construction (yearOfConstructionEPOnline) and the primary building type (nrg3:bdgType) are at the Building level: a Pand is constructed once and its primary type is fixed at the structure level.</nrg3:qualityDescription>
+        <nrg3:source>EP-online Mutatiebestand v4 (RVO)</nrg3:source>
+      </nrg3:Metadata>
+
+      <!-- Four nrg3:Energy resources via the nrg3:resource substitution
+           (no xlink, no top-level cityObjectMember workaround). Emitted in
+           the order BENG-2 → BENG-1 → Warmtebehoefte → BerekendeEnergieverbruik
+           by _attach_nta8800_resources. -->
+
+      <nrg3:resource>
+        <nrg3:Energy>
+          <gml:description>PrimaireFossieleEnergie (BENG-2)</gml:description>
+          <nrg3:operationType codeSpace="...ResourceOperationTypeValue.xml">demands</nrg3:operationType>
+          <nrg3:referencePeriod codeSpace="...ReferencePeriodValue.xml">year</nrg3:referencePeriod>
+          <nrg3:amount uom="kWh/m2/a">63.0</nrg3:amount>
+          <nrg3:isAmountNormalized>true</nrg3:isAmountNormalized>
+          <!-- No <nrg3:normalizationValue>: the kWh/m2/a uom already
+               encodes the per-m² basis. -->
+          <nrg3:co2Equivalent uom="kg/m2/a">14.7</nrg3:co2Equivalent>
+          <nrg3:type codeSpace="...EnergyTypeValue.xml">primary</nrg3:type>
+          <nrg3:endUse codeSpace="...EnergyEndUseValue.xml">otherOrCombination</nrg3:endUse>
+        </nrg3:Energy>
+      </nrg3:resource>
+
+      <nrg3:resource>
+        <nrg3:Energy>
+          <gml:description>Energiebehoefte (BENG-1, heating + cooling)</gml:description>
+          <nrg3:operationType codeSpace="...">demands</nrg3:operationType>
+          <nrg3:referencePeriod codeSpace="...">year</nrg3:referencePeriod>
+          <nrg3:amount uom="kWh/m2/a">28.5</nrg3:amount>
+          <nrg3:isAmountNormalized>true</nrg3:isAmountNormalized>
+          <nrg3:type codeSpace="...">net</nrg3:type>
+          <nrg3:endUse codeSpace="...">otherOrCombination</nrg3:endUse>
+        </nrg3:Energy>
+      </nrg3:resource>
+
+      <nrg3:resource>
+        <nrg3:Energy>
+          <gml:description>Warmtebehoefte (NTA 8800 net heating demand)</gml:description>
+          <nrg3:operationType codeSpace="...">demands</nrg3:operationType>
+          <nrg3:referencePeriod codeSpace="...">year</nrg3:referencePeriod>
+          <nrg3:amount uom="kWh/m2/a">25.1</nrg3:amount>
+          <nrg3:isAmountNormalized>true</nrg3:isAmountNormalized>
+          <nrg3:type codeSpace="...">net</nrg3:type>
+          <nrg3:endUse codeSpace="...">spaceHeating</nrg3:endUse>
+        </nrg3:Energy>
+      </nrg3:resource>
+
+      <nrg3:resource>
+        <nrg3:Energy>
+          <gml:description>BerekendeEnergieverbruik (delivered final energy)</gml:description>
+          <nrg3:operationType codeSpace="...">demands</nrg3:operationType>
+          <nrg3:referencePeriod codeSpace="...">year</nrg3:referencePeriod>
+          <nrg3:amount uom="kWh/m2/a">35.4</nrg3:amount>
+          <nrg3:isAmountNormalized>true</nrg3:isAmountNormalized>
+          <nrg3:type codeSpace="...">final</nrg3:type>
+          <nrg3:endUse codeSpace="...">otherOrCombination</nrg3:endUse>
+        </nrg3:Energy>
+      </nrg3:resource>
+
+      <nrg3:identifier codeSpace="http://bag.basisregistraties.overheid.nl/bag/id/verblijfsobject/">0114010000274521</nrg3:identifier>
+
+      <gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie">
+        <gen:value uom="percent">42.0</gen:value>
+      </gen:measureAttribute>
+      <gen:stringAttribute name="bdgSubtypeEPOnline">
+        <gen:value>rijwoning-hoek-kopgevel</gen:value>
+      </gen:stringAttribute>
 
       <!-- Two QualifiedArea entries: same type ("netFloorArea"), distinct source.
            BAG oppervlakte and the EP-online thermal-zone area sit side-by-side. -->
       <nrg3:area>
         <nrg3:QualifiedArea>
-          <nrg3:type codeSpace="...AreaTypeValue.xml">netFloorArea</nrg3:type>
+          <nrg3:description>Usable floor area ('gebruiksoppervlakte' per NEN 2580) as recorded by the Dutch BAG register for this verblijfsobject.</nrg3:description>
           <nrg3:source>BAG bag:verblijfsobject.oppervlakte (PDOK WFS v2.0)</nrg3:source>
           <nrg3:value uom="m2">115.0</nrg3:value>
+          <nrg3:type codeSpace="...AreaTypeValue.xml">netFloorArea</nrg3:type>
         </nrg3:QualifiedArea>
       </nrg3:area>
       <nrg3:area>
         <nrg3:QualifiedArea>
-          <nrg3:type codeSpace="...AreaTypeValue.xml">netFloorArea</nrg3:type>
+          <nrg3:description>EP-online thermal-zone floor area: the denominator every per-m² energy metric on this BuildingUnit is normalised against.</nrg3:description>
           <nrg3:source>EP-online Mutatiebestand v4 (RVO)</nrg3:source>
           <nrg3:value uom="m2">112.5</nrg3:value>
+          <nrg3:type codeSpace="...AreaTypeValue.xml">netFloorArea</nrg3:type>
         </nrg3:QualifiedArea>
       </nrg3:area>
 
+      <nrg3:type codeSpace="http://bag.basisregistraties.overheid.nl/id/concept/Gebruiksdoel">woonfunctie</nrg3:type>
+
+      <!-- Address property on nrg3:BuildingUnit lives in the Energy ADE
+           namespace (nrg3:address), NOT bldg:address. The xAL payload
+           inside is identical to the per-building pipeline's address. -->
+      <nrg3:address>
+        <core:Address gml:id="addr_0114010000274521">
+          <core:xalAddress>...xAL...</core:xalAddress>
+          <core:multiPoint>...gml:MultiPoint...</core:multiPoint>
+        </core:Address>
+      </nrg3:address>
+
       <nrg3:energyPerformanceCertificate>
-        <nrg3:EnergyPerformanceCertificate>
+        <nrg3:EnergyPerformanceCertificate gml:id="epc_0114010000274521">
+          <!-- Dates are inherited from nrg3:AbstractADEFeatureType /
+               AbstractFeatureWithLifeSpanType (Energy_ADE_3.0_beta8.xsd
+               lines 454, 477-478) and therefore serialise in the
+               Energy ADE namespace, NOT in core:. -->
+          <nrg3:creationDate>2024-05-01</nrg3:creationDate>
+          <nrg3:validFrom>2024-05-14T00:00:00</nrg3:validFrom>
+          <nrg3:validTo>2034-05-13T00:00:00</nrg3:validTo>
+          <!-- Every cert in the EP-online register is rechtsgeldig per
+               RVO § 1; "actual" is the EPCStatusValue codelist member.
+               The pipeline hard-codes this value (see §6.5d). -->
+          <nrg3:status codeSpace="...EPCStatusValue.xml">actual</nrg3:status>
           <!-- type = energy-domain scope (totalEnergyDemand: NTA 8800
                covers the full building budget). The "EP-online" provenance
                lives on the surrounding Metadata block. -->
@@ -463,74 +568,22 @@ Structural distribution to keep in mind:
                BerekendeEnergieverbruik with regime-aware uom. -->
           <nrg3:value uom="kWh/m2/a">35.4</nrg3:value>
           <nrg3:certificationMethod>Detailopname / NTA 8800:2024 (detailopname woningbouw)</nrg3:certificationMethod>
-          <!-- Every cert in the EP-online register is rechtsgeldig per
-               RVO § 1; "actual" is the EPCStatusValue codelist member. -->
-          <nrg3:status codeSpace="...EPCStatusValue.xml">actual</nrg3:status>
-          <core:creationDate>2024-05-01</core:creationDate>
-          <core:validFrom>2024-05-14T00:00:00</core:validFrom>
-          <core:validTo>2034-05-13T00:00:00</core:validTo>
         </nrg3:EnergyPerformanceCertificate>
       </nrg3:energyPerformanceCertificate>
-
-      <gen:stringAttribute name="bdgSubtypeEPOnline">
-        <gen:value>rijwoning-hoek-kopgevel</gen:value>
-      </gen:stringAttribute>
-      <gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie">
-        <gen:value uom="percent">42</gen:value>
-      </gen:measureAttribute>
-
-      <nrg3:Metadata>
-        <nrg3:source>EP-online Mutatiebestand v4 (RVO)</nrg3:source>
-        <nrg3:qualityDescription>Source for the EP-online-derived per-VBO emissions on this BuildingUnit (bdgSubtypeEPOnline, epOnlineAandeelHernieuwbareEnergie, the EP-online thermal-zone nrg3:QualifiedArea, and the nrg3:Energy resources hosted via nrg3:resource).</nrg3:qualityDescription>
-      </nrg3:Metadata>
-
-      <!-- Four nrg3:Energy resources via the nrg3:resource substitution
-           (no xlink, no top-level cityObjectMember workaround). -->
-
-      <nrg3:resource>
-        <nrg3:Energy gml:id="energy_bu_0114010000274521_energiebehoefte">
-          <gml:description>Energiebehoefte (BENG-1, heating + cooling)</gml:description>
-          <nrg3:operationType codeSpace="...ResourceOperationTypeValue.xml">demands</nrg3:operationType>
-          <nrg3:referencePeriod codeSpace="...ReferencePeriodValue.xml">year</nrg3:referencePeriod>
-          <nrg3:amount uom="kWh/m2/a">28.5</nrg3:amount>
-          <nrg3:isAmountNormalized>true</nrg3:isAmountNormalized>
-          <!-- No <nrg3:normalizationValue>: the kWh/m2/a uom already
-               encodes the per-m² basis. -->
-          <nrg3:type codeSpace="...EnergyTypeValue.xml">net</nrg3:type>
-          <nrg3:endUse codeSpace="...EnergyEndUseValue.xml">otherOrCombination</nrg3:endUse>
-        </nrg3:Energy>
-      </nrg3:resource>
-
-      <nrg3:resource>
-        <nrg3:Energy>
-          <gml:description>Warmtebehoefte (NTA 8800 net heating demand)</gml:description>
-          <nrg3:type codeSpace="...">net</nrg3:type>
-          <nrg3:endUse codeSpace="...">spaceHeating</nrg3:endUse>
-          <nrg3:amount uom="kWh/m2/a">25.1</nrg3:amount>
-          <!-- ...same envelope as above... -->
-        </nrg3:Energy>
-      </nrg3:resource>
-
-      <nrg3:resource>
-        <nrg3:Energy>
-          <gml:description>PrimaireFossieleEnergie (BENG-2)</gml:description>
-          <nrg3:type codeSpace="...">primary</nrg3:type>
-          <nrg3:endUse codeSpace="...">otherOrCombination</nrg3:endUse>
-          <nrg3:amount uom="kWh/m2/a">63.0</nrg3:amount>
-          <nrg3:co2Equivalent uom="kg/m2/a">14.7</nrg3:co2Equivalent>
-        </nrg3:Energy>
-      </nrg3:resource>
-
-      <nrg3:resource>
-        <nrg3:Energy>
-          <gml:description>BerekendeEnergieverbruik (delivered final energy)</gml:description>
-          <nrg3:type codeSpace="...">final</nrg3:type>
-          <nrg3:endUse codeSpace="...">otherOrCombination</nrg3:endUse>
-          <nrg3:amount uom="kWh/m2/a">35.4</nrg3:amount>
-        </nrg3:Energy>
-      </nrg3:resource>
     </nrg3:BuildingUnit>
   </nrg3:buildingUnit>
+
+  <!-- Native nrg3:bdgType: Pand-level primary type, Dutch RVO term verbatim,
+       @codeSpace points at the Dictu monitoringsbestand.xsd that declares
+       the closed TypeBuilding simpleType the value is drawn from.
+       Falls AFTER nrg3:buildingUnit because both substitute into
+       bldg:_GenericApplicationPropertyOfAbstractBuilding, and xsdata
+       walks the substitution group in attribute-iteration order
+       (buildingUnit precedes bdgType / bdgVolume / bdgHeight). -->
+  <nrg3:bdgType codeSpace="https://raw.githubusercontent.com/Dictu/EP-online-API/master/XSD/Energielabel/generieke%20xml%20v4.4/monitoringsbestand.xsd">Rijwoning hoek</nrg3:bdgType>
+
+  <!-- ...nrg3:bdgVolume and nrg3:bdgHeight (3DBAG-derived) follow here,
+       in that order; elided for brevity. See §5 for the full inventory. -->
 </bldg:Building>
 ```
 
@@ -540,38 +593,10 @@ For comparison, here is what a row from VBO `0114010000280857` (Hoofdkanaal WZ 3
 
 ```xml
 <nrg3:BuildingUnit gml:id="bu_0114010000280857">
-  <!-- Single QualifiedArea: BAG only (no EP-online thermal-zone area). -->
-  <nrg3:area>
-    <nrg3:QualifiedArea>
-      <nrg3:type codeSpace="...AreaTypeValue.xml">netFloorArea</nrg3:type>
-      <nrg3:source>BAG bag:verblijfsobject.oppervlakte (PDOK WFS v2.0)</nrg3:source>
-      <nrg3:value uom="m2">172.0</nrg3:value>
-    </nrg3:QualifiedArea>
-  </nrg3:area>
-
-  <nrg3:energyPerformanceCertificate>
-    <nrg3:EnergyPerformanceCertificate>
-      <nrg3:type codeSpace="...EPCTypeValue.xml">totalEnergyDemand</nrg3:type>
-      <nrg3:label>G</nrg3:label>
-      <!-- Same source column as the NTA 8800 example (BerekendeEnergieverbruik),
-           but the legacy regime ships it as a total in MJ/yr. The uom carries
-           the divergence. -->
-      <nrg3:value uom="MJ/a">293361.52</nrg3:value>
-      <nrg3:certificationMethod>Rekenmethodiek Definitief Energielabel, versie 1.2, 16 september 2014</nrg3:certificationMethod>
-      <nrg3:status codeSpace="...EPCStatusValue.xml">actual</nrg3:status>
-      <core:creationDate>2019-06-14</core:creationDate>
-      <core:validFrom>2019-06-14T00:00:00</core:validFrom>
-      <core:validTo>2029-06-14T00:00:00</core:validTo>
-    </nrg3:EnergyPerformanceCertificate>
-  </nrg3:energyPerformanceCertificate>
-
-  <gen:stringAttribute name="bdgSubtypeEPOnline">
-    <gen:value>rijwoning-tussen</gen:value>
-  </gen:stringAttribute>
 
   <nrg3:Metadata>
-    <nrg3:source>EP-online Mutatiebestand v4 (RVO)</nrg3:source>
     <nrg3:qualityDescription>Source for the EP-online-derived per-VBO emissions ...</nrg3:qualityDescription>
+    <nrg3:source>EP-online Mutatiebestand v4 (RVO)</nrg3:source>
   </nrg3:Metadata>
 
   <!-- ONE Energy resource in MJ/a (legacy total). No co2Equivalent because
@@ -579,7 +604,7 @@ For comparison, here is what a row from VBO `0114010000280857` (Hoofdkanaal WZ 3
        placeholder, not a measurement. -->
   <nrg3:resource>
     <nrg3:Energy>
-      <gml:description>BerekendeEnergieverbruik (legacy NEN 7120 method, total annual primary fossil energy in MJ)</gml:description>
+      <gml:description>BerekendeEnergieverbruik (legacy NEN 7120 method, total annual primary fossil energy EP_tot per NEN 7120 §5 formula 5.9, in MJ/yr)</gml:description>
       <nrg3:operationType codeSpace="...">demands</nrg3:operationType>
       <nrg3:referencePeriod codeSpace="...">year</nrg3:referencePeriod>
       <nrg3:amount uom="MJ/a">293361.52</nrg3:amount>
@@ -593,6 +618,51 @@ For comparison, here is what a row from VBO `0114010000280857` (Hoofdkanaal WZ 3
       <nrg3:endUse codeSpace="...">otherOrCombination</nrg3:endUse>
     </nrg3:Energy>
   </nrg3:resource>
+
+  <nrg3:identifier codeSpace="http://bag.basisregistraties.overheid.nl/bag/id/verblijfsobject/">0114010000280857</nrg3:identifier>
+
+  <gen:stringAttribute name="bdgSubtypeEPOnline">
+    <gen:value>rijwoning-tussen</gen:value>
+  </gen:stringAttribute>
+
+  <!-- Single QualifiedArea: BAG only (no EP-online thermal-zone area
+       because GebruiksoppervlakteThermischeZone is empty 100% of the
+       time on legacy-regime rows; see §6.3.2). -->
+  <nrg3:area>
+    <nrg3:QualifiedArea>
+      <nrg3:description>Usable floor area ('gebruiksoppervlakte' per NEN 2580) as recorded by the Dutch BAG register for this verblijfsobject.</nrg3:description>
+      <nrg3:source>BAG bag:verblijfsobject.oppervlakte (PDOK WFS v2.0)</nrg3:source>
+      <nrg3:value uom="m2">172.0</nrg3:value>
+      <nrg3:type codeSpace="...AreaTypeValue.xml">netFloorArea</nrg3:type>
+    </nrg3:QualifiedArea>
+  </nrg3:area>
+
+  <nrg3:type codeSpace="http://bag.basisregistraties.overheid.nl/id/concept/Gebruiksdoel">woonfunctie</nrg3:type>
+
+  <nrg3:address>
+    <core:Address gml:id="addr_0114010000280857">
+      <core:xalAddress>...xAL...</core:xalAddress>
+      <core:multiPoint>...gml:MultiPoint...</core:multiPoint>
+    </core:Address>
+  </nrg3:address>
+
+  <nrg3:energyPerformanceCertificate>
+    <nrg3:EnergyPerformanceCertificate gml:id="epc_0114010000280857">
+      <!-- Dates inherited from nrg3:AbstractFeatureWithLifeSpanType
+           serialise in the Energy ADE namespace, not in core:. -->
+      <nrg3:creationDate>2019-06-14</nrg3:creationDate>
+      <nrg3:validFrom>2019-06-14T00:00:00</nrg3:validFrom>
+      <nrg3:validTo>2029-06-14T00:00:00</nrg3:validTo>
+      <nrg3:status codeSpace="...EPCStatusValue.xml">actual</nrg3:status>
+      <nrg3:type codeSpace="...EPCTypeValue.xml">totalEnergyDemand</nrg3:type>
+      <nrg3:label>G</nrg3:label>
+      <!-- Same source column as the NTA 8800 example (BerekendeEnergieverbruik),
+           but the legacy regime ships it as a total in MJ/yr. The uom carries
+           the divergence. -->
+      <nrg3:value uom="MJ/a">293361.52</nrg3:value>
+      <nrg3:certificationMethod>Rekenmethodiek Definitief Energielabel, versie 1.2, 16 september 2014</nrg3:certificationMethod>
+    </nrg3:EnergyPerformanceCertificate>
+  </nrg3:energyPerformanceCertificate>
 </nrg3:BuildingUnit>
 ```
 
@@ -639,7 +709,7 @@ Derived PV fields (computed in-pipeline from the geometry + roof facet, not read
 | `nrg3:CityObjectRelation` with `type="installedOn"` | the `gml:id` of the matched `bldg:RoofSurface` | xlink only |
 | every other `nrg3:*Collector` field (`model`, `yearOfManufacture`, `installedPower`, `nominalEfficiency`, `apertureArea`, `heatDissipation*`, `validFrom/validTo`, ...) | — | Deliberately unset: a single 2D aerial polygon carries no information about any of them. |
 
-**Coverage:** 4 389 panels in the full GPKG; 334 project onto 168 LoD 2 roofs inside the Emmer-Compascuum AOI; 178 are skipped because they have no LoD 2 roof overlap (building classified too low to receive them, or no 3DBAG match).
+**Coverage:** 4 389 panels in the full GPKG; the AOI bbox returns 512 panels (the remaining 3 877 fall outside the small-area extent and are clipped at load time by `load_panels_in_bbox`); of those 512, 334 project onto 168 LoD 2 roofs and 178 are skipped because they have no LoD 2 roof overlap (building classified too low to receive them, or no 3DBAG match).
 
 ---
 
@@ -666,7 +736,7 @@ CFTree's per-tree morphometric attribute dict is the only source for native City
 | `trunk_base_height_m` | `gen:doubleAttribute name="trunk_base_height_m"` | `_CFTREE_GENERIC_DOUBLE`. DTM-sampled NAP elevation at the trunk base. |
 | `trunk_radius_m` | (omitted) | redundant with `trunk_DBH_m` (CFTree computes it as exactly `0.5 * trunk_DBH_m`); see comment in `_CFTREE_GENERIC_DOUBLE`. |
 | `tile_id` | — | Debug aid; not written to the GML. |
-| `NaN` / `null` / `""` on any metric | dropped | `_as_finite_float` guards the emission per field so per-tree CityJSONs missing individual metrics still produce a valid SolitaryVegetationObject. |
+| `NaN` / `null` / `""` on any metric | dropped | `to_finite_float` guards the emission per field so per-tree CityJSONs missing individual metrics still produce a valid SolitaryVegetationObject. |
 
 ### 8b. Geometry and file-level fields
 
@@ -696,11 +766,11 @@ BGT carries **no biological attributes** (no species, leaf class, planting year,
 
 | BGT property | Example | Read | CityGML target | Notes |
 |---|---|---|---|---|
-| `lokaal_id` | `"G0114.703d17f4c978045de05363ab720afc9b"` | ✓ | `core:externalReference/externalObject/uri` (the full PDOK URL; the `lokaal_id` is the URL's final path segment) | `_apply_bgt_cross_reference` |
+| `lokaal_id` | `"G0114.703d17f4c978045de05363ab720afc9b"` | ✓ | `core:externalReference`: `externalObject/uri` is the full PDOK OGC API Features URL (the `lokaal_id` is its final path segment, built via `bgt_feature_uri`); `informationSystem` carries the BGT product page (`BGT_INFORMATION_SYSTEM_URL`, `https://www.pdok.nl/ogc-apis/-/article/basisregistratie-grootschalige-topografie-bgt-`), which is the same on every BGT-matched tree. The product page is preferred over the bare collection endpoint because it documents the dataset semantics for a human follower; the per-feature payload is reachable via `externalObject/uri`. | `_apply_bgt_cross_reference` |
 | `creation_date` | `"2018-07-04T22:00:00Z"` | ✓ | `gen:dateAttribute name="bgtCreationDate"` (`xs:date`) | Deliberately **not** written to `core:creationDate`; that would mis-signal "our dataset record created on". |
 | presence in BGT | — | ✓ | presence of the `core:externalReference` element | A CFTree tree matched to a BGT record is a **municipally-maintained (public-space) tree**; an unmatched CFTree reconstruction is almost certainly a private garden tree. Encoded via the presence / absence of the `externalReference`. On the Emmer-Compascuum small-area run: 225 of 652 CFTree trees are BGT-matched (~35 %). |
-| `plus_type` | `"boom"` | ⚙ (filter) | — | Features where `plus_type != "boom"` (e.g. `"boomstronk"`) are dropped at parse time. |
-| `status` | `"bestaand"` | ⚙ (filter) | — | `"voormalig"` features are dropped so they do not overcount against CFTree's live reconstructions. |
+| `plus_type` | `"boom"` | ⚙ (filter) | — | Features where `plus_type != "boom"` (e.g. `"boomstronk"`) are dropped in the fetcher (`fetch_bgt_trees`) before the `BgtTree` dataclass is constructed. |
+| `status` | `"bestaand"` | ⚙ (filter) | — | `"voormalig"` features are dropped in the fetcher (`fetch_bgt_trees`) so they do not overcount against CFTree's live reconstructions. |
 | `bronhouder` | `"G0114"` | ⚙ | — | Parsed into `BgtTree` but not currently written. Latent: a future `core:externalReference/informationSystem` refinement could embed the bronhouder code for multi-municipality routing. |
 | `geometry.coordinates` (Point) | `[267050.0, 537780.0]` | ⚙ | — | Drives the 4 m nearest-neighbour join against each CFTree tree's crown centroid. |
 | `version` | `"9536138a-...-caf7"` |   |   | BGT's per-mutation version UUID. Not written (would defeat the stable-handle purpose of `lokaal_id`). |
@@ -726,7 +796,7 @@ Emmen's BOR (Beheer Openbare Ruimte) tree register is the only source that fills
 
 | BOR field | CityGML target | Implementation |
 |---|---|---|
-| `boom_id` | `core:externalReference/externalObject/uri` (ArcGIS REST query URL keyed on `boom_id`) | `_apply_bor_enrichment` |
+| `boom_id` | `core:externalReference`: `externalObject/uri` is the ArcGIS REST `query` URL keyed on `boom_id` (built via `bor_feature_uri`; chosen over the OBJECTID dereference because `boom_id` survives a server-side layer rebuild); `informationSystem` carries the gemeente Emmen Erfgoed page (`BOR_INFORMATION_SYSTEM_URL` = `https://gemeente.emmen.nl/erfgoed`), constant across every BOR-matched tree. The Erfgoed page is preferred over the raw FeatureServer URL because it documents the dataset semantics for a human follower; the FeatureServer endpoint itself is captured in the `veg:species` codeSpace (`CS_EMMEN_BOR_TREES`) and is reachable through `externalObject/uri`. | `_apply_bor_enrichment` |
 | `soortnaam` (Latin) | `veg:species` (`gml:CodeType`, codeSpace = FeatureServer URL) | `_apply_bor_enrichment` |
 | `soortnaam_ned` (Dutch) | `gen:stringAttribute name="speciesCommonName"` | `_apply_bor_enrichment` |
 | `jaarvanaanleg` | `gen:intAttribute name="plantingYear"` | `_apply_bor_enrichment` |
@@ -765,9 +835,9 @@ A small number of output fields are not read from any source; they are computed 
 |---|---|
 | `gml:Envelope` on the `CityModel` | union of every building LoD vertex + every PV panel projected vertex + every tree crown vertex. Written last so the envelope bounds everything that went into the file. |
 | `core:cityObjectMember` container wiring | dispatch by runtime type handled by `CityModel.add`. |
-| `app:Appearance` theme `"energyLabel"` | averaged EPC letter of each building's VBOs → EU palette RGB (`epc_score.label_to_rgb`). Buildings without any matched label render grey. |
-| `app:Appearance` theme `"pvPanels"` | constant `(0.03, 0.05, 0.15)` deep blue targeting every MultiSurface / Polygon under every `nrg3:PhotovoltaicCollector`. |
-| `app:Appearance` theme `"vegetation"` | constant `(0.15, 0.55, 0.15)` foliage green targeting every MultiSurface / Polygon under every `veg:SolitaryVegetationObject`. |
+| `app:Appearance` theme `"energyLabel"` | averaged EPC letter of each building's VBOs → EU palette RGB (`epc_score.label_to_rgb`). Targets every `gml:MultiSurface`, `gml:CompositeSurface`, and `gml:Polygon` under each building (the LoD 0 footprint MultiSurface, the LoD 1 CompositeSurface shell, each LoD 2 thematic surface's MultiSurface, plus every member Polygon — see [`appearance.collect_surface_target_ids`](../citygml_energy/city_builder/appearance.py)). The CompositeSurface target is what keeps LoD 1 shells coloured in viewers that resolve container-level targets; per-polygon targets keep colour applied in viewers that only resolve per-polygon `app:target` xlinks (KIT SDM_KITModelViewer family). Buildings without any matched label render grey. |
+| `app:Appearance` theme `"pvPanels"` | constant `(0.03, 0.05, 0.15)` deep blue targeting every `gml:MultiSurface` and `gml:Polygon` under every `nrg3:PhotovoltaicCollector`. |
+| `app:Appearance` theme `"vegetation"` | constant `(0.15, 0.55, 0.15)` foliage green targeting every `gml:MultiSurface` and `gml:Polygon` under every `veg:SolitaryVegetationObject`. |
 | `nrg3:CityObjectRelation` with `type="installedOn"` | the PV panel's 2D max-overlap with a specific LoD 2 `bldg:RoofSurface` (xlink only, no geometry). |
 | `nrg3:bdgBdrySurfTotalSurfaceArea` / `Inclination` / `Azimuth` on every LoD 2 BoundarySurface | computed from the polygon geometry by `_attach_planar_surface_ade_attributes`. |
 
@@ -779,7 +849,7 @@ The pipeline emits the tokens below, each cross-checked against the KIT FZKViewe
 
 | Token | Used on | Matched against UOMList | Status |
 |---|---|---|---|
-| `m` | `veg:height`, `veg:trunkDiameter`, `veg:crownDiameter`, `bldg:measuredHeight` | `UOM name="METRE" id="m"` | primary id ✓ |
+| `m` | `veg:height`, `veg:trunkDiameter`, `veg:crownDiameter`, `nrg3:bdgHeight/value` | `UOM name="METRE" id="m"` | primary id ✓ |
 | `m2` | `nrg3:moduleArea` on `PhotovoltaicCollector`, `nrg3:QualifiedArea/value` on each `BuildingUnit`, `nrg3:bdgBdrySurfTotalSurfaceArea` | `UOM name="SQUARE_METRE" id="m2"` | primary id ✓ |
 | `m3` | `nrg3:bdgVolume/value` on Building | `UOM name="CUBIC_METRE" id="m3"` | primary id ✓ |
 | `deg` | `nrg3:inclination`, `nrg3:azimuth` on `PhotovoltaicCollector`, `nrg3:bdgBdrySurfInclination` / `Azimuth` | `UOM name="DEGREE" id="grad"`, `altId=deg` | altId (canonical id is `grad`) ✓ |
@@ -821,6 +891,8 @@ Fields the pipeline fetches or could fetch and that carry real information not y
 | `b3_opp_*`, `b3_rmse_lod*`, `b3_h_dak_{50p,70p,min}`, `b3_puntdichtheid_ahn*` | 3DBAG | mix of `nrg3:bdg_area`, quality-indicator generics | Surface-area-per-facet, per-LoD reconstruction quality, LiDAR point density. |
 | `Certificaathouder`, `Status`, `OpBasisVanReferentiegebouw`, `Gebouwklasse`, `SBICode`, `Compactheid`, `Temperatuuroverschrijding`, BENG `Eis*` thresholds, EMG-Forfaitair variants | EP-online | gen:*Attribute or future schema extensions, per § 6.5 | Each row in § 6.5 names a potential target for revisit. |
 | `bronhouder` | BGT | `core:externalReference/informationSystem` suffix | Multi-municipality merges could disambiguate which authority maintains each cross-referenced tree. |
+| `floorNumberFrom`, `floorNumberTo`, `numberOfRooms`, `ownerName`, `ownershipType` | (no source in this pipeline) | native `nrg3:BuildingUnit/{floorNumberFrom,floorNumberTo,numberOfRooms,ownerName,ownershipType}` (XSD lines 1515-1519) | BAG VBO carries no per-VBO floor number, room count, owner identity, or tenure category, so these stay empty on every `BuildingUnit`. Listed here so a future enrichment source (e.g. WOZ for ownership, BAG `verdieping` extensions for floor numbers) has a documented landing slot rather than a `gen:*Attribute` improvisation. |
+| `occupiedBy` (`nrg3:Occupants` composition on AbstractBuildingSpace) | (no source) | `nrg3:BuildingUnit/occupiedBy` (XSD line 1489) | No occupancy schedule, dietType, income / instruction level, heat-dissipation breakdown, or schedule are sourced. CBS micro-data could in principle fill `Occupants/numberOfOccupants` per-VBO; out of scope today. |
 
 ---
 
@@ -842,7 +914,7 @@ Honest accounting of where Energy ADE 3.0 beta8 falls short of the data the city
 
 7. **No standalone Emission feature.** Multi-gas GHG accounting (CH₄, N₂O, refrigerants) is impossible; we only get the CO₂-equivalent value on each Energy resource. Acceptable for EP-online (which only ships CO₂-eq) but not for richer LCA data.
 
-8. **`gebruiksdoel` (BAG) and `Gebouwtype` (EP-online) coexist on the same Building.** Both fill `bldg:function`-adjacent slots. The mapping puts BAG on `bldg:function` (SIG3D codespace) and EP-online on `nrg3:bdgType` (RVO `CS_RVO_GEBOUWTYPE` codespace) so they never collide; downstream consumers that want one canonical can pick by codeSpace.
+8. **`gebruiksdoel` (BAG) and `Gebouwtype` (EP-online) live at different levels with different vocabularies.** BAG's per-VBO `gebruiksdoel` (`woonfunctie`, `kantoorfunctie`, …) lands on `nrg3:type` of each `BuildingUnit` with `codeSpace = CS_BAG_GEBRUIKSDOEL` — not on `bldg:function`. EP-online's `Gebouwtype` (NTA-8800 typology) lands on `nrg3:bdgType` of the parent Building with `codeSpace = CS_RVO_GEBOUWTYPE`. The 3DBAG-attribute path *would* fill `bldg:function` on the Building (with the SIG3D codespace) but 3DBAG ships `gebruiksdoel` empty on the Pand node in the surveyed responses, so in practice that slot stays empty. Net effect: each value sits in its own slot with its own codeSpace, so a downstream consumer can recover both without disambiguation. A future schema revision could collapse the per-VBO Bouwbesluit-2012 use category and the per-Pand NTA-8800 typology under one explicit relation, but the current encoding is conflict-free.
 
 9. **No native slots for the deliberately-skipped fields** (Status, OpBasisVanReferentiegebouw, Compactheid, Temperatuuroverschrijding, BENG `Eis*` thresholds, Gebouwklasse, SBICode). Each is a candidate for either a `gen:*Attribute` workaround or a future Energy ADE extension; § 6.5 records the potential target alongside the verdict, so a later thesis chapter can quote the schema-extension proposals directly.
 
