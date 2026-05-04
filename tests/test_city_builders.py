@@ -53,6 +53,7 @@ def _vbo(
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam=street,
+        woonplaats=None,
         point=point,
         properties={},
     )
@@ -163,15 +164,344 @@ def test_build_building_lod0_leaves_geometry_untouched_when_no_ground_hint() -> 
 
 
 # ---------------------------------------------------------------------------
+# LoD 2 per-planar thematic surfaces
+# ---------------------------------------------------------------------------
+
+
+def _multi_facet_parsed() -> ParsedBuilding:
+    """3DBAG-shaped LoD 2 input: 1 ground, 2 walls, 3 roof facets, plus
+    one polygon with no semantic type (must fall back to WallSurface).
+
+    Shape and z-values are arbitrary; only the surface_type sequencing
+    matters for the per-planar id assignment.
+    """
+    return ParsedBuilding(
+        pand_id="0114100000000999",
+        attributes={"oorspronkelijkbouwjaar": 1985},
+        geometries={
+            "2": [
+                _square(0.0, "GroundSurface"),
+                _square(1.0, "WallSurface"),
+                _square(3.0, "RoofSurface"),
+                _square(3.0, "RoofSurface"),
+                _square(3.5, "RoofSurface"),
+                _square(2.0, "WallSurface"),
+                _square(2.5, None),  # unknown semantics → WallSurface fallback
+            ],
+        },
+    )
+
+
+def test_lod2_emits_one_thematic_surface_per_polygon() -> None:
+    """Per-planar split: every polygon in the parsed CityJSON LoD 2
+    list becomes its own ``bldg:boundedBy`` element. Per-face attributes
+    (azimuth, slope, area) on a CityGML/Energy-ADE thematic surface are
+    only meaningful when the surface is actually planar, so the split
+    is structurally required, not cosmetic.
+    """
+    building = build_building(_multi_facet_parsed(), lods=(2,))
+
+    # 7 source polygons → 7 thematic surfaces, one per polygon, no merging.
+    assert len(building.bounded_by) == 7
+
+    # Each surface carries a single-polygon lod2MultiSurface; that's the
+    # invariant that lets the matcher's roof_index unambiguously address
+    # one specific facet.
+    for wrapper in building.bounded_by:
+        surf = (
+            wrapper.ground_surface
+            or wrapper.wall_surface
+            or wrapper.roof_surface
+        )
+        assert surf is not None
+        members = surf.lod2_multi_surface.multi_surface.surface_member
+        assert len(members) == 1
+
+
+def test_lod2_thematic_surface_ids_are_per_type_one_based_in_source_order() -> None:
+    """The matcher relies on this exact id convention to label each
+    PV facet's ``installedOn`` xlink target without re-walking the
+    xsdata tree. If this drifts, the xlinks dangle silently — XSD
+    validation accepts dangling intra-document hrefs, so a regression
+    test is the only safety net.
+    """
+    building = build_building(_multi_facet_parsed(), lods=(2,))
+
+    by_kind: dict[str, list[str]] = {"ground": [], "wall": [], "roof": []}
+    for wrapper in building.bounded_by:
+        if wrapper.ground_surface is not None:
+            by_kind["ground"].append(wrapper.ground_surface.id)
+        elif wrapper.wall_surface is not None:
+            by_kind["wall"].append(wrapper.wall_surface.id)
+        elif wrapper.roof_surface is not None:
+            by_kind["roof"].append(wrapper.roof_surface.id)
+
+    bid = "pand_0114100000000999"
+    # Per-type 1-based numbering, in source-CityJSON order. The
+    # untyped polygon gets the next wallsurface index (3 walls total:
+    # the two explicit WallSurface entries + the None fallback).
+    assert by_kind["ground"] == [f"{bid}_groundsurface_1"]
+    assert by_kind["wall"] == [
+        f"{bid}_wallsurface_1",
+        f"{bid}_wallsurface_2",
+        f"{bid}_wallsurface_3",
+    ]
+    assert by_kind["roof"] == [
+        f"{bid}_roofsurface_1",
+        f"{bid}_roofsurface_2",
+        f"{bid}_roofsurface_3",
+    ]
+
+
+def test_lod2_iterator_is_single_source_of_truth_for_indices() -> None:
+    """The PV-panel matcher and the building builder use one shared
+    iterator (:func:`iter_lod2_thematic_classification`) so they cannot
+    drift on the per-type 1-based index. This test pins the iterator
+    contract: source order preserved, unknown semantics collapsed to
+    WallSurface, indices counted per resolved type.
+    """
+    from citygml_energy.city_builder.builders import (
+        iter_lod2_thematic_classification,
+    )
+
+    polygons = _multi_facet_parsed().geometries["2"]
+    # Materialise the iterator into a list of (type, index) pairs so the
+    # ordering is observable without re-iterating.
+    type_index_pairs = [
+        (t, i) for t, i, _sp in iter_lod2_thematic_classification(polygons)
+    ]
+    assert type_index_pairs == [
+        ("GroundSurface", 1),
+        ("WallSurface", 1),
+        ("RoofSurface", 1),
+        ("RoofSurface", 2),
+        ("RoofSurface", 3),
+        ("WallSurface", 2),
+        ("WallSurface", 3),  # untyped polygon collapses to WallSurface
+    ]
+
+
+def _ade_attrs(surf: object) -> tuple[float | None, float | None, float | None]:
+    """Pick the (area, inclination, azimuth) values off a thematic surface.
+
+    Each Energy ADE per-surface field is a ``list[...]`` on the binding
+    (substitution-group remnant) but our builder emits ``maxOccurs=1``,
+    so we read element 0 when present.
+    """
+    area = surf.bdg_bdry_surf_total_surface_area[0].value if surf.bdg_bdry_surf_total_surface_area else None
+    incl = surf.bdg_bdry_surf_inclination[0].value if surf.bdg_bdry_surf_inclination else None
+    azim = surf.bdg_bdry_surf_azimuth[0].value if surf.bdg_bdry_surf_azimuth else None
+    return area, incl, azim
+
+
+def _surfaces_by_kind(building: object) -> dict[str, list[object]]:
+    out: dict[str, list[object]] = {"ground": [], "wall": [], "roof": []}
+    for wrapper in building.bounded_by:
+        if wrapper.ground_surface is not None:
+            out["ground"].append(wrapper.ground_surface)
+        elif wrapper.wall_surface is not None:
+            out["wall"].append(wrapper.wall_surface)
+        elif wrapper.roof_surface is not None:
+            out["roof"].append(wrapper.roof_surface)
+    return out
+
+
+def test_lod2_each_surface_carries_total_surface_area() -> None:
+    """``nrg3:bdgBdrySurfTotalSurfaceArea`` is the only LoD 2 attribute
+    that is well-defined for every surface type (ground, wall, roof,
+    flat or sloped). The XSD types it as ``gml:AreaType`` with
+    ``maxOccurs=1`` per the UML appinfo, so we emit it on every
+    emitted surface in m² (uom token matches the KIT viewer's
+    UOMList.xml ``m2`` primary id).
+    """
+    building = build_building(_multi_facet_parsed(), lods=(2,))
+    for wrapper in building.bounded_by:
+        surf = wrapper.ground_surface or wrapper.wall_surface or wrapper.roof_surface
+        assert surf is not None
+        assert len(surf.bdg_bdry_surf_total_surface_area) == 1
+        ade_area = surf.bdg_bdry_surf_total_surface_area[0]
+        assert ade_area.uom == "m2"
+        assert ade_area.value > 0
+
+
+def test_lod2_ground_surface_inclination_is_180_with_no_azimuth() -> None:
+    """Per Alderaan (ALL.gml line 1506) the ground floor's outward
+    normal points down, so its inclination is 180°. Azimuth is
+    geometrically undefined for a horizontal surface and the
+    corresponding element must be omitted.
+
+    The fixture's GroundSurface is a CCW-from-above z=0 square; that
+    winding produces an upward Newell normal, so we explicitly use the
+    3DBAG convention (CW from above → outward-down) here.
+    """
+    parsed = ParsedBuilding(
+        pand_id="0114100000000777",
+        attributes={"oorspronkelijkbouwjaar": 1985},
+        geometries={
+            "2": [
+                # Outward normal (0, 0, -1): wind CW viewed from above.
+                SemanticPolygon(
+                    polygon=GeometryPolygon(
+                        exterior=[
+                            (0.0, 0.0, 0.0),
+                            (0.0, 1.0, 0.0),
+                            (1.0, 1.0, 0.0),
+                            (1.0, 0.0, 0.0),
+                        ],
+                    ),
+                    surface_type="GroundSurface",
+                ),
+            ],
+        },
+    )
+    building = build_building(parsed, lods=(2,))
+    [ground] = _surfaces_by_kind(building)["ground"]
+    area, incl, azim = _ade_attrs(ground)
+    assert area == pytest.approx(1.0, abs=1e-9)
+    assert incl == pytest.approx(180.0, abs=1e-9)
+    assert azim is None
+
+
+def test_lod2_sloped_roof_emits_azimuth_and_45_degree_inclination() -> None:
+    """A south-facing 45° pitch (low at y=0, high at y=1; outward
+    normal up & -Y) emits ``bdgBdrySurfInclination = 45`` and
+    ``bdgBdrySurfAzimuth = 180`` — both with the KIT-viewer-friendly
+    ``uom="deg"`` token.
+    """
+    parsed = ParsedBuilding(
+        pand_id="0114100000000888",
+        attributes={"oorspronkelijkbouwjaar": 1985},
+        geometries={
+            "2": [
+                SemanticPolygon(
+                    polygon=GeometryPolygon(
+                        exterior=[
+                            (0.0, 0.0, 3.0),
+                            (1.0, 0.0, 3.0),
+                            (1.0, 1.0, 4.0),
+                            (0.0, 1.0, 4.0),
+                        ],
+                    ),
+                    surface_type="RoofSurface",
+                ),
+            ],
+        },
+    )
+    building = build_building(parsed, lods=(2,))
+    [roof] = _surfaces_by_kind(building)["roof"]
+    area, incl, azim = _ade_attrs(roof)
+    # √2 m² for a 1×1 horizontal projection on a 45° slope.
+    assert area == pytest.approx(round(2 ** 0.5, 3), abs=1e-9)
+    assert incl == pytest.approx(45.0, abs=1e-9)
+    assert azim == pytest.approx(180.0, abs=1e-9)
+    # uom tokens — must match KIT UOMList.xml entries.
+    assert roof.bdg_bdry_surf_inclination[0].uom == "deg"
+    assert roof.bdg_bdry_surf_azimuth[0].uom == "deg"
+
+
+def test_lod2_flat_roof_omits_azimuth_but_keeps_zero_inclination() -> None:
+    """A flat roof has a vertical normal: inclination 0, azimuth
+    geometrically undefined. The Energy ADE 3.0 ``bdgBdrySurfAzimuth``
+    element must be absent (rather than emitted with a sentinel like
+    Alderaan's ``-1``, which is not a valid bearing).
+    """
+    parsed = ParsedBuilding(
+        pand_id="0114100000000999",
+        attributes={},
+        geometries={
+            "2": [
+                SemanticPolygon(
+                    polygon=GeometryPolygon(
+                        exterior=[
+                            (0.0, 0.0, 3.0),
+                            (1.0, 0.0, 3.0),
+                            (1.0, 1.0, 3.0),
+                            (0.0, 1.0, 3.0),
+                        ],
+                    ),
+                    surface_type="RoofSurface",
+                ),
+            ],
+        },
+    )
+    building = build_building(parsed, lods=(2,))
+    [roof] = _surfaces_by_kind(building)["roof"]
+    area, incl, azim = _ade_attrs(roof)
+    assert area == pytest.approx(1.0, abs=1e-9)
+    assert incl == pytest.approx(0.0, abs=1e-9)
+    assert azim is None
+    # The list field is empty, not a list with a sentinel value.
+    assert roof.bdg_bdry_surf_azimuth == []
+
+
+def test_lod2_skipped_construction_attrs_are_not_emitted() -> None:
+    """Per the city pipeline's rationale, only the three geometry-
+    derived ADE attributes are emitted. Construction-property and
+    scene-radiation attributes (Thickness, HeatCapacity, IsShared,
+    OpaqueSurfaceArea, ground/sky view factors, additional thermal-
+    bridge U-value) are intentionally absent until that data is
+    actually available — emitting placeholders would silently
+    contaminate downstream energy analyses.
+    """
+    building = build_building(_multi_facet_parsed(), lods=(2,))
+    for wrapper in building.bounded_by:
+        surf = wrapper.ground_surface or wrapper.wall_surface or wrapper.roof_surface
+        assert surf.bdg_bdry_surf_thickness == []
+        assert surf.bdg_bdry_surf_heat_capacity == []
+        assert surf.bdg_bdry_surf_is_shared == []
+        assert surf.bdg_bdry_surf_opaque_surface_area == []
+        assert surf.bdg_bdry_surf_ground_view_factor == []
+        assert surf.bdg_bdry_surf_sky_view_factor == []
+        assert surf.bdg_bdry_surf_additional_thermal_bridge_uvalue == []
+
+
+def test_lod2_targets_collected_once_per_emitted_surface() -> None:
+    """The pre-collected ``surface_targets_out`` list must enumerate
+    every emitted surface exactly once (container ms id + member poly
+    id), so the appearance builder can paint each facet without re-
+    walking the xsdata tree per building.
+    """
+    targets: list[str] = []
+    build_building(_multi_facet_parsed(), lods=(2,), surface_targets_out=targets)
+
+    # 7 surfaces × (1 _ms container + 1 _poly_1 member) = 14 LoD 2 targets.
+    lod2_targets = [t for t in targets if "_ms" in t]
+    assert len(lod2_targets) == 14
+    # Half are container references, half polygons; per the convention,
+    # a polygon target is a strict suffix of its container's id.
+    container_ids = {t for t in lod2_targets if not t.endswith("_poly_1")}
+    polygon_ids = {t for t in lod2_targets if t.endswith("_poly_1")}
+    assert len(container_ids) == 7
+    assert len(polygon_ids) == 7
+
+
+# ---------------------------------------------------------------------------
 # Address
 # ---------------------------------------------------------------------------
 
 
 def test_build_address_composes_xal_structure() -> None:
+    """Country-wrapped xAL with NL alpha-2 + Town/Street type discriminators.
+
+    The Locality lives under ``AddressDetails.country.locality`` (not
+    directly under AddressDetails) so the address advertises its
+    country unambiguously, matching the EnergyADE 3.0 Alderaan reference
+    shape. Type attributes ``Town`` / ``Street`` mirror the conventional
+    xAL discriminators.
+    """
     address = build_address(_resolved())
     assert address is not None
-    locality = address.xal_address.address_details.locality
+
+    country = address.xal_address.address_details.country
+    assert country is not None
+    assert country.country_name_code[0].content[0] == "NL"
+    assert country.country_name_code[0].scheme == "iso.3166-1 alpha-2"
+    assert country.country_name[0].content[0] == "The Netherlands"
+
+    locality = country.locality
     assert locality is not None
+    assert locality.type_value == "Town"
+    assert locality.thoroughfare.type_value == "Street"
     assert locality.thoroughfare.thoroughfare_name[0].content[0] == "Mekelweg"
     assert locality.thoroughfare.thoroughfare_number[0].content[0] == "42"
     assert locality.postal_code.postal_code_number[0].content[0] == "2628CD"
@@ -277,6 +607,22 @@ def test_building_unit_carries_vbo_oppervlakte_as_qualified_area() -> None:
     assert "NEN 2580" in (qa.description or "")
 
 
+def test_building_unit_type_carries_bag_gebruiksdoel_with_codespace() -> None:
+    """``nrg3:BuildingUnit/type`` is mandatory in the XSD; we populate
+    it from BAG ``gebruiksdoel`` and tag the codeSpace so a consumer
+    can resolve "woonfunctie" / "kantoorfunctie" / etc. against the
+    BAG vocabulary rather than treating the value as opaque text or
+    misreading it against EnergyADE's ``CurrentUseValue.xml`` codelist.
+    """
+    from citygml_energy.namespaces import CS_BAG_GEBRUIKSDOEL
+
+    building = build_building(_parsed())
+    attach_building_units_to_building(building, [_resolved()])
+    unit = building.building_unit[0].building_unit
+    assert unit.type_value.value == "woonfunctie"  # from the test VBO fixture
+    assert unit.type_value.code_space == CS_BAG_GEBRUIKSDOEL
+
+
 def test_building_unit_without_oppervlakte_omits_qualified_area() -> None:
     """A VBO with ``oppervlakte=None`` must not emit an empty area entry."""
     resolved = _resolved()
@@ -321,43 +667,88 @@ def test_building_maps_b3_bouwlagen_to_storeys_above_ground() -> None:
     assert building.storeys_above_ground == 3
 
 
-def test_building_computes_measured_height_from_b3_h_dak_max_minus_maaiveld() -> None:
-    """``bldg:measuredHeight`` is "the measured height of the building"
-    (``gml:LengthType``). The Dutch convention is
-    ground-to-highest-roof-point, exactly ``b3_h_dak_max - b3_h_maaiveld``
-    for 3DBAG-derived data. Using ``b3_h_dak_max`` (not ``b3_h_dak_70p``)
-    so antenna/chimney tips register as part of the physical extent.
+def test_building_computes_bdg_height_from_b3_h_dak_max_minus_maaiveld() -> None:
+    """``nrg3:bdgHeight`` encodes ground-to-highest-roof-point as a
+    ``QualifiedHeight`` with type ``maxHeightAboveGround``, computed from
+    ``b3_h_dak_max - b3_h_maaiveld``. Using ``b3_h_dak_max`` (not
+    ``b3_h_dak_70p``) so antenna/chimney tips register as part of the
+    physical extent.
     """
     building = build_building(_parsed_with_3dbag_attrs())
-    assert building.measured_height is not None
+    assert len(building.bdg_height) == 1
+    qh = building.bdg_height[0].qualified_height
     # 9.925 - 0.175 = 9.750
-    assert building.measured_height.value == 9.75
-    assert building.measured_height.uom == "m"
+    assert qh.value.value == 9.75
+    assert qh.value.uom == "m"
+    assert qh.type_value.value == "maxHeightAboveGround"
 
 
-def test_building_omits_measured_height_when_roof_below_maaiveld() -> None:
+def test_building_omits_bdg_height_when_roof_below_maaiveld() -> None:
     """Defensive: a corrupt tile where roof < ground must not produce
-    a negative measuredHeight. The builder skips the field instead.
+    a negative height. The builder skips the field instead.
     """
     building = build_building(_parsed_with_3dbag_attrs(
         b3_h_maaiveld=10.0, b3_h_dak_max=8.0,
     ))
-    assert building.measured_height is None
+    assert building.bdg_height == []
 
 
-def test_building_maps_b3_dak_type_to_roof_type_with_3dbag_codespace() -> None:
-    """3DBAG's string roof-type enumeration (``slanted`` / ``horizontal``
-    / ``multiple horizontal``) is NOT a member of SIG3D's numeric
-    roof-type codelist. Emitting the 3DBAG value with a 3DBAG-owned
-    codeSpace documents the source vocabulary honestly; mapping to SIG3D
-    would mis-label the enumeration.
+def test_building_drops_unrecognised_b3_dak_type_silently() -> None:
+    """An unknown 3DBAG roof-type string falls through with no
+    ``bldg:roofType`` rather than minting an off-codelist SIG3D value.
+    Emitting nothing is more honest than guessing an SIG3D code that
+    a downstream consumer would then trust.
     """
-    from citygml_energy.namespaces import CS_3DBAG_DAK_TYPE
+    parsed = ParsedBuilding(
+        pand_id="0114100000999998",
+        attributes={"oorspronkelijkbouwjaar": 1985, "b3_dak_type": "unknown_type"},
+        geometries={},
+    )
+    building = build_building(parsed)
+    assert building.roof_type is None
+
+
+def test_building_maps_each_3dbag_dak_type_to_its_sig3d_code() -> None:
+    """Pin the full 3DBAG -> SIG3D mapping table so any future tweak
+    fails this test rather than silently re-keying real Pand outputs.
+    """
+    from citygml_energy.namespaces import CS_BUILDING_ROOFTYPE
+
+    cases = [
+        ("horizontal", "1000"),  # flat
+        ("slanted", "1030"),  # gabled (lossy default for ambiguous pitched)
+        ("multiple horizontal", "1130"),  # combination of roof forms
+    ]
+    for dak, expected in cases:
+        parsed = ParsedBuilding(
+            pand_id=f"0114100000{dak}",
+            attributes={"oorspronkelijkbouwjaar": 1985, "b3_dak_type": dak},
+            geometries={},
+        )
+        building = build_building(parsed)
+        assert building.roof_type is not None, f"{dak!r}: no roof_type emitted"
+        assert building.roof_type.value == expected
+        assert building.roof_type.code_space == CS_BUILDING_ROOFTYPE
+
+
+def test_building_maps_b3_dak_type_to_sig3d_roof_type_code() -> None:
+    """3DBAG's coarse roof-type enumeration (``horizontal`` / ``slanted``
+    / ``multiple horizontal``) is mapped to a numeric SIG3D
+    ``_AbstractBuilding_roofType.xml`` code so the city pipeline emits
+    the same ``bldg:roofType`` vocabulary as the per-building pipeline.
+    ``slanted`` is intrinsically ambiguous in 3DBAG (no monopitch /
+    gabled / hipped distinction), so we map to ``1030`` (gabled, the
+    most common Dutch residential pitched roof) as the deterministic
+    fallback; ``horizontal`` -> ``1000`` (flat) is 1:1, and
+    ``multiple horizontal`` -> ``1130`` (combination of roof forms).
+    """
+    from citygml_energy.namespaces import CS_BUILDING_ROOFTYPE
 
     building = build_building(_parsed_with_3dbag_attrs())
     assert building.roof_type is not None
-    assert building.roof_type.value == "slanted"
-    assert building.roof_type.code_space == CS_3DBAG_DAK_TYPE
+    # Fixture uses ``slanted`` -> SIG3D 1030 (gabled).
+    assert building.roof_type.value == "1030"
+    assert building.roof_type.code_space == CS_BUILDING_ROOFTYPE
 
 
 def test_building_attaches_b3_volume_lod22_as_bdg_volume() -> None:
@@ -385,7 +776,7 @@ def test_building_skips_3dbag_attributes_when_absent() -> None:
     """
     building = build_building(_parsed())  # only oorspronkelijkbouwjaar
     assert building.storeys_above_ground is None
-    assert building.measured_height is None
+    assert building.bdg_height == []
     assert building.roof_type is None
     assert building.bdg_volume == []
 
@@ -434,6 +825,102 @@ def test_epc_omits_certification_method_when_berekeningstype_absent() -> None:
 
 
 # ---------------------------------------------------------------------------
+# EPC.value from EP-online BerekendeEnergieverbruik (regime-aware uom)
+# ---------------------------------------------------------------------------
+#
+# ``EnergyPerformanceCertificate.value`` is ``gml:MeasureType``: a single
+# double + required ``@uom``. We populate it from BerekendeEnergieverbruik,
+# the only EP-online numeric populated for >99% of certs in BOTH regimes,
+# but the regimes ship the value in DIFFERENT units (NTA 8800: kWh/m²·yr
+# delivered; legacy: MJ/yr total primary). The schema's @uom attribute is
+# exactly how heterogeneous regimes coexist on the same field.
+#
+# These tests pin one assertion per regime + the unknown-regime skip + the
+# missing-amount skip. The same uom constants drive the matching
+# ``nrg3:Energy.amount`` on the resource side, which keeps EPC.value and
+# the Energy resource locked together via UOM_KWH_PER_M2_PER_A /
+# UOM_MJ_PER_A in ``energy_resources.py``.
+# ---------------------------------------------------------------------------
+
+
+def _epc_from_label(**fields):
+    """Helper: build a Building+Unit, attach a label with *fields*, return EPC."""
+    base = dict(
+        postcode="2628CD",
+        huisnummer=42,
+        huisletter=None,
+        toevoeging=None,
+        bag_verblijfsobject_id=None,
+        energieklasse="A",
+        registratiedatum=date(2024, 1, 1),
+        opnamedatum=None,
+        geldig_tot=date(2034, 1, 1),
+    )
+    base.update(fields)
+    label = EnergyLabel(**base)
+    resolved = ResolvedAddress(vbo=_vbo(), energy_label=label)
+    building = build_building(_parsed())
+    attach_building_units_to_building(building, [resolved])
+    unit = building.building_unit[0].building_unit
+    return unit.energy_performance_certificate[0].energy_performance_certificate
+
+
+def test_epc_value_from_berekendeenergieverbruik_nta8800_uses_kwh_per_m2_a() -> None:
+    """NTA 8800 regime emits BerekendeEnergieverbruik (kWh/m²·yr delivered).
+
+    The uom must match the matching nrg3:Energy.amount uom on the resource
+    side (both are sourced from the shared UOM_KWH_PER_M2_PER_A constant).
+    """
+    epc = _epc_from_label(
+        berekeningstype="NTA 8800:2024 (detailopname woningbouw)",
+        berekende_energieverbruik=42.5,
+    )
+    assert epc.value is not None
+    assert epc.value.value == 42.5
+    assert epc.value.uom == "kWh/m2/a"
+
+
+def test_epc_value_from_berekendeenergieverbruik_legacy_uses_mj_per_a() -> None:
+    """Legacy NEN 7120 regime ships BerekendeEnergieverbruik in MJ/yr (total).
+
+    The cross-regime uom divergence on the same column is intentional and
+    tracked via ``EnergyLabel.calculation_regime()``. The shared
+    ``UOM_MJ_PER_A`` constant keeps EPC.value and the parallel
+    nrg3:Energy.amount resource synchronised.
+    """
+    epc = _epc_from_label(
+        berekeningstype=(
+            "Rekenmethodiek Definitief Energielabel, "
+            "versie 1.2, 16 september 2014"
+        ),
+        berekende_energieverbruik=293361.52,
+    )
+    assert epc.value is not None
+    assert epc.value.value == 293361.52
+    assert epc.value.uom == "MJ/a"
+
+
+def test_epc_value_skipped_for_unknown_regime() -> None:
+    """An unrecognised Berekeningstype yields regime=unknown; EPC.value
+    must stay unset because we have no defensible uom to claim.
+    """
+    epc = _epc_from_label(
+        berekeningstype="Some future method we have not classified",
+        berekende_energieverbruik=42.5,
+    )
+    assert epc.value is None
+
+
+def test_epc_value_skipped_when_berekendeenergieverbruik_missing() -> None:
+    """No source value -> no EPC.value, even when the regime is known."""
+    epc = _epc_from_label(
+        berekeningstype="NTA 8800:2024 (detailopname woningbouw)",
+        berekende_energieverbruik=None,
+    )
+    assert epc.value is None
+
+
+# ---------------------------------------------------------------------------
 # Boundary cases for the new attribute mappings.
 #
 # The "happy path" tests above cover the common case (non-empty, positive,
@@ -475,16 +962,16 @@ def test_building_unit_rejects_non_positive_oppervlakte(
     ],
     ids=["equal", "roof_below_ground"],
 )
-def test_building_omits_measured_height_for_degenerate_geometry(
+def test_building_omits_bdg_height_for_degenerate_geometry(
     maaiveld: float, dak_max: float
 ) -> None:
     """The strict ``>`` guard in the builder drops both zero-height and
-    inverted-roof cases; ``>=`` would emit ``measuredHeight = 0`` which
+    inverted-roof cases; ``>=`` would emit a zero-height entry which
     is misleading."""
     building = build_building(_parsed_with_3dbag_attrs(
         b3_h_maaiveld=maaiveld, b3_h_dak_max=dak_max,
     ))
-    assert building.measured_height is None
+    assert building.bdg_height == []
 
 
 @pytest.mark.parametrize(

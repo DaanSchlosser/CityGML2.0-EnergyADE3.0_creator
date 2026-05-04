@@ -75,6 +75,7 @@ def _vbo(identificatie: str, huisnummer: int) -> Verblijfsobject:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        woonplaats=None,
         point=(85000.0, 446500.0),
         properties={},
     )
@@ -120,12 +121,13 @@ def test_collect_targets_includes_lod0_lod1_and_lod2_surfaces() -> None:
     # All targets are #-prefixed GML-id references.
     assert all(t.startswith("#") for t in targets)
 
-    # LoD0 MultiSurface, LoD1 CompositeSurface shell, and each LoD2
-    # thematic MultiSurface should all be present.
+    # LoD0 MultiSurface, LoD1 CompositeSurface shell, and at least one
+    # per-planar LoD2 thematic MultiSurface (id pattern
+    # ``..._<surface>_<index>_ms``) should all be present.
     assert any(t.endswith("_lod0") for t in targets)
     assert any(t.endswith("_lod1_shell") for t in targets)
-    assert any("groundsurface_ms" in t for t in targets)
-    assert any("roofsurface_ms" in t for t in targets)
+    assert any("groundsurface_1_ms" in t for t in targets)
+    assert any("roofsurface_1_ms" in t for t in targets)
 
 
 def test_collect_targets_includes_individual_polygon_ids() -> None:
@@ -140,8 +142,8 @@ def test_collect_targets_includes_individual_polygon_ids() -> None:
     # Polygon, and those polygons' gml:ids must also be in the target list.
     assert any(t.endswith("_lod0_poly_1") for t in targets)
     assert any("_lod1_poly_" in t for t in targets)
-    assert any("groundsurface_ms_poly_1" in t for t in targets)
-    assert any("roofsurface_ms_poly_1" in t for t in targets)
+    assert any("groundsurface_1_ms_poly_1" in t for t in targets)
+    assert any("roofsurface_1_ms_poly_1" in t for t in targets)
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +272,7 @@ def _pv_panel(fid: int, z: float = 3.1) -> ProjectedPanel:
         azimuth_deg=180.0,
         inclination_deg=30.0,
         reference_point=(0.5, 0.5, z),
+        roof_index=1,
     )
 
 

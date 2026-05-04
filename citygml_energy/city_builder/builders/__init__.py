@@ -32,6 +32,8 @@ from .building import (
     attach_building_units_to_building,
     build_building,
     build_building_unit,
+    iter_lod2_thematic_classification,
+    lod2_thematic_surface_gml_id,
 )
 
 # ``_build_epc`` is re-exported with a ``noqa`` because it is a
@@ -54,4 +56,6 @@ __all__ = [
     "build_building",
     "build_building_unit",
     "build_solitary_vegetation_object",
+    "iter_lod2_thematic_classification",
+    "lod2_thematic_surface_gml_id",
 ]
