@@ -382,6 +382,7 @@ def city_xml(tmp_path_factory) -> str:
         oppervlakte=85.0, status=None,
         postcode="2628CD", huisnummer=42, huisletter=None, toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        woonplaats=None,
         point=(85000.0, 446500.0), properties={},
     )
     outline = MunicipalityOutline(
@@ -462,6 +463,7 @@ def test_city_pipeline_output_is_byte_deterministic(tmp_path_factory) -> None:
         gebruiksdoel=["woonfunctie"], oppervlakte=85.0, status=None,
         postcode="2628CD", huisnummer=42, huisletter=None, toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        woonplaats=None,
         point=(85000.0, 446500.0), properties={},
     )
     outline = MunicipalityOutline(

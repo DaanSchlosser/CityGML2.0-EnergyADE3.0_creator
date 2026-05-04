@@ -134,6 +134,7 @@ def _fixture_vbo() -> Verblijfsobject:
         huisletter=None,
         toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
+        woonplaats=None,
         point=(85000.0, 446500.0),
         properties={},
     )
@@ -238,9 +239,17 @@ def test_pipeline_builds_and_serialises(tmp_path: Path, mocked_pipeline) -> None
     assert unit.energy_performance_certificate  # EP-online matched
     assert unit.energy_performance_certificate[0].energy_performance_certificate.label == "A"
 
-    # LocalityName must be populated with the municipality name.
+    # Address now wraps the locality in an ``xAL:Country`` element. The
+    # locality name comes from the VBO's BAG ``woonplaats`` when set,
+    # falling back to the pipeline's caller-supplied ``city_name`` (the
+    # municipality). This fixture's VBO has no woonplaats, so the
+    # ``city_name="Delft"`` fallback shows up here; in production every
+    # PDOK BAG VBO carries woonplaats directly.
     addr_details = unit.address[0].address.xal_address.address_details
-    locality_names = addr_details.locality.locality_name
+    country = addr_details.country
+    assert country is not None
+    assert country.country_name_code[0].content[0] == "NL"
+    locality_names = country.locality.locality_name
     assert locality_names and locality_names[0].content == ["Delft"]
 
 

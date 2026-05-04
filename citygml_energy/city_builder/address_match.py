@@ -47,6 +47,11 @@ class ResolvedAddress:
         return self.vbo.toevoeging
 
     @property
+    def woonplaats(self) -> str | None:
+        """BAG locality (``woonplaats``); may differ from gemeente."""
+        return self.vbo.woonplaats
+
+    @property
     def point(self) -> tuple[float, float] | None:
         return self.vbo.point
 

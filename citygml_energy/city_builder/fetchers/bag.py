@@ -69,6 +69,7 @@ class Verblijfsobject:
     huisletter: str | None
     toevoeging: str | None
     openbare_ruimte_naam: str | None
+    woonplaats: str | None
     point: tuple[float, float] | None
     properties: dict[str, Any]
 
@@ -175,9 +176,23 @@ def fetch_verblijfsobjecten(
                 huisnummer=_as_int(props.get("huisnummer")),
                 huisletter=_optional_str(props.get("huisletter")),
                 toevoeging=_optional_str(
+                    # PDOK WFS shortens IMBAG's ``huisnummertoevoeging`` to
+                    # ``toevoeging``; the long form is what BAG-as-LD and
+                    # the BAG Extract use, so we look at both for forward
+                    # compatibility against schema variants.
                     props.get("toevoeging") or props.get("huisnummertoevoeging")
                 ),
                 openbare_ruimte_naam=_optional_str(props.get("openbare_ruimte")),
+                # ``woonplaats`` is the IMBAG-canonical locality component
+                # of a Dutch BAG address: a woonplaats can span multiple
+                # gemeentes and a gemeente can contain multiple
+                # woonplaatsen (e.g. gemeente Emmen contains the
+                # woonplaatsen Emmen, Klazienaveen, Nieuw-Amsterdam, …).
+                # PDOK joins it onto every VBO; we surface it here so the
+                # address builder doesn't have to fall back to a single
+                # caller-provided ``city_name`` argument that loses this
+                # within-municipality resolution.
+                woonplaats=_optional_str(props.get("woonplaats")),
                 point=_extract_point(feature.get("geometry")),
                 properties=props,
             )
