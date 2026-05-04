@@ -28,7 +28,7 @@ codespace), ``gebouwsubtype`` → ``gen:stringAttribute
 name="bdgSubtypeEPOnline"`` on each BuildingUnit, the energy-flow
 numerics → ``nrg3:Energy`` resources) and indirectly (``opnamedatum``
 is the address-match tiebreaker). Skip-(latent) columns from
-[`docs/ep_online_data_model_mapping.md`](../../../docs/ep_online_data_model_mapping.md)
+[`docs/mapping_city.md`](../../../docs/mapping_city.md) § 6.5
 are deliberately not surfaced; adding them later is a one-line change to
 :data:`_COLUMN_ALIASES` and the dataclass.
 """
@@ -59,8 +59,8 @@ from ..http import CachedSession
 
 # Calculation-regime classification of the ``Berekeningstype`` column.
 # Determines the unit and field-availability of the energy-flow numerics
-# downstream; see :meth:`EnergyLabel.calculation_regime` and § 5i-k of
-# the EP-online mapping doc for the empirical evidence and the
+# downstream; see :meth:`EnergyLabel.calculation_regime` and § 6.3 of
+# docs/mapping_city.md for the empirical evidence and the
 # per-regime emission rules.
 CalculationRegime = Literal["nta8800", "legacy_total", "unknown"]
 

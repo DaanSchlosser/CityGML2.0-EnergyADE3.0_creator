@@ -1,4 +1,4 @@
-"""Drift-detection test for ``docs/source_to_gml_mapping.md``.
+"""Drift-detection test for ``docs/mapping_city.md``.
 
 Asserts two invariants:
 
@@ -17,7 +17,9 @@ Asserts two invariants:
 The test is intentionally loose about *form*: it does not parse the
 exact tables. The point is to catch broken references, not to police
 the doc's prose. Long-form rationale lives in companion docs and is
-not exercised here.
+not exercised here. The per-building-pipeline mapping
+(``docs/mapping_building.md``) is its own document and is not
+exercised by this test.
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-INDEX_PATH = REPO_ROOT / "docs" / "source_to_gml_mapping.md"
+INDEX_PATH = REPO_ROOT / "docs" / "mapping_city.md"
 CITY_BUILDER_PKG = "citygml_energy.city_builder"
 
 
@@ -61,7 +63,7 @@ def test_every_module_path_in_index_exists() -> None:
     text = _load_index_text()
     missing = sorted(p for p in _module_paths_referenced_in_doc(text) if not p.exists())
     assert not missing, (
-        "docs/source_to_gml_mapping.md references modules that no "
+        "docs/mapping_city.md references modules that no "
         f"longer exist: {missing}"
     )
 
@@ -126,7 +128,7 @@ def test_referenced_symbols_exist_in_module(
 
     Catches the "renamed without updating the doc" case: a search-and-
     replace in code that does not also touch
-    ``docs/source_to_gml_mapping.md`` fails this assertion before it
+    ``docs/mapping_city.md`` fails this assertion before it
     reaches a reviewer.
     """
     full_path = REPO_ROOT / module_path
@@ -196,7 +198,7 @@ def test_every_enrichment_helper_is_documented() -> None:
 
     assert not undocumented, (
         "Each helper below maps source data into the GML but is not "
-        "mentioned in docs/source_to_gml_mapping.md. Add a row to the "
+        "mentioned in docs/mapping_city.md. Add a row to the "
         "appropriate section so future readers can find it:\n"
         + "\n".join(f"  {path}: {name}" for path, name in undocumented)
     )

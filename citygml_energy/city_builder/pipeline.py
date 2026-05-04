@@ -773,7 +773,7 @@ def _attach_trees_to_model(
     ``gen:stringAttribute`` siblings, plus a second
     ``core:externalReference`` keyed on ``boom_id``. See
     ``builders.vegetation._apply_bor_enrichment`` and
-    ``docs/source_to_gml_mapping.md`` for the full mapping. The two
+    ``docs/mapping_city.md`` for the full mapping. The two
     matches are independent: a tree may carry zero, one, or both
     cross-references.
 
