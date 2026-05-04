@@ -26,6 +26,7 @@ from .bindings import (
     CityObjectRelation,
     CodeType,
     RelatedTo,
+    TypeType,
 )
 from .core import CityModel
 from .mapping import iter_instances
@@ -134,4 +135,6 @@ def _index_features(model: CityModel) -> dict[str, Any]:
 
 
 def _make_city_object_ref(gml_id: str) -> AbstractCityObjectPropertyType:
-    return AbstractCityObjectPropertyType(href=f"#{gml_id}")
+    ref = AbstractCityObjectPropertyType(href=f"#{gml_id}")
+    ref.type_value = TypeType.SIMPLE
+    return ref

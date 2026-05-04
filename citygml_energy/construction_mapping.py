@@ -19,6 +19,7 @@ from __future__ import annotations
 from functools import cache
 from typing import Any
 
+from .bindings import TypeType
 from .core import CityModel
 from .mapping import get_fields, iter_instances, resolve_class
 from .schema_types import LAYERED_CONSTRUCTION
@@ -70,7 +71,9 @@ def _layered_construction_ref_cls() -> type:
 
 def _make_construction_ref(construction_id: str) -> Any:
     """Build an xlink:href wrapper pointing at a LayeredConstruction library entry."""
-    return _layered_construction_ref_cls()(href=f"#{construction_id}")
+    ref = _layered_construction_ref_cls()(href=f"#{construction_id}")
+    ref.type_value = TypeType.SIMPLE
+    return ref
 
 
 def _layered_construction_list(obj: Any) -> list[Any] | None:
