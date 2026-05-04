@@ -113,6 +113,82 @@
       ]
     },
     {
+      "type": "core:Address",
+      "parent": "id_building_unit_1",
+      "id": "id_address_1",
+      "xal_address": {
+        "address_details": {
+          "country": {
+            "country_name_code": [
+              {"scheme": "iso.3166-1 alpha-2", "content": ["NL"]}
+            ],
+            "country_name": [
+              {"content": ["The Netherlands"]}
+            ],
+            "locality": {
+              "type_value": "Town",
+              "locality_name": [{"content": ["Sample Town"]}],
+              "thoroughfare": {
+                "type_value": "Street",
+                "thoroughfare_number": [
+                  {"number_type": "Single", "content": ["1"]}
+                ],
+                "thoroughfare_name": [{"content": ["Sample Street"]}]
+              },
+              "postal_code": {
+                "postal_code_number": [{"content": ["0000 AA"]}]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "nrg3:EnergyPerformanceCertificate",
+      "parent": "id_building_unit_1",
+      "id": "id_epc_1",
+      "description": "Sample EnergyPerformanceCertificate. Same structural shape as the canonical input's EP-online entry, but with placeholder values.",
+      "name": ["Sample EPC"],
+      "creation_date": "2000-02-01",
+      "identifier": {"value": "SAMPLE-EPC-0000", "code_space": "https://example.invalid/epc"},
+      "valid_from": "2000-02-15T00:00:00",
+      "valid_to": "2010-02-15T00:00:00",
+      "status": {"value": "actual", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EPCStatusValue.xml"},
+      "type_value": {"value": "totalEnergyDemand", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EPCTypeValue.xml"},
+      "label": "A",
+      "value": {"value": 100.0, "uom": "kWh/m2/a"},
+      "certification_method": "Sample method"
+    },
+    {
+      "type": "nrg3:Energy",
+      "parent": "id_building_unit_1",
+      "id": "id_house_consumption_1",
+      "description": "Sample whole-house final-electricity consumption time series (smart-meter import readings). Same structural shape as the canonical input.",
+      "name": ["Sample house electricity consumption"],
+      "creation_date": "2000-02-01",
+      "operation_type": {"value": "demands", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
+      "is_amount_normalized": false,
+      "type_value": {"value": "final", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
+      "end_use": {"value": "otherOrCombination", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
+      "energy_carrier": {"value": "electricity", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
+      "source": {"value": "powerGrid", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
+    },
+    {
+      "type": "nrg3:MonthlyTimeSeries",
+      "parent": "id_house_consumption_1",
+      "parent_field": "time_dependent_amount",
+      "id": "id_monthly_ts_house_consumption_1",
+      "description": "Sample monthly whole-house electricity consumption (12 placeholder values, Jan–Dec 2000).",
+      "name": ["Sample MonthlyTimeSeries house consumption"],
+      "interpolation_type": "averageInSucceedingInterval",
+      "start_date": "2000-01-01",
+      "end_date": "2001-01-01",
+      "values_list": {
+        "value": [400, 380, 350, 280, 240, 220, 230, 240, 260, 320, 370, 410],
+        "uom": "kWh"
+      }
+    },
+    {
       "type": "nrg3:PhotovoltaicCollector",
       "parent": "id_building_1",
       "id": "pv_panel_1",
@@ -124,6 +200,9 @@
       "installed_power": {"value": 5000.0, "uom": "W"},
       "azimuth": {"value": 180.0, "uom": "deg"},
       "inclination": {"value": 35.0, "uom": "deg"},
+      "module_area": {"value": 33.0, "uom": "m2"},
+      "aperture_area": {"value": 31.0, "uom": "m2"},
+      "nominal_efficiency": {"value": 0.150, "uom": "W/W"},
       "cell_type": {"value": "unknown", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml"},
       "installed_on": ["RoofSurface_01", "RoofSurface_02"]
     },
@@ -140,7 +219,8 @@
       "installed_power": {"value": 4000.0, "uom": "W"},
       "heat_source": {"value": "verticalGroundCollector", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
       "cop_source_temperature": {"value": 10.0, "uom": "C"},
-      "cop_operation_temperature": {"value": 40.0, "uom": "C"}
+      "cop_operation_temperature": {"value": 40.0, "uom": "C"},
+      "nominal_efficiency": {"value": 4.5, "uom": "W/W"}
     },
     {
       "type": "nrg3:ThermalDistribution",
@@ -162,18 +242,18 @@
       "creation_date": "2000-01-03",
       "number_of_devices": 1,
       "volume": {"value": 0.2, "uom": "m3"},
-      "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"}
+      "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"},
+      "preparation_temperature": {"value": 45.0, "uom": "C"}
     },
     {
       "type": "nrg3:Occupants",
       "parent": "id_building_unit_1",
       "id": "id_occupants_1",
-      "description": "Sample residents. Parented to the BuildingUnit (not the Building); see the canonical input for the structural rationale.",
+      "description": "Sample residents. Parented to the BuildingUnit (not the Building); see the canonical input for the structural rationale. Only `numberOfOccupants` is populated; cohort-statistical and per-occupant thermal-load slots are left absent (mirrors the canonical-input authoring choice).",
       "name": ["Sample occupants"],
       "creation_date": "2000-01-04",
       "type_value": {"value": "residents", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OccupantsTypeValue.xml"},
-      "number_of_occupants": 2,
-      "heat_dissipation": {"value": 60.0, "uom": "W"}
+      "number_of_occupants": 2
     },
     {
       "type": "nrg3:EVChargingStation",
