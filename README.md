@@ -84,7 +84,7 @@ python examples/create_building.py --input inputs/buildings/owner_occupier_build
 ```
 
 Requirements: Python 3.12+ and `lxml >= 5.0`. Dev extras add `pytest`,
-`ruff`, `xsdata[cli,lxml]`, and `lxml-stubs`. For the city-scale
+`ruff`, `xsdata[cli,lxml]`, `lxml-stubs`, `mypy`, and `pyright`. For the city-scale
 workflow (§12), the `city` extras add `requests`, `shapely`,
 `python-dotenv`, `flatgeobuf`, and `orjson` (for faster CityJSON
 parsing). An optional `city-fast` extra adds `polars` for sub-second
@@ -159,9 +159,11 @@ Field-by-field semantics:
   selects the importer mode (see [§6.4](#64-citygml_energygeometry));
   each entry targets a specific feature by gml:id. Two target fields are
   recognized:
-  - `step-building-lod{0..4}` sources require **`target_building_id`** and
-    accept an optional **`target_pv_id`** (used by LOD 3 to attach
-    `SolarPanelSurface_*` faces to a `PhotovoltaicCollector`).
+  - `step-building-lod{0..4}` sources require **`target_building_id`**.
+    `step-building-lod2` and `step-building-lod3` also accept an optional
+    **`target_pv_id`** (attaches `SolarPanelSurface_*` faces to a
+    `PhotovoltaicCollector`); the input validator rejects `target_pv_id`
+    on LoD 0, 1, and 4 sources.
   - `step-zonepart-lod{0..3}` sources require **`target_zone_part_id`**:
     the gml:id of an `nrg3:ZonePart` feature whose geometry will be
     populated from the STEP file. LoD 0 attaches an aggregate
@@ -611,10 +613,12 @@ the EnergyADE `nrg3:Zone…Surface` taxonomy that `nrg3:zoneBoundary`
 accepts; opening names are unchanged on either side. Parent linkage
 works as follows:
 
-- **Openings** (`Window_*`, `Door_*`, `ZoneWindow_*`, `ZoneDoor_*`,
-  …) are matched to their parent boundary surface by comparing the
-  opening's exterior ring against every surface's interior rings
-  (`_match_opening_to_parent`). The layer name carries no parent hint.
+- **Openings** (`Window_*`, `Door_*`) are matched to their parent
+  boundary surface by comparing the opening's exterior ring against every
+  surface's interior rings (`_match_opening_to_parent`). The layer name
+  carries no parent hint. The same names apply on zonepart sources: the
+  `zone_opening` slot defined by the XSD is never consulted, so all
+  openings in both pipelines flow through `Window_*` / `Door_*`.
 - **Solar panels** (`SolarPanelSurface_*`) accept an optional
   `|parent=<roof_layer>` suffix as authoring metadata; the suffix is
   parsed but no longer drives attachment. Device-to-surface
@@ -730,10 +734,9 @@ overridable via `--input` / `--output`. Importable functions:
 `create_building()`, `write_building_gml_file()`.
 
 The companion [examples/create_city.py](examples/create_city.py) is
-the city-scale entry point (§12). Pass `-v` for INFO-level pipeline
-progress on stderr (the mocked fetcher milestones) or `-vv` for DEBUG
-(fetcher / HTTP retry detail). Default verbosity is WARNING, keeping
-piped runs quiet.
+the city-scale entry point (§12). Default verbosity (no flag) is INFO,
+showing pipeline progress milestones on stderr. Pass `-v` for DEBUG
+(fetcher / HTTP retry detail). WARNING is unreachable from the CLI.
 
 ### 7.2 [tools/generate_bindings.py](tools/generate_bindings.py)
 
@@ -953,14 +956,16 @@ citygml_energy/                Core package
 
 examples/
 ├── create_building.py         CLI + library entry point (per-building)
-└── create_city.py             CLI + library entry point (city-scale, -v for INFO, -vv for DEBUG)
+└── create_city.py             CLI + library entry point (city-scale, default INFO; -v for DEBUG)
 
 tools/
-├── generate_bindings.py       Regenerate bindings.py from XSD (auto-discovered URL map)
-├── generate_input_schema.py   Regenerate the per-building JSON input schema
-├── generate_city_input_schema.py   Regenerate the city-scale JSON input schema
-├── validate_xsd.py            Offline XSD validation
-└── bench.py                   Benchmarking utilities
+├── generate_bindings.py           Regenerate bindings.py from XSD (auto-discovered URL map)
+├── generate_input_schema.py       Regenerate the per-building JSON input schema
+├── generate_city_input_schema.py  Regenerate the city-scale JSON input schema
+├── validate_xsd.py                Offline XSD validation
+├── create_anonymised_sample.py    Strip sensitive fields to produce the shareable sample input
+├── merge_cftree_tiles.py          Merge CFTree CityJSON tile exports into a single file
+└── bench.py                       Benchmarking utilities
 
 inputs/
 ├── buildings/                           Per-building feature-collection JSONs (schema_version: 2, §3)
@@ -991,7 +996,10 @@ xsd/                            CityGML 2.0 + GML 3.1.1 + xLink + xAL (offline c
 Energy_ADE-3.0beta8/            Authoritative Energy ADE 3.0 beta8 XSD + Alderaan reference
 
 tests/                          Per-building, city-scale, and infra test modules (see §8)
-docs/                           Data-source overviews and design reports
+docs/
+├── mapping_building.md         Per-building pipeline: BAG / EP-online field-to-XSD mapping notes
+├── mapping_city.md             City-scale pipeline: data-source mapping and design decisions
+└── vegetation_integration_report.md  CFTree + BGT + BOR vegetation integration analysis
 generated/                      Pipeline output (git-ignored)
 ```
 
@@ -1166,8 +1174,9 @@ under the building, carrying its own `lod2MultiSurface`,
 surface that hosts it.
 
 When `vegetation` is configured, every CFTree mesh inside the AOI is
-emitted as one `veg:SolitaryVegetationObject` (`gml:id =
-"<prefix>tree_<gtid>"`) with the LoD 3 crown + trunk geometry and
+emitted as one `veg:SolitaryVegetationObject` (`gml:id = "tree_<gtid>"`
+when `gml_id_prefix` is empty, `"<prefix>_tree_<gtid>"` when a prefix is
+set) with the LoD 3 crown + trunk geometry and
 CFTree morphometrics (height / crown / trunk fields native where the
 schema supports them, the rest as `gen:doubleAttribute` siblings),
 optionally enriched with BGT cross-references and Emmen BOR species
