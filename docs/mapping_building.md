@@ -661,6 +661,39 @@ The first four gaps are the most thesis-relevant: they directly limit the BRP-st
 
 ---
 
+## 16. Canonical input data gaps
+
+This section catalogues places where the canonical owner-occupier input ([`inputs/buildings/owner_occupier_building.json`](../inputs/buildings/owner_occupier_building.json)) is incomplete or approximate. Gaps are split into two types:
+
+- **16a (Estimated values)** — the spec or source data did not supply a figure, so a typical or derived value was used. The model serialises cleanly but the flagged values should be confirmed before being relied on for thermal analysis.
+- **16b (Not yet modelled)** — the spec supplies the data clearly but it has not been authored into the JSON, either because there is no matching LOD3 surface to attach it to or because the feature class has not been added yet.
+
+### 16a. Estimated values
+
+1. **Reed thatch thickness and thermal properties (`mat_reed_thatch`, layers `constr_reed_roof_L6` and `constr_uninsulated_reed_roof_L3`).** The arch. spec lists the 'SPORENDAKEN TPV RIET' variants with 15 mm OSB3 as the outermost named layer; the reed thatch itself (which sits on top of the OSB3) is not given a thickness or product reference. The canonical input uses 300 mm / λ=0.09 W/(m·K) / ρ=190 kg/m³ — all typical values for a Dutch rieten dak from published literature. To resolve, obtain the thatching contractor's datasheet or carry out an in-situ thickness measurement and update both the material entry and the two affected construction layers.
+
+2. **Ground-floor insulation product and acoustic layer (`constr_ground_floor`, layers L3 and L4).** *(Partially resolved 2026-05-05.)* Build-up confirmed from the owner-occupier's CAD drawing as a kanaalplaatvloer: 192 mm insulation below slab | 260 mm kanaalplaatvloer | 20 mm decoupling layer | 70 mm screed with vloerverwarming. Computed Rc≈6.10 m²K/W. Remaining open: (a) the exact EPS product below the slab is unnamed — thermal conductivity of 0.036 W/(m·K) is a typical EPS value; (b) the 20 mm full-black layer (ontkoppelingslaag) between slab and screed is inferred as an acoustic decoupling board — actual product (PE-foam, EPS acoustic, rubber mat) unconfirmed. Neither affects macro-level thermal performance significantly.
+
+3. **Outer wall cladding 'DCV' (`mat_dcv_cladding`, layer `constr_ext_wall_L8`).** *(Partially resolved 2026-05-05.)* Owner-occupier confirmed the DCV cladding is timber. Canonical input already modelled as a generic 22 mm timber cladding (λ=0.13 W/(m·K)). Remaining open: exact timber species, board profile, and surface finish were not specified.
+
+4. **Membrane thermal properties (`mat_pe_vapour_barrier`, `mat_morgo_vent_120`, `mat_morgo_top_solar`).** The arch. spec names three membranes (PE folie 0.15 mm dampremmende laag, Morgo-Vent 120 3-laags PP-spunbond, Morgo Top Solar underlayment) but provides no per-product datasheet figures for thermal conductivity, density, or heat capacity. The canonical input uses generic polymer-membrane values (λ ≈ 0.33–0.40 W/(m·K), ρ ≈ 200–950 kg/m³). At sub-millimetre thickness the contribution to the assembly's Thickness and HeatCapacity attributes is negligible (<1 %), so this gap is cosmetic.
+
+5. **Door-leaf build-up (`constr_front_door_L1`, `constr_back_door_L1`).** The arch. spec states only frame-included U-values ('Voordeuren U=1,43 W/m²K incl. kozijn'; 'Achterdeuren U=1,64 W/m²K incl. kozijn'). The canonical input uses a single solid timber-leaf placeholder (54 mm / 48 mm); the `u_value` on the construction is the authoritative thermal figure. The actual leaf composition (insulation core, glazed inserts, hardware cut-outs) is unspecified and would need the door-supplier's datasheet for an honest layer build-up.
+
+### 16b. Not yet modelled
+
+1. **Uninsulated reed sub-roof geometric extent (`constr_uninsulated_reed_roof`).** The arch. spec lists 'SPORENDAKEN TPV RIET opbouw (ongeisoleerd)' (rafters 36x196 mm + 15 mm OSB3, no insulation, no inner cladding) alongside the insulated reed and PV variants — consistent with an unheated overhang or thatched canopy. The canonical input declares the construction in the library but no `RoofSurface_*` in the current LOD3 STEP geometry is mapped to it via `construction_mapping.by_id`. To resolve: identify which (if any) STEP layers correspond to uninsulated overhangs and add the appropriate `by_id` entries.
+
+2. **Internal walls and intermediate floors (library-only).** The arch. spec details four interior build-ups: stability walls (11 mm spaanplaat V313 + 38x89 mm vuren cavity), partition walls (38x89 mm vuren studs only), 1st-floor deck (38x285 mm vuren joists + 18 mm OSB3 veer-en-groef), 2nd-floor deck (38x270 mm vuren joists + 18 mm OSB3). The canonical input declares all four as `constr_stability_internal_wall`, `constr_internal_wall`, `constr_first_floor`, `constr_second_floor` so the build-up is in the audit trail, but none is mapped to geometry: the LOD3 envelope carries only external `WallSurface` / `RoofSurface` / `GroundSurface`. A future LOD4 (`bldg:Room` + interior boundary surfaces) authoring pass should reuse these library entries. The spec also leaves internal-wall finish materials unspecified; cavities are modelled as ventilated air for now.
+
+3. **Frame-included window U-value ('Kozijn incl. glas U=variabel min. 1,65 W/m²K').** The arch. spec gives a frame+glass combined U-value floor of 1.65 W/(m²·K), distinct from the centre-of-glass U=1.1 stored on `constr_window_hr`. EnergyADE 3.0's `LayeredConstruction` carries one `u_value`; the frame-included figure is not separately stored. A consumer needing it must combine `u_value`, `glazing_ratio`, and per-surface area attributes; it cannot read it directly.
+
+4. **WTW balanced heat-recovery ventilation system.** The arch. spec states 'Ventilatievoorzieningen: mechanische toevoer en afvoer d.m.v. een gebalanceerd WTW systeem op basis van CO2-sturing.' EnergyADE 3.0 provides `nrg3:AirDistribution` (mechanical ventilation device) and heat-recovery efficiency attributes, but no `nrg3:MechanicalVentilation` feature has been authored in the canonical input. To model: add an `nrg3:AirDistribution` feature parented to the Building, capturing the system type, heat-recovery efficiency (not in the spec extract — would need the unit's datasheet), and CO2-controlled operation mode.
+
+5. **Performance-only specs without a native EnergyADE slot.** The arch. spec includes several regulatory compliance figures: 'EPC bouwbesluit-eis 0,4 (nul op de meter woning)', 'Politiekeurmerk klasse 2' anti-burglary rating, 'Equivalente daglichtoppervlakte ≥10 % V.G.' per NEN 2057, 'Karakteristiek geluidsniveau max. 30 dB', 'Hoofddraagconstructie 60 min. brandwerend', and 'Project onder FSC: JA / SKH-COC-000076 claim FSC mix'. The EPC figure is captured via `nrg3:EnergyPerformanceCertificate`; the remainder have no native slot in EnergyADE 3.0 and would need `gen:stringAttribute` / `gen:doubleAttribute` workarounds on `bldg:Building` or the relevant material/construction entry.
+
+---
+
 ## Code reference legend
 
 The `Implementation` columns reference Python identifiers in the modules linked at the top of each section. `mapping_building.md`, like its city counterpart, is parsed by [`tests/test_mapping_index_in_sync.py`](../tests/test_mapping_index_in_sync.py) so that renaming a referenced symbol fails the test until the doc is updated.
