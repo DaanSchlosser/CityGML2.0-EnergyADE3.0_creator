@@ -20,8 +20,11 @@ test against fixtures.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
+
+_LOG = logging.getLogger(__name__)
 
 from .._step import Coord3D, GeometryPolygon
 
@@ -285,9 +288,42 @@ def _ring_from_indices(
     indices: list[int],
     vertices: list[Coord3D],
 ) -> list[Coord3D] | None:
+    """Resolve vertex indices to 3D coordinates, dropping degenerate rings.
+
+    3DBAG LoD2 roof reconstruction occasionally emits degenerate wall
+    triangles whose boundary index arrays reference duplicate vertex
+    positions — i.e. different CityJSON vertex indices that map to the
+    same (x, y, z) coordinate.  These arise as artefacts of the roof
+    mesh triangulation and are already present in the raw tile data
+    before any pipeline processing (verified by inspecting tile
+    8/1008/920 at sub-millimetre precision).  A ring with fewer than
+    three distinct points cannot form a valid polygon and would produce
+    an invalid ``gml:LinearRing`` in the output GML, which causes strict
+    viewers such as KITModelViewer to abort loading the entire file.
+
+    Rings with fewer than 3 distinct points (at millimetre precision) are
+    therefore silently dropped here so they never enter the in-memory
+    :class:`ParsedBuilding` representation and never reach GML output.
+    A DEBUG log entry is emitted for each dropped ring to aid diagnosis.
+    """
     if not indices:
         return None
     try:
-        return [vertices[i] for i in indices]
+        ring = [vertices[i] for i in indices]
     except IndexError:
         return None
+
+    # Guard against 3DBAG degenerate faces: duplicate vertex positions at
+    # mm precision mean the ring collapses to a point or line.
+    distinct = {(round(pt[0], 3), round(pt[1], 3), round(pt[2], 3)) for pt in ring}
+    if len(distinct) < 3:
+        _LOG.debug(
+            "Dropped degenerate ring: %d indices resolve to only %d distinct "
+            "point(s) — 3DBAG source artefact (duplicate vertex positions in "
+            "boundary array).",
+            len(indices),
+            len(distinct),
+        )
+        return None
+
+    return ring
