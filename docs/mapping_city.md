@@ -44,6 +44,7 @@ All `codeSpace` URLs are pinned in [`citygml_energy/namespaces.py`](../citygml_e
 | 9 | BGT `vegetatieobject_punt` | 23 properties + geometry | 5 + geometry | `core:externalReference` + `gen:dateAttribute` (cross-reference layer; no biological attributes) |
 | 10 | Gemeente Emmen `bor_groen_bomen_beschermd` | 11 fields | 11 | `veg:species` + `core:externalReference` + `gen:*Attribute` siblings (BOR enrichment, only used in Emmen runs) |
 | 11 | Boundary polygon (`.geojson`) | geometry + metadata | geometry | (clips the output to a concave AOI) |
+| 12 | CBS Postcode6 WFS (`postcode6:postcode6`) | 132 properties + polygon geometry | 5 + geometry | `nrg3:UrbanFunctionArea` (one per postcode) with polygon, area, two `nrg3:Energy` resources (`type=actual`, carrier `naturalGas` / `electricity`), two `gen:intAttribute` (`dwellingCount` / `vacantDwellingCount`), `core:externalReference`, `nrg3:Metadata`, and `grp:groupMember` xlinks to constituent buildings |
 
 ---
 
@@ -151,7 +152,7 @@ VBO-level attributes go on `nrg3:BuildingUnit` (one VBO per BuildingUnit, parent
 |---|---|---|---|---|
 | `identificatie` | `"NL.IMBAG.Pand.0503100000000153"` | ⚙ | — | Bare BAG id (trailing `"NL.IMBAG.Pand."` stripped) is the join key back to BAG Pand. |
 | `oorspronkelijkbouwjaar` | `1933` | ✓ | `bldg:yearOfConstruction` | Only used when BAG's own `bouwjaar` is absent. BAG wins on ties (`pand_executor._merge_attributes`). |
-| `b3_h_maaiveld` | `0.175` | ✓ | (drives LoD 0 Z-lift) + feeds into `nrg3:bdgHeight` | `_lift_lod0_to_ground` |
+| `b3_h_maaiveld` | `0.175` | ✓ | feeds into `nrg3:bdgHeight` (subtrahend in `b3_h_dak_max - b3_h_maaiveld`) | `_apply_building_attributes`. Not stamped onto LoD 0; LoD 0 is a 2D footprint with no defined elevation, and the per-building terrain height already lives on LoD 1 / 2. |
 | `b3_h_dak_max` | `9.925` | ✓ | feeds into `nrg3:bdgHeight` | `_apply_building_attributes` computes `nrg3:bdgHeight` as a `QualifiedHeight` with `type="maxHeightAboveGround"` (codeSpace `CS_NRG3_HEIGHT_TYPE`), value = `b3_h_dak_max - b3_h_maaiveld`, uom `m`. The Energy ADE `QualifiedHeight` slot is used rather than the CityGML core `bldg:measuredHeight` because it carries source attribution and a typed height-class code. Using `_max` (not `_70p`) so antennae and chimney tips register as part of the physical extent. Negative-height results are defensively dropped. |
 | `b3_bouwlagen` | `3` | ✓ | `bldg:storeysAboveGround` (`xs:nonNegativeInteger`) | `_apply_building_attributes`. Direct 1-to-1 mapping. |
 | `b3_dak_type` | `"slanted"`, `"horizontal"`, `"multiple horizontal"` | ✓ | `bldg:roofType` (`gml:CodeType`, `codeSpace = CS_BUILDING_ROOFTYPE`, the SIG3D `_AbstractBuilding_roofType.xml` codelist URL). 3DBAG → SIG3D mapping in `_3DBAG_TO_SIG3D_ROOF_TYPE`: `horizontal` → `1000` (flat), `slanted` → `1030` (gabled, deterministic fallback for ambiguous pitched roofs), `multiple horizontal` → `1130` (combination of roof forms). | `_apply_building_attributes`, `_3DBAG_TO_SIG3D_ROOF_TYPE`. The lossiness on `slanted` is intrinsic to 3DBAG; consumers needing finer disambiguation must consult the LoD 2 roof geometry directly. An alternative codespace constant `CS_3DBAG_DAK_TYPE` (`https://docs.3dbag.nl/en/schema/attributes/#b3_dak_type`) is defined in [`namespaces.py`](../citygml_energy/namespaces.py) and would carry the raw 3DBAG term verbatim under its own vocabulary; it is **not** wired up today (the SIG3D-mapped form is the canonical emission), but it stays in the namespace module so a future decision to drop the lossy mapping has a documented home. |
@@ -167,7 +168,7 @@ Each Building + its child BuildingParts contributes geometries at up to three Lo
 
 | CityJSON `geometry.lod` | Shape | Read | CityGML target | Implementation |
 |---|---|---|---|---|
-| `"0"` | MultiSurface (one polygon) | ✓ | `bldg:lod0FootPrint` (lifted to `b3_h_maaiveld`) | `build_building`, `_lift_lod0_to_ground` |
+| `"0"` | MultiSurface (one polygon) | ✓ | `bldg:lod0FootPrint` with the source-Z preserved (3DBAG ships LoD 0 at nominal Z = 0 / NAP). LoD 0 is a 2D footprint representation with no defined elevation; consumers needing a height-anchored ground plane should consult LoD 1 / LoD 2 instead. | `build_building` |
 | `"1.2"` | Solid with thematic `semantics` | ✓ | `bldg:lod1Solid` as a `gml:CompositeSurface` shell | `build_building` |
 | `"2.2"` | Solid with per-face `GroundSurface` / `WallSurface` / `RoofSurface` semantics | ✓ | `bldg:boundedBy` → `bldg:GroundSurface` / `WallSurface` / `RoofSurface`, **one element per polygon** with a single-polygon `bldg:lod2MultiSurface`. Each surface also carries `nrg3:bdgBdrySurfTotalSurfaceArea` (m², holes subtracted), `nrg3:bdgBdrySurfInclination` (deg, [0, 180] from +Z, so a flat roof is 0, a wall is 90, a downward-facing ground slab is 180), and `nrg3:bdgBdrySurfAzimuth` (deg, compass bearing, omitted on horizontal surfaces). | `_attach_lod2_thematic_surfaces`, `_attach_planar_surface_ade_attributes`. Construction / radiation properties (Thickness, HeatCapacity, IsShared, view factors, OpaqueSurfaceArea, ThermalBridgeUValue) are deliberately absent in this pipeline because the city pipeline has no source for them; populating with placeholders would silently contaminate downstream energy analyses. The per-building pipeline, which *does* have layered constructions, additionally fills `nrg3:bdgBdrySurfThickness` and `nrg3:bdgBdrySurfHeatCapacity` from the LayeredConstruction layer stack (see [`mapping_building.md`](mapping_building.md) and [`citygml_energy/boundary_attributes.py`](../citygml_energy/boundary_attributes.py)). |
 | any other LoD (1.3, experimental variants) |   |   |   | Dropped in `_LOD_ALIAS` lookup. |
@@ -827,6 +828,65 @@ No feature is emitted in the GML for the boundary itself.
 
 ---
 
+## 12. CBS Postcode6 WFS — per-postcode dwelling-energy aggregates
+
+**Endpoint:** `https://service.pdok.nl/cbs/postcode6/{year}/wfs/v1_0`, typeName `postcode6:postcode6`, `outputFormat=application/json`, `srsName=EPSG:28992`. The year is selected via `cbs_postcode6.year` in the city config.
+**Fetcher:** [`fetchers/cbs_postcode6.py::fetch_postcode6_areas`](../citygml_energy/city_builder/fetchers/cbs_postcode6.py) (returns `Postcode6Area` records).
+**Step module:** [`postcode6.py::attach_postcode6_areas_to_model`](../citygml_energy/city_builder/postcode6.py) — single seam owning fetch (soft-fail wrapper [`safely_fetch_postcode6_areas`](../citygml_energy/city_builder/postcode6.py)) + boundary clip + xsdata builder + ``grp:groupMember`` join + model attach.
+
+**Sentinel codes** (per CBS Longread §4 Beschrijving cijfers):
+
+| Sentinel | CBS verbatim | Pipeline reading |
+|---|---|---|
+| `-99997` | *"0 tot en met 4 / geheim / niet aanwezig"* | < 5 dwellings, statistically disclosed, or absent — value not published. |
+| `-99995` | *"Onderwerp wordt in een latere versie gepubliceerd"* | Field reserved in this vintage, will be filled in a later version. Distinct from the 6-dwelling privacy suppression rule that applies to the energy fields specifically (CBS rounds energy figures to 50 and only publishes them for postcodes with ≥6 occupied dwellings; suppressed energy fields are encoded as `-99997`, not `-99995`). |
+
+The fetcher folds *any* value at-or-below `-99000` to `None` (`_value_or_suppressed` uses a threshold rather than a sentinel set, because CBS has shipped at least three distinct codes — `-99995`, `-99997`, `-99999` — across vintages and the code block is reserved by construction; energy / dwelling counts are physical totals that cannot be negative).
+
+**Publication cadence note.** CBS publishes geometry + dwelling counts immediately for each vintage but releases energy values (gemiddeldGasverbruikWoning, gemiddeldElektriciteitsverbruikWoning) on a one-year lag (CBS Longread §4: *"De jaarbestanden bevatten per jaar onderwerpen voor zover deze beschikbaar zijn rond de jaarwisseling. In een volgende versie zullen jaarbestanden worden aangevuld met dan beschikbaar gestelde gegevens"*). Empirical state at time of writing (2026-05): vintages 2022 and 2023 ship populated energy fields nationwide; the 2024 vintage ships every energy value as the deferred-publication code `-99995`. For the Emmer-Compascuum small-area smoke test we pin `year=2023` (most recent populated vintage; 64 of 82 postcodes inside the AOI carry real values, the other 18 are below the 6-dwelling privacy threshold and are correctly suppressed via `-99997`). Future runs should bump to 2024 once CBS publishes energy values for that vintage.
+
+CBS publishes per-6-position-postcode aggregates derived from utility-grid connection registers. The values are **postcode-area averages**, not per-building measurements: attaching them to a `bldg:Building` or `nrg3:BuildingUnit` would misrepresent the source. EnergyADE 3.0 provides a purpose-built aggregate feature, `nrg3:UrbanFunctionArea` ([`Energy_ADE_3.0_beta8.xsd:2638-2655`](../Energy_ADE-3.0beta8/xsd/Energy_ADE_3.0_beta8.xsd)), which extends `grp:CityObjectGroup` and therefore carries its own polygon geometry, `groupMember` xlinks to constituent CityObjects, source attribution via `nrg3:Metadata`, and the `nrg3:Energy` resource hook for measured aggregates. One UrbanFunctionArea is emitted per postcode polygon that intersects the build extent (boundary clip mirrors the per-building clip in [`pipeline._filter_by_boundary`](../citygml_energy/city_builder/pipeline.py)).
+
+The fetcher reads only the two energy fields out of the ~130 columns the WFS publishes; the rest (demographics, amenity proximities, educational attainment) are out of scope for this thesis.
+
+### 12.1. Per-record mapping
+
+| WFS property | Example | Read | Target | Notes |
+|---|---|---|---|---|
+| `postcode6` | `"7881AD"` | ✓ | `nrg3:UrbanFunctionArea/@gml:id` (via `pc6_` prefix), `gml:name`, `nrg3:code` (`gml:CodeType`, codeSpace `CS_NL_POSTCODE_PC6`), `core:externalReference/externalObject/name` | Defensively normalised to canonical `NNNNAA` shape; non-conforming values are dropped (CBS already ships canonical, but a future WFS shape change must not silently corrupt the join with BAG). |
+| `gemiddeldGasverbruikWoning` | `1860` | ✓ | `nrg3:Energy` resource via `nrg3:resource`: `type="actual"`, `energyCarrier="naturalGas"`, `endUse="otherOrCombination"`, `operationType="demands"`, `referencePeriod="year"`, `amount` uom `m3/a`, `isAmountNormalized=true`, `normalizationParameter="dwelling"`. | Average annual natural-gas consumption per occupied private dwelling in the postcode (m³/yr, rounded to 50). Includes `stadsverwarming`-connected dwellings (district heating), which lowers the average for postcodes on a shared heat network. CBS suppresses the value (no resource emitted) when the postcode contains <6 occupied dwellings — encoded as `-99997` per CBS sentinel table above — or when CBS has not yet published the field for the vintage (encoded as `-99995`). Both forms, plus `null`, fold to "not emitted" via `_value_or_suppressed`. |
+| `gemiddeldElektriciteitsverbruikWoning` | `2790` | ✓ | second `nrg3:Energy` resource on the same UrbanFunctionArea: `type="actual"`, `energyCarrier="electricity"`, `endUse="otherOrCombination"`, `amount` uom `kWh/a`, otherwise as above. | Same suppression / deferred-publication semantics. Individual connections only; excludes self-generated electricity from rooftop PV and excludes collective consumption (lifts, gallery lighting). |
+| `aantalWoningen` | `87` | ✓ | `gen:intAttribute name="dwellingCount"` on the UrbanFunctionArea | Total dwellings registered in BAG for the postcode. Surfaced as a generic attribute because EnergyADE 3.0 has no first-class slot for "dwelling count" on UrbanFunctionArea; the gen:intAttribute substitution group on the inherited `core:AbstractCityObject` is the schema-honest place. Sourced from BAG via CBS, so it is **not** subject to the 6-dwelling privacy suppression that gates the energy figures — a postcode with suppressed energy still carries its dwelling count. |
+| `aantalNietBewoondeWoningen` | `4` | ✓ | `gen:intAttribute name="vacantDwellingCount"` on the UrbanFunctionArea | Vacant-dwelling count. The CBS suppression rule keys on *occupied* dwellings, so a postcode with high vacancy can carry suppressed energy values even when `aantalWoningen` is well above the 6-dwelling threshold. The two counts together let a downstream consumer reason about *why* an energy figure was suppressed: `dwellingCount - vacantDwellingCount < 6` is below CBS's privacy threshold by construction. |
+| `geom` (Polygon / MultiPolygon) | — | ✓ | `grp:geometry` (`gml:GeometryPropertyType`) holding a `gml:MultiSurface`. Vertices ride at `z=0` (CBS publishes 2D administrative boundaries; the polygons are not elevation-anchored). The polygon's 2D area lands on `nrg3:UrbanFunctionArea/area` (uom `m2`). | `_extract_polygons` parses the GeoJSON ring lists; [`postcode6._polygons_to_shapely`](../citygml_energy/city_builder/postcode6.py) is the single seam that converts to a shapely (Multi)Polygon for the boundary clip, the centroid-in-polygon group-member join, and the area calculation. CBS occasionally ships disjoint MultiPolygon for fragmented postcodes (an island plus its mainland sliver); each ring becomes its own polygon under one shared MultiSurface. |
+| every other property (~125 demographic / amenity / educational columns) |   |   |   | Drop; out of scope for the city pipeline. |
+
+### 12.2. Type, externalReference, Metadata
+
+| Emitted element | Value | Rationale |
+|---|---|---|
+| `nrg3:UrbanFunctionArea/type` | `"postalCode6"` with codeSpace `CS_NRG3_URBAN_FUNCTION_AREA_TYPE` (project-internal vocabulary URL pinned in [`namespaces.py`](../citygml_energy/namespaces.py)) | EnergyADE 3.0 declares `UrbanFunctionArea/type` as an open `gml:CodeType` (no upstream codelist), so the publishing application supplies the vocabulary. The single value emitted today is `"postalCode6"`; future extensions (CBS buurt / wijk / vierkant) would land as additional members of the same vocabulary. |
+| `core:externalReference/informationSystem` | `CBS_POSTCODE6_INFORMATION_SYSTEM_URL` (PDOK dataset metadata page, UUID `ed2f2381-873b-4d88-9c55-616e3a78d711`) | Pinned to the metadata page rather than the WFS URL because the metadata page describes the dataset semantics (definitions, vintage, suppression rules) even when the WFS endpoint eventually moves. |
+| `core:externalReference/externalObject/name` | the postcode (e.g. `"7881AD"`) | The CBS layer has no per-postcode dereferenceable URI: the `name` branch of the `xs:choice` between `name` and `uri` is the schema-honest encoding for "stable handle inside the named information system, no canonical URL". |
+| `nrg3:Metadata/source` | `"CBS Statistische gegevens per postcode (PDOK postcode6:postcode6)"` | Single Metadata block per area, emitted whenever **any** CBS-derived datum lands on the area: an energy figure that survived suppression, or a dwelling count from the BAG-via-CBS read. An UrbanFunctionArea with no CBS data still receives the polygon + groupMember xlinks (the polygon is itself CBS but is provenance-attributed via `core:externalReference`) but no Metadata block, mirroring how the EP-online builder skips its block when no resources land on a unit. |
+| `nrg3:Metadata/qualityDescription` | warns that the values are postcode aggregates (NOT per-building measurements), documents the <6-dwelling suppression rule, the rounded-to-50 convention, the gas / electricity scope caveats (district-heating-bias for gas; PV / collective exclusion for electricity), and notes that the `dwellingCount` / `vacantDwellingCount` generic attributes are sourced from BAG via CBS and are **not** subject to the 6-dwelling privacy suppression | The warning text is structural protection against misuse: a downstream consumer that treats the value as a per-VBO measurement will at least find the disclaimer co-located with the figure. |
+
+### 12.3. Group membership
+
+`grp:groupMember` xlinks are populated inside [`attach_postcode6_areas_to_model`](../citygml_energy/city_builder/postcode6.py) via 2D centroid-in-polygon containment: each `bldg:Building`'s LoD 0 footprint centroid (LoD 1 fallback for buildings without LoD 0) is tested against the postcode polygon, and a match emits one `grp:groupMember` element with `xlink:href="#<building_gml_id>"`. The centroid extraction (`_building_centroids_for_join`, `_representative_ring`) and the area's prepared shapely geometry are co-located with the join loop so all spatial state lives in one function. The `CityObjectGroupMemberType` XSD allows either an inline CityObject *or* an xlink reference, never both; we always populate `href` because the `bldg:Building` is already emitted as a top-level `core:cityObjectMember` and inlining it under the group would produce a duplicate gml:id.
+
+The centroid join matches CBS's own per-VBO postcode classification semantically — CBS keys per-VBO consumption against the BAG `geometriePunt` (a single representative point inside the dwelling), which is the same containment notion. A building straddling a postcode boundary lands in whichever postcode hosts its LoD 0 centroid; this is deterministic and not chosen by area-overlap, because a centroid-based join is unambiguous for any valid simple polygon and cheap to compute at city scale.
+
+### 12.4. Calculation regime separation (vs § 6 EP-online)
+
+EP-online emits *calculated* per-VBO indices on `nrg3:BuildingUnit/resource`: `type` is `net` (BENG-1 / Warmtebehoefte), `primary` (BENG-2 / legacy NEN 7120 EP_tot), or `final` (NTA 8800 BerekendeEnergieverbruik). CBS emits *measured* per-postcode aggregates on `nrg3:UrbanFunctionArea/resource`: `type=actual` is the EnergyADE 3.0 codelist member ([`EnergyTypeValue.xml`](../Energy_ADE-3.0beta8/xsd/codelists/EnergyTypeValue.xml)) for measured / observed energy. Because the two source types land on different parent CityObjects and carry distinct `EnergyTypeValue` codelist members, a downstream consumer can filter unambiguously: *measured aggregates* via `type=actual` on UrbanFunctionAreas, *calculated indices* via `type ∈ {net, primary, final}` on BuildingUnits.
+
+### 12.5. Why no aggregate-to-building back-distribution
+
+The pipeline does not multiply CBS's per-dwelling average by `aantalWoningen` to create a per-Pand or per-VBO total, and it does not synthesise a per-VBO measurement by re-distributing the postcode average to its constituent buildings. Both transformations would erase CBS's privacy boundary: the suppression rule (<6 occupied dwellings) is designed precisely to prevent identification of individual households, and a downstream consumer that received a per-VBO "measured" figure for a 5-dwelling postcode would have lost the suppression. Source attribution at the `UrbanFunctionArea` level is the only schema-honest encoding — it preserves the aggregation level CBS publishes the figures at.
+
+---
+
 ## Appendix A — Computed (not fetched) values
 
 A small number of output fields are not read from any source; they are computed inside the pipeline:
@@ -858,8 +918,10 @@ The pipeline emits the tokens below, each cross-checked against the KIT FZKViewe
 | `kg/m2/a` | `nrg3:Energy/co2Equivalent` on the BENG-2 resource for NTA-8800 rows | UOMList has `kg`, `kg/m3`; no per-area-mass-per-annum. | new for this project, pending FZK UOMList revision |
 | `MJ/a` | `nrg3:Energy/amount` on the single legacy `primary` resource for legacy_total rows, `nrg3:EnergyPerformanceCertificate/value` on legacy_total certs | UOMList has `MWh/a` but not `MJ/a`. Required by the regime asymmetry: legacy methods report an absolute MJ/yr total, not a per-m² intensity. | new for this project, pending FZK UOMList revision |
 | `kg/a` | `nrg3:Energy/co2Equivalent` on the legacy `primary` resource for the Nader Voorschrift / ISSO branch | UOMList has `kg` but not `kg/a`. Companion to `MJ/a`. | new for this project, pending FZK UOMList revision |
+| `m3/a` | `nrg3:Energy/amount` on the CBS Postcode6 `naturalGas` resource for each `nrg3:UrbanFunctionArea` | UOMList has `m3` and `MWh/a`; no annual gas-volume token. | new for this project, pending FZK UOMList revision |
+| `kWh/a` | `nrg3:Energy/amount` on the CBS Postcode6 `electricity` resource for each `nrg3:UrbanFunctionArea` | UOMList has `kWh` and `MWh/a`; no per-year-kWh token. | new for this project, pending FZK UOMList revision |
 
-The four `*/a` tokens are NL convention (NTA 8800 reports BENG metrics in kWh/m²·jaar; the legacy NEN 7120 lineage reports its totals in MJ/jaar and kg/jaar). They are documented as gaps to be communicated upstream to the FZK developers; until the UOMList catches up, viewers fall back to displaying the raw token verbatim.
+The six `*/a` tokens are NL convention (NTA 8800 reports BENG metrics in kWh/m²·jaar; the legacy NEN 7120 lineage reports its totals in MJ/jaar and kg/jaar; CBS Postcode6 reports per-dwelling annual averages in m³/jaar and kWh/jaar). They are documented as gaps to be communicated upstream to the FZK developers; until the UOMList catches up, viewers fall back to displaying the raw token verbatim.
 
 ---
 
@@ -910,7 +972,7 @@ Honest accounting of where Energy ADE 3.0 beta8 falls short of the data the city
 
 5. **No native `nrg3:bdgSubtype` analogue at the BuildingUnit level.** EnergyADE 3.0 has `nrg3:bdgType` on Building but no per-VBO primary type slot, and no `bdgSubtype`. The mapping places the Dutch RVO subtype as `gen:stringAttribute name="bdgSubtypeEPOnline"` on each BuildingUnit. A future EnergyADE revision adding either a per-VBO primary type slot or a `bdgSubtype` extension element would let the value land natively.
 
-6. **FZKViewer UOMList is incomplete for the NL energy domain.** `kWh/m2/a`, `kg/m2/a`, `MJ/a`, and `kg/a` are introduced by this project to match the NTA 8800 + legacy NEN 7120 conventions. Listed in Appendix B so a future UOMList revision can pick them up.
+6. **FZKViewer UOMList is incomplete for the NL energy domain.** `kWh/m2/a`, `kg/m2/a`, `MJ/a`, `kg/a`, `m3/a`, and `kWh/a` are introduced by this project to match the NTA 8800 + legacy NEN 7120 + CBS Postcode6 conventions. Listed in Appendix B so a future UOMList revision can pick them up.
 
 7. **No standalone Emission feature.** Multi-gas GHG accounting (CH₄, N₂O, refrigerants) is impossible; we only get the CO₂-equivalent value on each Energy resource. Acceptable for EP-online (which only ships CO₂-eq) but not for richer LCA data.
 

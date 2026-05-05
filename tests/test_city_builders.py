@@ -109,12 +109,18 @@ def _posns_of_lod0(building) -> list[list[float]]:
     ]
 
 
-def test_build_building_lifts_lod0_to_b3_h_maaiveld() -> None:
-    """3DBAG publishes LoD 0 at NAP=0 while LoD 1/2 sit on the
-    terrain height ``b3_h_maaiveld``. In elevated areas (e.g. Emmer-
-    Compascuum at ~13 m NAP) the two representations are otherwise
-    rendered metres apart vertically. The builder must re-anchor every
-    LoD 0 vertex to the maaiveld.
+def test_build_building_lod0_preserves_source_z() -> None:
+    """LoD 0 is a 2D footprint with no defined elevation. The builder
+    passes vertices through with the source Z (3DBAG ships the footprint
+    at nominal Z = 0 / NAP); the per-building terrain height
+    ``b3_h_maaiveld`` lives on LoD 1 / 2 and is not stamped onto LoD 0.
+
+    Stamping a Z value onto a representation that has none misrepresents
+    the source: viewers that need a height-anchored footprint should
+    consult LoD 1 / 2 directly. An earlier revision of the builder lifted
+    LoD 0 to ``b3_h_maaiveld`` so single-pass viewers would draw the two
+    representations co-planar; the trade-off was hiding the LoD 0 /
+    LoD 1 vertical-datum distinction that is intrinsic to 3DBAG.
     """
     parsed = ParsedBuilding(
         pand_id="0114100000202121",
@@ -127,40 +133,7 @@ def test_build_building_lifts_lod0_to_b3_h_maaiveld() -> None:
     building = build_building(parsed, lods=(0,))
     for ring in _posns_of_lod0(building):
         zs = ring[2::3]
-        assert all(z == 13.35 for z in zs), f"expected all z=13.35, got {zs}"
-
-
-def test_build_building_lod0_falls_back_to_min_lod1_when_maaiveld_missing() -> None:
-    """Without ``b3_h_maaiveld`` we still avoid a below-ground LoD 0:
-    the builder falls back to the minimum Z observed on LoD 1 (or 2).
-    """
-    parsed = ParsedBuilding(
-        pand_id="0114100000000001",
-        attributes={"oorspronkelijkbouwjaar": 1985},  # no maaiveld
-        geometries={
-            "0": [_square(0.0, "GroundSurface")],
-            "1": [_square(12.1), _square(16.4)],
-        },
-    )
-    building = build_building(parsed, lods=(0,))
-    for ring in _posns_of_lod0(building):
-        zs = ring[2::3]
-        assert all(z == 12.1 for z in zs), f"expected all z=12.1, got {zs}"
-
-
-def test_build_building_lod0_leaves_geometry_untouched_when_no_ground_hint() -> None:
-    """No maaiveld, no LoD 1, no LoD 2: return the polygons as-is
-    rather than invent a ground plane.
-    """
-    parsed = ParsedBuilding(
-        pand_id="x",
-        attributes={},
-        geometries={"0": [_square(0.0, "GroundSurface")]},
-    )
-    building = build_building(parsed, lods=(0,))
-    for ring in _posns_of_lod0(building):
-        zs = ring[2::3]
-        assert all(z == 0.0 for z in zs)
+        assert all(z == 0.0 for z in zs), f"expected all z=0.0, got {zs}"
 
 
 # ---------------------------------------------------------------------------

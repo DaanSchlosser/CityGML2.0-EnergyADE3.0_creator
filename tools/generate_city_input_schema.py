@@ -22,6 +22,8 @@ if str(REPO_ROOT) not in sys.path:
 from citygml_energy.city_builder.config import (
     ALLOWED_LODS,
     SCHEMA_VERSION,
+    _CBS_POSTCODE6_YEAR_MAX,
+    _CBS_POSTCODE6_YEAR_MIN,
 )
 from citygml_energy.city_builder.pv_panels import DEFAULT_Z_OFFSET_M
 from citygml_energy.namespaces import DEFAULT_SRS_NAME
@@ -220,6 +222,36 @@ def build_schema() -> dict[str, Any]:
                             "this JSON file. Produced by "
                             "tools/merge_cftree_tiles.py from CFTree "
                             "per-tile output."
+                        ),
+                    },
+                },
+            },
+            "cbs_postcode6": {
+                "type": "object",
+                "description": (
+                    "Optional CBS Postcode6 dwelling-energy aggregates "
+                    "from PDOK's CBS WFS. When set, the pipeline emits "
+                    "one nrg3:UrbanFunctionArea per postcode polygon "
+                    "intersecting the build extent, carrying the polygon "
+                    "geometry, groupMember xlinks to constituent "
+                    "buildings, and up to two nrg3:Energy resources "
+                    "(naturalGas m3/yr/dwelling, electricity "
+                    "kWh/yr/dwelling, type=actual). Suppressed CBS values "
+                    "(<6 occupied dwellings privacy rule) translate to "
+                    "no resource emitted."
+                ),
+                "additionalProperties": False,
+                "required": ["year"],
+                "properties": {
+                    "year": {
+                        "type": "integer",
+                        "minimum": _CBS_POSTCODE6_YEAR_MIN,
+                        "maximum": _CBS_POSTCODE6_YEAR_MAX,
+                        "description": (
+                            "CBS publication vintage to fetch. Selects "
+                            "the PDOK WFS endpoint URL. Per CBS's "
+                            "documented one-year offset, vintage 2024 "
+                            "covers 2023 calendar-year consumption."
                         ),
                     },
                 },

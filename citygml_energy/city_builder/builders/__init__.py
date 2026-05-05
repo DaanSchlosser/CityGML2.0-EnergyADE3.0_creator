@@ -14,6 +14,12 @@ Sub-modules:
 * :mod:`._common`: cross-domain xsdata-aware helpers
   (:func:`_common.inner_type`, UOM constants).
 
+The CBS-Postcode6 ``nrg3:UrbanFunctionArea`` step is its own self-
+contained module one level up at
+:mod:`citygml_energy.city_builder.postcode6` (fetch + filter + build +
+group-join + attach behind one seam, rather than scattered across
+``builders/`` + ``pipeline.py``).
+
 Cross-cutting type-coercion helpers live one level up at
 :mod:`citygml_energy.city_builder._helpers` so the fetchers can share
 them without transitively pulling in xsdata bindings.

@@ -25,6 +25,21 @@ PathLike = str | Path
 
 SCHEMA_VERSION = "city-1"
 
+
+@dataclass(frozen=True)
+class CbsPostcode6Source:
+    """Validated CBS Postcode6 source configuration.
+
+    Attributes:
+        year: which CBS publication vintage to fetch from PDOK (e.g.
+            ``2024``, which covers 2023 calendar-year consumption per
+            CBS's documented one-year offset). Selects the WFS
+            endpoint URL; the suppression rules and field semantics
+            are stable across vintages.
+    """
+
+    year: int
+
 # Environment variable name the builder consults for the EP-online key when
 # no explicit ``ep_online_api_key_file`` is given. Works with python-dotenv:
 # any ``.env`` next to the config is loaded before this lookup.
@@ -106,6 +121,12 @@ class CityBuildConfig:
     emits one ``veg:SolitaryVegetationObject`` per tree inside the bbox
     / boundary. See
     :class:`citygml_energy.city_builder.vegetation.VegetationSource`."""
+    cbs_postcode6_source: CbsPostcode6Source | None = None
+    """Optional CBS Postcode6 statistics source. When set, the pipeline
+    fetches per-postcode dwelling-energy averages from PDOK's CBS WFS
+    and emits one ``nrg3:UrbanFunctionArea`` per postcode polygon
+    intersecting the build extent. See
+    :class:`citygml_energy.city_builder.config.CbsPostcode6Source`."""
 
     @property
     def ep_online_api_key(self) -> str | None:
@@ -154,12 +175,22 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
     "gml_id_prefix",
     "pv_panels",
     "vegetation",
+    "cbs_postcode6",
 })
 
 _ALLOWED_CITY_MODEL_KEYS: frozenset[str] = frozenset({"name", "description"})
 _ALLOWED_PV_PANELS_KEYS: frozenset[str] = frozenset({"path", "layer", "z_offset_m"})
 _ALLOWED_BOUNDARY_KEYS: frozenset[str] = frozenset({"path"})
 _ALLOWED_VEGETATION_KEYS: frozenset[str] = frozenset({"path"})
+_ALLOWED_CBS_POSTCODE6_KEYS: frozenset[str] = frozenset({"year"})
+
+# CBS publishes a year-versioned WFS endpoint. The acceptable values
+# are intentionally bounded: 2022 / 2023 / 2024 are live as of writing,
+# and a misspelled year would otherwise surface as an opaque 404 from
+# PDOK halfway through a build. Range is permissive enough to admit
+# the next several vintages without a config schema bump.
+_CBS_POSTCODE6_YEAR_MIN: int = 2022
+_CBS_POSTCODE6_YEAR_MAX: int = 2030
 
 
 def load_city_config(path: PathLike) -> CityBuildConfig:
@@ -294,6 +325,9 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
     vegetation_source = _validate_vegetation(
         data.get("vegetation"), source=source, base_dir=base_dir
     )
+    cbs_postcode6_source = _validate_cbs_postcode6(
+        data.get("cbs_postcode6"), source=source,
+    )
     if boundary_source is not None and bbox is not None:
         raise CityBuildError(
             f"{source}: 'bbox' and 'boundary' are mutually exclusive; "
@@ -318,6 +352,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         pv_panels_source=pv_panels_source,
         boundary_source=boundary_source,
         vegetation_source=vegetation_source,
+        cbs_postcode6_source=cbs_postcode6_source,
     )
 
 
@@ -452,6 +487,48 @@ def _validate_vegetation(
             f"(got {resolved_path.name!r})"
         )
     return VegetationSource(path=resolved_path)
+
+
+def _validate_cbs_postcode6(
+    value: Any, *, source: str
+) -> CbsPostcode6Source | None:
+    """Validate the optional ``cbs_postcode6`` block.
+
+    Returns ``None`` when unset. Only ``year`` is configurable; the
+    PDOK WFS endpoint is hard-coded in the fetcher and the field set
+    (gas + electricity) is fixed by the city pipeline's mapping. A
+    config that wanted to pull additional CBS columns would belong to
+    a separate generic-attribute extension, not to this energy-focused
+    block.
+
+    Year is range-checked rather than enum-checked: 2022 / 2023 / 2024
+    are live as of writing, and admitting up to 2030 lets the next
+    several vintages roll out without a config schema bump while still
+    catching obvious typos (e.g. 2042).
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise CityBuildError(
+            f"{source}: cbs_postcode6 must be an object when provided"
+        )
+    unexpected = sorted(set(value) - _ALLOWED_CBS_POSTCODE6_KEYS)
+    if unexpected:
+        raise CityBuildError(
+            f"{source}: unexpected cbs_postcode6 key(s): {', '.join(unexpected)}"
+        )
+    year_raw = value.get("year")
+    if (
+        isinstance(year_raw, bool)
+        or not isinstance(year_raw, int)
+        or not (_CBS_POSTCODE6_YEAR_MIN <= year_raw <= _CBS_POSTCODE6_YEAR_MAX)
+    ):
+        raise CityBuildError(
+            f"{source}: cbs_postcode6.year must be an integer in "
+            f"[{_CBS_POSTCODE6_YEAR_MIN}, {_CBS_POSTCODE6_YEAR_MAX}] "
+            f"(got {year_raw!r})"
+        )
+    return CbsPostcode6Source(year=int(year_raw))
 
 
 def _validate_boundary(

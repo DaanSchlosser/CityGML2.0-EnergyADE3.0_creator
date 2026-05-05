@@ -75,6 +75,7 @@ ZONE_PART = "nrg3:ZonePart"
 BUILDING_UNIT = "nrg3:BuildingUnit"
 ENERGY_PERFORMANCE_CERTIFICATE = "nrg3:EnergyPerformanceCertificate"
 LAYERED_CONSTRUCTION = "nrg3:layeredConstruction"
+URBAN_FUNCTION_AREA = "nrg3:UrbanFunctionArea"
 
 # ---------------------------------------------------------------------------
 # CityGML surface-type map for semantic LoD 2+ attachment

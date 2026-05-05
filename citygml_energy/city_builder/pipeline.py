@@ -28,6 +28,7 @@ from .._step import Coord3D
 from ..core import CityModel
 from ..gml_builders import build_envelope
 from . import pand_executor
+from . import postcode6 as postcode6_step
 from . import pv_panels as pv_panels_module
 from . import vegetation as vegetation_module
 from .address_key import address_key_from_vbo
@@ -50,6 +51,7 @@ from .fetchers import threedbag
 from .fetchers.bgt import BgtTree, fetch_bgt_trees
 from .fetchers.emmen_bor import BorTree, fetch_bor_trees
 from .http import CachedSession
+from .postcode6 import Postcode6Area
 from .pv_panels import ProjectedPanel
 from .tree_enrichment import match_trees_to_bor
 
@@ -96,16 +98,18 @@ def build_city_model(
     cbs_code = outline.cbs_code or None
     _LOG.info("CBS code: %r  bbox: %s", cbs_code, bbox)
 
-    # BAG panden, BAG VBOs (optional), and 3DBAG tiles are all I/O-bound
-    # network fetches that depend only on bbox. Running them concurrently
-    # converts three serial waits into one, cutting cold-cache wall time
-    # by roughly the duration of the slowest two fetches. The shared
-    # CachedSession is safe here: its underlying urllib3 connection pool
-    # is thread-safe for read-only GETs, and each fetcher's cache writes
-    # land under a disjoint cache-key prefix so there is no shared-file
-    # race.
-    _LOG.info("Fetching BAG panden, VBOs, and 3DBAG tiles concurrently …")
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+    # BAG panden, BAG VBOs (optional), 3DBAG tiles, and CBS Postcode6
+    # statistics (optional) are all I/O-bound network fetches that
+    # depend only on bbox. Running them concurrently converts N serial
+    # waits into one, cutting cold-cache wall time by roughly the
+    # duration of the slowest fetches. The shared CachedSession is
+    # safe here: its underlying urllib3 connection pool is thread-safe
+    # for read-only GETs, and each fetcher's cache writes land under a
+    # disjoint cache-key prefix so there is no shared-file race.
+    _LOG.info(
+        "Fetching BAG panden, VBOs, 3DBAG tiles, and CBS Postcode6 concurrently …"
+    )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         fut_panden = pool.submit(
             bag_fetchers.fetch_panden, session, bbox=bbox, cbs_code=cbs_code
         )
@@ -119,6 +123,16 @@ def build_city_model(
         fut_3dbag = pool.submit(
             _fetch_parsed_buildings, session, outline=outline, bbox=bbox
         )
+        fut_cbs = (
+            pool.submit(
+                postcode6_step.safely_fetch_postcode6_areas,
+                session,
+                source=config.cbs_postcode6_source,
+                bbox=bbox,
+            )
+            if config.cbs_postcode6_source is not None
+            else None
+        )
 
     # The ThreadPoolExecutor's __exit__ already waited for every submitted
     # future, so each .result() either returns immediately or re-raises
@@ -128,6 +142,7 @@ def build_city_model(
     panden = fut_panden.result()
     vbos = fut_vbos.result() if fut_vbos is not None else []
     parsed_buildings = fut_3dbag.result()
+    postcode6_areas = fut_cbs.result() if fut_cbs is not None else []
 
     known_pand_ids = {pand.identificatie for pand in panden}
     _LOG.info("%d panden", len(panden))
@@ -200,6 +215,8 @@ def build_city_model(
         trees=trees,
         bgt_matches=bgt_matches,
         bor_matches=bor_matches,
+        postcode6_areas=postcode6_areas,
+        boundary_geom=boundary_geom,
     )
     building_count = sum(
         1 for m in model.xsd.city_object_member if m.building is not None
@@ -208,9 +225,13 @@ def build_city_model(
         1 for m in model.xsd.city_object_member
         if m.solitary_vegetation_object is not None
     )
+    postcode_count = sum(
+        1 for m in model.xsd.city_object_member
+        if m.urban_function_area is not None
+    )
     _LOG.info(
-        "Done: %d buildings + %d trees in model",
-        building_count, vegetation_count,
+        "Done: %d buildings + %d trees + %d postcode areas in model",
+        building_count, vegetation_count, postcode_count,
     )
     return model
 
@@ -672,6 +693,8 @@ def _assemble_city_model(
     trees: list[ParsedTree] | None = None,
     bgt_matches: dict[str, BgtTree] | None = None,
     bor_matches: dict[str, BorTree] | None = None,
+    postcode6_areas: list[Postcode6Area] | None = None,
+    boundary_geom: BaseGeometry | None = None,
 ) -> CityModel:
     """Assemble a :class:`CityModel` from parsed BAG/3DBAG/EP-online inputs.
 
@@ -734,6 +757,17 @@ def _assemble_city_model(
             bor_matches=bor_matches or {},
         )
         append_vegetation_appearance(model, targets=tree_appearance_targets)
+
+    postcode6_step.attach_postcode6_areas_to_model(
+        model,
+        areas=postcode6_areas or [],
+        parsed_by_id=parsed_by_id,
+        boundary_geom=boundary_geom,
+        gml_id_prefix=config.gml_id_prefix,
+        srs_name=config.srs_name,
+        srs_dimension=config.srs_dimension,
+        coords_sink=all_coords,
+    )
 
     if all_coords:
         model.set_envelope(
@@ -817,3 +851,5 @@ def _attach_trees_to_model(
 
 # Per-Pand build execution (sequential vs multiprocessing pool) lives
 # in ``pand_executor`` so this module stays a recipe-style orchestrator.
+# The CBS Postcode6 step lives in ``postcode6.py`` (fetch + filter +
+# build + group-join + attach behind one seam).

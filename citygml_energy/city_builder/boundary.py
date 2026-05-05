@@ -105,6 +105,15 @@ def _load_from_geojson(source: BoundarySource) -> BaseGeometry:
     _validate_geojson_crs(data, source_path=source.path)
 
     kind = data.get("type")
+    if kind == "FeatureCollection":
+        features = data.get("features", [])
+        if len(features) != 1:
+            raise CityBuildError(
+                f"boundary.path {source.path} is a FeatureCollection but contains "
+                f"{len(features)} features; exactly 1 is required"
+            )
+        data = features[0]
+        kind = data.get("type")
     if kind != "Feature":
         raise CityBuildError(
             f"boundary.path {source.path} must be a GeoJSON Feature with a single "
