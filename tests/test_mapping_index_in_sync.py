@@ -78,7 +78,6 @@ _REFERENCED_SYMBOLS: dict[str, list[str]] = {
         "attach_building_units_to_building",
         "_apply_building_attributes",
         "_attach_lod2_thematic_surfaces",
-        "_lift_lod0_to_ground",
     ],
     "citygml_energy/city_builder/builders/address.py": [
         "build_address",
@@ -99,6 +98,14 @@ _REFERENCED_SYMBOLS: dict[str, list[str]] = {
         "_apply_bor_enrichment",
         "_CFTREE_NATIVE_FIELDS",
         "_CFTREE_GENERIC_DOUBLE",
+    ],
+    "citygml_energy/city_builder/postcode6.py": [
+        "safely_fetch_postcode6_areas",
+        "attach_postcode6_areas_to_model",
+    ],
+    "citygml_energy/city_builder/fetchers/cbs_postcode6.py": [
+        "fetch_postcode6_areas",
+        "Postcode6Area",
     ],
     "citygml_energy/city_builder/bgt_match.py": ["match_trees_to_bgt"],
     "citygml_energy/city_builder/tree_enrichment.py": ["match_trees_to_bor"],
@@ -162,6 +169,7 @@ _ENRICHMENT_PREFIXES = (
     "build_building",
     "build_address",
     "build_solitary_vegetation_object",
+    "attach_postcode6_",
 )
 
 

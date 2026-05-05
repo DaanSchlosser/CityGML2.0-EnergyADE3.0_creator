@@ -293,6 +293,43 @@ CS_EMMEN_BOR_TREES = (
     "bor_groen_bomen_beschermd/FeatureServer/0"
 )
 
+# Vocabulary that classifies what kind of ``nrg3:UrbanFunctionArea`` we
+# are emitting. EnergyADE 3.0 declares ``UrbanFunctionArea/type`` as an
+# open ``gml:CodeType`` (no upstream codelist file): the schema delegates
+# the typology to the publishing application. We pin the project's own
+# vocabulary URL so the codeSpace identifies the closed set of values
+# this pipeline emits (currently only ``"postalCode6"``); future area
+# types (e.g. CBS buurt / wijk / vierkant) would be additive members of
+# the same vocabulary. The URL points at the mapping-doc anchor that
+# documents the values, mirroring the SIG3D / RVO pattern of attaching a
+# codeSpace to a dereferenceable definition.
+CS_NRG3_URBAN_FUNCTION_AREA_TYPE = (
+    "https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/"
+    "blob/main/docs/mapping_city.md#urban-function-area-types"
+)
+
+# Dutch postcode register vocabulary. PostNL is the authoritative
+# publisher of the 6-position postcode (PC6). The codeSpace dereferences
+# to the catalog page describing the format; concatenation with the
+# value reconstructs neither a record URL nor a Linked-Data IRI (PostNL
+# does not expose one), but it cleanly identifies the vocabulary the
+# value belongs to per ``gml:CodeType`` semantics (codeSpace = vocabulary
+# identifier, not record locator). Used on
+# ``nrg3:UrbanFunctionArea/code`` for postcode-keyed areas.
+CS_NL_POSTCODE_PC6 = "https://www.postnl.nl/zakelijk/business-tools/postcodecheck/"
+
+# CBS Postcode6 dataset on PDOK. Used as
+# ``core:externalReference/informationSystem`` on each emitted
+# ``nrg3:UrbanFunctionArea`` so a downstream reader can identify the
+# authoritative source of the per-postcode dwelling statistics. Pinned
+# to the dataset metadata page rather than the WFS endpoint because the
+# metadata page describes the dataset semantics (variable definitions,
+# vintage, suppression rules) even when the WFS URL eventually moves.
+CBS_POSTCODE6_INFORMATION_SYSTEM_URL = (
+    "https://www.nationaalgeoregister.nl/geonetwork/srv/dut/catalog.search"
+    "#/metadata/ed2f2381-873b-4d88-9c55-616e3a78d711"
+)
+
 
 def _nrg3_cs_base() -> str:
     """Codespace base URL for Energy-ADE 3.0 codelists.

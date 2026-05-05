@@ -197,6 +197,22 @@ UOM_MJ_PER_A: str = "MJ/a"
 # addition alongside the regime asymmetry.
 _UOM_KG_PER_A: str = "kg/a"
 
+# Total annual natural-gas volume. Used by the CBS Postcode6
+# ``UrbanFunctionArea`` resources for ``gemiddeldGasverbruikWoning`` (per-
+# postcode average across occupied dwellings). FZK UOMList lacks ``m3/a``;
+# introduced here for the NL convention. § 12 of the mapping doc records
+# this addition alongside the postcode-aggregate semantics.
+#
+# Public so the UrbanFunctionArea builder can populate the ``amount`` slot
+# on the gas resource without reaching into a private constant.
+UOM_M3_PER_A: str = "m3/a"
+
+# Total annual electrical energy. Used by the CBS Postcode6 electricity
+# resource alongside ``UOM_M3_PER_A``. Distinct from
+# ``UOM_KWH_PER_M2_PER_A`` (NTA 8800 per-area intensity): ``kWh/a`` is
+# the absolute annual figure CBS publishes per dwelling.
+UOM_KWH_PER_A: str = "kWh/a"
+
 
 # ---------------------------------------------------------------------------
 # Public entry point

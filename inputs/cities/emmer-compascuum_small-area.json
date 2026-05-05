@@ -14,7 +14,7 @@
   "srs_dimension": 3,
   "city_model": {
     "name": "Emmer-Compascuum (small area)",
-    "description": "Emmer-Compascuum small-area test AOI: BAG + 3DBAG LoD 0/1/2 + EP-online, extended with PV panel polygons from the University of Groningen aerial-imagery dataset (Zenodo 14860030, CC-BY-4.0) and LoD3 tree reconstructions from CFTree (AHN6 LiDAR -> HOMED + TreeSeparation + CGAL alpha-wrap), pre-merged + clipped + deduped via tools/merge_cftree_tiles.py, optionally enriched with OSM species/leaf_type and Landelijk Register Monumentale Bomen. Boundary polygon from inputs/boundaries/emmer-compascuum_small-area.geojson."
+    "description": "Emmer-Compascuum small-area test AOI: BAG + 3DBAG LoD 0/1/2 + EP-online, extended with PV panel polygons from the University of Groningen aerial-imagery dataset (Zenodo 14860030, CC-BY-4.0), LoD3 tree reconstructions from CFTree (AHN6 LiDAR -> HOMED + TreeSeparation + CGAL alpha-wrap), pre-merged + clipped + deduped via tools/merge_cftree_tiles.py, optionally enriched with OSM species/leaf_type and Landelijk Register Monumentale Bomen, and CBS Postcode6 dwelling-energy aggregates (gemiddeldGasverbruikWoning m3/yr, gemiddeldElektriciteitsverbruikWoning kWh/yr) attached as nrg3:UrbanFunctionArea features per postcode polygon. Boundary polygon from inputs/boundaries/emmer-compascuum_small-area.geojson."
   },
   "pv_panels": {
     "path": "../pv_panels/pv_panels.gpkg",
@@ -23,5 +23,8 @@
   },
   "vegetation": {
     "path": "../vegetation/emmer-compascuum_small-area_AHN6.city.json"
+  },
+  "cbs_postcode6": {
+    "year": 2023
   }
 }

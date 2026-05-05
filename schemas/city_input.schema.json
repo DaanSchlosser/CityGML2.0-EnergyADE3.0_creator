@@ -153,6 +153,22 @@
           "description": "Path to a merged CityJSON 2.0 file (must end in '.city.json'), absolute or relative to this JSON file. Produced by tools/merge_cftree_tiles.py from CFTree per-tile output."
         }
       }
+    },
+    "cbs_postcode6": {
+      "type": "object",
+      "description": "Optional CBS Postcode6 dwelling-energy aggregates from PDOK's CBS WFS. When set, the pipeline emits one nrg3:UrbanFunctionArea per postcode polygon intersecting the build extent, carrying the polygon geometry, groupMember xlinks to constituent buildings, and up to two nrg3:Energy resources (naturalGas m3/yr/dwelling, electricity kWh/yr/dwelling, type=actual). Suppressed CBS values (<6 occupied dwellings privacy rule) translate to no resource emitted.",
+      "additionalProperties": false,
+      "required": [
+        "year"
+      ],
+      "properties": {
+        "year": {
+          "type": "integer",
+          "minimum": 2022,
+          "maximum": 2030,
+          "description": "CBS publication vintage to fetch. Selects the PDOK WFS endpoint URL. Per CBS's documented one-year offset, vintage 2024 covers 2023 calendar-year consumption."
+        }
+      }
     }
   }
 }

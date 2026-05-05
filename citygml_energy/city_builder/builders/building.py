@@ -184,9 +184,16 @@ def build_building(
     _apply_building_attributes(building, parsed.attributes)
 
     if 0 in lods and parsed.geometries.get("0"):
-        polygons_lod0 = _lift_lod0_to_ground(
-            _unwrap_polygons(parsed.geometries["0"]), parsed
-        )
+        # LoD 0 vertices are passed through with the source Z (3DBAG ships
+        # the footprint at nominal Z=0 / NAP). LoD 0 is a 2D footprint
+        # representation; there is no defined elevation, and the per-building
+        # terrain height (b3_h_maaiveld) lives on LoD 1/2 where a
+        # consumer querying for "ground level" can find it. An earlier
+        # revision of this builder lifted LoD 0 to maaiveld so a single
+        # viewer would draw both representations co-planar; the trade-off
+        # was misrepresenting the source by stamping a Z onto a feature
+        # that has none.
+        polygons_lod0 = _unwrap_polygons(parsed.geometries["0"])
         building.lod0_foot_print = build_multi_surface(
             f"{gml_id}_lod0",
             polygons_lod0,
@@ -230,52 +237,6 @@ def build_building(
         )
 
     return building
-
-
-def _lift_lod0_to_ground(
-    polygons_lod0: list[GeometryPolygon], parsed: ParsedBuilding
-) -> list[GeometryPolygon]:
-    """Stamp every LoD 0 vertex Z with the building's ground height.
-
-    3DBAG publishes the LoD 0 footprint at nominal Z = 0 (NAP) while
-    LoD 1 / 2 sit on the building-specific terrain height
-    ``b3_h_maaiveld``. Consequence: in elevated terrain (Emmer-Compascuum
-    at ~13 m NAP, Nijmegen 60 m+) the LoD 0 footprint appears floating
-    metres below the building base and viewers render the two
-    representations pulled apart vertically. Lifting LoD 0 to
-    ``b3_h_maaiveld`` (or, if the attribute is missing, the minimum Z of
-    LoD 1 / 2, which coincides with the maaiveld in every 3DBAG tile
-    inspected) re-aligns the footprint with the building.
-    """
-    target_z = to_float(parsed.attributes.get("b3_h_maaiveld"))
-    if target_z is None:
-        target_z = _min_ring_z_of(parsed.geometries.get("1")) or _min_ring_z_of(
-            parsed.geometries.get("2")
-        )
-    if target_z is None:
-        return polygons_lod0  # nothing to anchor against
-    if all(
-        z == target_z
-        for p in polygons_lod0
-        for (_x, _y, z) in p.exterior
-    ):
-        return polygons_lod0  # already at maaiveld: common on flat terrain
-    return [
-        GeometryPolygon(
-            exterior=[(x, y, target_z) for (x, y, _z) in p.exterior],
-            interiors=[
-                [(x, y, target_z) for (x, y, _z) in ring] for ring in p.interiors
-            ],
-        )
-        for p in polygons_lod0
-    ]
-
-
-def _min_ring_z_of(semantic_polygons: list[SemanticPolygon] | None) -> float | None:
-    if not semantic_polygons:
-        return None
-    zs = [z for sp in semantic_polygons for (_x, _y, z) in sp.polygon.exterior]
-    return min(zs) if zs else None
 
 
 def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
