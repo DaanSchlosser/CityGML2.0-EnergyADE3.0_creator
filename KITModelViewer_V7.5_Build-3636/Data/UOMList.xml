@@ -4,10 +4,10 @@
 		Unit of Measurements from Energy ADE
 	</description>
 	<date>
-		2016-07-26
+		2026-05-05
 	</date>
 	<version>
-		1.0
+		1.1
 	</version>
 	<UOM name="AMPERE" id="A" quantity="ELECTRIC_CURRENT" sign="A" description="Unit for electric current"/>
 	<UOM name="CANDELA" id="cd" quantity="LUMINOUS_INTENSITY" sign="cd" description="Unit for luminous intensity"/>
@@ -114,22 +114,31 @@
 		</altId>
 	</UOM>
 	<UOM name="METER_PER_SECOND" id="m/s" quantity="SPEED" sign="m/sec" description="Unit for speed"/>
-	<UOM name="THERMAL_CONDUCTIVITY" id="W/K*m" quantity="THERMAL_CONDUCTIVITY" sign="W/(m*K)" description="Unit for thermal conductivity">
+	<UOM name="THERMAL_CONDUCTIVITY" id="W/(K*m)" quantity="THERMAL_CONDUCTIVITY" sign="W/(m*K)" description="Unit for thermal conductivity">
+		<altId>
+			W/(m*K)
+		</altId>
 		<altId>
 			wm-1k-1
 		</altId>
 	</UOM>
-	<UOM name="PERM" id="ng/m2*Pa*s" quantity="PERMEABILITY" sign="ng/(sec*m²*P)" description="Unit for water vapor transmission">
+	<UOM name="PERM" id="ng/(m2*Pa*s)" quantity="PERMEABILITY" sign="ng/(sec*m²*P)" description="Unit for water vapor transmission">
 		<altId>
 			ngs-1m-2p-1
 		</altId>
 	</UOM>
-	<UOM name="SPECIFIC_HEAT_KJ" id="kJ/K*kg" quantity="SPECIFIC_HEAT_CAPACITY" sign="kJ/(kg*K)" factor="1.0" description="Unit for specific heat">
+	<UOM name="SPECIFIC_HEAT_KJ" id="kJ/(kg*K)" quantity="SPECIFIC_HEAT_CAPACITY" sign="kJ/(K*kg)" factor="1.0" description="Unit for specific heat">
+		<altId>
+			kJ/(K*kg)
+		</altId>
 		<altId>
 			kjkg-1k-1
 		</altId>
 	</UOM>
-	<UOM name="SPECIFIC_HEAT_J" id="J/K*kg" quantity="SPECIFIC_HEAT_CAPACITY" sign="J/(kg*K)" factor="1000.0" description="Unit for specific heat">
+	<UOM name="SPECIFIC_HEAT_J" id="J/(kg*K)" quantity="SPECIFIC_HEAT_CAPACITY" sign="J/(K*kg)" factor="1000.0" description="Unit for specific heat">
+		<altId>
+			J/(K*kg)
+		</altId>
 		<altId>
 			jkg-1k-1
 		</altId>
@@ -139,6 +148,17 @@
 			wm-2
 		</altId>
 	</UOM>
+	<UOM name="WATT_PER_PERSON" id="W/Persons" quantity="POWER_PER_PERSON" sign="W/Persons" factor="1.0" description="">
+		<altId>
+			wpersons-1
+		</altId>
+	</UOM>
+	<UOM name="SQUAREMETER_PER_PERSON" id="m2/Persons" quantity="AREA_PER_PERSON" sign="m²/Persons" factor="1.0" description="">
+		<altId>
+			m2persons-1
+		</altId>
+	</UOM>
+	<UOM name="PERSONS_NUMBER" id="Persons" quantity="PERSONS" sign="Persons" factor="1.0" description=""/>
 	<UOM name="JOULE_PER_SECOND_SQUARE_CM" id="J/(sec*cm2)" quantity="POWER_PER_AREA" sign="J/(sec*cm²)" factor="0.36" description="Irradiance"/>
 	<UOM name="KILOWATT_HOUR_PER_SQUAREMETER" id="kWh/m2" quantity="ENERGY_PER_AREA" sign="kWh/m²" factor="1.0" description="Energy per area">
 		<altId>
@@ -147,7 +167,10 @@
 	</UOM>
 	<UOM name="UVALUE" id="W/K*m2" quantity="UVALUE" sign="W/(m²*K)" description="Unit for thermal transmittance">
 		<altId>
-			W/(K*m^2)
+			W/(m2*K)
+		</altId>
+		<altId>
+			W(K*m^2)-1
 		</altId>
 		<altId>
 			wm-2k-1
@@ -187,6 +210,12 @@
 			Sm-1
 		</altId>
 	</UOM>
-	<UOM name="DIMENSIOLESS_NUMBER" id="-" quantity="DIMENSIONLESS_NUMBER" sign="-"/>
+	<UOM name="DIMENSIONLESS_NUMBER" id="-" quantity="DIMENSIONLESS_NUMBER" sign="-"/>
 	<UOM name="AIR_CHANGE_RATE_HOUR" id="1/h" quantity="AIR_CHANGE_RATE" sign="1/h"/>
+	<UOM name="AREA_THERMAL_RESISTANCE" id="m2*K/W" quantity="THERMAL_RESISTANCE" sign="m²*K/W"/>
+	<UOM name="KILOWATT_PER_SQUAREMETER_PER_YEAR" id="kWh/m2/a" quantity="ENERGY_PER_AREA_PER_TIME" sign="kWh/m²/a"/>
+	<UOM name="KILOGRAM_PER_SQUAREMETER_PER_YEAR" id="kg/m2/a" quantity="MASS_FLUX_PER_TIME" sign="kg/m²/a"/>
+	<UOM name="KILOGRAM_PER_YEAR" id="kg/a" quantity="MASS_PER_TIME" sign="kg/a"/>
+	<UOM name="MEGAJOULE_PER_YEAR" id="MJ/a" quantity="ENERGY_PER_TIME" sign="MJ/a"/>
+	<UOM name="KILOJOULE_PER_YEAR_SQUAREMETER" id="KJ/(K*m2)" quantity="UVALUE" sign="KJ/(K*m²)"/>
 </UOMList>
