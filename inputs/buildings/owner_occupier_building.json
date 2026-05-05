@@ -155,8 +155,8 @@
       "valid_to": "2030-09-22T00:00:00",
       "status": {"value": "actual", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EPCStatusValue.xml"},
       "type_value": {"value": "totalEnergyDemand", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EPCTypeValue.xml"},
-      "label": "A++",
-      "value": {"value": 30, "uom": "kWh/m2/a"},
+      "label": "A+",
+      "value": {"value": 92.59, "uom": "kWh/m2/a"},
       "certification_method": "Detailopname / NTA 8800:2024 (woningbouw)"
     },
     {
