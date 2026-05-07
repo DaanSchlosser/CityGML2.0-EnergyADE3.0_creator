@@ -36,7 +36,7 @@ from .builders import (
     build_building,
 )
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
-from .config import CityBuildConfig
+from .config import BuildContext, CityBuildConfig
 from .fetchers import bag as bag_fetchers
 from .pv_panels import ProjectedPanel, attach_pv_collectors_to_building
 
@@ -73,32 +73,6 @@ class PandInputs:
 
 
 EMPTY_INPUTS = PandInputs(resolved=[], pv_panels=())
-
-
-@dataclass(frozen=True, slots=True)
-class _BuildParams:
-    """Immutable subset of :class:`CityBuildConfig` shared across workers.
-
-    Defined as a frozen dataclass so it pickles cheaply (one flat tuple,
-    no recursion through the full config) and because workers should not
-    be mutating pipeline-level settings by accident.
-    """
-
-    gml_id_prefix: str
-    lods: tuple[int, ...]
-    srs_name: str
-    srs_dimension: int
-    municipality: str
-
-    @classmethod
-    def from_config(cls, config: CityBuildConfig) -> _BuildParams:
-        return cls(
-            gml_id_prefix=config.gml_id_prefix,
-            lods=tuple(config.lods),
-            srs_name=config.srs_name,
-            srs_dimension=config.srs_dimension,
-            municipality=config.municipality,
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -194,13 +168,13 @@ def _build_pand_artifacts_sequential(
     inputs_per_pand: dict[str, PandInputs],
 ) -> list[PandArtifacts]:
     """Sequentially build the per-pand artifacts. Default path."""
-    build_params = _BuildParams.from_config(config)
+    build_context = BuildContext.from_config(config)
     return [
         _build_pand_artifacts(
             pand=pand,
             parsed=parsed_by_id[pand.identificatie],
             inputs=inputs_per_pand.get(pand.identificatie, EMPTY_INPUTS),
-            build_params=build_params,
+            build_context=build_context,
         )
         for pand in panden
         if pand.identificatie in parsed_by_id
@@ -225,13 +199,13 @@ def _build_pand_artifacts_parallel(
     """
     import multiprocessing
 
-    build_params = _BuildParams.from_config(config)
+    build_context = BuildContext.from_config(config)
     jobs: list[tuple[Any, ...]] = [
         (
             pand,
             parsed_by_id[pand.identificatie],
             inputs_per_pand.get(pand.identificatie, EMPTY_INPUTS),
-            build_params,
+            build_context,
         )
         for pand in panden
         if pand.identificatie in parsed_by_id
@@ -257,12 +231,12 @@ def _build_pand_artifacts_parallel(
 
 
 def _build_pand_worker(
-    job: tuple[bag_fetchers.Pand, ParsedBuilding, PandInputs, _BuildParams],
+    job: tuple[bag_fetchers.Pand, ParsedBuilding, PandInputs, BuildContext],
 ) -> PandArtifacts:
     """Worker entry point: must be module-level to be picklable on spawn."""
-    pand, parsed, inputs, build_params = job
+    pand, parsed, inputs, build_context = job
     return _build_pand_artifacts(
-        pand=pand, parsed=parsed, inputs=inputs, build_params=build_params,
+        pand=pand, parsed=parsed, inputs=inputs, build_context=build_context,
     )
 
 
@@ -271,7 +245,7 @@ def _build_pand_artifacts(
     pand: bag_fetchers.Pand,
     parsed: ParsedBuilding,
     inputs: PandInputs,
-    build_params: _BuildParams,
+    build_context: BuildContext,
 ) -> PandArtifacts:
     """Build the xsdata artefacts for one Pand.
 
@@ -280,25 +254,23 @@ def _build_pand_artifacts(
     matched addresses, the pre-collected appearance target ids, and the
     flat coordinate sequence used to widen the model envelope. All four
     values pickle cheaply across the worker-pool boundary.
+
+    The five-builder sequence (build_building → attach_building_units →
+    apply_bag_year_metadata → apply_eponline_pand_attribution → optional
+    attach_pv_collectors) is the canonical orchestration; ADR-0002
+    explains why the builders stay individually public and why the
+    cross-builder ordering invariants are locked by integration tests
+    in ``tests/test_city_pand_executor.py`` rather than by collapsing
+    the sequence into a single deep entry point.
     """
     _merge_attributes(parsed.attributes, pand)
     targets: list[str] = []
     building = build_building(
         parsed,
-        gml_id_prefix=build_params.gml_id_prefix,
-        lods=build_params.lods,
-        srs_name=build_params.srs_name,
-        srs_dimension=build_params.srs_dimension,
+        build_context,
         surface_targets_out=targets,
     )
-    attach_building_units_to_building(
-        building,
-        inputs.resolved,
-        gml_id_prefix=build_params.gml_id_prefix,
-        city_name=build_params.municipality,
-        srs_name=build_params.srs_name,
-        srs_dimension=build_params.srs_dimension,
-    )
+    attach_building_units_to_building(building, inputs.resolved, build_context)
     # Building-level year of construction: BAG metadata for
     # bldg:yearOfConstruction, plus the EP-online ``Bouwjaar`` as a
     # gen:intAttribute (with its own Metadata block) when at least one
@@ -312,10 +284,7 @@ def _build_pand_artifacts(
     apply_eponline_pand_attribution_to_building(building, inputs.resolved)
     if inputs.pv_panels:
         attach_pv_collectors_to_building(
-            building,
-            list(inputs.pv_panels),
-            srs_name=build_params.srs_name,
-            srs_dimension=build_params.srs_dimension,
+            building, list(inputs.pv_panels), build_context,
         )
     coords: list[Coord3D] = []
     _collect_coordinates(parsed, coords)

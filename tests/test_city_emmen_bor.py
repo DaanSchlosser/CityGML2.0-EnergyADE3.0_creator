@@ -22,6 +22,7 @@ ArcGIS REST responses, matching the ``test_city_bgt.py`` pattern.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -37,6 +38,7 @@ from citygml_energy.bindings import (
     StringAttribute,
 )
 from citygml_energy.city_builder.builders import build_solitary_vegetation_object
+from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.cityjson_trees_parse import ParsedTree
 from citygml_energy.city_builder.fetchers.bgt import BgtTree
 from citygml_energy.city_builder.fetchers.emmen_bor import (
@@ -46,13 +48,37 @@ from citygml_energy.city_builder.fetchers.emmen_bor import (
     fetch_bor_trees,
 )
 from citygml_energy.city_builder.http import CachedSession
-from citygml_energy.city_builder.tree_enrichment import (
+from citygml_energy.city_builder.tree_matching import (
     MATCH_RADIUS_M,
-    match_trees_to_bor,
+    match_nearest_within,
 )
 from citygml_energy.core import CityModel
 from citygml_energy.gml_builders import build_envelope
 from citygml_energy.namespaces import CS_EMMEN_BOR_TREES
+
+
+from tests._factories import make_parsed_tree, make_session_with_pages
+
+
+def match_trees_to_bor(
+    trees: Iterable[ParsedTree],
+    bor_trees: Iterable[BorTree],
+    *,
+    radius_m: float = MATCH_RADIUS_M,
+) -> dict[str, BorTree]:
+    """Local test helper: thin shim around :func:`match_nearest_within`.
+
+    Production no longer carries a BOR-typed wrapper (the inline
+    pipeline call shoulders the kwargs); this shim keeps the test
+    bodies short for the ~4 calls below.
+    """
+    return match_nearest_within(
+        trees, bor_trees,
+        candidate_xy=lambda b: (b.x_rd, b.y_rd),
+        radius_m=radius_m,
+        register_label="Emmen BOR",
+    )
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -93,43 +119,11 @@ def _bor_feature(
     }
 
 
-def _make_session(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    pages: list[dict[str, Any]],
-) -> CachedSession:
-    """Build a ``CachedSession`` whose ``requests.Session.request`` returns
-    *pages* in order. Caching is disabled so every test sees a fresh call.
-    """
-    session = CachedSession(cache_dir=tmp_path / "cache", use_cache=False)
-    calls = iter(pages)
-
-    class _FakeResponse:
-        def __init__(self, payload: dict[str, Any]):
-            self.status_code = 200
-            self._payload = payload
-
-        @property
-        def content(self) -> bytes:
-            return json.dumps(self._payload).encode("utf-8")
-
-        def raise_for_status(self) -> None:
-            return None
-
-    class _FakeSession:
-        headers: ClassVar[dict[str, str]] = {}
-
-        def request(self, method: str, url: str, **kwargs: Any) -> _FakeResponse:
-            return _FakeResponse(next(calls))
-
-    monkeypatch.setattr(session, "_session", _FakeSession())
-    return session
+_make_session = make_session_with_pages
 
 
 def _parsed_tree(gtid: str, x: float, y: float) -> ParsedTree:
-    return ParsedTree(
-        gtid=gtid, centroid=(x, y, 0.0), polygons=[], attributes={},
-    )
+    return make_parsed_tree(gtid=gtid, x=x, y=y)
 
 
 def _bor(boom_id: str, x: float, y: float, **overrides: Any) -> BorTree:
@@ -435,21 +429,24 @@ def test_build_tree_with_both_bgt_and_bor_emits_two_external_references() -> Non
     assert any("emmen.nl" in s for s in info_systems)
 
 
-def test_bor_enriched_tree_round_trip_validates() -> None:
+def test_bor_enriched_tree_round_trip_validates(tmp_path: Path) -> None:
     """Smoke test: a tree with the full BOR enrichment serialises to
     XSD-valid CityGML. If any binding name drifts (e.g. ``species`` /
     ``class_value`` / ``int_attribute`` / ``string_attribute``), this
     breaks first.
     """
-    import subprocess
-    import sys
+    import lxml.etree as etree
+
+    from tools.validate_xsd import load_schema
 
     tree = _tree_with_polygons()
     obj = build_solitary_vegetation_object(
         tree,
+        BuildContext(
+            srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
+            srs_dimension=3,
+        ),
         bor_match=_bor("25649", 0.3, 0.3),
-        srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
-        srs_dimension=3,
     )
     model = CityModel(gml_name="bor_rt")
     model.add(obj)
@@ -460,11 +457,8 @@ def test_bor_enriched_tree_round_trip_validates() -> None:
             srs_dimension=3,
         )
     )
-    out = Path("generated/_bor_smoke.gml")
-    out.parent.mkdir(exist_ok=True)
+    out = tmp_path / "_bor_smoke.gml"
     model.write(out)
-    result = subprocess.run(
-        [sys.executable, "tools/validate_xsd.py", str(out)],
-        capture_output=True, text=True, check=False,
-    )
-    assert "VALID" in result.stdout, (result.stdout, result.stderr)
+    schema = load_schema()
+    root = etree.fromstring(out.read_bytes())
+    schema.assertValid(root)

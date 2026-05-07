@@ -114,7 +114,7 @@ def _real_shape_csv(*rows: bytes) -> bytes:
 
 def test_bulk_prefilter_matches_postcode_at_real_column_index() -> None:
     from citygml_energy.city_builder.address_key import address_key
-    from citygml_energy.city_builder.fetchers.eponline import _parse_csv_from_bulk_bytes
+    from citygml_energy.city_builder.fetchers.eponline import parse_csv_from_bulk_bytes
 
     csv_bytes = _real_shape_csv(
         b"20240101;20240101;20340101;Holder;RV;Final;Conv;No;W;A;B;1234;"
@@ -124,7 +124,7 @@ def test_bulk_prefilter_matches_postcode_at_real_column_index() -> None:
     )
     wanted_keys = {address_key("7881AA", 42, None, None)}
 
-    labels = _parse_csv_from_bulk_bytes(
+    labels = parse_csv_from_bulk_bytes(
         csv_bytes, wanted_ids=None, wanted_keys=wanted_keys
     )
     assert len(labels) == 1, "prefilter must not drop the matching row"
@@ -135,7 +135,7 @@ def test_bulk_prefilter_matches_postcode_at_real_column_index() -> None:
 
 def test_bulk_prefilter_tolerates_spaces_and_lowercase_postcodes() -> None:
     from citygml_energy.city_builder.address_key import address_key
-    from citygml_energy.city_builder.fetchers.eponline import _parse_csv_from_bulk_bytes
+    from citygml_energy.city_builder.fetchers.eponline import parse_csv_from_bulk_bytes
 
     csv_bytes = _real_shape_csv(
         b"20240101;20240101;20340101;Holder;RV;Final;Conv;No;W;A;B;1234;"
@@ -143,7 +143,7 @@ def test_bulk_prefilter_tolerates_spaces_and_lowercase_postcodes() -> None:
     )
     wanted_keys = {address_key("7881AA", 42, None, None)}
 
-    labels = _parse_csv_from_bulk_bytes(
+    labels = parse_csv_from_bulk_bytes(
         csv_bytes, wanted_ids=None, wanted_keys=wanted_keys
     )
     assert len(labels) == 1
@@ -286,20 +286,20 @@ def test_minimal_header_backward_compatible() -> None:
 
 
 def test_decimal_comma_parses_to_float() -> None:
-    """``_parse_decimal`` swaps the Dutch comma decimal marker."""
-    from citygml_energy.city_builder.fetchers.eponline import _parse_decimal
+    """``parse_decimal`` swaps the Dutch comma decimal marker."""
+    from citygml_energy.city_builder.fetchers.eponline import parse_decimal
 
-    assert _parse_decimal("28,5") == 28.5
-    assert _parse_decimal("0,0") == 0.0
-    assert _parse_decimal("1") == 1.0
+    assert parse_decimal("28,5") == 28.5
+    assert parse_decimal("0,0") == 0.0
+    assert parse_decimal("1") == 1.0
     # Dutch thousands separator (rare for energy values, defensively handled).
-    assert _parse_decimal("1.234,56") == 1234.56
+    assert parse_decimal("1.234,56") == 1234.56
     # Defensive: dot-decimal still works in case the format ever shifts.
-    assert _parse_decimal("28.5") == 28.5
+    assert parse_decimal("28.5") == 28.5
     # Empty / whitespace / malformed: None.
-    assert _parse_decimal("") is None
-    assert _parse_decimal("   ") is None
-    assert _parse_decimal("not-a-number") is None
+    assert parse_decimal("") is None
+    assert parse_decimal("   ") is None
+    assert parse_decimal("not-a-number") is None
 
 
 # ---------------------------------------------------------------------------

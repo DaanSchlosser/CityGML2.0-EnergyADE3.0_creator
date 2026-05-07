@@ -87,7 +87,7 @@ _REFERENCED_SYMBOLS: dict[str, list[str]] = {
         "apply_eponline_pand_attribution_to_building",
         "_pick_canonical_eponline_label",
         "_eponline_label_recency_key",
-        "_build_epc",
+        "build_epc",
         "_certification_method_string",
         "_apply_eponline_classification_to_building_unit",
     ],
@@ -107,9 +107,10 @@ _REFERENCED_SYMBOLS: dict[str, list[str]] = {
         "fetch_postcode6_areas",
         "Postcode6Area",
     ],
-    "citygml_energy/city_builder/bgt_match.py": ["match_trees_to_bgt"],
-    "citygml_energy/city_builder/tree_enrichment.py": ["match_trees_to_bor"],
-    "citygml_energy/city_builder/tree_matching.py": ["match_nearest_within"],
+    "citygml_energy/city_builder/tree_matching.py": [
+        "MATCH_RADIUS_M",
+        "match_nearest_within",
+    ],
     "citygml_energy/city_builder/pand_executor.py": ["_merge_attributes"],
     "citygml_energy/city_builder/energy_resources.py": [
         "attach_energy_resources_to_building_unit",

@@ -1,13 +1,11 @@
 """Generic nearest-neighbour spatial join for CFTree → register matching.
 
-Both the BGT cross-reference (:mod:`citygml_energy.city_builder.bgt_match`)
-and the Emmen BOR enrichment
-(:mod:`citygml_energy.city_builder.tree_enrichment`) need exactly the
-same algorithm: for each :class:`ParsedTree`, find the closest
-candidate from a register within a fixed metric radius, with the
-``gtid`` as the dictionary key. Lifting the loop here removes a
-straight copy-paste between the two callers and gives the algorithm a
-single home for any future tweak.
+Both the BGT cross-reference and the Emmen BOR enrichment need
+exactly the same algorithm: for each :class:`ParsedTree`, find the
+closest candidate from a register within a fixed metric radius, with
+the ``gtid`` as the dictionary key. The pipeline calls this function
+twice — once per register — passing the register's coordinate
+extractor and a label string for the coverage log line.
 
 The function uses :class:`shapely.STRtree` (O(N log M)) — shapely is a
 hard requirement of the ``[city]`` extras and is also used by every
@@ -29,9 +27,23 @@ from collections.abc import Callable, Iterable
 
 from .cityjson_trees_parse import ParsedTree
 
-__all__ = ["match_nearest_within"]
+__all__ = ["MATCH_RADIUS_M", "match_nearest_within"]
 
 _LOG = logging.getLogger(__name__)
+
+
+# Default match radius for both BGT and BOR. The two registers nominally
+# place each point at the trunk; CFTree reports the crown centroid,
+# which on a leaning or one-sided canopy can sit 1-3 m off the trunk.
+# 4 m is the compromise that catches the ~95th percentile of legitimate
+# crown-to-trunk offsets without pulling in the next tree in a typical
+# Dutch street row (7-10 m spacing). Tuned against the
+# Emmer-Compascuum small-area run: ~90 % of CFTree trees get a BGT
+# match at 4 m, with diminishing returns beyond. Both registers use
+# the same value by design — they describe the same physical thing
+# (a registered urban tree position) — so it lives here as a single
+# named constant rather than two co-located copies.
+MATCH_RADIUS_M: float = 4.0
 
 
 def match_nearest_within[C](

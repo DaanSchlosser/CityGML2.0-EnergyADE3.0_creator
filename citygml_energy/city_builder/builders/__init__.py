@@ -42,14 +42,10 @@ from .building import (
     lod2_thematic_surface_gml_id,
 )
 
-# ``_build_epc`` is re-exported with a ``noqa`` because it is a
-# private helper that the EPC tests exercise directly via
-# ``from citygml_energy.city_builder.builders import _build_epc``.
-# Treat the alias as part of the legacy public surface, not as new API.
 from .epc import (
-    _build_epc,  # noqa: F401
     apply_bag_year_metadata_to_building,
     apply_eponline_pand_attribution_to_building,
+    build_epc,
 )
 from .vegetation import build_solitary_vegetation_object
 
@@ -61,6 +57,7 @@ __all__ = [
     "build_address",
     "build_building",
     "build_building_unit",
+    "build_epc",
     "build_solitary_vegetation_object",
     "iter_lod2_thematic_classification",
     "lod2_thematic_surface_gml_id",

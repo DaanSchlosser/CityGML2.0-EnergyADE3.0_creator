@@ -41,11 +41,23 @@ carrier code together distinguish CBS-measured aggregates from
 EP-online-calculated indicators on any consumer that filters resources
 by their type + carrier pair.
 
-Suppressed CBS values (the <6-dwelling privacy rule, surfaced as
-``None`` by the fetcher) translate to *no resource emitted* rather
-than to an empty resource: an ``nrg3:Energy`` with ``amount`` absent
-would silently misrepresent "we have no measurement" as "we measured
-zero".
+CBS sentinel values (``-99995`` / ``-99997`` / ``-99999`` — the
+privacy-suppression / deferred-publication / unknown placeholders
+documented in the CBS Longread) ride through the fetcher
+(:func:`citygml_energy.city_builder.fetchers.cbs_postcode6._int_preserve_sentinel`)
+and land on ``nrg3:Energy/amount`` verbatim: the encoded value is the
+raw CBS datum, not a measurement, and a downstream consumer can
+distinguish "privacy-suppressed" (``-99997``) from "real measurement"
+(positive, rounded to 50) by reading the amount itself. The
+``nrg3:Energy`` resource is therefore emitted unconditionally for
+both gas and electricity whenever the WFS shipped *any* value (real
+or sentinel); only a genuinely null WFS field — the sole case the
+fetcher folds to Python ``None`` — translates to "no resource
+emitted" on this area. This trade-off favours full source fidelity
+(every postcode's CBS row round-trips) over physical plausibility
+(negative consumption is meaningless as a measurement); the
+``nrg3:Metadata/qualityDescription`` text co-located on the area
+spells out the sentinel meanings so the encoding is self-describing.
 """
 
 from __future__ import annotations
@@ -85,7 +97,7 @@ from ..schema_types import URBAN_FUNCTION_AREA
 from ._helpers import safe_gml_id
 from .builders._common import UOM_AREA_M2
 from .cityjson_parse import ParsedBuilding
-from .config import CbsPostcode6Source
+from .config import BuildContext, CbsPostcode6Source
 from .energy_resources import UOM_KWH_PER_A, UOM_M3_PER_A
 from .fetchers import cbs_postcode6 as cbs_postcode6_fetchers
 from .fetchers.cbs_postcode6 import Postcode6Area
@@ -148,10 +160,19 @@ _CBS_QUALITY_DESCRIPTION: str = (
     "CBS from the energienetbedrijven aansluitingenregister. The "
     "values are NOT per-building measurements and must not be "
     "redistributed to individual bldg:Building / nrg3:BuildingUnit "
-    "features. CBS rounds both energy figures to fifties; CBS "
-    "suppresses the figure entirely when the postcode contains fewer "
-    "than 6 occupied dwellings (privacy rule), in which case no "
-    "resource is emitted on this area. Gas figures include "
+    "features. CBS rounds both energy figures to fifties. SENTINEL "
+    "VALUES IN nrg3:Energy/amount: the pipeline preserves CBS's "
+    "documented placeholder integers verbatim instead of dropping the "
+    "resource, so any consumer of this file MUST treat negative "
+    "amounts as non-measurements. Specifically, -99997 = 'privacy "
+    "suppression' (the postcode contains fewer than 6 occupied "
+    "dwellings, so CBS withheld the value), -99995 = 'will be "
+    "published in a later vintage' (the field is reserved but no value "
+    "has been released yet — empirically the entire 2024 vintage "
+    "ships every energy field as -99995), -99999 = 'unknown / "
+    "reserved'. Only these negative sentinels and real positive "
+    "rounded-to-50 values appear; the resource is omitted only when "
+    "the WFS shipped no value at all. Gas figures include "
     "stadsverwarming-connected dwellings (district heating), which "
     "lowers the average for postcodes on a shared heat network. "
     "Electricity figures cover individual connections only and "
@@ -160,7 +181,8 @@ _CBS_QUALITY_DESCRIPTION: str = (
     "counts (gen:intAttribute name='dwellingCount' and "
     "'vacantDwellingCount') are sourced from BAG via CBS and are not "
     "subject to the 6-dwelling privacy suppression that gates the "
-    "energy figures. Source: "
+    "energy figures; they fold sentinels to absent rather than "
+    "emitting a negative count. Source: "
     "https://www.cbs.nl/nl-nl/longread/diversen/2025/"
     "statistische-gegevens-per-vierkant-en-postcode-2022-2023-2024/"
     "4-beschrijving-cijfers."
@@ -208,13 +230,11 @@ def safely_fetch_postcode6_areas(
 
 def attach_postcode6_areas_to_model(
     model: CityModel,
+    build_context: BuildContext = BuildContext(),
     *,
     areas: list[Postcode6Area],
     parsed_by_id: dict[str, ParsedBuilding],
     boundary_geom: BaseGeometry | None,
-    gml_id_prefix: str,
-    srs_name: str,
-    srs_dimension: int,
     coords_sink: list[Coord3D],
 ) -> None:
     """Emit one ``nrg3:UrbanFunctionArea`` per CBS Postcode6 record.
@@ -255,7 +275,7 @@ def attach_postcode6_areas_to_model(
     # Pre-compute one (gml_id, x, y) per Building for the spatial join.
     # Done once and reused across every area so a city-scale build with
     # 30+ postcodes does not re-walk the building list per-area.
-    centroids = _building_centroids_for_join(parsed_by_id, gml_id_prefix)
+    centroids = _building_centroids_for_join(parsed_by_id, build_context.gml_id_prefix)
 
     if boundary_geom is not None:
         prepare(boundary_geom)
@@ -271,9 +291,9 @@ def attach_postcode6_areas_to_model(
 
         ufa = _build_postcode6_urban_function_area(
             area,
-            gml_id_prefix=gml_id_prefix,
-            srs_name=srs_name,
-            srs_dimension=srs_dimension,
+            gml_id_prefix=build_context.gml_id_prefix,
+            srs_name=build_context.srs_name,
+            srs_dimension=build_context.srs_dimension,
             coords_sink=coords_sink,
             area_geom=area_geom,
         )
@@ -420,7 +440,11 @@ def _build_postcode6_urban_function_area(
                         "natural-gas consumption per occupied private "
                         "dwelling in this postcode (m3/yr, rounded to 50). "
                         "Includes dwellings on stadsverwarming, which "
-                        "lowers the average."
+                        "lowers the average. Negative amounts are CBS "
+                        "sentinels (-99997 privacy-suppressed, -99995 "
+                        "deferred publication, -99999 unknown), preserved "
+                        "verbatim from the WFS rather than dropped — see "
+                        "the area's nrg3:Metadata/qualityDescription."
                     ),
                 )
             )
@@ -439,7 +463,11 @@ def _build_postcode6_urban_function_area(
                         "private dwelling in this postcode (kWh/yr, "
                         "rounded to 50). Individual connections only; "
                         "excludes self-generated PV and collective "
-                        "consumption."
+                        "consumption. Negative amounts are CBS sentinels "
+                        "(-99997 privacy-suppressed, -99995 deferred "
+                        "publication, -99999 unknown), preserved verbatim "
+                        "from the WFS rather than dropped — see the area's "
+                        "nrg3:Metadata/qualityDescription."
                     ),
                 )
             )

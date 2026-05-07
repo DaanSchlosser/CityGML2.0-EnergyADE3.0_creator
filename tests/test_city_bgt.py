@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -34,12 +35,9 @@ from citygml_energy.bindings import (
     ExternalReferenceType1,
     SolitaryVegetationObject,
 )
-from citygml_energy.city_builder.bgt_match import (
-    MATCH_RADIUS_M,
-    match_trees_to_bgt,
-)
 from citygml_energy.city_builder.builders import build_solitary_vegetation_object
 from citygml_energy.city_builder.cityjson_trees_parse import ParsedTree
+from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.fetchers.bgt import (
     BGT_INFORMATION_SYSTEM_URL,
     BgtTree,
@@ -47,8 +45,33 @@ from citygml_energy.city_builder.fetchers.bgt import (
     fetch_bgt_trees,
 )
 from citygml_energy.city_builder.http import CachedSession
+from citygml_energy.city_builder.tree_matching import MATCH_RADIUS_M, match_nearest_within
 from citygml_energy.core import CityModel
 from citygml_energy.gml_builders import build_envelope
+
+
+from tests._factories import make_parsed_tree, make_session_with_pages
+
+
+def match_trees_to_bgt(
+    trees: Iterable[ParsedTree],
+    bgt_trees: Iterable[BgtTree],
+    *,
+    radius_m: float = MATCH_RADIUS_M,
+) -> dict[str, BgtTree]:
+    """Local test helper: thin shim around :func:`match_nearest_within`.
+
+    Production no longer carries a BGT-typed wrapper (the inline
+    pipeline call shoulders the kwargs); this shim keeps the test
+    bodies short for the ~5 calls below.
+    """
+    return match_nearest_within(
+        trees, bgt_trees,
+        candidate_xy=lambda b: (b.x_rd, b.y_rd),
+        radius_m=radius_m,
+        register_label="BGT boom",
+    )
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -78,35 +101,7 @@ def _bgt_feature(
     }
 
 
-def _make_session(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pages: list[dict[str, Any]],
-) -> CachedSession:
-    """Build a ``CachedSession`` whose ``requests.Session.request`` returns
-    *pages* in order. Caching is disabled so every test sees a fresh call.
-    """
-    session = CachedSession(cache_dir=tmp_path / "cache", use_cache=False)
-    calls = iter(pages)
-
-    class _FakeResponse:
-        def __init__(self, payload: dict[str, Any]):
-            self.status_code = 200
-            self._payload = payload
-
-        @property
-        def content(self) -> bytes:
-            return json.dumps(self._payload).encode("utf-8")
-
-        def raise_for_status(self) -> None:
-            return None
-
-    class _FakeSession:
-        headers: ClassVar[dict[str, str]] = {}
-
-        def request(self, method: str, url: str, **kwargs: Any) -> _FakeResponse:
-            return _FakeResponse(next(calls))
-
-    monkeypatch.setattr(session, "_session", _FakeSession())
-    return session
+_make_session = make_session_with_pages
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +238,7 @@ def test_bgt_feature_uri_has_stable_shape() -> None:
 
 
 def _parsed_tree(gtid: str, x: float, y: float) -> ParsedTree:
-    return ParsedTree(gtid=gtid, centroid=(x, y, 0.0), polygons=[], attributes={})
+    return make_parsed_tree(gtid=gtid, x=x, y=y)
 
 
 def _bgt(lokaal_id: str, x: float, y: float, **kw: Any) -> BgtTree:
@@ -390,20 +385,23 @@ def test_build_tree_with_bgt_no_creation_date_still_emits_external_reference() -
     assert obj.date_attribute == []
 
 
-def test_bgt_cross_referenced_tree_round_trip_validates() -> None:
+def test_bgt_cross_referenced_tree_round_trip_validates(tmp_path: Path) -> None:
     """Smoke test: a tree with the BGT cross-reference attached serialises
     to XSD-valid CityGML. If any binding name drifts, this breaks first.
     """
-    import subprocess
-    import sys
+    import lxml.etree as etree
+
+    from tools.validate_xsd import load_schema
 
     tree = _tree_with_polygons()
     bgt = _bgt("G0114.valid", 0.3, 0.3, creation_date=_dt.date(2021, 1, 1))
     obj = build_solitary_vegetation_object(
         tree,
+        BuildContext(
+            srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
+            srs_dimension=3,
+        ),
         bgt_match=bgt,
-        srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
-        srs_dimension=3,
     )
     model = CityModel(gml_name="bgt_rt")
     model.add(obj)
@@ -414,11 +412,8 @@ def test_bgt_cross_referenced_tree_round_trip_validates() -> None:
             srs_dimension=3,
         )
     )
-    out = Path("generated/_bgt_smoke.gml")
-    out.parent.mkdir(exist_ok=True)
+    out = tmp_path / "_bgt_smoke.gml"
     model.write(out)
-    result = subprocess.run(
-        [sys.executable, "tools/validate_xsd.py", str(out)],
-        capture_output=True, text=True, check=False,
-    )
-    assert "VALID" in result.stdout, (result.stdout, result.stderr)
+    schema = load_schema()
+    root = etree.fromstring(out.read_bytes())
+    schema.assertValid(root)

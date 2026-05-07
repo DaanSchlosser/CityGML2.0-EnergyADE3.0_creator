@@ -224,9 +224,11 @@ Coverage notes:
 * Roughly 93 % of records have a `jaarvanaanleg`. The `gen:intAttribute`
   is omitted on the rest.
 * The 4 m match radius is identical to BGT's
-  ([`bgt_match.MATCH_RADIUS_M`](../citygml_energy/city_builder/bgt_match.py#L57)),
+  ([`tree_matching.MATCH_RADIUS_M`](../citygml_energy/city_builder/tree_matching.py)),
   for the same crown-centroid-vs-trunk-offset reason. BOR points sit
-  at the trunk, like BGT, so the same trade-off applies.
+  at the trunk, like BGT, so the same trade-off applies; the constant
+  lives once in `tree_matching` because the two registers describe
+  the same physical thing.
 
 ### 3.4 Appearance
 
@@ -432,11 +434,13 @@ were kept:
   enriched CityGML element reflects exactly what Emmen's authority
   registered.
 
-The `tree_enrichment.py` module that was a documentation stub for
-the dropped OSM + Monumentale-Bomen path now holds the BOR matcher
-([`tree_enrichment.match_trees_to_bor`](../citygml_energy/city_builder/tree_enrichment.py)).
-The git history preserves the previous "intentionally empty"
-comment, so a contributor following the trail of "tree enrichment"
+The BOR matcher is a direct call to the generic
+[`tree_matching.match_nearest_within`](../citygml_energy/city_builder/tree_matching.py)
+from `pipeline._maybe_match_trees_to_bor`, with `register_label="Emmen BOR"`.
+There is no longer a BOR-specific wrapper module: the previous
+`tree_enrichment.py` shim added no leverage over the inline call,
+so it was removed. The git history preserves the previous "intentionally
+empty" comment, so a contributor following the trail of "tree enrichment"
 back through the log lands first on the active matcher and then on
 the rationale for what was dropped.
 
@@ -548,7 +552,9 @@ share.
   The Bomenstichting's national register and OSM `natural=tree`
   are out of scope under the current "Dutch government data only"
   policy. The `tree_enrichment.py` module that previously held the
-  scaffold for those sources has been repurposed for BOR.
+  scaffold for those sources was first repurposed for BOR and then
+  removed when the BOR-specific wrapper proved to add no leverage
+  over an inline call to `tree_matching.match_nearest_within`.
 * **Boundary polygon format.** Both GeoPackage (`.gpkg` + layer + fid)
   and GeoJSON (`.geojson`, single feature) are accepted by
   [`BoundarySource`](../citygml_energy/city_builder/boundary.py).

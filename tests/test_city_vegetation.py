@@ -44,7 +44,7 @@ from citygml_energy.city_builder.cityjson_trees_parse import (
     parse_cftree_tile,
     parse_cftree_tile_file,
 )
-from citygml_energy.city_builder.config import CityBuildError, load_city_config
+from citygml_energy.city_builder.config import BuildContext, CityBuildError, load_city_config
 from citygml_energy.city_builder.vegetation import (
     VegetationSource,
     filter_trees_by_boundary,
@@ -383,7 +383,7 @@ def _parsed_tree_from_cityjson(**kwargs: Any) -> ParsedTree:
 def test_build_tree_populates_native_length_fields() -> None:
     tree = _parsed_tree_from_cityjson()
     obj = build_solitary_vegetation_object(
-        tree, srs_name="urn:ogc:def:crs,crs:EPSG::28992", srs_dimension=3,
+        tree, BuildContext(srs_name="urn:ogc:def:crs,crs:EPSG::28992", srs_dimension=3),
     )
     assert isinstance(obj, SolitaryVegetationObject)
     assert obj.id == "tree_1"
@@ -459,7 +459,7 @@ def test_build_tree_gml_id_prefix_yields_valid_ncname() -> None:
     globally unique, so no tile namespacing is needed on top.
     """
     tree = _parsed_tree_from_cityjson(gtid=99)
-    obj = build_solitary_vegetation_object(tree, gml_id_prefix="city42")
+    obj = build_solitary_vegetation_object(tree, BuildContext(gml_id_prefix="city42"))
     assert obj.id == "city42_tree_99"
 
 
@@ -479,8 +479,10 @@ def test_build_tree_round_trip_serializes_and_validates() -> None:
     tree = _parsed_tree_from_cityjson()
     obj = build_solitary_vegetation_object(
         tree,
-        srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
-        srs_dimension=3,
+        BuildContext(
+            srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
+            srs_dimension=3,
+        ),
     )
     model = CityModel(gml_name="tree_rt", gml_description="vegetation round-trip")
     model.add(obj)

@@ -82,7 +82,6 @@ from ...bindings import (
 )
 from ...gml_builders import build_multi_point
 from ...mapping import resolve_class
-from ...namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
 from ...schema_types import (
     ADDRESS,
     XAL_ADDRESS_DETAILS,
@@ -93,6 +92,7 @@ from ...schema_types import (
 )
 from .._helpers import safe_gml_id
 from ..address_match import ResolvedAddress
+from ..config import BuildContext
 from ._common import inner_type
 
 __all__ = ["build_address"]
@@ -132,11 +132,7 @@ _TOEVOEGING_SEPARATOR: str = "-"
 
 def build_address(
     resolved: ResolvedAddress,
-    *,
-    gml_id_prefix: str = "",
-    city_name: str = "",
-    srs_name: str = DEFAULT_SRS_NAME,
-    srs_dimension: int = DEFAULT_SRS_DIMENSION,
+    build_context: BuildContext = BuildContext(),
 ) -> Any | None:
     """Build a ``core:Address`` for *resolved* or ``None`` when unusable.
 
@@ -148,10 +144,10 @@ def build_address(
     only: the schema constraint is just "a MultiPoint", and every
     Dutch BAG-to-CityGML converter populates this element the same way.
 
-    *city_name* is used only when the VBO has no ``woonplaats`` (rare;
-    legacy records or test fixtures). The VBO's own ``woonplaats`` is
-    the authoritative source of the locality component otherwise — see
-    the module docstring.
+    *build_context.municipality* is used only when the VBO has no
+    ``woonplaats`` (rare; legacy records or test fixtures). The VBO's
+    own ``woonplaats`` is the authoritative source of the locality
+    component otherwise (see the module docstring).
     """
     street = resolved.street.strip()
     postcode = resolved.postcode.strip()
@@ -164,10 +160,11 @@ def build_address(
     if xal_prop_cls is None:
         return None
 
-    # Authoritative locality is the VBO's woonplaats; ``city_name`` is a
-    # caller-supplied fallback used only when the VBO has none (for
-    # legacy fixtures and tests pre-dating the woonplaats join).
-    locality_name = (resolved.woonplaats or city_name or "").strip()
+    # Authoritative locality is the VBO's woonplaats; the build context's
+    # municipality is a caller-supplied fallback used only when the VBO
+    # has none (for legacy fixtures and tests pre-dating the woonplaats
+    # join).
+    locality_name = (resolved.woonplaats or build_context.municipality or "").strip()
 
     locality = _build_locality(
         street=street,
@@ -195,14 +192,16 @@ def build_address(
     details_cls = resolve_class(XAL_ADDRESS_DETAILS)
     address_details = details_cls(country=country)
 
-    address_id = safe_gml_id(gml_id_prefix, "addr", resolved.vbo.identificatie)
+    address_id = safe_gml_id(
+        build_context.gml_id_prefix, "addr", resolved.vbo.identificatie
+    )
     multi_point = None
     if resolved.point is not None:
         multi_point = build_multi_point(
             f"{address_id}_mp",
             [resolved.point],
-            srs_name=srs_name,
-            srs_dimension=srs_dimension,
+            srs_name=build_context.srs_name,
+            srs_dimension=build_context.srs_dimension,
         )
 
     address = address_cls(

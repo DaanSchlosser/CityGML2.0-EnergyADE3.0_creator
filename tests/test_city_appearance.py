@@ -32,6 +32,7 @@ from citygml_energy.city_builder.builders import (
     build_building,
 )
 from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
+from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.epc_score import label_to_rgb
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
@@ -40,19 +41,14 @@ from citygml_energy.city_builder.pv_panels import (
     attach_pv_collectors_to_building,
 )
 from citygml_energy.core import CityModel
+from tests._factories import make_parsed_building, make_square_polygon, make_vbo
 
-
-def _square(z: float, surface_type: str | None = None) -> SemanticPolygon:
-    return SemanticPolygon(
-        polygon=GeometryPolygon(
-            exterior=[(0.0, 0.0, z), (1.0, 0.0, z), (1.0, 1.0, z), (0.0, 1.0, z)],
-        ),
-        surface_type=surface_type,
-    )
+_square = make_square_polygon
 
 
 def _parsed(pand_id: str) -> ParsedBuilding:
-    return ParsedBuilding(
+    """LoD 0/1/2 cube with year-of-construction 2000 (this file's default)."""
+    return make_parsed_building(
         pand_id=pand_id,
         attributes={"oorspronkelijkbouwjaar": 2000},
         geometries={
@@ -64,20 +60,13 @@ def _parsed(pand_id: str) -> ParsedBuilding:
 
 
 def _vbo(identificatie: str, huisnummer: int) -> Verblijfsobject:
-    return Verblijfsobject(
+    """Mekelweg-style VBO with a populated locator point (used by appearance smoke)."""
+    return make_vbo(
         identificatie=identificatie,
         pand_identificatie="pand_does_not_matter",
-        gebruiksdoel=["woonfunctie"],
         oppervlakte=70.0,
-        status=None,
-        postcode="2628CD",
         huisnummer=huisnummer,
-        huisletter=None,
-        toevoeging=None,
-        openbare_ruimte_naam="Mekelweg",
-        woonplaats=None,
         point=(85000.0, 446500.0),
-        properties={},
     )
 
 
@@ -292,8 +281,10 @@ def test_pv_appearance_targets_every_pv_multisurface_and_polygon() -> None:
     building, _ = _build_with_labels("001", ["A"])
     attach_pv_collectors_to_building(
         building, [_pv_panel(fid=7), _pv_panel(fid=9)],
-        srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
-        srs_dimension=3,
+        BuildContext(
+            srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
+            srs_dimension=3,
+        ),
     )
     model.add(building)
 
@@ -323,8 +314,10 @@ def test_pv_appearance_coexists_with_energy_label_appearance() -> None:
     building, resolved = _build_with_labels("001", ["A"])
     attach_pv_collectors_to_building(
         building, [_pv_panel(fid=7)],
-        srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
-        srs_dimension=3,
+        BuildContext(
+            srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
+            srs_dimension=3,
+        ),
     )
     model.add(building)
 

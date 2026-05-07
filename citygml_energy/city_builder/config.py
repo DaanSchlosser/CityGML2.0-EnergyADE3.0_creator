@@ -17,13 +17,63 @@ from typing import Any
 
 from ..errors import CityBuildError
 from ..namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
-from .boundary import BoundarySource
-from .pv_panels import PvPanelsSource
-from .vegetation import VegetationSource
 
 PathLike = str | Path
 
 SCHEMA_VERSION = "city-1"
+
+
+# ``BuildContext`` is defined ahead of the per-source imports below
+# because the same per-source modules (``pv_panels``, ``vegetation``)
+# re-import it via the ``builders/`` package: defining the class first
+# makes it available when those modules' import-time chains land back
+# in this module mid-load. Reordering the imports the other way around
+# triggers the circular-import diagnostic at first use.
+@dataclass(frozen=True, slots=True)
+class BuildContext:
+    """Layout-constant context shared by every model-mutating builder.
+
+    The pipeline assembles one :class:`BuildContext` from a
+    :class:`CityBuildConfig` (via :meth:`from_config` or
+    :meth:`CityBuildConfig.build_context`) and threads it into every
+    function that materialises xsdata features for the city: the
+    per-Pand builders, the PV-collector attach, the postcode6 attach,
+    and the vegetation attach. Carrying the trio (and the two related
+    constants ``lods`` + ``municipality``) on one struct removes the
+    per-call kwarg threading that previously leaked into every
+    builder's signature.
+
+    Field defaults match the validation defaults applied by
+    :func:`load_city_config`, so a unit test that constructs a context
+    explicitly (e.g. ``BuildContext(srs_dimension=2)``) inherits the
+    same baseline a production run starts from. Frozen +
+    ``slots=True`` matches the immutability + small-payload semantics
+    of the other source dataclasses (:class:`PvPanelsSource`,
+    :class:`VegetationSource`, :class:`TreeBundle`); the instance is
+    cheap to share across the worker-pool boundary.
+    """
+
+    gml_id_prefix: str = ""
+    lods: tuple[int, ...] = (0, 1, 2)
+    srs_name: str = DEFAULT_SRS_NAME
+    srs_dimension: int = DEFAULT_SRS_DIMENSION
+    municipality: str = ""
+
+    @classmethod
+    def from_config(cls, config: CityBuildConfig) -> BuildContext:
+        """Build a :class:`BuildContext` from a fully-validated config."""
+        return cls(
+            gml_id_prefix=config.gml_id_prefix,
+            lods=tuple(config.lods),
+            srs_name=config.srs_name,
+            srs_dimension=config.srs_dimension,
+            municipality=config.municipality,
+        )
+
+
+from .boundary import BoundarySource  # noqa: E402  - imported after BuildContext to break a circular import
+from .pv_panels import PvPanelsSource  # noqa: E402
+from .vegetation import VegetationSource  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -127,6 +177,16 @@ class CityBuildConfig:
     and emits one ``nrg3:UrbanFunctionArea`` per postcode polygon
     intersecting the build extent. See
     :class:`citygml_energy.city_builder.config.CbsPostcode6Source`."""
+
+    def build_context(self) -> BuildContext:
+        """Return the immutable :class:`BuildContext` derived from this config.
+
+        Convenience for the pipeline orchestrator: rather than calling
+        :meth:`BuildContext.from_config` from every assembly site, the
+        caller produces one context once and threads it into every
+        model-mutating builder.
+        """
+        return BuildContext.from_config(self)
 
     @property
     def ep_online_api_key(self) -> str | None:

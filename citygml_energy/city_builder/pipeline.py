@@ -38,22 +38,17 @@ from .appearance import (
     append_pv_panel_appearance,
     append_vegetation_appearance,
 )
-from .bgt_match import match_trees_to_bgt
 from .boundary import load_boundary_polygon
-from .builders import build_solitary_vegetation_object
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
-from .cityjson_trees_parse import ParsedTree
 from .config import CityBuildConfig, CityBuildError, load_city_config
 from .fetchers import bag as bag_fetchers
 from .fetchers import eponline as eponline_fetchers
 from .fetchers import municipality as muni_fetchers
 from .fetchers import threedbag
-from .fetchers.bgt import BgtTree, fetch_bgt_trees
-from .fetchers.emmen_bor import BorTree, fetch_bor_trees
 from .http import CachedSession
 from .postcode6 import Postcode6Area
 from .pv_panels import ProjectedPanel
-from .tree_enrichment import match_trees_to_bor
+from .vegetation import TreeBundle
 
 if TYPE_CHECKING:
     from shapely.geometry.base import BaseGeometry
@@ -173,7 +168,7 @@ def build_city_model(
 
     if boundary_geom is not None:
         before = len(parsed_by_id)
-        parsed_by_id = _filter_by_boundary(parsed_by_id, boundary_geom)
+        parsed_by_id = filter_buildings_by_boundary(parsed_by_id, boundary_geom)
         dropped = before - len(parsed_by_id)
         kept_ids = set(parsed_by_id)
         panden = [p for p in panden if p.identificatie in kept_ids]
@@ -186,24 +181,12 @@ def build_city_model(
         config=config, bbox=bbox, parsed_by_id=parsed_by_id,
     )
 
-    trees = _maybe_load_trees(
-        config=config, bbox=bbox, boundary_geom=boundary_geom,
+    tree_bundle = vegetation_module.fetch_and_match_trees(
+        session,
+        source=config.vegetation_source,
+        bbox=bbox,
+        boundary_geom=boundary_geom,
     )
-    # BGT and BOR fetches are independent network calls; run them concurrently.
-    if trees:
-        _LOG.info("Fetching BGT and BOR tree register concurrently …")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            fut_bgt = pool.submit(
-                _maybe_match_trees_to_bgt, session=session, trees=trees, bbox=bbox
-            )
-            fut_bor = pool.submit(
-                _maybe_match_trees_to_bor, session=session, trees=trees, bbox=bbox
-            )
-        bgt_matches = fut_bgt.result()
-        bor_matches = fut_bor.result()
-    else:
-        bgt_matches = {}
-        bor_matches = {}
 
     _LOG.info("Assembling CityModel …")
     model = _assemble_city_model(
@@ -212,9 +195,7 @@ def build_city_model(
         parsed_by_id=parsed_by_id,
         resolved_per_pand=resolved_per_pand,
         pv_matches_per_pand=pv_matches_per_pand,
-        trees=trees,
-        bgt_matches=bgt_matches,
-        bor_matches=bor_matches,
+        tree_bundle=tree_bundle,
         postcode6_areas=postcode6_areas,
         boundary_geom=boundary_geom,
     )
@@ -234,98 +215,6 @@ def build_city_model(
         building_count, vegetation_count, postcode_count,
     )
     return model
-
-
-def _maybe_load_trees(
-    *,
-    config: CityBuildConfig,
-    bbox: tuple[float, float, float, float],
-    boundary_geom: BaseGeometry | None,
-) -> list[ParsedTree]:
-    """Load CFTree reconstructions from *config.vegetation_source*.
-
-    Empty list when no vegetation source is configured. The bbox clip
-    runs first (fast, avoids parsing tiles that are fully outside); the
-    optional boundary polygon clip runs second, matching the building
-    filter's ``boundary-wins-over-bbox`` semantics.
-    """
-    source = config.vegetation_source
-    if source is None:
-        return []
-
-    _LOG.info("Loading CFTree vegetation: %s", source.path)
-    trees = vegetation_module.load_trees_in_bbox(source, bbox)
-    if not trees:
-        return []
-
-    if boundary_geom is not None:
-        before = len(trees)
-        trees = vegetation_module.filter_trees_by_boundary(trees, boundary_geom)
-        _LOG.info("Boundary polygon kept %d / %d trees", len(trees), before)
-    else:
-        _LOG.info("Loaded %d trees inside bbox", len(trees))
-
-    return trees
-
-
-def _maybe_match_trees_to_bgt(
-    *,
-    session: CachedSession,
-    trees: list[ParsedTree],
-    bbox: tuple[float, float, float, float],
-) -> dict[str, BgtTree]:
-    """Fetch BGT ``vegetatieobject_punt`` and nearest-join onto CFTree trees.
-
-    Returns an empty dict when there are no CFTree trees or when BGT
-    yields nothing for the bbox. Any HTTP / parse error is caught by
-    :func:`fetch_bgt_trees`, which logs a warning and returns ``[]`` —
-    the cross-reference is an authoritative-register link, not a hard
-    dependency, so a PDOK outage degrades to plain geometry rather
-    than failing the build.
-
-    The match is logged with ``matched / total`` so users can judge
-    coverage: low ratios (e.g. < 50 %) suggest either that the AOI is
-    private garden land (unregistered in BGT) or that CFTree is
-    over-reconstructing non-tree vegetation.
-    """
-    if not trees:
-        return {}
-    _LOG.info("Fetching BGT vegetatieobject_punt (boom) …")
-    bgt_trees = fetch_bgt_trees(session, bbox)
-    matches = match_trees_to_bgt(trees, bgt_trees)
-    _LOG.info(
-        "BGT cross-reference: %d of %d CFTree trees matched a BGT boom record "
-        "(%d BGT features in bbox)",
-        len(matches), len(trees), len(bgt_trees),
-    )
-    return matches
-
-
-def _maybe_match_trees_to_bor(
-    *,
-    session: CachedSession,
-    trees: list[ParsedTree],
-    bbox: tuple[float, float, float, float],
-) -> dict[str, BorTree]:
-    """Fetch Gemeente Emmen's BOR tree register and join it onto CFTree trees.
-
-    Behaves identically to :func:`_maybe_match_trees_to_bgt`: empty
-    dict on no trees / empty bbox response, soft-failed fetch on
-    network or parse errors. Outside Emmen the bbox-restricted query
-    returns zero features (silently logged), which is the desired
-    no-op behaviour for the city pipeline's PoC scope.
-    """
-    if not trees:
-        return {}
-    _LOG.info("Fetching Gemeente Emmen BOR tree register …")
-    bor_trees = fetch_bor_trees(session, bbox)
-    matches = match_trees_to_bor(trees, bor_trees)
-    _LOG.info(
-        "BOR enrichment: %d of %d CFTree trees matched a BOR record "
-        "(%d BOR features in bbox)",
-        len(matches), len(trees), len(bor_trees),
-    )
-    return matches
 
 
 def _maybe_match_pv_panels(
@@ -406,7 +295,7 @@ def _resolve_bbox(
     return outline.bbox
 
 
-def _filter_by_boundary(
+def filter_buildings_by_boundary(
     parsed_by_id: dict[str, ParsedBuilding],
     boundary_geom: BaseGeometry,
 ) -> dict[str, ParsedBuilding]:
@@ -690,9 +579,7 @@ def _assemble_city_model(
     parsed_by_id: dict[str, ParsedBuilding],
     resolved_per_pand: dict[str, list[ResolvedAddress]],
     pv_matches_per_pand: dict[str, list[ProjectedPanel]] | None = None,
-    trees: list[ParsedTree] | None = None,
-    bgt_matches: dict[str, BgtTree] | None = None,
-    bor_matches: dict[str, BorTree] | None = None,
+    tree_bundle: TreeBundle | None = None,
     postcode6_areas: list[Postcode6Area] | None = None,
     boundary_geom: BaseGeometry | None = None,
 ) -> CityModel:
@@ -745,27 +632,22 @@ def _assemble_city_model(
     )
     append_pv_panel_appearance(model)
 
-    if trees:
-        tree_appearance_targets = _attach_trees_to_model(
-            model,
-            trees,
-            gml_id_prefix=config.gml_id_prefix,
-            srs_name=config.srs_name,
-            srs_dimension=config.srs_dimension,
-            coords_sink=all_coords,
-            bgt_matches=bgt_matches or {},
-            bor_matches=bor_matches or {},
-        )
-        append_vegetation_appearance(model, targets=tree_appearance_targets)
+    build_context = config.build_context()
+    tree_targets = vegetation_module.attach_trees_to_model(
+        model,
+        tree_bundle if tree_bundle is not None else vegetation_module.EMPTY_BUNDLE,
+        build_context,
+        coords_sink=all_coords,
+    )
+    if tree_targets:
+        append_vegetation_appearance(model, targets=tree_targets)
 
     postcode6_step.attach_postcode6_areas_to_model(
         model,
+        build_context,
         areas=postcode6_areas or [],
         parsed_by_id=parsed_by_id,
         boundary_geom=boundary_geom,
-        gml_id_prefix=config.gml_id_prefix,
-        srs_name=config.srs_name,
-        srs_dimension=config.srs_dimension,
         coords_sink=all_coords,
     )
 
@@ -780,76 +662,9 @@ def _assemble_city_model(
     return model
 
 
-def _attach_trees_to_model(
-    model: CityModel,
-    trees: list[ParsedTree],
-    *,
-    gml_id_prefix: str,
-    srs_name: str,
-    srs_dimension: int,
-    coords_sink: list[Coord3D],
-    bgt_matches: dict[str, BgtTree],
-    bor_matches: dict[str, BorTree],
-) -> list[str]:
-    """Emit one ``veg:SolitaryVegetationObject`` per :class:`ParsedTree`.
-
-    Every tree gets geometry + CFTree morphometrics
-    (height, trunk diameter, crown diameter). When *bgt_matches*
-    contains an entry keyed on the tree's gtid, the builder also
-    attaches a ``core:externalReference`` pointing at the
-    authoritative BGT ``vegetatieobject_punt`` feature. When
-    *bor_matches* contains an entry, the Latin scientific name fills
-    ``veg:species`` (the only typed CityGML 2.0 vegetation slot the
-    BOR layer can fill honestly), the planting year goes to
-    ``gen:intAttribute name="plantingYear"``, and the remaining
-    fields (Dutch common name, height/diameter class bands,
-    protection status, growth form, standplaats) become
-    ``gen:stringAttribute`` siblings, plus a second
-    ``core:externalReference`` keyed on ``boom_id``. See
-    ``builders.vegetation._apply_bor_enrichment`` and
-    ``docs/mapping_city.md`` for the full mapping. The two
-    matches are independent: a tree may carry zero, one, or both
-    cross-references.
-
-    Tree crown vertices also widen the city envelope: if we skipped
-    them, a SolitaryVegetationObject extending past the building
-    footprint would clip at the final ``gml:boundedBy`` and render
-    with a dotted line above the camera in some viewers.
-
-    Returns the list of colorable surface ids (``#<gml:id>``) emitted
-    under each tree so the downstream vegetation appearance step can
-    consume them without a second ``iter_instances`` walk of the whole
-    city model. Mirrors how the per-pand build path returns
-    ``targets_by_gml_id`` to the energy-label appearance.
-    """
-    appearance_targets: list[str] = []
-    for tree in trees:
-        obj = build_solitary_vegetation_object(
-            tree,
-            gml_id_prefix=gml_id_prefix,
-            srs_name=srs_name,
-            srs_dimension=srs_dimension,
-            bgt_match=bgt_matches.get(tree.gtid),
-            bor_match=bor_matches.get(tree.gtid),
-        )
-        model.add(obj)
-        if obj.lod3_geometry is not None and obj.lod3_geometry.multi_surface is not None:
-            ms = obj.lod3_geometry.multi_surface
-            if ms.id:
-                appearance_targets.append(f"#{ms.id}")
-            appearance_targets.extend(
-                f"#{member.polygon.id}"
-                for member in ms.surface_member
-                if member.polygon is not None and member.polygon.id
-            )
-        for polygon in tree.polygons:
-            coords_sink.extend(polygon.exterior)
-            for hole in polygon.interiors:
-                coords_sink.extend(hole)
-    return appearance_targets
-
-
 # Per-Pand build execution (sequential vs multiprocessing pool) lives
 # in ``pand_executor`` so this module stays a recipe-style orchestrator.
-# The CBS Postcode6 step lives in ``postcode6.py`` (fetch + filter +
-# build + group-join + attach behind one seam).
+# The CBS Postcode6 step lives in ``postcode6.py`` and the CFTree +
+# BGT + Emmen-BOR vegetation step lives in ``vegetation.py``, each
+# owning fetch + filter + build + attach for one data type behind one
+# seam.

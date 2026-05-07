@@ -58,6 +58,7 @@ from ..bindings import (
 from ..gml_builders import build_multi_surface, newell_normal
 from ..namespaces import CS_NRG3_CELL_TYPE, CS_NRG3_RELATION_TYPE
 from .builders._common import UOM_AREA_M2, UOM_DEGREES
+from .config import BuildContext
 from .builders.building import (
     iter_lod2_thematic_classification,
     lod2_thematic_surface_gml_id,
@@ -628,9 +629,7 @@ def _inclination_from_normal(n_unit: tuple[float, float, float]) -> float:
 def attach_pv_collectors_to_building(
     building: Any,
     panels_for_pand: list[ProjectedPanel],
-    *,
-    srs_name: str,
-    srs_dimension: int,
+    build_context: BuildContext = BuildContext(),
 ) -> int:
     """Append one ``nrg3:PhotovoltaicCollector`` per panel; return the count.
 
@@ -691,8 +690,8 @@ def attach_pv_collectors_to_building(
             pv_gml_id=f"{_PV_ID_PREFIX}{pand_id}_{panel.original_fid}",
             roof_gml_id=roof_gml_id,
             panel=panel,
-            srs_name=srs_name,
-            srs_dimension=srs_dimension,
+            srs_name=build_context.srs_name,
+            srs_dimension=build_context.srs_dimension,
         )
         building.device.append(Device(photovoltaic_collector=pv))
     return len(panels_for_pand)

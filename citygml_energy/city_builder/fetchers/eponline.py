@@ -89,7 +89,7 @@ _HUISNUMMER_RE = re.compile(
 #   :mod:`citygml_energy.city_builder.energy_resources`, plus the
 #   per-VBO thermal-zone ``nrg3:QualifiedArea`` they normalise against.
 #   NL convention is semicolon separators with comma decimal markers
-#   (``28,5`` not ``28.5``); :func:`_parse_decimal` normalises that.
+#   (``28,5`` not ``28.5``); :func:`parse_decimal` normalises that.
 _COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     "postcode": ("Postcode",),
     "huisnummer": ("Huisnummer",),
@@ -163,7 +163,7 @@ class EnergyLabel:
     represented here; reviving any of them is a one-line addition.
 
     All energy-flow numerics (``energiebehoefte`` … ``berekende_co2_emissie``)
-    are stored as :class:`float` after :func:`_parse_decimal` has handled
+    are stored as :class:`float` after :func:`parse_decimal` has handled
     the Dutch comma decimal marker.
     """
 
@@ -414,7 +414,7 @@ def _parse_csv_from_zip(
         # path.
         if wanted_keys is not None:
             raw = zf.read(csv_names[0])
-            return _parse_csv_from_bulk_bytes(raw, wanted_ids=wanted_ids, wanted_keys=wanted_keys)
+            return parse_csv_from_bulk_bytes(raw, wanted_ids=wanted_ids, wanted_keys=wanted_keys)
 
         with zf.open(csv_names[0]) as binary:
             text = io.TextIOWrapper(binary, encoding="utf-8-sig", newline="")
@@ -423,7 +423,7 @@ def _parse_csv_from_zip(
             )
 
 
-def _parse_csv_from_bulk_bytes(
+def parse_csv_from_bulk_bytes(
     raw: bytes,
     *,
     wanted_ids: Iterable[str] | None,
@@ -489,7 +489,7 @@ def _filter_bulk_bytes_by_postcode(
 
     Hot loop; locals bound up front so the body avoids ``LOAD_GLOBAL``
     per iteration. Decodes as ``utf-8`` (not ``utf-8-sig``) because the
-    BOM was already consumed by :func:`_parse_csv_from_bulk_bytes`.
+    BOM was already consumed by :func:`parse_csv_from_bulk_bytes`.
     """
     readline = buf.readline
     set_contains = postcode_bytes_set.__contains__
@@ -801,7 +801,7 @@ def _iter_matching_rows(
     split_huisnummer = _split_huisnummer
     parse_ymd = _parse_yyyymmdd
     parse_int = _parse_int_or_none
-    parse_dec = _parse_decimal
+    parse_dec = parse_decimal
 
     for row in reader:
         row_len = len(row)
@@ -944,7 +944,7 @@ def _parse_int_or_none(raw: str) -> int | None:
         return None
 
 
-def _parse_decimal(raw: str) -> float | None:
+def parse_decimal(raw: str) -> float | None:
     """Parse a Dutch-decimal numeric cell (e.g. ``"28,5"``) to ``float``.
 
     EP-online's CSV is semicolon-separated and uses the Dutch comma

@@ -26,6 +26,7 @@ from citygml_energy.city_builder.energy_resources import (
 )
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
+from tests._factories import make_vbo
 
 # A canonical NTA 8800 Berekeningstype string. Tests that exercise the
 # four-resource emission path use this so the regime classifier resolves
@@ -34,20 +35,13 @@ _NTA8800_BEREKENINGSTYPE = "NTA 8800:2024 (basisopname woningbouw)"
 
 
 def _vbo(vbo_id: str = "0114010000000042") -> Verblijfsobject:
-    return Verblijfsobject(
+    """Emmen-style VBO (postcode 7881AA, Hoofdkanaal WZ)."""
+    return make_vbo(
         identificatie=vbo_id,
         pand_identificatie="0114100000000001",
-        gebruiksdoel=["woonfunctie"],
-        oppervlakte=85.0,
         status="Verblijfsobject in gebruik",
         postcode="7881AA",
-        huisnummer=42,
-        huisletter=None,
-        toevoeging=None,
-        openbare_ruimte_naam="Hoofdkanaal WZ",
-        woonplaats=None,
-        point=None,
-        properties={},
+        street="Hoofdkanaal WZ",
     )
 
 
