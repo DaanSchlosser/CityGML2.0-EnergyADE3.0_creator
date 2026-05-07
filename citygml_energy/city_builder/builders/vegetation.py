@@ -37,14 +37,11 @@ from ...bindings import (
 )
 from ...gml_builders import build_multi_surface
 from ...mapping import resolve_class
-from ...namespaces import (
-    CS_EMMEN_BOR_TREES,
-    DEFAULT_SRS_DIMENSION,
-    DEFAULT_SRS_NAME,
-)
+from ...namespaces import CS_EMMEN_BOR_TREES
 from ...schema_types import SOLITARY_VEGETATION_OBJECT
 from .._helpers import safe_gml_id, to_finite_float
 from ..cityjson_trees_parse import ParsedTree
+from ..config import BuildContext
 from ..fetchers.bgt import (
     BGT_INFORMATION_SYSTEM_URL,
     BgtTree,
@@ -96,10 +93,8 @@ _CFTREE_GENERIC_DOUBLE: frozenset[str] = frozenset({
 
 def build_solitary_vegetation_object(
     tree: ParsedTree,
+    build_context: BuildContext = BuildContext(),
     *,
-    gml_id_prefix: str = "",
-    srs_name: str = DEFAULT_SRS_NAME,
-    srs_dimension: int = DEFAULT_SRS_DIMENSION,
     bgt_match: BgtTree | None = None,
     bor_match: BorTree | None = None,
 ) -> Any:
@@ -181,13 +176,14 @@ def build_solitary_vegetation_object(
     # ``tools.merge_cftree_tiles`` (per-tile collisions are resolved at
     # merge time by re-numbering survivors), so the gml:id can be
     # derived directly from the gtid without tile namespacing.
-    gml_id = safe_gml_id(gml_id_prefix, "tree", tree.gtid)
+    gml_id = safe_gml_id(build_context.gml_id_prefix, "tree", tree.gtid)
     obj = tree_cls(id=gml_id, name=[Name(value=f"T_{tree.gtid}")])
 
     if tree.polygons:
         obj.lod3_geometry = _geometry_property_from_polygons(
             f"{gml_id}_lod3", tree.polygons,
-            srs_name=srs_name, srs_dimension=srs_dimension,
+            srs_name=build_context.srs_name,
+            srs_dimension=build_context.srs_dimension,
         )
 
     _apply_cftree_morphometrics(obj, tree.attributes)

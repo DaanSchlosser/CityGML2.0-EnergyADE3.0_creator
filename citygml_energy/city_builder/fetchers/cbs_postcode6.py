@@ -23,10 +23,16 @@ pipeline maps:
 CBS rounds both values to fifties and **suppresses** them when the
 postcode area contains fewer than 6 occupied dwellings (privacy rule).
 The WFS surfaces the suppression as either ``null`` or one of the
-sentinel integers ``-99997`` / ``-99999``; this fetcher coerces all
-three forms to Python ``None`` so a downstream consumer can do
-``if stats.gas is None`` instead of guarding against the negative
-sentinels.
+sentinel integers ``-99995`` / ``-99997`` / ``-99999``. The two energy
+fields preserve the raw sentinel (CBS's documented "no measurement
+here" code rides as the value verbatim, so the downstream
+``nrg3:UrbanFunctionArea`` ships an ``nrg3:Energy`` resource for every
+postcode and a consumer reading the GML can distinguish "CBS sentinel
+-99997" from "CBS shipped a real measurement"). Only ``null`` —
+genuinely absent — folds to Python ``None`` and skips the resource
+emission. The dwelling-count fields keep the older "any sentinel folds
+to None" coercion: a negative dwelling count would be incoherent in a
+``gen:intAttribute`` whose semantics is a physical count.
 
 The remaining ~130 columns (demographics, amenity proximities,
 educational attainment, etc.) are out of scope: the city pipeline only
@@ -133,12 +139,16 @@ class Postcode6Area:
             normalises defensively in case a future vintage drifts.
         gemiddeld_gasverbruik_woning: average annual natural-gas
             consumption per occupied private dwelling in this postcode,
-            in m³/year, rounded to nearest 50. ``None`` when CBS
-            suppressed the value (fewer than 6 occupied dwellings) or
-            when the WFS shipped a known sentinel.
+            in m³/year, rounded to nearest 50. CBS-shipped sentinels
+            (``-99995`` / ``-99997`` / ``-99999`` — see module docstring
+            for the definitions) are preserved verbatim so the value
+            survives into ``nrg3:Energy/amount`` as the literal CBS
+            datum. ``None`` only when the WFS shipped no value at all
+            (``null`` / missing).
         gemiddeld_elektriciteitsverbruik_woning: same shape, kWh/year,
             individual connections only (excludes collective and
-            self-generated PV).
+            self-generated PV). Same sentinel-vs-null contract as the
+            gas field.
         aantal_woningen: total dwellings registered in BAG for the
             postcode. ``None`` when missing. Surfaced for the builder
             so `nrg3:UrbanFunctionArea` can carry the dwelling count
@@ -213,8 +223,8 @@ def fetch_postcode6_areas(
         areas.append(
             Postcode6Area(
                 postcode=postcode,
-                gemiddeld_gasverbruik_woning=_value_or_suppressed(props.get(_F_GAS)),
-                gemiddeld_elektriciteitsverbruik_woning=_value_or_suppressed(
+                gemiddeld_gasverbruik_woning=_int_preserve_sentinel(props.get(_F_GAS)),
+                gemiddeld_elektriciteitsverbruik_woning=_int_preserve_sentinel(
                     props.get(_F_ELEC)
                 ),
                 aantal_woningen=_value_or_suppressed(props.get(_F_AANTAL_WONINGEN)),
@@ -257,7 +267,7 @@ def normalise_postcode(value: Any) -> str | None:
 
 
 def _value_or_suppressed(value: Any) -> int | None:
-    """Coerce a CBS energy / count field to ``int`` or ``None`` (suppressed).
+    """Coerce a CBS count field to ``int`` or ``None`` (suppressed).
 
     Treats ``None`` / ``""`` as suppressed, casts through float so a
     rare ``"1850.0"`` string round-trips, and folds any negative
@@ -268,6 +278,16 @@ def _value_or_suppressed(value: Any) -> int | None:
     any plausible real measurement). A genuine zero survives as
     ``0``, but that is exceedingly unlikely on a populated PC6 (CBS
     rounds to 50).
+
+    Used for the dwelling-count fields (``aantalWoningen``,
+    ``aantalNietBewoondeWoningen``), where a negative value is
+    physically incoherent and the downstream ``gen:intAttribute``
+    would carry a meaningless number. The two energy fields take a
+    different path via :func:`_int_preserve_sentinel`: their CBS
+    sentinel rides into ``nrg3:Energy/amount`` verbatim so the
+    downstream consumer can tell "CBS sentinel" from "CBS shipped a
+    real measurement" by inspecting the value, without needing the
+    fetcher to make that call for them.
     """
     coerced = to_int(value, logger=_LOG, label="CBS Postcode6")
     if coerced is None:
@@ -275,6 +295,23 @@ def _value_or_suppressed(value: Any) -> int | None:
     if coerced <= _SUPPRESSION_THRESHOLD:
         return None
     return coerced
+
+
+def _int_preserve_sentinel(value: Any) -> int | None:
+    """Coerce a CBS energy field to ``int`` or ``None`` (genuinely missing).
+
+    Mirrors :func:`_value_or_suppressed`'s null/empty/coercion
+    handling but does **not** collapse the documented CBS sentinel
+    block ``-99995`` / ``-99997`` / ``-99999`` to ``None``. The raw
+    CBS value rides through and lands on ``nrg3:Energy/amount``
+    verbatim, so a downstream consumer can distinguish the three
+    sentinel meanings (privacy-suppressed vs. deferred publication
+    vs. unknown) — and from a real positive measurement — by reading
+    the amount itself. Only ``None`` / ``""`` (the WFS shipped no
+    value at all) folds to ``None`` and triggers a "no resource
+    emitted" path in the builder.
+    """
+    return to_int(value, logger=_LOG, label="CBS Postcode6")
 
 
 def _fetch_layer(

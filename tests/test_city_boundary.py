@@ -4,7 +4,7 @@ Covers:
 
 * :func:`load_boundary_polygon` reads a single GeoJSON Feature and raises
   actionable errors on FeatureCollection input, wrong CRS, or bad geometry.
-* :func:`_filter_by_boundary` keeps only buildings whose 2D LoD 0
+* :func:`filter_buildings_by_boundary` keeps only buildings whose 2D LoD 0
   footprint intersects the polygon, using "any overlap" semantics.
 * Config validation rejects ``bbox`` + ``boundary`` set simultaneously,
   rejects non-GeoJSON paths, and accepts a ``boundary`` block on its own.
@@ -27,7 +27,7 @@ from citygml_energy.city_builder.boundary import (
 )
 from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
 from citygml_energy.city_builder.config import CityBuildError, load_city_config
-from citygml_energy.city_builder.pipeline import _filter_by_boundary
+from citygml_energy.city_builder.pipeline import filter_buildings_by_boundary
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +58,7 @@ def test_load_boundary_polygon_heals_concave_self_intersecting_ring(tmp_path: Pa
 
 
 # ---------------------------------------------------------------------------
-# _filter_by_boundary
+# filter_buildings_by_boundary
 # ---------------------------------------------------------------------------
 
 
@@ -83,7 +83,7 @@ def _lod0_footprint(
     )
 
 
-def test_filter_by_boundary_keeps_overlapping_drops_disjoint() -> None:
+def testfilter_buildings_by_boundary_keeps_overlapping_drops_disjoint() -> None:
     # C-shaped concave boundary: outside rectangle with a notch cut out
     # of the right side. A small square in the notch is "outside" the
     # boundary even though it falls inside the bbox.
@@ -107,12 +107,12 @@ def test_filter_by_boundary_keeps_overlapping_drops_disjoint() -> None:
     parsed_by_id = {
         pb.pand_id: pb for pb in (inside, straddling, in_notch, outside)
     }
-    kept = _filter_by_boundary(parsed_by_id, c_shape)
+    kept = filter_buildings_by_boundary(parsed_by_id, c_shape)
     # Any-overlap semantics: inside + straddling are kept; notch + far are dropped.
     assert set(kept) == {"inside_1", "straddle_1"}
 
 
-def test_filter_by_boundary_drops_buildings_without_lod0() -> None:
+def testfilter_buildings_by_boundary_drops_buildings_without_lod0() -> None:
     """Defensive: a building with no LoD 0 footprint cannot be tested for
     boundary membership, so it is dropped rather than silently kept.
     """
@@ -121,7 +121,7 @@ def test_filter_by_boundary_drops_buildings_without_lod0() -> None:
         attributes={"identificatie": "no_lod0"},
         geometries={},
     )
-    kept = _filter_by_boundary(
+    kept = filter_buildings_by_boundary(
         {"no_lod0": pb},
         Polygon([(0, 0), (10, 0), (10, 10), (0, 10), (0, 0)]),
     )

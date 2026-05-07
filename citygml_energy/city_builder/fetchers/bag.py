@@ -193,7 +193,7 @@ def fetch_verblijfsobjecten(
                 # caller-provided ``city_name`` argument that loses this
                 # within-municipality resolution.
                 woonplaats=_optional_str(props.get("woonplaats")),
-                point=_extract_point(feature.get("geometry")),
+                point=extract_point(feature.get("geometry")),
                 properties=props,
             )
         )
@@ -267,7 +267,7 @@ def _subdivide(
     return out
 
 
-def _extract_point(geometry: Any) -> tuple[float, float] | None:
+def extract_point(geometry: Any) -> tuple[float, float] | None:
     """Return the ``(x, y)`` of a GeoJSON Point geometry, or ``None``.
 
     PDOK BAG WFS returns VBO geometries as GeoJSON ``Point`` features

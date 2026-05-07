@@ -1,15 +1,29 @@
-"""CityGML Appearance builder: paints buildings by averaged EPC label.
+"""CityGML Appearance builders: one ``app:Appearance`` per visual theme.
 
-Produces a single ``app:Appearance`` (theme ``"energyLabel"``) attached
-to the :class:`CityModel` via ``app:appearanceMember``. The appearance
-carries one ``app:X3DMaterial`` per EU-palette color that appears in
-the city: every building's surfaces are grouped by the averaged EPC
-letter, and each group becomes the ``<app:target>`` list of one
-material. Buildings without any energy label are colored grey (the
-fallback for :func:`epc_score.label_to_rgb`).
+The module emits up to three independent appearances on the same
+:class:`CityModel`, each attached via ``app:appearanceMember`` and
+each carrying its own ``app:theme`` so a viewer's theme switcher can
+toggle them in isolation:
 
-Targeting rule: we target every ``gml:MultiSurface``, ``gml:CompositeSurface``
-and ``gml:Polygon`` id found under each building:
+* :func:`append_energy_label_appearance` (theme ``"energyLabel"``) —
+  paints every building's surfaces by averaged EPC label, with one
+  ``app:X3DMaterial`` per EU-palette color (grey fallback for
+  buildings without a matched label, via
+  :func:`epc_score.label_to_rgb`).
+* :func:`append_pv_panel_appearance` (theme ``"pvPanels"``) — paints
+  every PV collector dark blue.
+* :func:`append_vegetation_appearance` (theme ``"vegetation"``) —
+  paints every solitary-vegetation object foliage-green.
+
+PV and vegetation share the same shape (one color, one theme, one
+material over a set of targets) and route through
+:func:`_append_uniform_appearance`; the energy-label painter is
+genuinely different (per-letter grouping, multiple materials) and
+constructs its appearance inline.
+
+Targeting rule (used by every theme): we target every
+``gml:MultiSurface``, ``gml:CompositeSurface`` and ``gml:Polygon`` id
+found under the relevant feature subtree. For buildings:
 
 * LoD 0 → the ``gml:MultiSurface`` inside ``bldg:lod0FootPrint`` plus each
   of its member ``gml:Polygon`` elements.
@@ -174,26 +188,13 @@ def append_pv_panel_appearance(city_model: Any) -> None:
 
     A no-op when the model contains no PV collectors.
     """
-    targets = _collect_pv_surface_target_ids(city_model)
-    if not targets:
-        return
-
-    appearance_cls = resolve_class(APPEARANCE)
-    material_cls = resolve_class(X3D_MATERIAL)
-    surface_data_inner = _surface_data_property_type(appearance_cls)
-
-    material = surface_data_inner(
-        x3_dmaterial=material_cls(
-            diffuse_color=list(PV_PANEL_DIFFUSE_COLOR),
-            target=targets,
-        )
-    )
-    appearance = appearance_cls(
-        id=f"appearance_{PV_PANEL_THEME}",
+    targets = _collect_per_feature_targets(city_model, PhotovoltaicCollector)
+    _append_uniform_appearance(
+        city_model,
         theme=PV_PANEL_THEME,
-        surface_data_member=[material],
+        diffuse_color=PV_PANEL_DIFFUSE_COLOR,
+        targets=targets,
     )
-    city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
 
 
 def append_vegetation_appearance(
@@ -209,8 +210,9 @@ def append_vegetation_appearance(
     (mirroring how :func:`append_energy_label_appearance` consumes
     ``targets_by_gml_id`` from the per-pand build). When ``None`` is
     supplied (e.g., tests or future callers that construct an
-    already-populated model), :func:`_collect_vegetation_surface_target_ids`
-    falls back to a single ``iter_instances`` walk.
+    already-populated model), :func:`_collect_per_feature_targets`
+    falls back to a single ``iter_instances`` walk filtered to
+    :class:`SolitaryVegetationObject`.
 
     Per-polygon targets accompany the container targets for the same
     viewer-compatibility reason as the energy-label appearance (see
@@ -226,7 +228,71 @@ def append_vegetation_appearance(
     A no-op when the model contains no vegetation objects.
     """
     if targets is None:
-        targets = _collect_vegetation_surface_target_ids(city_model)
+        targets = _collect_per_feature_targets(city_model, SolitaryVegetationObject)
+    _append_uniform_appearance(
+        city_model,
+        theme=VEGETATION_THEME,
+        diffuse_color=VEGETATION_DIFFUSE_COLOR,
+        targets=targets,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Internals
+# ---------------------------------------------------------------------------
+
+
+def _collect_per_feature_targets(
+    city_model: Any, feature_cls: type
+) -> list[str]:
+    """Return ``#<gml:id>`` refs for every colorable surface under instances of *feature_cls*.
+
+    Walks the underlying xsdata tree once (:func:`iter_instances` is
+    cycle-safe and yields each dataclass node once); for each instance
+    of *feature_cls*, descends into its subtree to pick up
+    ``gml:MultiSurface`` and ``gml:Polygon`` ids. Used by the PV
+    (:class:`PhotovoltaicCollector`) and vegetation
+    (:class:`SolitaryVegetationObject`) painters; the energy-label
+    painter walks the per-Building subtree via
+    :func:`collect_surface_target_ids` instead because each building
+    needs its own per-letter grouping.
+
+    Accepts either the :class:`~citygml_energy.core.CityModel` wrapper
+    or the raw xsdata ``CityModelType``: :class:`CityModel` is not a
+    dataclass so :func:`iter_instances` will not descend into it; we
+    unwrap to the ``.xsd`` attribute when present.
+    """
+    root = getattr(city_model, "xsd", city_model)
+    targets: list[str] = []
+    for feat in iter_instances(root):
+        if not isinstance(feat, feature_cls):
+            continue
+        targets.extend(
+            f"#{sub.id}"
+            for sub in iter_instances(feat)
+            if isinstance(sub, (MultiSurface, Polygon)) and sub.id
+        )
+    return targets
+
+
+def _append_uniform_appearance(
+    city_model: Any,
+    *,
+    theme: str,
+    diffuse_color: tuple[float, float, float],
+    targets: list[str],
+) -> None:
+    """Append an ``app:Appearance`` with one ``app:X3DMaterial`` painting *targets* in *diffuse_color*.
+
+    Used by the PV and vegetation painters: both want exactly one color
+    over one set of targets, distinguished only by theme. The
+    energy-label painter does its own multi-material construction (one
+    material per averaged EPC letter) and does not route through this
+    helper.
+
+    A no-op when *targets* is empty so the GML stays free of empty
+    Appearances on models that have no features of the relevant kind.
+    """
     if not targets:
         return
 
@@ -236,70 +302,16 @@ def append_vegetation_appearance(
 
     material = surface_data_inner(
         x3_dmaterial=material_cls(
-            diffuse_color=list(VEGETATION_DIFFUSE_COLOR),
+            diffuse_color=list(diffuse_color),
             target=targets,
         )
     )
     appearance = appearance_cls(
-        id=f"appearance_{VEGETATION_THEME}",
-        theme=VEGETATION_THEME,
+        id=f"appearance_{theme}",
+        theme=theme,
         surface_data_member=[material],
     )
     city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
-
-
-# ---------------------------------------------------------------------------
-# Internals
-# ---------------------------------------------------------------------------
-
-
-def _collect_vegetation_surface_target_ids(city_model: Any) -> list[str]:
-    """Return ``#<gml:id>`` refs for every colorable surface under a tree.
-
-    Mirrors :func:`_collect_pv_surface_target_ids`. Yields one target
-    per ``gml:MultiSurface`` container plus one per member
-    ``gml:Polygon``, covering both viewers that resolve container
-    targets and those that only resolve per-polygon targets.
-    """
-    root = getattr(city_model, "xsd", city_model)
-    targets: list[str] = []
-    for tree in iter_instances(root):
-        if not isinstance(tree, SolitaryVegetationObject):
-            continue
-        targets.extend(
-            f"#{sub.id}"
-            for sub in iter_instances(tree)
-            if isinstance(sub, (MultiSurface, Polygon)) and sub.id
-        )
-    return targets
-
-
-def _collect_pv_surface_target_ids(city_model: Any) -> list[str]:
-    """Return ``#<gml:id>`` refs for every colorable surface under a PV collector.
-
-    Walks the underlying xsdata tree once (:func:`iter_instances` is
-    cycle-safe and yields each dataclass node once), and for each
-    :class:`PhotovoltaicCollector` descends into its subtree to pick up
-    MultiSurface / Polygon ids. Re-using the per-collector subtree walk
-    keeps the rule consistent with :func:`collect_surface_target_ids`
-    and avoids collecting non-PV surfaces by accident.
-
-    Accepts either the :class:`~citygml_energy.core.CityModel` wrapper or
-    the raw xsdata ``CityModelType``: :class:`CityModel` is not a
-    dataclass so :func:`iter_instances` will not descend into it; we
-    unwrap to the ``.xsd`` attribute when present.
-    """
-    root = getattr(city_model, "xsd", city_model)
-    targets: list[str] = []
-    for pv in iter_instances(root):
-        if not isinstance(pv, PhotovoltaicCollector):
-            continue
-        targets.extend(
-            f"#{sub.id}"
-            for sub in iter_instances(pv)
-            if isinstance(sub, (MultiSurface, Polygon)) and sub.id
-        )
-    return targets
 
 
 def _resolve_surface_targets(

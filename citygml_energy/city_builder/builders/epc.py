@@ -14,7 +14,7 @@ Splits cleanly along the per-VBO / per-Pand line:
   ``nrg3:Metadata`` block on the Building.
 
 * :func:`_apply_eponline_classification_to_building_unit` and
-  :func:`_build_epc` operate on BuildingUnits. NTA-8800's
+  :func:`build_epc` operate on BuildingUnits. NTA-8800's
   ``Gebouwsubtype``, the renewable-energy share, and the EP-online
   energy resources are genuinely per-VBO (mixed-use Pand, partial
   conversion), so they live on the BuildingUnit alongside an
@@ -43,6 +43,7 @@ from ...namespaces import (
 from ...schema_types import ENERGY_PERFORMANCE_CERTIFICATE
 from .._helpers import safe_gml_id
 from ..address_match import ResolvedAddress
+from ..config import BuildContext
 from ..energy_resources import UOM_KWH_PER_M2_PER_A, UOM_MJ_PER_A
 from ..fetchers.eponline import EnergyLabel
 
@@ -384,10 +385,9 @@ def _apply_eponline_classification_to_building_unit(
 # ---------------------------------------------------------------------------
 
 
-def _build_epc(
+def build_epc(
     resolved: ResolvedAddress,
-    *,
-    gml_id_prefix: str,
+    build_context: BuildContext = BuildContext(),
 ) -> Any | None:
     """Build a ``nrg3:EnergyPerformanceCertificate`` for *resolved*'s VBO.
 
@@ -434,7 +434,7 @@ def _build_epc(
     # :func:`_apply_eponline_classification_to_building_unit` and on the
     # EPC's ``certificationMethod`` string composed below.
     epc = epc_cls(
-        id=safe_gml_id(gml_id_prefix, "epc", resolved.vbo.identificatie),
+        id=safe_gml_id(build_context.gml_id_prefix, "epc", resolved.vbo.identificatie),
         type_value=CodeType(value="totalEnergyDemand", code_space=CS_NRG3_EPC_TYPE),
         label=label.energieklasse,
     )

@@ -13,11 +13,13 @@ protection status per individually-registered tree.
 The fetcher mirrors :mod:`citygml_energy.city_builder.fetchers.bgt`:
 
 * **Cross-reference + attribute fetcher.** Unlike BGT, this register
-  carries genuine attributes; consumers in
-  :mod:`citygml_energy.city_builder.tree_enrichment` and
-  :mod:`citygml_energy.city_builder.builders` write them into native
-  CityGML 2.0 vegetation slots (``species``, ``class``, ``function``)
-  plus ``gen:*Attribute`` siblings for fields that have no native slot.
+  carries genuine attributes; the city pipeline calls
+  :func:`citygml_energy.city_builder.tree_matching.match_nearest_within`
+  inline to join BOR points to CFTree trees, and consumers in
+  :mod:`citygml_energy.city_builder.builders` write the matched
+  attributes into native CityGML 2.0 vegetation slots (``species``,
+  ``class``, ``function``) plus ``gen:*Attribute`` siblings for fields
+  that have no native slot.
 * **Bbox query in EPSG:28992.** Server returns features in RD New, the
   project's working CRS, so no reprojection.
 * **Disk-cached via the shared :class:`CachedSession`.** Subsequent

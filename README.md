@@ -872,12 +872,24 @@ by concern:
 - **[test_city_pipeline.py](tests/test_city_pipeline.py)**:
   end-to-end orchestrator with fully-mocked fetchers, asserting XSD
   validity of the generated city GML.
+- **[test_city_pand_executor.py](tests/test_city_pand_executor.py)**:
+  per-Pand orchestration integration tests — locks the cross-builder
+  ordering inside ``_build_pand_artifacts`` (build_building →
+  attach_building_units → BAG year metadata → EP-online Pand
+  attribution → optional PV) and the ``_BuildParams`` parameter-object
+  threading. See [ADR-0002](docs/adr/0002-keep-per-pand-builders-individually-public.md).
 - **[test_city_builders.py](tests/test_city_builders.py)**,
   **[test_city_buildingunit_point.py](tests/test_city_buildingunit_point.py)**,
   **[test_city_cityjson_parse.py](tests/test_city_cityjson_parse.py)**,
   **[test_city_address_match.py](tests/test_city_address_match.py)**,
   **[test_city_eponline.py](tests/test_city_eponline.py)**,
+  **[test_city_energy_resources.py](tests/test_city_energy_resources.py)**,
   **[test_city_appearance.py](tests/test_city_appearance.py)**,
+  **[test_city_bgt.py](tests/test_city_bgt.py)**,
+  **[test_city_emmen_bor.py](tests/test_city_emmen_bor.py)**,
+  **[test_city_pv_panels.py](tests/test_city_pv_panels.py)**,
+  **[test_city_bag.py](tests/test_city_bag.py)**,
+  **[test_city_municipality.py](tests/test_city_municipality.py)**,
   **[test_epc_score.py](tests/test_epc_score.py)**,
   **[test_city_config.py](tests/test_city_config.py)**:
   component-level tests for each stage of §12.
@@ -999,7 +1011,10 @@ tests/                          Per-building, city-scale, and infra test modules
 docs/
 ├── mapping_building.md         Per-building pipeline: BAG / EP-online field-to-XSD mapping notes
 ├── mapping_city.md             City-scale pipeline: data-source mapping and design decisions
-└── vegetation_integration_report.md  CFTree + BGT + BOR vegetation integration analysis
+├── vegetation_integration_report.md  CFTree + BGT + BOR vegetation integration analysis
+└── adr/                        Architecture Decision Records (rejection rationales, design constraints)
+    ├── 0001-keep-label-selection-and-energy-resources-separate.md
+    └── 0002-keep-per-pand-builders-individually-public.md
 generated/                      Pipeline output (git-ignored)
 ```
 
@@ -1054,9 +1069,21 @@ CityGML + Energy ADE file for an entire Dutch municipality by combining:
   LoD 3 crown + trunk meshes produced externally by
   [CFTree](https://github.com/NoahAlting/CFTree) from AHN LiDAR, loaded
   as `veg:SolitaryVegetationObject` features with height / crown /
-  trunk morphometrics. Full rationale, data-source mapping, and
-  CityGML + Energy ADE model-fit analysis in
+  trunk morphometrics. Optionally enriched by **BGT** (`vegetatieobject_punt`,
+  authoritative-register cross-reference at 4 m centroid radius) and
+  **Emmen BOR** (`bor_groen_bomen_beschermd`, species + planting year
+  + diameter classes for the AOI's tree register). Full rationale,
+  data-source mapping, and CityGML + Energy ADE model-fit analysis in
   [`docs/vegetation_integration_report.md`](docs/vegetation_integration_report.md).
+- **CBS Postcode6** (optional, via the `cbs_postcode6` config block):
+  per-6-position-postcode dwelling-energy aggregates from PDOK's CBS
+  WFS (gas m³/yr, electricity kWh/yr), emitted as one
+  `nrg3:UrbanFunctionArea` per PC6 polygon with `grp:groupMember`
+  xlinks to the constituent buildings via 2D centroid-in-polygon
+  containment. CBS suppression sentinels (`-99997` / `-99995` /
+  `-99999`) are passed through verbatim into `nrg3:Energy/amount` so
+  the literal CBS row round-trips; consumers must filter on amount
+  sign. See [docs/mapping_city.md § 12](docs/mapping_city.md).
 
 The workflow lives behind its own JSON config
 ([`inputs/cities/emmer-compascuum_small-area.json`](inputs/cities/emmer-compascuum_small-area.json))
@@ -1223,9 +1250,8 @@ citygml_energy/city_builder/
 │   └── vegetation.py              veg:SolitaryVegetationObject (CFTree morphometrics + BGT/BOR enrichment)
 ├── pv_panels.py               GeoPackage panel polygons → nrg3:PhotovoltaicCollector on LoD 2 roofs
 ├── vegetation.py              CFTree loader + bbox-and-boundary clip
-├── tree_matching.py           Generic shapely-STRtree nearest-neighbour join (BGT + BOR)
-├── bgt_match.py               BGT-specific cross-reference using tree_matching
-├── tree_enrichment.py         Optional CFTree attribute enrichment from Emmen BOR
+├── tree_matching.py           Generic shapely-STRtree nearest-neighbour join (BGT + BOR call inline from pipeline.py)
+├── postcode6.py               CBS Postcode6 → nrg3:UrbanFunctionArea (fetch + boundary clip + group-member join)
 ├── pand_executor.py           Per-Pand build executor (sequential / multiprocessing pool)
 ├── pipeline.py                Orchestrator; build_city_model(config)
 └── fetchers/
@@ -1234,7 +1260,8 @@ citygml_energy/city_builder/
     ├── threedbag.py           FlatGeoBuf tile index + CityJSON downloads
     ├── eponline.py            Bulk Mutatiebestand CSV (ZIP)
     ├── bgt.py                 BGT vegetatieobject_punt (authoritative tree register)
-    └── emmen_bor.py           Gemeente Emmen BOR Beheer Openbare Ruimte tree register (species, planting year, …)
+    ├── emmen_bor.py           Gemeente Emmen BOR Beheer Openbare Ruimte tree register (species, planting year, …)
+    └── cbs_postcode6.py       CBS Postcode6 PDOK WFS → per-postcode dwelling-energy aggregates
 
 examples/create_city.py              CLI + library entry point (-v for INFO, -vv for DEBUG)
 tools/generate_city_input_schema.py  Regenerate schemas/city_input.schema.json

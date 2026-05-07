@@ -8,74 +8,54 @@ tests assert both the in-memory dataclass shape and the serialised XML.
 
 from __future__ import annotations
 
-from citygml_energy._step import GeometryPolygon
-from citygml_energy.city_builder.address_match import ResolvedAddress
 from citygml_energy.city_builder.builders import (
     attach_building_units_to_building,
     build_address,
     build_building,
 )
-from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
-from citygml_energy.city_builder.fetchers.bag import Verblijfsobject, _extract_point
+from citygml_energy.city_builder.fetchers.bag import extract_point
+from tests._factories import (
+    make_parsed_building,
+    make_resolved_address,
+    make_square_polygon,
+    make_vbo,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-def _vbo(point: tuple[float, float] | None) -> Verblijfsobject:
-    return Verblijfsobject(
-        identificatie="0503010000000042",
-        pand_identificatie="0503100000000001",
-        gebruiksdoel=["woonfunctie"],
-        oppervlakte=85.0,
-        status=None,
-        postcode="2628CD",
-        huisnummer=42,
-        huisletter=None,
-        toevoeging=None,
-        openbare_ruimte_naam="Mekelweg",
-        woonplaats=None,
-        point=point,
-        properties={},
-    )
+def _resolved(point: tuple[float, float] | None):
+    """Resolved address parametrised on the VBO's locator point."""
+    return make_resolved_address(vbo=make_vbo(point=point))
 
 
-def _resolved(point: tuple[float, float] | None) -> ResolvedAddress:
-    return ResolvedAddress(vbo=_vbo(point), energy_label=None)
-
-
-def _parsed() -> ParsedBuilding:
-    poly = SemanticPolygon(
-        polygon=GeometryPolygon(
-            exterior=[(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0)],
-        ),
-        surface_type="GroundSurface",
-    )
-    return ParsedBuilding(
-        pand_id="0503100000000001",
+def _parsed():
+    """Single-polygon LoD 0 footprint, no 3DBAG attributes."""
+    return make_parsed_building(
         attributes={},
-        geometries={"0": [poly]},
+        geometries={"0": [make_square_polygon(0.0, "GroundSurface")]},
     )
 
 
 # ---------------------------------------------------------------------------
-# _extract_point (GeoJSON parser)
+# extract_point (GeoJSON parser)
 # ---------------------------------------------------------------------------
 
 
-def test_extract_point_reads_geojson_point() -> None:
-    assert _extract_point({"type": "Point", "coordinates": [85000.5, 446500.25]}) == (
+def testextract_point_reads_geojson_point() -> None:
+    assert extract_point({"type": "Point", "coordinates": [85000.5, 446500.25]}) == (
         85000.5,
         446500.25,
     )
 
 
-def test_extract_point_rejects_non_point_geometries() -> None:
-    assert _extract_point({"type": "Polygon", "coordinates": [[[0, 0], [1, 0]]]}) is None
-    assert _extract_point(None) is None
-    assert _extract_point({"type": "Point"}) is None
-    assert _extract_point({"type": "Point", "coordinates": [1.0]}) is None
+def testextract_point_rejects_non_point_geometries() -> None:
+    assert extract_point({"type": "Polygon", "coordinates": [[[0, 0], [1, 0]]]}) is None
+    assert extract_point(None) is None
+    assert extract_point({"type": "Point"}) is None
+    assert extract_point({"type": "Point", "coordinates": [1.0]}) is None
 
 
 # ---------------------------------------------------------------------------

@@ -157,7 +157,15 @@ def _index_labels(
 
 
 def _label_timestamp(label: EnergyLabel) -> tuple[int, int, int]:
-    """Ordering key: ``(registratiedatum, opnamedatum, reg != None)``."""
+    """Ordering key: ``(registratiedatum, opnamedatum, reg != None)``.
+
+    Changing this ordering can silently flip which calculation regime
+    gets emitted on the BuildingUnit (NTA 8800 vs legacy NEN-7120).
+    The cross-module invariant is captured by tests in
+    ``tests/test_city_address_match.py``; see ADR-0001 for the
+    rationale on keeping label selection separate from regime-aware
+    resource emission.
+    """
     reg = label.registratiedatum
     opname = label.opnamedatum
     return (

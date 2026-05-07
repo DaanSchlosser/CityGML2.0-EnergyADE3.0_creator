@@ -14,48 +14,29 @@ from citygml_energy.city_builder.builders import (
     build_building,
 )
 from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
+from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
 
 
-def _square(z: float, surface_type: str | None = None) -> SemanticPolygon:
-    return SemanticPolygon(
-        polygon=GeometryPolygon(
-            exterior=[(0.0, 0.0, z), (1.0, 0.0, z), (1.0, 1.0, z), (0.0, 1.0, z)],
-        ),
-        surface_type=surface_type,
-    )
+from tests._factories import make_parsed_building, make_square_polygon, make_vbo
+
+_square = make_square_polygon
 
 
 def _parsed() -> ParsedBuilding:
-    return ParsedBuilding(
-        pand_id="0503100000000001",
-        attributes={"oorspronkelijkbouwjaar": 1985},
-        geometries={
-            "0": [_square(0.0, "GroundSurface")],
-            "1": [_square(0.0), _square(3.0)],
-        },
-    )
+    return make_parsed_building()
 
 
 def _vbo(
     street: str = "Mekelweg",
     point: tuple[float, float] | None = None,
 ) -> Verblijfsobject:
-    return Verblijfsobject(
-        identificatie="0503010000000042",
-        pand_identificatie="0503100000000001",
-        gebruiksdoel=["woonfunctie"],
-        oppervlakte=85.0,
+    """Mekelweg-style VBO with status set (used by Building unit tests)."""
+    return make_vbo(
         status="Verblijfsobject in gebruik",
-        postcode="2628CD",
-        huisnummer=42,
-        huisletter=None,
-        toevoeging=None,
-        openbare_ruimte_naam=street,
-        woonplaats=None,
+        street=street,
         point=point,
-        properties={},
     )
 
 
@@ -90,13 +71,13 @@ def test_build_building_sets_id_and_year_of_construction() -> None:
 
 
 def test_build_building_attaches_only_requested_lods() -> None:
-    only_lod0 = build_building(_parsed(), lods=(0,))
+    only_lod0 = build_building(_parsed(), BuildContext(lods=(0,)))
     assert only_lod0.lod0_foot_print is not None
     assert only_lod0.lod1_solid is None
 
 
 def test_build_building_lod1_is_solid_with_composite_surface() -> None:
-    building = build_building(_parsed(), lods=(1,))
+    building = build_building(_parsed(), BuildContext(lods=(1,)))
     shell = building.lod1_solid.solid.exterior.composite_surface
     assert shell.id.endswith("_lod1_shell")
 
@@ -130,7 +111,7 @@ def test_build_building_lod0_preserves_source_z() -> None:
             "1": [_square(13.35), _square(16.9)],
         },
     )
-    building = build_building(parsed, lods=(0,))
+    building = build_building(parsed, BuildContext(lods=(0,)))
     for ring in _posns_of_lod0(building):
         zs = ring[2::3]
         assert all(z == 0.0 for z in zs), f"expected all z=0.0, got {zs}"
@@ -172,7 +153,7 @@ def test_lod2_emits_one_thematic_surface_per_polygon() -> None:
     only meaningful when the surface is actually planar, so the split
     is structurally required, not cosmetic.
     """
-    building = build_building(_multi_facet_parsed(), lods=(2,))
+    building = build_building(_multi_facet_parsed(), BuildContext(lods=(2,)))
 
     # 7 source polygons → 7 thematic surfaces, one per polygon, no merging.
     assert len(building.bounded_by) == 7
@@ -198,7 +179,7 @@ def test_lod2_thematic_surface_ids_are_per_type_one_based_in_source_order() -> N
     validation accepts dangling intra-document hrefs, so a regression
     test is the only safety net.
     """
-    building = build_building(_multi_facet_parsed(), lods=(2,))
+    building = build_building(_multi_facet_parsed(), BuildContext(lods=(2,)))
 
     by_kind: dict[str, list[str]] = {"ground": [], "wall": [], "roof": []}
     for wrapper in building.bounded_by:
@@ -287,7 +268,7 @@ def test_lod2_each_surface_carries_total_surface_area() -> None:
     emitted surface in m² (uom token matches the KIT viewer's
     UOMList.xml ``m2`` primary id).
     """
-    building = build_building(_multi_facet_parsed(), lods=(2,))
+    building = build_building(_multi_facet_parsed(), BuildContext(lods=(2,)))
     for wrapper in building.bounded_by:
         surf = wrapper.ground_surface or wrapper.wall_surface or wrapper.roof_surface
         assert surf is not None
@@ -327,7 +308,7 @@ def test_lod2_ground_surface_inclination_is_180_with_no_azimuth() -> None:
             ],
         },
     )
-    building = build_building(parsed, lods=(2,))
+    building = build_building(parsed, BuildContext(lods=(2,)))
     [ground] = _surfaces_by_kind(building)["ground"]
     area, incl, azim = _ade_attrs(ground)
     assert area == pytest.approx(1.0, abs=1e-9)
@@ -360,7 +341,7 @@ def test_lod2_sloped_roof_emits_azimuth_and_45_degree_inclination() -> None:
             ],
         },
     )
-    building = build_building(parsed, lods=(2,))
+    building = build_building(parsed, BuildContext(lods=(2,)))
     [roof] = _surfaces_by_kind(building)["roof"]
     area, incl, azim = _ade_attrs(roof)
     # √2 m² for a 1×1 horizontal projection on a 45° slope.
@@ -397,7 +378,7 @@ def test_lod2_flat_roof_omits_azimuth_but_keeps_zero_inclination() -> None:
             ],
         },
     )
-    building = build_building(parsed, lods=(2,))
+    building = build_building(parsed, BuildContext(lods=(2,)))
     [roof] = _surfaces_by_kind(building)["roof"]
     area, incl, azim = _ade_attrs(roof)
     assert area == pytest.approx(1.0, abs=1e-9)
@@ -416,7 +397,7 @@ def test_lod2_skipped_construction_attrs_are_not_emitted() -> None:
     actually available — emitting placeholders would silently
     contaminate downstream energy analyses.
     """
-    building = build_building(_multi_facet_parsed(), lods=(2,))
+    building = build_building(_multi_facet_parsed(), BuildContext(lods=(2,)))
     for wrapper in building.bounded_by:
         surf = wrapper.ground_surface or wrapper.wall_surface or wrapper.roof_surface
         assert surf.bdg_bdry_surf_thickness == []
@@ -435,7 +416,7 @@ def test_lod2_targets_collected_once_per_emitted_surface() -> None:
     walking the xsdata tree per building.
     """
     targets: list[str] = []
-    build_building(_multi_facet_parsed(), lods=(2,), surface_targets_out=targets)
+    build_building(_multi_facet_parsed(), BuildContext(lods=(2,)), surface_targets_out=targets)
 
     # 7 surfaces × (1 _ms container + 1 _poly_1 member) = 14 LoD 2 targets.
     lod2_targets = [t for t in targets if "_ms" in t]
@@ -1399,13 +1380,13 @@ def test_certification_method_concatenates_soortopname_and_berekeningstype() -> 
     direction. Order is ``SoortOpname`` first (the inspection rigour),
     then ``Berekeningstype`` (the calculation method).
     """
-    from citygml_energy.city_builder.builders import _build_epc
+    from citygml_energy.city_builder.builders import build_epc
 
     resolved = _resolved_with_label(
         soort_opname="Detailopname",
         berekeningstype="NTA 8800:2024 (detailopname woningbouw)",
     )
-    epc = _build_epc(resolved, gml_id_prefix="")
+    epc = build_epc(resolved)
     assert epc is not None
     assert (
         epc.certification_method
@@ -1415,36 +1396,36 @@ def test_certification_method_concatenates_soortopname_and_berekeningstype() -> 
 
 def test_certification_method_only_berekeningstype() -> None:
     """When SoortOpname is missing, certificationMethod is just the variant."""
-    from citygml_energy.city_builder.builders import _build_epc
+    from citygml_energy.city_builder.builders import build_epc
 
     resolved = _resolved_with_label(
         soort_opname=None,
         berekeningstype="NTA 8800:2024 (basisopname utiliteitsbouw)",
     )
-    epc = _build_epc(resolved, gml_id_prefix="")
+    epc = build_epc(resolved)
     assert epc is not None
     assert epc.certification_method == "NTA 8800:2024 (basisopname utiliteitsbouw)"
 
 
 def test_certification_method_only_soortopname() -> None:
     """Reverse case: only SoortOpname is set."""
-    from citygml_energy.city_builder.builders import _build_epc
+    from citygml_energy.city_builder.builders import build_epc
 
     resolved = _resolved_with_label(
         soort_opname="Basisopname",
         berekeningstype=None,
     )
-    epc = _build_epc(resolved, gml_id_prefix="")
+    epc = build_epc(resolved)
     assert epc is not None
     assert epc.certification_method == "Basisopname"
 
 
 def test_certification_method_omitted_when_neither_set() -> None:
     """No SoortOpname AND no Berekeningstype → ``certification_method=None``."""
-    from citygml_energy.city_builder.builders import _build_epc
+    from citygml_energy.city_builder.builders import build_epc
 
     resolved = _resolved_with_label(soort_opname=None, berekeningstype=None)
-    epc = _build_epc(resolved, gml_id_prefix="")
+    epc = build_epc(resolved)
     assert epc is not None
     assert epc.certification_method is None
 

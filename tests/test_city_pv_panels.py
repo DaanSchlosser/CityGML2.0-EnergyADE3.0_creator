@@ -33,6 +33,7 @@ from shapely.geometry import Polygon
 
 from citygml_energy._step import GeometryPolygon
 from citygml_energy.city_builder import build_city_model
+from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder import pipeline as pipeline_module
 from citygml_energy.city_builder import pv_panels as pv_panels_module
 from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
@@ -390,14 +391,13 @@ def test_attach_pv_emits_expected_xsd_structure() -> None:
     from citygml_energy.city_builder.builders import build_building
 
     parsed = _fixture_parsed_building()
-    building = build_building(parsed, lods=(0, 1, 2))
-    panel = _fixture_projected_panel()
-    attached = attach_pv_collectors_to_building(
-        building,
-        [panel],
+    ctx = BuildContext(
         srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
         srs_dimension=3,
     )
+    building = build_building(parsed, ctx)
+    panel = _fixture_projected_panel()
+    attached = attach_pv_collectors_to_building(building, [panel], ctx)
     assert attached == 1
     assert len(building.device) == 1
     pv = building.device[0].photovoltaic_collector
@@ -440,13 +440,12 @@ def test_attach_omits_azimuth_on_flat_roof() -> None:
     """
     from citygml_energy.city_builder.builders import build_building
 
-    building = build_building(_fixture_parsed_building(), lods=(0, 1, 2))
+    ctx = BuildContext(srs_name="x", srs_dimension=3)
+    building = build_building(_fixture_parsed_building(), ctx)
     panel = _fixture_projected_panel(
         original_fid=3, azimuth_deg=None, inclination_deg=0.0
     )
-    attach_pv_collectors_to_building(
-        building, [panel], srs_name="x", srs_dimension=3
-    )
+    attach_pv_collectors_to_building(building, [panel], ctx)
     pv = building.device[0].photovoltaic_collector
     assert pv.azimuth is None
     assert pv.inclination.value == 0.0
@@ -456,14 +455,13 @@ def test_attach_drops_panels_when_no_lod2_roof_surface() -> None:
     from citygml_energy.city_builder.builders import build_building
 
     parsed = _fixture_parsed_building()
+    ctx = BuildContext(lods=(0, 1), srs_name="x", srs_dimension=3)
     # Force LoD 0/1 only: no RoofSurface gets emitted, so the xlink
     # target doesn't exist inside the document and the attach must
     # refuse to emit dangling hrefs.
-    building = build_building(parsed, lods=(0, 1))
+    building = build_building(parsed, ctx)
     panel = _fixture_projected_panel(original_fid=1)
-    attached = attach_pv_collectors_to_building(
-        building, [panel], srs_name="x", srs_dimension=3
-    )
+    attached = attach_pv_collectors_to_building(building, [panel], ctx)
     assert attached == 0
     assert building.device == []
 

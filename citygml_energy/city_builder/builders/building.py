@@ -58,8 +58,6 @@ from ...namespaces import (
     CS_NRG3_AREA_TYPE,
     CS_NRG3_HEIGHT_TYPE,
     CS_NRG3_VOLUME_TYPE,
-    DEFAULT_SRS_DIMENSION,
-    DEFAULT_SRS_NAME,
 )
 from ...schema_types import (
     BUILDING,
@@ -69,6 +67,7 @@ from ...schema_types import (
 from .._helpers import safe_gml_id, to_float, to_int
 from ..address_match import ResolvedAddress
 from ..cityjson_parse import ParsedBuilding, SemanticPolygon
+from ..config import BuildContext
 from ..energy_resources import attach_energy_resources_to_building_unit
 from ._common import (
     UOM_AREA_M2,
@@ -79,7 +78,7 @@ from ._common import (
     inner_type,
 )
 from .address import build_address
-from .epc import _apply_eponline_classification_to_building_unit, _build_epc
+from .epc import _apply_eponline_classification_to_building_unit, build_epc
 
 __all__ = [
     "attach_building_units_to_building",
@@ -127,11 +126,8 @@ _3DBAG_TO_SIG3D_ROOF_TYPE: dict[str, str] = {
 
 def build_building(
     parsed: ParsedBuilding,
+    build_context: BuildContext = BuildContext(),
     *,
-    gml_id_prefix: str = "",
-    lods: tuple[int, ...] = (0, 1, 2),
-    srs_name: str = DEFAULT_SRS_NAME,
-    srs_dimension: int = DEFAULT_SRS_DIMENSION,
     surface_targets_out: list[str] | None = None,
 ) -> Any:
     """Build a ``bldg:Building`` from a parsed 3DBAG Pand.
@@ -158,7 +154,7 @@ def build_building(
     :func:`iter_instances` walk when building the ``app:Appearance``
     (see :func:`citygml_energy.city_builder.appearance.append_energy_label_appearance`).
     """
-    gml_id = safe_gml_id(gml_id_prefix, "pand", parsed.pand_id)
+    gml_id = safe_gml_id(build_context.gml_id_prefix, "pand", parsed.pand_id)
     building_cls = resolve_class(BUILDING)
     # No ``gml:name`` is set: the BAG Pand identification is already
     # carried verbatim on ``nrg3:identifier`` below (with the
@@ -183,7 +179,7 @@ def build_building(
 
     _apply_building_attributes(building, parsed.attributes)
 
-    if 0 in lods and parsed.geometries.get("0"):
+    if 0 in build_context.lods and parsed.geometries.get("0"):
         # LoD 0 vertices are passed through with the source Z (3DBAG ships
         # the footprint at nominal Z=0 / NAP). LoD 0 is a 2D footprint
         # representation; there is no defined elevation, and the per-building
@@ -197,8 +193,8 @@ def build_building(
         building.lod0_foot_print = build_multi_surface(
             f"{gml_id}_lod0",
             polygons_lod0,
-            srs_name=srs_name,
-            srs_dimension=srs_dimension,
+            srs_name=build_context.srs_name,
+            srs_dimension=build_context.srs_dimension,
         )
         if surface_targets_out is not None:
             surface_targets_out.append(f"#{gml_id}_lod0")
@@ -206,7 +202,7 @@ def build_building(
                 surface_targets_out, f"{gml_id}_lod0", len(polygons_lod0)
             )
 
-    if 1 in lods and parsed.geometries.get("1"):
+    if 1 in build_context.lods and parsed.geometries.get("1"):
         polygons_lod1 = _unwrap_polygons(parsed.geometries["1"])
         # 3DBAG publishes LoD 1/2 CityJSON with outward-facing rings already,
         # per the CityJSON spec. The centroid-based heuristic in
@@ -216,8 +212,8 @@ def build_building(
         building.lod1_solid = build_solid(
             f"{gml_id}_lod1",
             polygons_lod1,
-            srs_name=srs_name,
-            srs_dimension=srs_dimension,
+            srs_name=build_context.srs_name,
+            srs_dimension=build_context.srs_dimension,
             orient=False,
         )
         if surface_targets_out is not None:
@@ -226,13 +222,13 @@ def build_building(
                 surface_targets_out, f"{gml_id}_lod1", len(polygons_lod1)
             )
 
-    if 2 in lods and parsed.geometries.get("2"):
+    if 2 in build_context.lods and parsed.geometries.get("2"):
         _attach_lod2_thematic_surfaces(
             building,
             parsed.geometries["2"],
             gml_id=gml_id,
-            srs_name=srs_name,
-            srs_dimension=srs_dimension,
+            srs_name=build_context.srs_name,
+            srs_dimension=build_context.srs_dimension,
             surface_targets_out=surface_targets_out,
         )
 
@@ -544,11 +540,7 @@ def _extend_polygon_targets(
 
 def build_building_unit(
     resolved: ResolvedAddress,
-    *,
-    gml_id_prefix: str = "",
-    city_name: str = "",
-    srs_name: str = DEFAULT_SRS_NAME,
-    srs_dimension: int = DEFAULT_SRS_DIMENSION,
+    build_context: BuildContext = BuildContext(),
 ) -> Any:
     """Build an ``nrg3:BuildingUnit`` for one VBO.
 
@@ -559,13 +551,13 @@ def build_building_unit(
     The mandatory ``nrg3:type`` element is filled with the first
     ``gebruiksdoel`` value (``woonfunctie``, ``kantoorfunctie``, …).
 
-    ``srs_name`` / ``srs_dimension`` are passed through to
-    :func:`build_address` for the VBO ``geometriePunt`` (``core:Address/
-    core:multiPoint``).
+    The build context's SRS fields are passed through to
+    :func:`build_address` for the VBO ``geometriePunt``
+    (``core:Address/core:multiPoint``).
     """
     unit_cls = resolve_class(BUILDING_UNIT)
 
-    gml_id = safe_gml_id(gml_id_prefix, "bu", resolved.vbo.identificatie)
+    gml_id = safe_gml_id(build_context.gml_id_prefix, "bu", resolved.vbo.identificatie)
     # ``nrg3:BuildingUnit/type`` is mandatory (gml:CodeType, no
     # ``minOccurs="0"`` in the XSD), so we must populate it for every
     # VBO. BAG ``gebruiksdoel`` is the closest available signal: a
@@ -661,19 +653,13 @@ def build_building_unit(
             )
         )
 
-    address = build_address(
-        resolved,
-        gml_id_prefix=gml_id_prefix,
-        city_name=city_name,
-        srs_name=srs_name,
-        srs_dimension=srs_dimension,
-    )
+    address = build_address(resolved, build_context)
     if address is not None:
         address_prop_cls = inner_type(unit_cls, "address")
         if address_prop_cls is not None:
             unit.address.append(address_prop_cls(address=address))
 
-    epc = _build_epc(resolved, gml_id_prefix=gml_id_prefix)
+    epc = build_epc(resolved, build_context)
     if epc is not None:
         epc_prop_cls = inner_type(unit_cls, "energy_performance_certificate")
         if epc_prop_cls is not None:
@@ -722,11 +708,7 @@ def build_building_unit(
 def attach_building_units_to_building(
     building: Any,
     addresses: list[ResolvedAddress],
-    *,
-    gml_id_prefix: str = "",
-    city_name: str = "",
-    srs_name: str = DEFAULT_SRS_NAME,
-    srs_dimension: int = DEFAULT_SRS_DIMENSION,
+    build_context: BuildContext = BuildContext(),
 ) -> None:
     """Wrap each resolved VBO in a ``BuildingUnit2`` and attach to *building*."""
     if not addresses:
@@ -736,11 +718,5 @@ def attach_building_units_to_building(
     if wrapper_cls is None:
         return
     for resolved in addresses:
-        unit = build_building_unit(
-            resolved,
-            gml_id_prefix=gml_id_prefix,
-            city_name=city_name,
-            srs_name=srs_name,
-            srs_dimension=srs_dimension,
-        )
+        unit = build_building_unit(resolved, build_context)
         building.building_unit.append(wrapper_cls(building_unit=unit))

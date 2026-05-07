@@ -37,25 +37,16 @@ from citygml_energy.city_builder.fetchers import (
 from citygml_energy.city_builder.fetchers import (
     municipality as muni_fetchers,
 )
-from citygml_energy.city_builder.fetchers.bag import (
-    Pand,
-    Verblijfsobject,
-)
+from citygml_energy.city_builder.fetchers.bag import Pand, Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
 from citygml_energy.city_builder.fetchers.municipality import MunicipalityOutline
+from tests._factories import make_pand, make_parsed_building, make_square_polygon, make_vbo
 from tools.validate_xsd import load_schema
 
 _PAND_ID = "0503100000000042"
 _VBO_ID = "0503010000000042"
 
-
-def _square(z: float, surface_type: str | None = None) -> SemanticPolygon:
-    return SemanticPolygon(
-        polygon=GeometryPolygon(
-            exterior=[(0.0, 0.0, z), (1.0, 0.0, z), (1.0, 1.0, z), (0.0, 1.0, z)],
-        ),
-        surface_type=surface_type,
-    )
+_square = make_square_polygon
 
 
 def _cube_shell() -> list[SemanticPolygon]:
@@ -78,7 +69,7 @@ def _cube_shell() -> list[SemanticPolygon]:
 
 
 def _fixture_parsed_building() -> ParsedBuilding:
-    return ParsedBuilding(
+    return make_parsed_building(
         pand_id=_PAND_ID,
         attributes={
             "oorspronkelijkbouwjaar": 1985,
@@ -114,29 +105,14 @@ def _fixture_outline() -> MunicipalityOutline:
 
 
 def _fixture_pand() -> Pand:
-    return Pand(
-        identificatie=_PAND_ID,
-        bouwjaar=1985,
-        status="Pand in gebruik",
-        properties={},
-    )
+    return make_pand(identificatie=_PAND_ID, bouwjaar=1985)
 
 
 def _fixture_vbo() -> Verblijfsobject:
-    return Verblijfsobject(
+    return make_vbo(
         identificatie=_VBO_ID,
         pand_identificatie=_PAND_ID,
-        gebruiksdoel=["woonfunctie"],
-        oppervlakte=85.0,
-        status=None,
-        postcode="2628CD",
-        huisnummer=42,
-        huisletter=None,
-        toevoeging=None,
-        openbare_ruimte_naam="Mekelweg",
-        woonplaats=None,
         point=(85000.0, 446500.0),
-        properties={},
     )
 
 
