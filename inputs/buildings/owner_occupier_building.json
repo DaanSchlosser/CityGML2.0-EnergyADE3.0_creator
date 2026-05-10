@@ -192,7 +192,7 @@
     },
     {
       "type": "nrg3:PhotovoltaicCollector",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "pv_panel_1",
       "description": "36 × 270 Wp polycrystalline / monocrystalline silicon module array (cellType not on the panel datasheet collected from the owner-occupier, recorded as `unknown`). The `nominal_efficiency` (0.164 W/W) is the module-area-based efficiency consistent with 9720 W / 59.4 m² at 1000 W/m² STC; the `aperture_area` (55.8 m²) is the active light-receiving cell area, conventionally ≈ 94% of the module footprint for crystalline-silicon panels of this generation. Both values are typical-product estimates from the panel rating, not measured datasheet figures.",
       "name": ["PV collector (36x270 Wp)"],
@@ -211,7 +211,7 @@
     },
     {
       "type": "nrg3:HeatPump",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "heat_pump_1",
       "description": "NIBE F1255 PC ground-source heat pump on a vertical ground collector (bodemwarmte). Source 24 \u00b0C / system 31 \u00b0C. Pipework is insulated. The unit sits inside the thermal envelope; EnergyADE 3.0 has no native attribute for in-envelope vs outside-envelope placement, so this is recorded here in the description. The COP value (5.5) is a representative mid-range figure estimated from NIBE F1255 PC datasheet performance curves (manufacturer typical: COP \u2248 4.7 at 0\u00b0C source / 35\u00b0C heating, COP \u2248 6.5 at 10\u00b0C source / 35\u00b0C heating); the 24\u00b0C source / 31\u00b0C operation pair recorded here implies an unusually small temperature lift and would in principle yield a higher COP, but no per-installation measurement was collected so a conservative middle of the typical range is used.",
       "name": ["NIBE F1255 PC"],
@@ -227,7 +227,7 @@
     },
     {
       "type": "nrg3:ThermalDistribution",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "thermal_distribution_1",
       "description": "Hydronic distribution circuit fed by heat_pump_1 (low-temperature floor heating). Pipework is insulated. Return temperature was not collected.",
       "name": ["Hydronic heat distribution"],
@@ -238,7 +238,7 @@
     },
     {
       "type": "nrg3:ThermalStorageDevice",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "thermal_storage_1",
       "description": "200 L domestic-hot-water buffer, water-filled, installed inside the thermal envelope. EnergyADE 3.0 has no native attribute for in-envelope vs outside-envelope placement, so this is recorded here in the description. The `preparation_temperature` (32 °C) is read from the owner-occupier's thermal-storage stratification diagram (charged-state hot-side temperature), close to the heat pump's 31 °C operation temperature — i.e. this is a low-temperature buffer driven by the heat pump rather than a 60 °C+ DHW tank with separate legionella protection.",
       "name": ["DHW buffer 200 L"],
@@ -260,7 +260,7 @@
     },
     {
       "type": "nrg3:EVChargingStation",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "id_ev_charging_station_1",
       "description": "EVHUB AC Mode 3 laadpaal, 3.7-22 kW (32A, 1/3-phase), Type 2 connector with 8m cable. IP55, polycarbonate housing (410x280x150 mm), built-in DC detection. Dedicated to Golf GTE 2015 (8.7 kWh gross / 7.5 kWh net); car-side limit 3.6 kW. ~150 charges/year.",
       "name": ["EVHUB Laadpaal Type 2"],
