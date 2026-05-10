@@ -180,16 +180,23 @@ def build_building(
     _apply_building_attributes(building, parsed.attributes)
 
     if 0 in build_context.lods and parsed.geometries.get("0"):
-        # LoD 0 vertices are passed through with the source Z (3DBAG ships
-        # the footprint at nominal Z=0 / NAP). LoD 0 is a 2D footprint
-        # representation; there is no defined elevation, and the per-building
-        # terrain height (b3_h_maaiveld) lives on LoD 1/2 where a
-        # consumer querying for "ground level" can find it. An earlier
-        # revision of this builder lifted LoD 0 to maaiveld so a single
-        # viewer would draw both representations co-planar; the trade-off
-        # was misrepresenting the source by stamping a Z onto a feature
-        # that has none.
+        # Lift the LoD 0 footprint from 3DBAG's nominal Z=0 to the
+        # per-building terrain height ``b3_h_maaiveld`` so it sits
+        # co-planar with the LoD 1 ground face. Falls through with the
+        # source Z when the attribute is missing.
         polygons_lod0 = _unwrap_polygons(parsed.geometries["0"])
+        h_maaiveld = to_float(parsed.attributes.get("b3_h_maaiveld"))
+        if h_maaiveld is not None:
+            polygons_lod0 = [
+                GeometryPolygon(
+                    exterior=[(x, y, h_maaiveld) for (x, y, _z) in p.exterior],
+                    interiors=[
+                        [(x, y, h_maaiveld) for (x, y, _z) in ring]
+                        for ring in p.interiors
+                    ],
+                )
+                for p in polygons_lod0
+            ]
         building.lod0_foot_print = build_multi_surface(
             f"{gml_id}_lod0",
             polygons_lod0,
