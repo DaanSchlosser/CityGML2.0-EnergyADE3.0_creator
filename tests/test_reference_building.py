@@ -107,25 +107,33 @@ def test_single_building_as_city_object_member(reference_building_root):
     assert len(buildings) == 1
 
 
-def test_all_devices_attached_to_building(reference_building_root):
-    """Input declares 5 building-level devices (PV, HeatPump, ThermalDistribution,
-    ThermalStorageDevice, EV) and 5 unit-level GenericElectricalDevices
-    (cooktop, microwave, cooker tap, coffee machine, dishwasher); each must be
-    nested under its declared parent.
+def test_all_devices_attached_to_building_unit(reference_building_root):
+    """All devices live under the BuildingUnit, not the Building.
+
+    For a single-VBO Pand the canonical placement of energy devices is
+    the BuildingUnit: PV, heat pump, distribution, thermal storage, EV
+    charger, and the per-unit electrical appliances (cooktop, microwave,
+    cooker tap, coffee machine, dishwasher) all serve and meter the
+    single occupied unit. Nothing should appear at the ``bldg:Building``
+    level, which would imply a building-shared device.
     """
-    building_devices = reference_building_root.findall(".//bldg:Building/nrg3:device", NS)
-    assert len(building_devices) == 5
-
-    assert len(reference_building_root.findall(".//nrg3:device/nrg3:PhotovoltaicCollector", NS)) == 1
-    assert len(reference_building_root.findall(".//nrg3:device/nrg3:HeatPump", NS)) == 1
-    assert len(reference_building_root.findall(".//nrg3:device/nrg3:ThermalDistribution", NS)) == 1
-    assert len(reference_building_root.findall(".//nrg3:device/nrg3:ThermalStorageDevice", NS)) == 1
-    assert len(reference_building_root.findall(".//nrg3:device/nrg3:EVChargingStation", NS)) == 1
-
-    unit_appliances = reference_building_root.findall(
-        ".//nrg3:BuildingUnit/nrg3:device/nrg3:GenericElectricalDevice", NS,
+    unit_devices = reference_building_root.findall(
+        ".//nrg3:BuildingUnit/nrg3:device", NS,
     )
-    assert len(unit_appliances) == 5
+    assert len(unit_devices) == 10
+
+    building_devices = reference_building_root.findall(
+        ".//bldg:Building/nrg3:device", NS,
+    )
+    assert building_devices == []
+
+    unit_device_path = ".//nrg3:BuildingUnit/nrg3:device"
+    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:PhotovoltaicCollector", NS)) == 1
+    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:HeatPump", NS)) == 1
+    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:ThermalDistribution", NS)) == 1
+    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:ThermalStorageDevice", NS)) == 1
+    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:EVChargingStation", NS)) == 1
+    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:GenericElectricalDevice", NS)) == 5
 
 
 def test_occupants_attached_to_building_unit(reference_building_root):
@@ -180,6 +188,31 @@ def test_zone_with_two_heated_zone_parts(reference_building_root):
 
     zone_parts = zones[0].findall("nrg3:zonePart/nrg3:ZonePart", NS)
     assert len(zone_parts) == 2
+
+
+def test_zone_references_its_building_unit(reference_building_root):
+    """The Zone carries an xlink to its BuildingUnit.
+
+    Energy ADE 3.0 encodes Zone -> BuildingUnit as ``byReference`` on
+    ``AbstractZone`` (UML pg 10/12). Without the xlink a downstream
+    consumer cannot tell which unit the thermal zone serves -- a gap
+    that matters for the single-unit owner-occupier case where the
+    devices, occupants, EPC and energy resources all live under the
+    BuildingUnit while the Zone sits at Building level.
+    """
+    zone = reference_building_root.find(".//bldg:Building/nrg3:zone/nrg3:Zone", NS)
+    assert zone is not None
+
+    refs = zone.findall("nrg3:buildingUnit", NS)
+    assert len(refs) == 1
+    href = refs[0].get(f"{{{NS['xlink']}}}href")
+    assert href is not None and href.startswith("#")
+
+    target_id = href[1:]
+    unit = reference_building_root.find(
+        f".//nrg3:BuildingUnit[@gml:id='{target_id}']", NS,
+    )
+    assert unit is not None, f"Zone buildingUnit xlink points at missing id {target_id!r}"
 
 
 def test_zone_hull_coincidence_flags_are_false(reference_building_root):

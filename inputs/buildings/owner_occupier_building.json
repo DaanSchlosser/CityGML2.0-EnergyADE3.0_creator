@@ -361,7 +361,9 @@
       "name": ["Building zone"],
       "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
       "coincides_with_lod2_hull": false,
-      "coincides_with_lod3_hull": false
+      "coincides_with_lod3_hull": false,
+      "number_of_building_units": 1,
+      "building_unit": [{"href": "#id_building_unit_1"}]
     },
     {
       "type": "nrg3:ZonePart",

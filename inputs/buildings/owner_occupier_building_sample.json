@@ -190,7 +190,7 @@
     },
     {
       "type": "nrg3:PhotovoltaicCollector",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "pv_panel_1",
       "name": ["Sample PV collector"],
       "creation_date": "2000-01-02",
@@ -208,7 +208,7 @@
     },
     {
       "type": "nrg3:HeatPump",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "heat_pump_1",
       "description": "Sample ground-source heat pump on a vertical ground collector. Pipework is insulated. The unit sits inside the thermal envelope; EnergyADE 3.0 has no native attribute for in-envelope vs outside-envelope placement, so this is recorded here in the description.",
       "name": ["Sample heat pump"],
@@ -224,7 +224,7 @@
     },
     {
       "type": "nrg3:ThermalDistribution",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "thermal_distribution_1",
       "description": "Sample hydronic distribution circuit fed by heat_pump_1.",
       "name": ["Sample heat distribution"],
@@ -235,7 +235,7 @@
     },
     {
       "type": "nrg3:ThermalStorageDevice",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "thermal_storage_1",
       "description": "Sample 200 L domestic-hot-water buffer, water-filled, installed inside the thermal envelope.",
       "name": ["Sample DHW buffer"],
@@ -257,7 +257,7 @@
     },
     {
       "type": "nrg3:EVChargingStation",
-      "parent": "id_building_1",
+      "parent": "id_building_unit_1",
       "id": "id_ev_charging_station_1",
       "description": "Sample AC Mode 3 EV charging station.",
       "name": ["Sample EV charging station"],
@@ -358,7 +358,9 @@
       "name": ["Sample zone"],
       "type_value": {"value": "residential", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CurrentUseValue.xml"},
       "coincides_with_lod2_hull": false,
-      "coincides_with_lod3_hull": false
+      "coincides_with_lod3_hull": false,
+      "number_of_building_units": 1,
+      "building_unit": [{"href": "#id_building_unit_1"}]
     },
     {
       "type": "nrg3:ZonePart",

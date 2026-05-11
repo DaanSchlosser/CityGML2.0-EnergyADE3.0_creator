@@ -90,18 +90,11 @@ def _posns_of_lod0(building) -> list[list[float]]:
     ]
 
 
-def test_build_building_lod0_preserves_source_z() -> None:
-    """LoD 0 is a 2D footprint with no defined elevation. The builder
-    passes vertices through with the source Z (3DBAG ships the footprint
-    at nominal Z = 0 / NAP); the per-building terrain height
-    ``b3_h_maaiveld`` lives on LoD 1 / 2 and is not stamped onto LoD 0.
-
-    Stamping a Z value onto a representation that has none misrepresents
-    the source: viewers that need a height-anchored footprint should
-    consult LoD 1 / 2 directly. An earlier revision of the builder lifted
-    LoD 0 to ``b3_h_maaiveld`` so single-pass viewers would draw the two
-    representations co-planar; the trade-off was hiding the LoD 0 /
-    LoD 1 vertical-datum distinction that is intrinsic to 3DBAG.
+def test_build_building_lod0_lifted_to_b3_h_maaiveld() -> None:
+    """LoD 0 vertices are lifted from 3DBAG's nominal Z=0 to the
+    per-building terrain height ``b3_h_maaiveld`` so the footprint sits
+    co-planar with the LoD 1 ground face. Single-pass viewers can then
+    draw LoD 0 and LoD 1 together without a vertical-datum jump.
     """
     parsed = ParsedBuilding(
         pand_id="0114100000202121",
@@ -110,6 +103,24 @@ def test_build_building_lod0_preserves_source_z() -> None:
             "0": [_square(0.0, "GroundSurface")],
             "1": [_square(13.35), _square(16.9)],
         },
+    )
+    building = build_building(parsed, BuildContext(lods=(0,)))
+    for ring in _posns_of_lod0(building):
+        zs = ring[2::3]
+        assert all(z == 13.35 for z in zs), f"expected all z=13.35, got {zs}"
+
+
+def test_build_building_lod0_falls_through_when_maaiveld_absent() -> None:
+    """When ``b3_h_maaiveld`` is missing, LoD 0 keeps its source Z.
+
+    3DBAG always ships ``b3_h_maaiveld`` in practice, but the builder
+    must not crash on the rare missing-attribute case; verifying the
+    fall-through here keeps the contract explicit.
+    """
+    parsed = ParsedBuilding(
+        pand_id="0114100000202121",
+        attributes={"oorspronkelijkbouwjaar": 1985},
+        geometries={"0": [_square(0.0, "GroundSurface")]},
     )
     building = build_building(parsed, BuildContext(lods=(0,)))
     for ring in _posns_of_lod0(building):
