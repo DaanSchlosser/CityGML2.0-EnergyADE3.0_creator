@@ -511,7 +511,10 @@ def test_building_unit_with_label_emits_epc_with_valid_from() -> None:
     unit = building.building_unit[0].building_unit
     epc = unit.energy_performance_certificate[0].energy_performance_certificate
     assert epc.label == "A"
-    assert epc.valid_from is not None
+    # Beta8: ``nrg3:validFrom`` is a list-valued ADE hook on every CityObject,
+    # so a populated singleton list is what a registered cert produces.
+    assert len(epc.valid_from) == 1
+    assert epc.valid_from[0].value is not None
 
 
 # ---------------------------------------------------------------------------
@@ -1452,19 +1455,24 @@ def test_certification_method_omitted_when_neither_set() -> None:
 
 
 # ---------------------------------------------------------------------------
-# AandeelHernieuwbareEnergie rides on the BuildingUnit (NOT the EPC)
+# AandeelHernieuwbareEnergie rides on the EPC (beta8: EPC is a CityObject)
 # ---------------------------------------------------------------------------
 
 
-def test_renewable_share_lands_as_measure_attribute_on_building_unit() -> None:
-    """AandeelHernieuwbareEnergie → gen:measureAttribute on the BuildingUnit.
+def _epc_from(unit: Any) -> Any:
+    return unit.energy_performance_certificate[0].energy_performance_certificate
 
-    The Phase-0 spec originally aimed it at the EPC, but
-    ``EnergyPerformanceCertificateType`` extends
-    ``AbstractFeatureWithLifeSpanType`` directly (not via CityObject) and
-    so cannot host a ``gen:measureAttribute``. The mapping doc is
-    updated in P3 to reflect this; the actual emission lives on the
-    BuildingUnit (which DOES extend AbstractCityObject).
+
+def test_renewable_share_lands_as_measure_attribute_on_epc() -> None:
+    """AandeelHernieuwbareEnergie → gen:measureAttribute on the EPC.
+
+    Beta8 (2026-05-06) dropped ``nrg3:AbstractFeatureWithLifeSpan`` and
+    re-rooted ``EnergyPerformanceCertificateType`` under
+    ``core:AbstractCityObjectType`` directly, so the EPC now hosts the
+    ``_GenericApplicationPropertyOfCityObject`` substitutions itself
+    (including ``gen:measureAttribute``). The renewable-share is a
+    property of the certificate, not of the surrounding BuildingUnit,
+    so it belongs on the EPC.
 
     uom is ``percent`` (matching FZK UOMList id at line 182), not ``%``
     (which is the sign-glyph and not a uom id).
@@ -1473,13 +1481,19 @@ def test_renewable_share_lands_as_measure_attribute_on_building_unit() -> None:
 
     resolved = _resolved_with_label(aandeel_hernieuwbare_energie=42.0)
     unit = build_building_unit(resolved)
+    epc = _epc_from(unit)
     measures = [
-        a for a in unit.measure_attribute
+        a for a in epc.measure_attribute
         if a.name == "epOnlineAandeelHernieuwbareEnergie"
     ]
     assert len(measures) == 1
     assert measures[0].value.uom == "percent"
     assert measures[0].value.value == 42.0
+    # And not on the BuildingUnit anymore.
+    assert all(
+        a.name != "epOnlineAandeelHernieuwbareEnergie"
+        for a in unit.measure_attribute
+    )
 
 
 def test_renewable_share_omitted_when_label_has_none() -> None:
@@ -1488,9 +1502,10 @@ def test_renewable_share_omitted_when_label_has_none() -> None:
 
     resolved = _resolved_with_label(aandeel_hernieuwbare_energie=None)
     unit = build_building_unit(resolved)
+    epc = _epc_from(unit)
     assert all(
         a.name != "epOnlineAandeelHernieuwbareEnergie"
-        for a in unit.measure_attribute
+        for a in epc.measure_attribute
     )
 
 
@@ -1500,8 +1515,9 @@ def test_renewable_share_zero_is_emitted() -> None:
 
     resolved = _resolved_with_label(aandeel_hernieuwbare_energie=0.0)
     unit = build_building_unit(resolved)
+    epc = _epc_from(unit)
     measures = [
-        a for a in unit.measure_attribute
+        a for a in epc.measure_attribute
         if a.name == "epOnlineAandeelHernieuwbareEnergie"
     ]
     assert len(measures) == 1

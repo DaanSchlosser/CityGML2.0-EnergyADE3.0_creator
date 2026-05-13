@@ -41,7 +41,6 @@ from ...bindings import (
     BdgVolume,
     CodeType,
     Identifier,
-    LengthType,
     MeasureAttribute,
     MeasureType,
     QualifiedArea,
@@ -177,9 +176,7 @@ def build_building(
     # The codeSpace + value concatenate to the full dereferenceable URL
     # (`rdf_seealso` in the PDOK BAG WFS response), so we do not need to
     # round-trip the URL prefix from the fetcher.
-    building.identifier.append(
-        Identifier(value=parsed.pand_id, code_space=CS_BAG_PAND)
-    )
+    building.identifier.append(Identifier(value=parsed.pand_id, code_space=CS_BAG_PAND))
 
     _apply_building_attributes(building, parsed.attributes)
 
@@ -194,10 +191,7 @@ def build_building(
             polygons_lod0 = [
                 GeometryPolygon(
                     exterior=[(x, y, h_maaiveld) for (x, y, _z) in p.exterior],
-                    interiors=[
-                        [(x, y, h_maaiveld) for (x, y, _z) in ring]
-                        for ring in p.interiors
-                    ],
+                    interiors=[[(x, y, h_maaiveld) for (x, y, _z) in ring] for ring in p.interiors],
                 )
                 for p in polygons_lod0
             ]
@@ -209,9 +203,7 @@ def build_building(
         )
         if surface_targets_out is not None:
             surface_targets_out.append(f"#{gml_id}_lod0")
-            _extend_polygon_targets(
-                surface_targets_out, f"{gml_id}_lod0", len(polygons_lod0)
-            )
+            _extend_polygon_targets(surface_targets_out, f"{gml_id}_lod0", len(polygons_lod0))
 
     if 1 in build_context.lods and parsed.geometries.get("1"):
         polygons_lod1 = _unwrap_polygons(parsed.geometries["1"])
@@ -229,9 +221,7 @@ def build_building(
         )
         if surface_targets_out is not None:
             surface_targets_out.append(f"#{gml_id}_lod1_shell")
-            _extend_polygon_targets(
-                surface_targets_out, f"{gml_id}_lod1", len(polygons_lod1)
-            )
+            _extend_polygon_targets(surface_targets_out, f"{gml_id}_lod1", len(polygons_lod1))
 
     if 2 in build_context.lods and parsed.geometries.get("2"):
         _attach_lod2_thematic_surfaces(
@@ -292,9 +282,7 @@ def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
     # a caller has bubbled it up to the parsed attributes dict.
     function = attrs.get("gebruiksdoel") or attrs.get("function")
     if function:
-        building.function.append(
-            CodeType(value=str(function), code_space=CS_BUILDING_FUNCTION)
-        )
+        building.function.append(CodeType(value=str(function), code_space=CS_BUILDING_FUNCTION))
 
     bouwlagen = to_int(attrs.get("b3_bouwlagen"))
     if bouwlagen is not None and bouwlagen >= 0:
@@ -313,7 +301,8 @@ def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
                     source="3DBAG b3_h_dak_max - b3_h_maaiveld",
                     value=MeasureType(value=round(h_dak - h_maaiveld, 3), uom=UOM_METRES),
                     type_value=CodeType(
-                        value="maxHeightAboveGround", code_space=CS_NRG3_HEIGHT_TYPE,
+                        value="maxHeightAboveGround",
+                        code_space=CS_NRG3_HEIGHT_TYPE,
                     ),
                 )
             )
@@ -324,7 +313,8 @@ def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
         sig3d_code = _3DBAG_TO_SIG3D_ROOF_TYPE.get(dak_type.strip())
         if sig3d_code is not None:
             building.roof_type = CodeType(
-                value=sig3d_code, code_space=CS_BUILDING_ROOFTYPE,
+                value=sig3d_code,
+                code_space=CS_BUILDING_ROOFTYPE,
             )
 
     volume = to_float(attrs.get("b3_volume_lod22"))
@@ -338,13 +328,13 @@ def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
             BdgVolume(
                 qualified_volume=QualifiedVolume(
                     description=(
-                        "Gross volume computed by 3DBAG from the LoD 2.2 "
-                        "roof-shape reconstruction."
+                        "Gross volume computed by 3DBAG from the LoD 2.2 roof-shape reconstruction."
                     ),
                     source="3DBAG b3_volume_lod22",
                     value=MeasureType(value=round(volume, 3), uom=UOM_VOLUME_M3),
                     type_value=CodeType(
-                        value="grossVolume", code_space=CS_NRG3_VOLUME_TYPE,
+                        value="grossVolume",
+                        code_space=CS_NRG3_VOLUME_TYPE,
                     ),
                 )
             )
@@ -367,7 +357,9 @@ def _unwrap_polygons(semantic_polygons: list[SemanticPolygon]) -> list[GeometryP
 
 
 def lod2_thematic_surface_gml_id(
-    building_gml_id: str, surface_type: str, index_one_based: int,
+    building_gml_id: str,
+    surface_type: str,
+    index_one_based: int,
 ) -> str:
     """Return the gml:id for the *index*-th LoD 2 thematic surface of a type.
 
@@ -483,7 +475,8 @@ def _attach_lod2_thematic_surfaces(
 
 
 def _attach_planar_surface_ade_attributes(
-    surf: Any, polygon: GeometryPolygon,
+    surf: Any,
+    polygon: GeometryPolygon,
 ) -> None:
     """Populate ``nrg3:bdgBdrySurf{TotalSurfaceArea,Inclination,Azimuth}`` on *surf*.
 
@@ -527,9 +520,7 @@ def _attach_planar_surface_ade_attributes(
         )
 
 
-def _extend_polygon_targets(
-    sink: list[str], container_gml_id: str, polygon_count: int
-) -> None:
+def _extend_polygon_targets(sink: list[str], container_gml_id: str, polygon_count: int) -> None:
     """Append ``#{container_gml_id}_poly_{i}`` refs for each generated polygon.
 
     Mirrors the id scheme used by
@@ -538,10 +529,7 @@ def _extend_polygon_targets(
     sites so any future rename breaks the dedicated appearance test rather
     than a surface-data-less-but-still-valid CityGML file.
     """
-    sink.extend(
-        f"#{container_gml_id}_poly_{i}"
-        for i in range(1, polygon_count + 1)
-    )
+    sink.extend(f"#{container_gml_id}_poly_{i}" for i in range(1, polygon_count + 1))
 
 
 # ---------------------------------------------------------------------------
@@ -625,15 +613,14 @@ def build_building_unit(
                         "as recorded by the Dutch BAG register for this "
                         "verblijfsobject."
                     ),
-                    source=(
-                        "BAG bag:verblijfsobject.oppervlakte "
-                        "(PDOK WFS v2.0)"
-                    ),
+                    source=("BAG bag:verblijfsobject.oppervlakte (PDOK WFS v2.0)"),
                     value=MeasureType(
-                        value=float(resolved.vbo.oppervlakte), uom=UOM_AREA_M2,
+                        value=float(resolved.vbo.oppervlakte),
+                        uom=UOM_AREA_M2,
                     ),
                     type_value=CodeType(
-                        value="netFloorArea", code_space=CS_NRG3_AREA_TYPE,
+                        value="netFloorArea",
+                        code_space=CS_NRG3_AREA_TYPE,
                     ),
                 )
             )
@@ -668,7 +655,8 @@ def build_building_unit(
                         uom=UOM_AREA_M2,
                     ),
                     type_value=CodeType(
-                        value="netFloorArea", code_space=CS_NRG3_AREA_TYPE,
+                        value="netFloorArea",
+                        code_space=CS_NRG3_AREA_TYPE,
                     ),
                 )
             )
@@ -681,28 +669,31 @@ def build_building_unit(
 
     epc = build_epc(resolved, build_context)
     if epc is not None:
+        # EP-online's renewable-energy share (BENG-3) has no native Energy
+        # ADE slot. The mapping doc § 5j surfaces it as a
+        # ``gen:measureAttribute``. Beta8 re-rooted
+        # ``EnergyPerformanceCertificateType`` under
+        # ``core:AbstractCityObjectType`` directly (the former
+        # ``nrg3:AbstractFeatureWithLifeSpan`` base was removed), so the
+        # EPC now hosts ``gen:_GenericApplicationPropertyOfCityObject``
+        # substitutions itself: attach the renewable share on the EPC,
+        # where it semantically belongs, rather than on the surrounding
+        # BuildingUnit.
+        if label is not None and label.aandeel_hernieuwbare_energie is not None:
+            epc.measure_attribute.append(
+                MeasureAttribute(
+                    name="epOnlineAandeelHernieuwbareEnergie",
+                    value=MeasureType(
+                        value=float(label.aandeel_hernieuwbare_energie),
+                        uom=UOM_PERCENT,
+                    ),
+                )
+            )
         epc_prop_cls = inner_type(unit_cls, "energy_performance_certificate")
         if epc_prop_cls is not None:
             unit.energy_performance_certificate.append(
                 epc_prop_cls(energy_performance_certificate=epc)
             )
-
-    # EP-online's renewable-energy share (BENG-3) has no native Energy ADE
-    # slot. The mapping doc § 5j keeps it as a ``gen:measureAttribute``;
-    # it lands on the BuildingUnit because the CityGML 2.0 generic
-    # attribute substitution is on AbstractCityObject (BuildingUnit
-    # inherits) and not on EnergyPerformanceCertificate (which extends
-    # AbstractFeatureWithLifeSpan, NOT a CityObject).
-    if label is not None and label.aandeel_hernieuwbare_energie is not None:
-        unit.measure_attribute.append(
-            MeasureAttribute(
-                name="epOnlineAandeelHernieuwbareEnergie",
-                value=MeasureType(
-                    value=float(label.aandeel_hernieuwbare_energie),
-                    uom=UOM_PERCENT,
-                ),
-            )
-        )
 
     # nrg3:Energy resources for the four NTA-8800 BENG metrics. Attached
     # to BuildingUnit via the ``nrg3:resource`` substitution (XSD line
@@ -754,6 +745,8 @@ def attach_building_units_to_building(
                 building.address.append(address_prop_cls(address=address))
                 address_href = f"#{address.id}"
         unit = build_building_unit(
-            resolved, build_context, address_href=address_href,
+            resolved,
+            build_context,
+            address_href=address_href,
         )
         building.building_unit.append(wrapper_cls(building_unit=unit))

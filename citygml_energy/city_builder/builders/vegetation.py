@@ -28,8 +28,8 @@ from ...bindings import (
     CodeType,
     DateAttribute,
     DoubleAttribute,
-    ExternalObjectReferenceType1,
-    ExternalReferenceType1,
+    ExternalObjectReferenceType,
+    ExternalReferenceType,
     IntAttribute,
     LengthType,
     Name,
@@ -68,27 +68,29 @@ _CFTREE_NATIVE_FIELDS: dict[str, str] = {
     "trunk_DBH_m": "trunk_diameter",
     "crown_width_m": "crown_diameter",
 }
-_CFTREE_GENERIC_DOUBLE: frozenset[str] = frozenset({
-    # Morphometrics without a native CityGML slot. Preserved as generic
-    # double attributes so downstream consumers that care (CFD, microclimate)
-    # can still reach them; everything else safely ignores them.
-    #
-    # Actual keys observed in CFTree's
-    # ``construct_geometry._normalize_attributes`` output (verified
-    # against generated tiles, not taken from the source at face value).
-    #
-    # NB: ``trunk_radius_m`` is deliberately NOT in this set. CFTree
-    # computes it as ``0.5 * trunk_DBH_m`` (see
-    # ``extract_tree_metrics.estimate_trunk_dimensions``), so emitting
-    # both the radius and the DBH-derived ``veg:trunkDiameter`` would
-    # doubly-signal the same measurement. The CityGML ``veg:trunkDiameter``
-    # field keeps the primary value; any consumer that wants the radius
-    # can compute it on the fly.
-    "crown_median_z",
-    "crown_r50_m",
-    "crown_porosity",
-    "trunk_base_height_m",
-})
+_CFTREE_GENERIC_DOUBLE: frozenset[str] = frozenset(
+    {
+        # Morphometrics without a native CityGML slot. Preserved as generic
+        # double attributes so downstream consumers that care (CFD, microclimate)
+        # can still reach them; everything else safely ignores them.
+        #
+        # Actual keys observed in CFTree's
+        # ``construct_geometry._normalize_attributes`` output (verified
+        # against generated tiles, not taken from the source at face value).
+        #
+        # NB: ``trunk_radius_m`` is deliberately NOT in this set. CFTree
+        # computes it as ``0.5 * trunk_DBH_m`` (see
+        # ``extract_tree_metrics.estimate_trunk_dimensions``), so emitting
+        # both the radius and the DBH-derived ``veg:trunkDiameter`` would
+        # doubly-signal the same measurement. The CityGML ``veg:trunkDiameter``
+        # field keeps the primary value; any consumer that wants the radius
+        # can compute it on the fly.
+        "crown_median_z",
+        "crown_r50_m",
+        "crown_porosity",
+        "trunk_base_height_m",
+    }
+)
 
 
 def build_solitary_vegetation_object(
@@ -181,7 +183,8 @@ def build_solitary_vegetation_object(
 
     if tree.polygons:
         obj.lod3_geometry = _geometry_property_from_polygons(
-            f"{gml_id}_lod3", tree.polygons,
+            f"{gml_id}_lod3",
+            tree.polygons,
             srs_name=build_context.srs_name,
             srs_dimension=build_context.srs_dimension,
         )
@@ -214,9 +217,9 @@ def _apply_bgt_cross_reference(obj: Any, bgt_match: BgtTree) -> None:
     "record first registered in BGT".
     """
     obj.external_reference.append(
-        ExternalReferenceType1(
+        ExternalReferenceType(
             information_system=BGT_INFORMATION_SYSTEM_URL,
-            external_object=ExternalObjectReferenceType1(
+            external_object=ExternalObjectReferenceType(
                 uri=bgt_feature_uri(bgt_match.lokaal_id),
             ),
         )
@@ -265,9 +268,9 @@ def _apply_bor_enrichment(obj: Any, bor: BorTree) -> None:
     server-side layer republish.
     """
     obj.external_reference.append(
-        ExternalReferenceType1(
+        ExternalReferenceType(
             information_system=BOR_INFORMATION_SYSTEM_URL,
-            external_object=ExternalObjectReferenceType1(
+            external_object=ExternalObjectReferenceType(
                 uri=bor_feature_uri(bor.boom_id),
             ),
         )
@@ -275,13 +278,12 @@ def _apply_bor_enrichment(obj: Any, bor: BorTree) -> None:
 
     if bor.species_latin is not None:
         obj.species = CodeType(
-            value=bor.species_latin, code_space=CS_EMMEN_BOR_TREES,
+            value=bor.species_latin,
+            code_space=CS_EMMEN_BOR_TREES,
         )
 
     if bor.planting_year is not None:
-        obj.int_attribute.append(
-            IntAttribute(name="plantingYear", value=bor.planting_year)
-        )
+        obj.int_attribute.append(IntAttribute(name="plantingYear", value=bor.planting_year))
 
     for name, value in (
         ("speciesCommonName", bor.species_dutch),
@@ -318,8 +320,10 @@ def _geometry_property_from_polygons(
     from ...bindings import GeometryPropertyType
 
     ms_prop = build_multi_surface(
-        gml_id, polygons,
-        srs_name=srs_name, srs_dimension=srs_dimension,
+        gml_id,
+        polygons,
+        srs_name=srs_name,
+        srs_dimension=srs_dimension,
     )
     return GeometryPropertyType(multi_surface=ms_prop.multi_surface)
 
@@ -346,6 +350,4 @@ def _apply_cftree_morphometrics(obj: Any, attrs: dict[str, Any]) -> None:
         value = to_finite_float(attrs.get(cftree_key))
         if value is None:
             continue
-        obj.double_attribute.append(
-            DoubleAttribute(name=cftree_key, value=value)
-        )
+        obj.double_attribute.append(DoubleAttribute(name=cftree_key, value=value))

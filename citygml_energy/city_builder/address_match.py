@@ -90,9 +90,8 @@ def match_addresses(
 
     grouped: dict[str, list[ResolvedAddress]] = {}
     for vbo in matchable:
-        label = (
-            labels_by_vbo_id.get(vbo.identificatie)
-            or labels_by_key.get(address_key_from_vbo(vbo))
+        label = labels_by_vbo_id.get(vbo.identificatie) or labels_by_key.get(
+            address_key_from_vbo(vbo)
         )
         grouped.setdefault(vbo.pand_identificatie, []).append(
             ResolvedAddress(vbo=vbo, energy_label=label)

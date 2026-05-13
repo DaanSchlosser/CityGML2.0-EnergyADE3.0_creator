@@ -1,8 +1,10 @@
 """Lookup a Dutch municipality outline from PDOK ``bestuurlijkegebieden``.
 
-We request the whole ``Gemeentegebied`` layer paginated, filter by
-case-insensitive name match, and return the first matching feature as a
+We request the whole ``Gemeentegebied`` layer, filter by
+case-insensitive name match, and return the matching feature as a
 GeoJSON dict plus a (minx, miny, maxx, maxy) bounding box in EPSG:28992.
+The whole layer is ~345 features nation-wide and fits one WFS page;
+the paginator handles the rare case where PDOK changes that.
 """
 
 from __future__ import annotations
@@ -11,10 +13,18 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..http import CachedSession
+from ..pdok_wfs import DEFAULT_PAGE_SIZE, paginate_features
 
 MUNICIPALITY_WFS_URL = "https://service.pdok.nl/kadaster/bestuurlijkegebieden/wfs/v1_0"
 MUNICIPALITY_LAYER = "bestuurlijkegebieden:Gemeentegebied"
-MUNICIPALITY_PAGE_SIZE = 1000
+MUNICIPALITY_PAGE_SIZE = DEFAULT_PAGE_SIZE
+
+# Cache identity is the layer itself, not the name being searched for.
+# Embedding the name in the cache key would cache the same WFS response
+# separately for every name lookup (one cache file per Delft / Emmen /
+# … lookup), defeating disk caching across runs that look up different
+# municipalities.
+_CACHE_PREFIX = "pdok_gemeentegebied"
 
 
 @dataclass(frozen=True)
@@ -27,47 +37,25 @@ class MunicipalityOutline:
     bbox: tuple[float, float, float, float]
 
 
-def fetch_municipality_outline(
-    session: CachedSession, *, name: str
-) -> MunicipalityOutline:
+def fetch_municipality_outline(session: CachedSession, *, name: str) -> MunicipalityOutline:
     """Return the outline of municipality *name* (case-insensitive).
 
     Raises :class:`ValueError` if no match is found.
     """
     target = name.strip().lower()
-    start = 0
-    while True:
-        params = {
-            "service": "WFS",
-            "version": "2.0.0",
-            "request": "GetFeature",
-            "typeNames": MUNICIPALITY_LAYER,
-            "outputFormat": "application/json",
-            "srsName": "EPSG:28992",
-            "count": MUNICIPALITY_PAGE_SIZE,
-            "startIndex": start,
-        }
-        safe_name = "".join(c if c.isalnum() else "_" for c in target)
-        page = session.get_json(
-            MUNICIPALITY_WFS_URL,
-            params=params,
-            cache_key=f"municipality_{safe_name}_{start}",
-        )
-        features = page.get("features") or []
-        if not features:
-            raise ValueError(
-                f"Municipality {name!r} not found in PDOK bestuurlijkegebieden"
-            )
-        for feature in features:
-            props = feature.get("properties") or {}
-            feature_name = str(props.get("naam") or props.get("naam_officieel") or "").strip()
-            if feature_name.lower() == target:
-                return _build_outline(feature_name, feature, props)
-        if len(features) < MUNICIPALITY_PAGE_SIZE:
-            raise ValueError(
-                f"Municipality {name!r} not found in PDOK bestuurlijkegebieden"
-            )
-        start += MUNICIPALITY_PAGE_SIZE
+    features = paginate_features(
+        session,
+        MUNICIPALITY_WFS_URL,
+        type_names=MUNICIPALITY_LAYER,
+        cache_prefix=_CACHE_PREFIX,
+        page_size=MUNICIPALITY_PAGE_SIZE,
+    )
+    for feature in features:
+        props = feature.get("properties") or {}
+        feature_name = str(props.get("naam") or props.get("naam_officieel") or "").strip()
+        if feature_name.lower() == target:
+            return _build_outline(feature_name, feature, props)
+    raise ValueError(f"Municipality {name!r} not found in PDOK bestuurlijkegebieden")
 
 
 def _build_outline(

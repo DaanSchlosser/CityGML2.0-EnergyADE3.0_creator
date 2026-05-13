@@ -220,9 +220,7 @@ def fetch_bor_trees(
                 height_class=_clean_string(attrs.get("boomhoogteklasseactueel")),
                 trunk_diameter_class=_clean_string(attrs.get("stamdiameterklasse")),
                 protection_status=_clean_string(attrs.get("beschermingsstatus")),
-                protection_status_detail=_clean_string(
-                    attrs.get("beschermingsstatus_detail")
-                ),
+                protection_status_detail=_clean_string(attrs.get("beschermingsstatus_detail")),
                 growth_form=_clean_string(attrs.get("type")),
                 stand_location=_clean_string(attrs.get("standplaats")),
                 stand_location_detail=_clean_string(attrs.get("standplaats_detail")),
@@ -230,7 +228,9 @@ def fetch_bor_trees(
         )
 
     _LOG.info(
-        "Fetched %d Emmen BOR tree records inside bbox (%s)", len(trees), bbox,
+        "Fetched %d Emmen BOR tree records inside bbox (%s)",
+        len(trees),
+        bbox,
     )
     return trees
 

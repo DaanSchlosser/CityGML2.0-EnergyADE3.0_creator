@@ -68,12 +68,12 @@ from ..bindings import (
 from ..gml_builders import build_multi_surface, newell_normal
 from ..namespaces import CS_NRG3_RELATION_TYPE
 from .builders._common import UOM_AREA_M2, UOM_DEGREES
-from .config import BuildContext
 from .builders.building import (
     iter_lod2_thematic_classification,
     lod2_thematic_surface_gml_id,
 )
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
+from .config import BuildContext
 
 if TYPE_CHECKING:
     from shapely.geometry.base import BaseGeometry
@@ -117,9 +117,7 @@ _PV_ID_PREFIX: str = "pv_"
 # Pre-built CodeType singleton. Every collector we emit shares this
 # exact value, and xsdata serialisation is read-only, so caching at
 # module scope saves a few hundred allocations on a full-town run.
-_RELATION_INSTALLED_ON: CodeType = CodeType(
-    value="installedOn", code_space=CS_NRG3_RELATION_TYPE
-)
+_RELATION_INSTALLED_ON: CodeType = CodeType(value="installedOn", code_space=CS_NRG3_RELATION_TYPE)
 
 
 # ---------------------------------------------------------------------------
@@ -237,9 +235,7 @@ def load_panels_in_bbox(
     try:
         con = sqlite3.connect(f"file:{source.path}?mode=ro", uri=True)
     except sqlite3.OperationalError as exc:
-        raise FileNotFoundError(
-            f"pv_panels.path could not be opened: {source.path}"
-        ) from exc
+        raise FileNotFoundError(f"pv_panels.path could not be opened: {source.path}") from exc
     try:
         _assert_gpkg_layer_is_rd_new(con, source)
         geom_col, rtree_name = _gpkg_geometry_column_and_rtree(con, source.layer)
@@ -265,9 +261,7 @@ def _assert_gpkg_layer_is_rd_new(con: sqlite3.Connection, source: PvPanelsSource
         (source.layer,),
     ).fetchone()
     if meta is None:
-        raise ValueError(
-            f"layer {source.layer!r} not declared in gpkg_contents of {source.path}"
-        )
+        raise ValueError(f"layer {source.layer!r} not declared in gpkg_contents of {source.path}")
     data_type, srs_id = meta
     if data_type != "features":
         raise ValueError(
@@ -281,9 +275,7 @@ def _assert_gpkg_layer_is_rd_new(con: sqlite3.Connection, source: PvPanelsSource
         )
 
 
-def _gpkg_geometry_column_and_rtree(
-    con: sqlite3.Connection, layer: str
-) -> tuple[str, str | None]:
+def _gpkg_geometry_column_and_rtree(con: sqlite3.Connection, layer: str) -> tuple[str, str | None]:
     """Return ``(geom_col, rtree_table_or_None)`` for *layer*.
 
     The R-tree virtual table is optional in GPKG; when missing, the
@@ -443,9 +435,7 @@ def _collect_roof_facets(
             if len(ring) < 3:
                 continue
             exterior = [(x, y) for (x, y, _z) in ring]
-            interiors = [
-                [(x, y) for (x, y, _z) in hole] for hole in sp.polygon.interiors
-            ]
+            interiors = [[(x, y) for (x, y, _z) in hole] for hole in sp.polygon.interiors]
             try:
                 poly = polygon_cls(exterior, interiors)
                 if not poly.is_valid:
@@ -548,10 +538,7 @@ def _project_panel_on_roof(
     def polygon_to_geom(poly: Any) -> GeometryPolygon:
         return GeometryPolygon(
             exterior=[to_panel_plane(x, y) for (x, y) in poly.exterior.coords],
-            interiors=[
-                [to_panel_plane(x, y) for (x, y) in ring.coords]
-                for ring in poly.interiors
-            ],
+            interiors=[[to_panel_plane(x, y) for (x, y) in ring.coords] for ring in poly.interiors],
         )
 
     from shapely.geometry import MultiPolygon, Polygon
@@ -698,13 +685,13 @@ def attach_pv_collectors_to_building(
         )
         return 0
 
-    pand_id = (
-        building_id.removeprefix("pand_") if building_id.startswith("pand_") else building_id
-    )
+    pand_id = building_id.removeprefix("pand_") if building_id.startswith("pand_") else building_id
 
     for panel in panels_for_pand:
         roof_gml_id = lod2_thematic_surface_gml_id(
-            building_id, "RoofSurface", panel.roof_index,
+            building_id,
+            "RoofSurface",
+            panel.roof_index,
         )
         collector = _build_solar_collector(
             collector_gml_id=f"{_PV_ID_PREFIX}{pand_id}_{panel.original_fid}",
@@ -743,9 +730,7 @@ def _build_solar_collector(
     collector = GenericSolarCollector(
         id=collector_gml_id,
         module_area=AreaType(value=round(panel.footprint_area_m2, 3), uom=_UOM_AREA_M2),
-        inclination=AngleType(
-            value=round(panel.inclination_deg, 2), uom=_UOM_DEGREES
-        ),
+        inclination=AngleType(value=round(panel.inclination_deg, 2), uom=_UOM_DEGREES),
         lod2_multi_surface=build_multi_surface(
             f"{collector_gml_id}_lod2",
             list(panel.lod2_polygons),
@@ -754,9 +739,7 @@ def _build_solar_collector(
         ),
     )
     if panel.azimuth_deg is not None:
-        collector.azimuth = AngleType(
-            value=round(panel.azimuth_deg, 2), uom=_UOM_DEGREES
-        )
+        collector.azimuth = AngleType(value=round(panel.azimuth_deg, 2), uom=_UOM_DEGREES)
 
     rx, ry, rz = panel.reference_point
     collector.reference_point.append(
@@ -781,5 +764,3 @@ def _build_solar_collector(
         )
     )
     return collector
-
-

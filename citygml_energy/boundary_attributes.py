@@ -81,6 +81,7 @@ from dataclasses import dataclass
 from math import sqrt
 from typing import Any
 
+from ._step import Coord3D, GeometryPolygon
 from .bindings import (
     BdgBdrySurfAzimuth,
     BdgBdrySurfHeatCapacity,
@@ -96,7 +97,6 @@ from .bindings import (
     MaterialLibrary,
     SolidMaterial,
 )
-from ._step import Coord3D, GeometryPolygon
 from .core import CityModel
 from .derived_attributes import DerivedAttribute, DerivedContext, Setup
 from .gml_builders import newell_normal, open_ring, planar_surface_attributes
@@ -180,7 +180,8 @@ def _compute_total_area(surf: Any, ctx: DerivedContext) -> list[Any] | None:
         return None
     return [
         BdgBdrySurfTotalSurfaceArea(
-            value=round(total, _DEC_AREA), uom=_UOM_AREA_M2,
+            value=round(total, _DEC_AREA),
+            uom=_UOM_AREA_M2,
         )
     ]
 
@@ -191,7 +192,8 @@ def _compute_opaque_area(surf: Any, ctx: DerivedContext) -> list[Any] | None:
         return None
     return [
         BdgBdrySurfOpaqueSurfaceArea(
-            value=round(opaque, _DEC_AREA), uom=_UOM_AREA_M2,
+            value=round(opaque, _DEC_AREA),
+            uom=_UOM_AREA_M2,
         )
     ]
 
@@ -203,7 +205,8 @@ def _compute_inclination(surf: Any, ctx: DerivedContext) -> list[Any] | None:
     _, _, inclination_deg = attrs
     return [
         BdgBdrySurfInclination(
-            value=round(inclination_deg, _DEC_ANGLE), uom=_UOM_DEGREES,
+            value=round(inclination_deg, _DEC_ANGLE),
+            uom=_UOM_DEGREES,
         )
     ]
 
@@ -217,7 +220,8 @@ def _compute_azimuth(surf: Any, ctx: DerivedContext) -> list[Any] | None:
         return None
     return [
         BdgBdrySurfAzimuth(
-            value=round(azimuth_deg, _DEC_ANGLE), uom=_UOM_DEGREES,
+            value=round(azimuth_deg, _DEC_ANGLE),
+            uom=_UOM_DEGREES,
         )
     ]
 
@@ -228,7 +232,8 @@ def _compute_thickness(surf: Any, ctx: DerivedContext) -> list[Any] | None:
         return None
     return [
         BdgBdrySurfThickness(
-            value=round(cinfo.thickness_m, _DEC_LENGTH), uom=_UOM_METRES,
+            value=round(cinfo.thickness_m, _DEC_LENGTH),
+            uom=_UOM_METRES,
         )
     ]
 
@@ -264,7 +269,8 @@ def _compute_opening_area(opening: Any, ctx: DerivedContext) -> list[Any] | None
 
 
 def _compute_opening_inclination(
-    opening: Any, ctx: DerivedContext,
+    opening: Any,
+    ctx: DerivedContext,
 ) -> list[Any] | None:
     attrs = _largest_polygon_attributes(opening)
     if attrs is None:
@@ -272,13 +278,15 @@ def _compute_opening_inclination(
     _, _, inclination_deg = attrs
     return [
         BdgOpnInclination(
-            value=round(inclination_deg, _DEC_ANGLE), uom=_UOM_DEGREES,
+            value=round(inclination_deg, _DEC_ANGLE),
+            uom=_UOM_DEGREES,
         )
     ]
 
 
 def _compute_opening_azimuth(
-    opening: Any, ctx: DerivedContext,
+    opening: Any,
+    ctx: DerivedContext,
 ) -> list[Any] | None:
     attrs = _largest_polygon_attributes(opening)
     if attrs is None:
@@ -288,7 +296,8 @@ def _compute_opening_azimuth(
         return None
     return [
         BdgOpnAzimuth(
-            value=round(azimuth_deg, _DEC_ANGLE), uom=_UOM_DEGREES,
+            value=round(azimuth_deg, _DEC_ANGLE),
+            uom=_UOM_DEGREES,
         )
     ]
 
@@ -383,7 +392,8 @@ def _build_material_index(model: CityModel) -> dict[str, Any]:
 
 
 def _build_construction_info_index(
-    model: CityModel, materials: dict[str, Any],
+    model: CityModel,
+    materials: dict[str, Any],
 ) -> dict[str, _ConstructionInfo]:
     """Pre-compute ``_ConstructionInfo`` for every in-document construction."""
     index: dict[str, _ConstructionInfo] = {}
@@ -402,7 +412,8 @@ def _build_construction_info_index(
 
 
 def _reduce_construction(
-    construction: LayeredConstruction1, materials: dict[str, Any],
+    construction: LayeredConstruction1,
+    materials: dict[str, Any],
 ) -> _ConstructionInfo:
     """Sum thickness + areal heat capacity over *construction*'s layers."""
     thickness_total = 0.0
@@ -437,9 +448,7 @@ def _reduce_construction(
         has_heat_capacity = True
     return _ConstructionInfo(
         thickness_m=thickness_total if has_thickness else None,
-        heat_capacity_kj_per_k_m2=(
-            heat_capacity_total / 1000.0 if has_heat_capacity else None
-        ),
+        heat_capacity_kj_per_k_m2=(heat_capacity_total / 1000.0 if has_heat_capacity else None),
     )
 
 
@@ -454,7 +463,8 @@ def _measure_value(measure: Any | None) -> float | None:
 
 
 def _resolve_material(
-    material_property: Any, materials: dict[str, Any],
+    material_property: Any,
+    materials: dict[str, Any],
 ) -> Any | None:
     """Resolve a ``Layer.material`` to its underlying ``SolidMaterial`` / ``Gas``."""
     for attr in ("solid_material", "gas"):
@@ -468,7 +478,8 @@ def _resolve_material(
 
 
 def _resolve_construction_info(
-    surf: Any, ctx: DerivedContext,
+    surf: Any,
+    ctx: DerivedContext,
 ) -> _ConstructionInfo | None:
     """Trace ``surf.layered_construction[0]`` xlink to its pre-computed info.
 
@@ -484,9 +495,14 @@ def _resolve_construction_info(
     href = getattr(layered_construction[0], "href", None)
     if not isinstance(href, str) or not href.startswith("#"):
         return None
-    index: dict[str, _ConstructionInfo] = getattr(
-        ctx, _CTX_KEY_CONSTRUCTION_INFO, None,
-    ) or {}
+    index: dict[str, _ConstructionInfo] = (
+        getattr(
+            ctx,
+            _CTX_KEY_CONSTRUCTION_INFO,
+            None,
+        )
+        or {}
+    )
     return index.get(href[1:])
 
 
@@ -550,8 +566,7 @@ def _ring_coords(
     if not isinstance(flat, list) or len(flat) < 9 or len(flat) % 3 != 0:
         return None
     return [
-        (float(flat[i]), float(flat[i + 1]), float(flat[i + 2]))
-        for i in range(0, len(flat), 3)
+        (float(flat[i]), float(flat[i + 1]), float(flat[i + 2])) for i in range(0, len(flat), 3)
     ]
 
 
@@ -617,7 +632,8 @@ def _ring_area(ring: list[Coord3D]) -> float | None:
 
 
 def _ring_vertex_key(
-    ring: list[Coord3D], precision: int = _VERTEX_KEY_PRECISION,
+    ring: list[Coord3D],
+    precision: int = _VERTEX_KEY_PRECISION,
 ) -> frozenset[tuple[float, float, float]]:
     """Hashable vertex set for matching opening exteriors against parent interior rings.
 

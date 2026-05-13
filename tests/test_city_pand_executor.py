@@ -10,8 +10,8 @@ builder has its own narrow tests in ``test_city_builders.py``; this
 file covers the **orchestration**: that the calls happen in the right
 order, that the parameter object (``BuildContext``) reaches every
 builder with the right values, that the conditional PV branch behaves
-on both legs, and that the ``PandArtifacts`` tuple has the
-4-element shape downstream code expects.
+on both legs, and that the ``PandArtifacts`` dataclass carries the
+four named fields downstream code expects.
 
 Why an integration test instead of consolidating the five builders
 into one entry point: see ADR-0002.
@@ -135,12 +135,11 @@ def test_run_per_pand_build_returns_one_artefact_per_pand(tmp_path: Path) -> Non
     )
     assert len(artefacts) == 2
     for art in artefacts:
-        building, resolved, targets, coords = art
-        assert isinstance(building, Building)
-        assert resolved == []  # no inputs supplied
-        assert isinstance(targets, list)
-        assert isinstance(coords, list)
-        assert coords  # geometry collection ran
+        assert isinstance(art.building, Building)
+        assert art.resolved == []  # no inputs supplied
+        assert isinstance(art.targets, list)
+        assert isinstance(art.coords, list)
+        assert art.coords  # geometry collection ran
 
 
 def test_run_per_pand_build_threads_build_context_through_to_each_builder(
@@ -165,7 +164,7 @@ def test_run_per_pand_build_threads_build_context_through_to_each_builder(
         workers=1,
     )
     assert len(artefacts) == 1
-    building, _resolved, _targets, _coords = artefacts[0]
+    building = artefacts[0].building
     # Prefix lands on every gml:id touched by the orchestration.
     assert building.id is not None
     assert building.id.startswith("test_")
@@ -214,13 +213,14 @@ def test_run_per_pand_build_lands_orchestration_outputs_on_building(
         ],
         pv_panels=(),
     )}
-    [(building, resolved, _targets, _coords)] = run_per_pand_build(
+    [art] = run_per_pand_build(
         config=config,
         panden=[_pand("PA", bouwjaar=1985)],
         parsed_by_id={"PA": _parsed("PA", bouwjaar=1985)},
         inputs_per_pand=inputs_per_pand,
         workers=1,
     )
+    building, resolved = art.building, art.resolved
 
     # build_building: yearOfConstruction set (xsdata serialises as
     # XmlPeriod, not int).
@@ -275,7 +275,7 @@ def test_run_per_pand_build_skips_pv_branch_when_panels_empty(
     orchestration and lives here, not in a per-builder test).
     """
     config = _config(tmp_path)
-    [(building, _resolved, _targets, _coords)] = run_per_pand_build(
+    [art] = run_per_pand_build(
         config=config,
         panden=[_pand("PA")],
         parsed_by_id={"PA": _parsed("PA")},
@@ -283,7 +283,7 @@ def test_run_per_pand_build_skips_pv_branch_when_panels_empty(
         workers=1,
     )
     # Building exists; absence of PV is silent.
-    assert isinstance(building, Building)
+    assert isinstance(art.building, Building)
 
 
 def test_bundle_per_pand_inputs_collapses_parallel_dicts() -> None:

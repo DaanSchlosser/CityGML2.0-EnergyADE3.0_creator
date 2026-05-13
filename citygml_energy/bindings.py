@@ -9,28 +9,6 @@ from xsdata.models.datatype import XmlDate, XmlDateTime, XmlDuration, XmlPeriod,
 
 
 @dataclass(slots=True, kw_only=True)
-class ExternalObjectReferenceType2:
-    class Meta:
-        name = "ExternalObjectReferenceType"
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    name: None | str = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    uri: None | str = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
 class GenericTimeValueType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
@@ -177,9 +155,8 @@ class ValidTo:
 
 
 @dataclass(slots=True, kw_only=True)
-class ExternalObjectReferenceType1:
+class ExternalObjectReferenceType:
     class Meta:
-        name = "ExternalObjectReferenceType"
         target_namespace = "http://www.opengis.net/citygml/2.0"
 
     name: None | str = field(
@@ -3927,29 +3904,6 @@ class AbstractQualifiedAttributeType:
 
 
 @dataclass(slots=True, kw_only=True)
-class ExternalReferenceType2:
-    class Meta:
-        name = "ExternalReferenceType"
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    information_system: None | str = field(
-        default=None,
-        metadata={
-            "name": "informationSystem",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    external_object: ExternalObjectReferenceType2 = field(
-        metadata={
-            "name": "externalObject",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
 class GenericTimeValue(GenericTimeValueType):
     class Meta:
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
@@ -4029,7 +3983,7 @@ class Status2(CodeType):
 
 
 @dataclass(slots=True, kw_only=True)
-class ExternalReferenceType1:
+class ExternalReferenceType:
     """
     Type describing the reference to an corresponding object in an other information system, for
     example in the german cadastre ALKIS, the german topographic information system or ATKIS, or
@@ -4042,7 +3996,6 @@ class ExternalReferenceType1:
     """
 
     class Meta:
-        name = "ExternalReferenceType"
         target_namespace = "http://www.opengis.net/citygml/2.0"
 
     information_system: None | str = field(
@@ -4053,7 +4006,7 @@ class ExternalReferenceType1:
             "namespace": "http://www.opengis.net/citygml/2.0",
         },
     )
-    external_object: ExternalObjectReferenceType1 = field(
+    external_object: ExternalObjectReferenceType = field(
         metadata={
             "name": "externalObject",
             "type": "Element",
@@ -6824,12 +6777,6 @@ class AbstractQualifiedAttribute(AbstractQualifiedAttributeType):
 
 
 @dataclass(slots=True, kw_only=True)
-class ExternalReference(ExternalReferenceType2):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
 class GenericTimeValuePropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
@@ -8518,21 +8465,6 @@ class EmissivityType(AbstractOpticalPropertyType):
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ExternalReferencePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    external_reference: None | ExternalReference = field(
-        default=None,
-        metadata={
-            "name": "ExternalReference",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
     )
 
 
@@ -35810,38 +35742,6 @@ class DictionaryEntry(DictionaryEntryType):
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractAdefeatureType(AbstractFeatureType):
-    class Meta:
-        name = "AbstractADEFeatureType"
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    creation_date: None | XmlDate = field(
-        default=None,
-        metadata={
-            "name": "creationDate",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    termination_date: None | XmlDate = field(
-        default=None,
-        metadata={
-            "name": "terminationDate",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    external_reference: list[ExternalReferencePropertyType] = field(
-        default_factory=list,
-        metadata={
-            "name": "externalReference",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
 class AddressType(AbstractFeatureType):
     """
     Type for addresses.
@@ -36003,13 +35903,6 @@ class Feature(AbstractFeatureType):
     class Meta:
         name = "_Feature"
         namespace = "http://www.opengis.net/gml"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractAdefeature(AbstractAdefeatureType):
-    class Meta:
-        name = "AbstractADEFeature"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
@@ -37400,26 +37293,10 @@ class AssociationType:
     class Meta:
         target_namespace = "http://www.opengis.net/gml"
 
-    external_reference: None | ExternalReference = field(
-        default=None,
-        metadata={
-            "name": "ExternalReference",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
     city_object_relation: None | CityObjectRelation = field(
         default=None,
         metadata={
             "name": "CityObjectRelation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    feature_relation: None | FeatureRelation = field(
-        default=None,
-        metadata={
-            "name": "FeatureRelation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -37640,6 +37517,46 @@ class AssociationType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
+    x3_dmaterial: None | X3Dmaterial = field(
+        default=None,
+        metadata={
+            "name": "X3DMaterial",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    georeferenced_texture: None | GeoreferencedTexture = field(
+        default=None,
+        metadata={
+            "name": "GeoreferencedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    parameterized_texture: None | ParameterizedTexture = field(
+        default=None,
+        metadata={
+            "name": "ParameterizedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    appearance: None | Appearance1 = field(
+        default=None,
+        metadata={
+            "name": "Appearance",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    address: None | Address = field(
+        default=None,
+        metadata={
+            "name": "Address",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
     layer: None | Layer = field(
         default=None,
         metadata={
@@ -37672,10 +37589,10 @@ class AssociationType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    schedule_component: None | ScheduleComponent = field(
+    weather_station: None | WeatherStation = field(
         default=None,
         metadata={
-            "name": "ScheduleComponent",
+            "name": "WeatherStation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -37692,6 +37609,190 @@ class AssociationType:
         default=None,
         metadata={
             "name": "EnergyPerformanceCertificate",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    material_library: None | MaterialLibrary = field(
+        default=None,
+        metadata={
+            "name": "MaterialLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction_library: None | LayeredConstructionLibrary = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstructionLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_library: None | ScheduleLibrary = field(
+        default=None,
+        metadata={
+            "name": "ScheduleLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_distribution: None | ThermalDistribution = field(
+        default=None,
+        metadata={
+            "name": "ThermalDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    power_distribution: None | PowerDistribution = field(
+        default=None,
+        metadata={
+            "name": "PowerDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_storage_device: None | ThermalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ThermalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_storage_device: None | GenericStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    electrical_storage_device: None | ElectricalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ElectricalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    movable_shading_device: None | MovableShadingDevice = field(
+        default=None,
+        metadata={
+            "name": "MovableShadingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lighting_device: None | LightingDevice = field(
+        default=None,
+        metadata={
+            "name": "LightingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_pump: None | HeatPump = field(
+        default=None,
+        metadata={
+            "name": "HeatPump",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_electrical_device: None | GenericElectricalDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericElectricalDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_device: None | GenericDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    evcharging_station: None | EvchargingStation = field(
+        default=None,
+        metadata={
+            "name": "EVChargingStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    boiler: None | Boiler = field(
+        default=None,
+        metadata={
+            "name": "Boiler",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solar_thermal_collector: None | SolarThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_collector: None | PhotovoltaicCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_solar_collector: None | GenericSolarCollector = field(
+        default=None,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_part: None | ZonePart = field(
+        default=None,
+        metadata={
+            "name": "ZonePart",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone: None | Zone1 = field(
+        default=None,
+        metadata={
+            "name": "Zone",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    building_unit: None | BuildingUnit1 = field(
+        default=None,
+        metadata={
+            "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: None | ScheduleComponent = field(
+        default=None,
+        metadata={
+            "name": "ScheduleComponent",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -37940,230 +38041,6 @@ class AssociationType:
         default=None,
         metadata={
             "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    x3_dmaterial: None | X3Dmaterial = field(
-        default=None,
-        metadata={
-            "name": "X3DMaterial",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    georeferenced_texture: None | GeoreferencedTexture = field(
-        default=None,
-        metadata={
-            "name": "GeoreferencedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    parameterized_texture: None | ParameterizedTexture = field(
-        default=None,
-        metadata={
-            "name": "ParameterizedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    appearance: None | Appearance1 = field(
-        default=None,
-        metadata={
-            "name": "Appearance",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    address: None | Address = field(
-        default=None,
-        metadata={
-            "name": "Address",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    weather_station: None | WeatherStation = field(
-        default=None,
-        metadata={
-            "name": "WeatherStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    material_library: None | MaterialLibrary = field(
-        default=None,
-        metadata={
-            "name": "MaterialLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction_library: None | LayeredConstructionLibrary = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstructionLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_library: None | ScheduleLibrary = field(
-        default=None,
-        metadata={
-            "name": "ScheduleLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_distribution: None | ThermalDistribution = field(
-        default=None,
-        metadata={
-            "name": "ThermalDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    power_distribution: None | PowerDistribution = field(
-        default=None,
-        metadata={
-            "name": "PowerDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_storage_device: None | ThermalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ThermalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_storage_device: None | GenericStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    electrical_storage_device: None | ElectricalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ElectricalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    movable_shading_device: None | MovableShadingDevice = field(
-        default=None,
-        metadata={
-            "name": "MovableShadingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lighting_device: None | LightingDevice = field(
-        default=None,
-        metadata={
-            "name": "LightingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_pump: None | HeatPump = field(
-        default=None,
-        metadata={
-            "name": "HeatPump",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_electrical_device: None | GenericElectricalDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericElectricalDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_device: None | GenericDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    evcharging_station: None | EvchargingStation = field(
-        default=None,
-        metadata={
-            "name": "EVChargingStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    boiler: None | Boiler = field(
-        default=None,
-        metadata={
-            "name": "Boiler",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solar_thermal_collector: None | SolarThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "SolarThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_collector: None | PhotovoltaicCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_solar_collector: None | GenericSolarCollector = field(
-        default=None,
-        metadata={
-            "name": "GenericSolarCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_part: None | ZonePart = field(
-        default=None,
-        metadata={
-            "name": "ZonePart",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone: None | Zone1 = field(
-        default=None,
-        metadata={
-            "name": "Zone",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    building_unit: None | BuildingUnit1 = field(
-        default=None,
-        metadata={
-            "name": "BuildingUnit",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -39656,6 +39533,1329 @@ class AssociationType:
 
 
 @dataclass(slots=True, kw_only=True)
+class FeatureArrayPropertyType:
+    """
+    Container for features - follow gml:ArrayAssociationType pattern.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/gml"
+
+    x3_dmaterial: list[X3Dmaterial] = field(
+        default_factory=list,
+        metadata={
+            "name": "X3DMaterial",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    georeferenced_texture: list[GeoreferencedTexture] = field(
+        default_factory=list,
+        metadata={
+            "name": "GeoreferencedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    parameterized_texture: list[ParameterizedTexture] = field(
+        default_factory=list,
+        metadata={
+            "name": "ParameterizedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    appearance: list[Appearance1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Appearance",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    address: list[Address] = field(
+        default_factory=list,
+        metadata={
+            "name": "Address",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
+    layer: list[Layer] = field(
+        default_factory=list,
+        metadata={
+            "name": "Layer",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solid_material: list[SolidMaterial] = field(
+        default_factory=list,
+        metadata={
+            "name": "SolidMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    liquid: list[Liquid] = field(
+        default_factory=list,
+        metadata={
+            "name": "Liquid",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    gas: list[Gas] = field(
+        default_factory=list,
+        metadata={
+            "name": "Gas",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    weather_station: list[WeatherStation] = field(
+        default_factory=list,
+        metadata={
+            "name": "WeatherStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    occupants: list[Occupants] = field(
+        default_factory=list,
+        metadata={
+            "name": "Occupants",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy_performance_certificate: list[EnergyPerformanceCertificate1] = field(
+        default_factory=list,
+        metadata={
+            "name": "EnergyPerformanceCertificate",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    material_library: list[MaterialLibrary] = field(
+        default_factory=list,
+        metadata={
+            "name": "MaterialLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction_library: list[LayeredConstructionLibrary] = field(
+        default_factory=list,
+        metadata={
+            "name": "LayeredConstructionLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_library: list[ScheduleLibrary] = field(
+        default_factory=list,
+        metadata={
+            "name": "ScheduleLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_distribution: list[ThermalDistribution] = field(
+        default_factory=list,
+        metadata={
+            "name": "ThermalDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    power_distribution: list[PowerDistribution] = field(
+        default_factory=list,
+        metadata={
+            "name": "PowerDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_storage_device: list[ThermalStorageDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "ThermalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_storage_device: list[GenericStorageDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    electrical_storage_device: list[ElectricalStorageDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "ElectricalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    movable_shading_device: list[MovableShadingDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "MovableShadingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lighting_device: list[LightingDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "LightingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_pump: list[HeatPump] = field(
+        default_factory=list,
+        metadata={
+            "name": "HeatPump",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_electrical_device: list[GenericElectricalDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericElectricalDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_device: list[GenericDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    evcharging_station: list[EvchargingStation] = field(
+        default_factory=list,
+        metadata={
+            "name": "EVChargingStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    boiler: list[Boiler] = field(
+        default_factory=list,
+        metadata={
+            "name": "Boiler",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solar_thermal_collector: list[SolarThermalCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_thermal_collector: list[PhotovoltaicThermalCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_collector: list[PhotovoltaicCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_solar_collector: list[GenericSolarCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_part: list[ZonePart] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZonePart",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone: list[Zone1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Zone",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    building_unit: list[BuildingUnit1] = field(
+        default_factory=list,
+        metadata={
+            "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: list[ScheduleComponent] = field(
+        default_factory=list,
+        metadata={
+            "name": "ScheduleComponent",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    utility_network_connection: list[UtilityNetworkConnection1] = field(
+        default_factory=list,
+        metadata={
+            "name": "UtilityNetworkConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    water: list[Water] = field(
+        default_factory=list,
+        metadata={
+            "name": "Water",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    waste: list[Waste] = field(
+        default_factory=list,
+        metadata={
+            "name": "Waste",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    urban_space: list[UrbanSpace] = field(
+        default_factory=list,
+        metadata={
+            "name": "UrbanSpace",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    other_resource: list[OtherResource] = field(
+        default_factory=list,
+        metadata={
+            "name": "OtherResource",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    food: list[Food] = field(
+        default_factory=list,
+        metadata={
+            "name": "Food",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy: list[Energy] = field(
+        default_factory=list,
+        metadata={
+            "name": "Energy",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    construction_material: list[ConstructionMaterial] = field(
+        default_factory=list,
+        metadata={
+            "name": "ConstructionMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    weather_data: list[WeatherData] = field(
+        default_factory=list,
+        metadata={
+            "name": "WeatherData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_data: list[SensorData1] = field(
+        default_factory=list,
+        metadata={
+            "name": "SensorData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    intervention: list[Intervention1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Intervention",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    device_operation: list[DeviceOperation] = field(
+        default_factory=list,
+        metadata={
+            "name": "DeviceOperation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series: list[TypicalValuesIrregularTimeSeries] = field(
+        default_factory=list,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series: list[IrregularTimeSeries] = field(
+        default_factory=list,
+        metadata={
+            "name": "IrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series: list[TypicalValuesMonthlyTimeSeries] = field(
+        default_factory=list,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series: list[MonthlyTimeSeries] = field(
+        default_factory=list,
+        metadata={
+            "name": "MonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_connection: list[SensorConnection] = field(
+        default_factory=list,
+        metadata={
+            "name": "SensorConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series: list[TypicalValuesRegularTimeSeries] = field(
+        default_factory=list,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series: list[RegularTimeSeries] = field(
+        default_factory=list,
+        metadata={
+            "name": "RegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series_file: list[TypicalValuesIrregularTimeSeriesFile] = field(
+        default_factory=list,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series_file: list[IrregularTimeSeriesFile] = field(
+        default_factory=list,
+        metadata={
+            "name": "IrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series_file: list[TypicalValuesMonthlyTimeSeriesFile] = field(
+        default_factory=list,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series_file: list[MonthlyTimeSeriesFile] = field(
+        default_factory=list,
+        metadata={
+            "name": "MonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series_file: list[TypicalValuesRegularTimeSeriesFile] = field(
+        default_factory=list,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series_file: list[RegularTimeSeriesFile] = field(
+        default_factory=list,
+        metadata={
+            "name": "RegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    composite_schedule: list[CompositeSchedule] = field(
+        default_factory=list,
+        metadata={
+            "name": "CompositeSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    dual_value_schedule: list[DualValueSchedule] = field(
+        default_factory=list,
+        metadata={
+            "name": "DualValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_series_schedule: list[TimeSeriesSchedule] = field(
+        default_factory=list,
+        metadata={
+            "name": "TimeSeriesSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    constant_value_schedule: list[ConstantValueSchedule] = field(
+        default_factory=list,
+        metadata={
+            "name": "ConstantValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    reverse_layered_construction: list[ReverseLayeredConstruction] = field(
+        default_factory=list,
+        metadata={
+            "name": "ReverseLayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction: list[LayeredConstruction1] = field(
+        default_factory=list,
+        metadata={
+            "name": "LayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    water_closure_surface: list[WaterClosureSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "WaterClosureSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
+        },
+    )
+    water_ground_surface: list[WaterGroundSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "WaterGroundSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
+        },
+    )
+    water_surface: list[WaterSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "WaterSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
+        },
+    )
+    water_body: list[WaterBody] = field(
+        default_factory=list,
+        metadata={
+            "name": "WaterBody",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
+        },
+    )
+    solitary_vegetation_object: list[SolitaryVegetationObject] = field(
+        default_factory=list,
+        metadata={
+            "name": "SolitaryVegetationObject",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    plant_cover: list[PlantCover] = field(
+        default_factory=list,
+        metadata={
+            "name": "PlantCover",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    door: list[Door3] = field(
+        default_factory=list,
+        metadata={
+            "name": "Door",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    window: list[Window3] = field(
+        default_factory=list,
+        metadata={
+            "name": "Window",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    tunnel_furniture: list[TunnelFurniture] = field(
+        default_factory=list,
+        metadata={
+            "name": "TunnelFurniture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    hollow_space: list[HollowSpace] = field(
+        default_factory=list,
+        metadata={
+            "name": "HollowSpace",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    outer_ceiling_surface: list[OuterCeilingSurface3] = field(
+        default_factory=list,
+        metadata={
+            "name": "OuterCeilingSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    ceiling_surface: list[CeilingSurface3] = field(
+        default_factory=list,
+        metadata={
+            "name": "CeilingSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    interior_wall_surface: list[InteriorWallSurface3] = field(
+        default_factory=list,
+        metadata={
+            "name": "InteriorWallSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    outer_floor_surface: list[OuterFloorSurface3] = field(
+        default_factory=list,
+        metadata={
+            "name": "OuterFloorSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    floor_surface: list[FloorSurface3] = field(
+        default_factory=list,
+        metadata={
+            "name": "FloorSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    closure_surface: list[ClosureSurface3] = field(
+        default_factory=list,
+        metadata={
+            "name": "ClosureSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    ground_surface: list[GroundSurface3] = field(
+        default_factory=list,
+        metadata={
+            "name": "GroundSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    wall_surface: list[WallSurface3] = field(
+        default_factory=list,
+        metadata={
+            "name": "WallSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    roof_surface: list[RoofSurface3] = field(
+        default_factory=list,
+        metadata={
+            "name": "RoofSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    int_tunnel_installation: list[IntTunnelInstallation] = field(
+        default_factory=list,
+        metadata={
+            "name": "IntTunnelInstallation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    tunnel_installation: list[TunnelInstallation] = field(
+        default_factory=list,
+        metadata={
+            "name": "TunnelInstallation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    auxiliary_traffic_area: list[AuxiliaryTrafficArea] = field(
+        default_factory=list,
+        metadata={
+            "name": "AuxiliaryTrafficArea",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    traffic_area: list[TrafficArea] = field(
+        default_factory=list,
+        metadata={
+            "name": "TrafficArea",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    square: list[Square] = field(
+        default_factory=list,
+        metadata={
+            "name": "Square",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    railway: list[Railway] = field(
+        default_factory=list,
+        metadata={
+            "name": "Railway",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    road: list[Road] = field(
+        default_factory=list,
+        metadata={
+            "name": "Road",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    track: list[Track1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Track",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    transportation_complex: list[TransportationComplex] = field(
+        default_factory=list,
+        metadata={
+            "name": "TransportationComplex",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    breakline_relief: list[BreaklineRelief] = field(
+        default_factory=list,
+        metadata={
+            "name": "BreaklineRelief",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        },
+    )
+    mass_point_relief: list[MassPointRelief] = field(
+        default_factory=list,
+        metadata={
+            "name": "MassPointRelief",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        },
+    )
+    raster_relief: list[RasterRelief] = field(
+        default_factory=list,
+        metadata={
+            "name": "RasterRelief",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        },
+    )
+    tinrelief: list[Tinrelief] = field(
+        default_factory=list,
+        metadata={
+            "name": "TINRelief",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        },
+    )
+    relief_feature: list[ReliefFeature] = field(
+        default_factory=list,
+        metadata={
+            "name": "ReliefFeature",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        },
+    )
+    land_use: list[LandUse] = field(
+        default_factory=list,
+        metadata={
+            "name": "LandUse",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
+        },
+    )
+    generic_city_object: list[GenericCityObject] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericCityObject",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    urban_function_area: list[UrbanFunctionArea] = field(
+        default_factory=list,
+        metadata={
+            "name": "UrbanFunctionArea",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    city_object_group: list[CityObjectGroup] = field(
+        default_factory=list,
+        metadata={
+            "name": "CityObjectGroup",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+        },
+    )
+    city_furniture: list[CityFurniture] = field(
+        default_factory=list,
+        metadata={
+            "name": "CityFurniture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    building_furniture: list[BuildingFurniture] = field(
+        default_factory=list,
+        metadata={
+            "name": "BuildingFurniture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    room: list[Room] = field(
+        default_factory=list,
+        metadata={
+            "name": "Room",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    zone_window: list[ZoneWindow] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneWindow",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_door: list[ZoneDoor] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneDoor",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    door_1: list[Door2] = field(
+        default_factory=list,
+        metadata={
+            "name": "Door",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    window_1: list[Window2] = field(
+        default_factory=list,
+        metadata={
+            "name": "Window",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    zone_underground_wall_surface: list[ZoneUndergroundWallSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneUndergroundWallSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_roof_surface: list[ZoneRoofSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneRoofSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_outer_floor_surface: list[ZoneOuterFloorSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneOuterFloorSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_outer_ceiling_surface: list[ZoneOuterCeilingSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneOuterCeilingSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_intermediate_floor_surface: list[ZoneIntermediateFloorSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneIntermediateFloorSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_ground_surface: list[ZoneGroundSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneGroundSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_wall_surface: list[ZoneWallSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneWallSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_closure_surface: list[ZoneClosureSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneClosureSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_basement_ceiling_surface: list[ZoneBasementCeilingSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneBasementCeilingSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_attic_floor_surface: list[ZoneAtticFloorSurface] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZoneAtticFloorSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    outer_ceiling_surface_1: list[OuterCeilingSurface2] = field(
+        default_factory=list,
+        metadata={
+            "name": "OuterCeilingSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    ceiling_surface_1: list[CeilingSurface2] = field(
+        default_factory=list,
+        metadata={
+            "name": "CeilingSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    interior_wall_surface_1: list[InteriorWallSurface2] = field(
+        default_factory=list,
+        metadata={
+            "name": "InteriorWallSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    outer_floor_surface_1: list[OuterFloorSurface2] = field(
+        default_factory=list,
+        metadata={
+            "name": "OuterFloorSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    floor_surface_1: list[FloorSurface2] = field(
+        default_factory=list,
+        metadata={
+            "name": "FloorSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    closure_surface_1: list[ClosureSurface2] = field(
+        default_factory=list,
+        metadata={
+            "name": "ClosureSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    ground_surface_1: list[GroundSurface2] = field(
+        default_factory=list,
+        metadata={
+            "name": "GroundSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    wall_surface_1: list[WallSurface2] = field(
+        default_factory=list,
+        metadata={
+            "name": "WallSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    roof_surface_1: list[RoofSurface2] = field(
+        default_factory=list,
+        metadata={
+            "name": "RoofSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    int_building_installation: list[IntBuildingInstallation] = field(
+        default_factory=list,
+        metadata={
+            "name": "IntBuildingInstallation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    building_installation: list[BuildingInstallation] = field(
+        default_factory=list,
+        metadata={
+            "name": "BuildingInstallation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    bridge_furniture: list[BridgeFurniture] = field(
+        default_factory=list,
+        metadata={
+            "name": "BridgeFurniture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    bridge_room: list[BridgeRoom] = field(
+        default_factory=list,
+        metadata={
+            "name": "BridgeRoom",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    door_2: list[Door1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Door",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    window_2: list[Window1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Window",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    ceiling_surface_2: list[CeilingSurface1] = field(
+        default_factory=list,
+        metadata={
+            "name": "CeilingSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    interior_wall_surface_2: list[InteriorWallSurface1] = field(
+        default_factory=list,
+        metadata={
+            "name": "InteriorWallSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    floor_surface_2: list[FloorSurface1] = field(
+        default_factory=list,
+        metadata={
+            "name": "FloorSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    outer_ceiling_surface_2: list[OuterCeilingSurface1] = field(
+        default_factory=list,
+        metadata={
+            "name": "OuterCeilingSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    outer_floor_surface_2: list[OuterFloorSurface1] = field(
+        default_factory=list,
+        metadata={
+            "name": "OuterFloorSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    closure_surface_2: list[ClosureSurface1] = field(
+        default_factory=list,
+        metadata={
+            "name": "ClosureSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    ground_surface_2: list[GroundSurface1] = field(
+        default_factory=list,
+        metadata={
+            "name": "GroundSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    wall_surface_2: list[WallSurface1] = field(
+        default_factory=list,
+        metadata={
+            "name": "WallSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    roof_surface_2: list[RoofSurface1] = field(
+        default_factory=list,
+        metadata={
+            "name": "RoofSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    bridge_construction_element: list[BridgeConstructionElement] = field(
+        default_factory=list,
+        metadata={
+            "name": "BridgeConstructionElement",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    int_bridge_installation: list[IntBridgeInstallation] = field(
+        default_factory=list,
+        metadata={
+            "name": "IntBridgeInstallation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    bridge_installation: list[BridgeInstallation] = field(
+        default_factory=list,
+        metadata={
+            "name": "BridgeInstallation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    tunnel_part: list[TunnelPart] = field(
+        default_factory=list,
+        metadata={
+            "name": "TunnelPart",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    tunnel: list[Tunnel] = field(
+        default_factory=list,
+        metadata={
+            "name": "Tunnel",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    building_part: list[BuildingPart] = field(
+        default_factory=list,
+        metadata={
+            "name": "BuildingPart",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    building: list[Building] = field(
+        default_factory=list,
+        metadata={
+            "name": "Building",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    bridge_part: list[BridgePart] = field(
+        default_factory=list,
+        metadata={
+            "name": "BridgePart",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    bridge: list[Bridge] = field(
+        default_factory=list,
+        metadata={
+            "name": "Bridge",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    directed_observation_at_distance: list[DirectedObservationAtDistance] = field(
+        default_factory=list,
+        metadata={
+            "name": "DirectedObservationAtDistance",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    directed_observation: list[DirectedObservation] = field(
+        default_factory=list,
+        metadata={
+            "name": "DirectedObservation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    observation: list[Observation] = field(
+        default_factory=list,
+        metadata={
+            "name": "Observation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    rectified_grid_coverage: list[RectifiedGridCoverage] = field(
+        default_factory=list,
+        metadata={
+            "name": "RectifiedGridCoverage",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    grid_coverage: list[GridCoverage] = field(
+        default_factory=list,
+        metadata={
+            "name": "GridCoverage",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    multi_solid_coverage: list[MultiSolidCoverage] = field(
+        default_factory=list,
+        metadata={
+            "name": "MultiSolidCoverage",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    multi_surface_coverage: list[MultiSurfaceCoverage] = field(
+        default_factory=list,
+        metadata={
+            "name": "MultiSurfaceCoverage",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    multi_curve_coverage: list[MultiCurveCoverage] = field(
+        default_factory=list,
+        metadata={
+            "name": "MultiCurveCoverage",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    multi_point_coverage: list[MultiPointCoverage] = field(
+        default_factory=list,
+        metadata={
+            "name": "MultiPointCoverage",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    feature_collection: list[FeatureCollection] = field(
+        default_factory=list,
+        metadata={
+            "name": "FeatureCollection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    city_model: list[CityModel] = field(
+        default_factory=list,
+        metadata={
+            "name": "CityModel",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
 class FeaturePropertyType:
     """
     Container for a feature - follow gml:AssociationType pattern.
@@ -39664,6 +40864,46 @@ class FeaturePropertyType:
     class Meta:
         target_namespace = "http://www.opengis.net/gml"
 
+    x3_dmaterial: None | X3Dmaterial = field(
+        default=None,
+        metadata={
+            "name": "X3DMaterial",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    georeferenced_texture: None | GeoreferencedTexture = field(
+        default=None,
+        metadata={
+            "name": "GeoreferencedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    parameterized_texture: None | ParameterizedTexture = field(
+        default=None,
+        metadata={
+            "name": "ParameterizedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    appearance: None | Appearance1 = field(
+        default=None,
+        metadata={
+            "name": "Appearance",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    address: None | Address = field(
+        default=None,
+        metadata={
+            "name": "Address",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
     layer: None | Layer = field(
         default=None,
         metadata={
@@ -39696,10 +40936,10 @@ class FeaturePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    schedule_component: None | ScheduleComponent = field(
+    weather_station: None | WeatherStation = field(
         default=None,
         metadata={
-            "name": "ScheduleComponent",
+            "name": "WeatherStation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -39716,6 +40956,190 @@ class FeaturePropertyType:
         default=None,
         metadata={
             "name": "EnergyPerformanceCertificate",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    material_library: None | MaterialLibrary = field(
+        default=None,
+        metadata={
+            "name": "MaterialLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction_library: None | LayeredConstructionLibrary = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstructionLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_library: None | ScheduleLibrary = field(
+        default=None,
+        metadata={
+            "name": "ScheduleLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_distribution: None | ThermalDistribution = field(
+        default=None,
+        metadata={
+            "name": "ThermalDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    power_distribution: None | PowerDistribution = field(
+        default=None,
+        metadata={
+            "name": "PowerDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_storage_device: None | ThermalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ThermalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_storage_device: None | GenericStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    electrical_storage_device: None | ElectricalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ElectricalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    movable_shading_device: None | MovableShadingDevice = field(
+        default=None,
+        metadata={
+            "name": "MovableShadingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lighting_device: None | LightingDevice = field(
+        default=None,
+        metadata={
+            "name": "LightingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_pump: None | HeatPump = field(
+        default=None,
+        metadata={
+            "name": "HeatPump",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_electrical_device: None | GenericElectricalDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericElectricalDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_device: None | GenericDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    evcharging_station: None | EvchargingStation = field(
+        default=None,
+        metadata={
+            "name": "EVChargingStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    boiler: None | Boiler = field(
+        default=None,
+        metadata={
+            "name": "Boiler",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solar_thermal_collector: None | SolarThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_collector: None | PhotovoltaicCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_solar_collector: None | GenericSolarCollector = field(
+        default=None,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_part: None | ZonePart = field(
+        default=None,
+        metadata={
+            "name": "ZonePart",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone: None | Zone1 = field(
+        default=None,
+        metadata={
+            "name": "Zone",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    building_unit: None | BuildingUnit1 = field(
+        default=None,
+        metadata={
+            "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: None | ScheduleComponent = field(
+        default=None,
+        metadata={
+            "name": "ScheduleComponent",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -39964,230 +41388,6 @@ class FeaturePropertyType:
         default=None,
         metadata={
             "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    x3_dmaterial: None | X3Dmaterial = field(
-        default=None,
-        metadata={
-            "name": "X3DMaterial",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    georeferenced_texture: None | GeoreferencedTexture = field(
-        default=None,
-        metadata={
-            "name": "GeoreferencedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    parameterized_texture: None | ParameterizedTexture = field(
-        default=None,
-        metadata={
-            "name": "ParameterizedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    appearance: None | Appearance1 = field(
-        default=None,
-        metadata={
-            "name": "Appearance",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    address: None | Address = field(
-        default=None,
-        metadata={
-            "name": "Address",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    weather_station: None | WeatherStation = field(
-        default=None,
-        metadata={
-            "name": "WeatherStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    material_library: None | MaterialLibrary = field(
-        default=None,
-        metadata={
-            "name": "MaterialLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction_library: None | LayeredConstructionLibrary = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstructionLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_library: None | ScheduleLibrary = field(
-        default=None,
-        metadata={
-            "name": "ScheduleLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_distribution: None | ThermalDistribution = field(
-        default=None,
-        metadata={
-            "name": "ThermalDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    power_distribution: None | PowerDistribution = field(
-        default=None,
-        metadata={
-            "name": "PowerDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_storage_device: None | ThermalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ThermalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_storage_device: None | GenericStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    electrical_storage_device: None | ElectricalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ElectricalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    movable_shading_device: None | MovableShadingDevice = field(
-        default=None,
-        metadata={
-            "name": "MovableShadingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lighting_device: None | LightingDevice = field(
-        default=None,
-        metadata={
-            "name": "LightingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_pump: None | HeatPump = field(
-        default=None,
-        metadata={
-            "name": "HeatPump",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_electrical_device: None | GenericElectricalDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericElectricalDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_device: None | GenericDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    evcharging_station: None | EvchargingStation = field(
-        default=None,
-        metadata={
-            "name": "EVChargingStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    boiler: None | Boiler = field(
-        default=None,
-        metadata={
-            "name": "Boiler",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solar_thermal_collector: None | SolarThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "SolarThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_collector: None | PhotovoltaicCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_solar_collector: None | GenericSolarCollector = field(
-        default=None,
-        metadata={
-            "name": "GenericSolarCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_part: None | ZonePart = field(
-        default=None,
-        metadata={
-            "name": "ZonePart",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone: None | Zone1 = field(
-        default=None,
-        metadata={
-            "name": "Zone",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    building_unit: None | BuildingUnit1 = field(
-        default=None,
-        metadata={
-            "name": "BuildingUnit",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -41040,27 +42240,6 @@ class FeaturePropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class FeatureRelationType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    relation_type: CodeType = field(
-        metadata={
-            "name": "relationType",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    related_to: FeaturePropertyType = field(
-        metadata={
-            "name": "relatedTo",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
 class CityObjectMember(FeaturePropertyType):
     class Meta:
         name = "cityObjectMember"
@@ -41107,6 +42286,13 @@ class FeatureMember(FeaturePropertyType):
 
 
 @dataclass(slots=True, kw_only=True)
+class FeatureMembers(FeatureArrayPropertyType):
+    class Meta:
+        name = "featureMembers"
+        namespace = "http://www.opengis.net/gml"
+
+
+@dataclass(slots=True, kw_only=True)
 class FeatureProperty(FeaturePropertyType):
     class Meta:
         name = "featureProperty"
@@ -41144,62 +42330,123 @@ class Using(FeaturePropertyType):
 
 
 @dataclass(slots=True, kw_only=True)
-class FeatureRelation(FeatureRelationType):
+class AbstractCityObjectType(AbstractFeatureType):
+    """
+    Type describing the abstract superclass of most CityGML features.
+
+    Its purpose is to provide a creation and a termination date as well as a reference to
+    corresponding objects in other information systems. A generalization relation may be used to
+    relate features, which represent the same real-world object in different Levels-of-Detail,
+    i.e. a feature and its generalized counterpart(s). The direction of this relation is from
+    the feature to the corresponding generalized feature.
+    """
+
     class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+        target_namespace = "http://www.opengis.net/citygml/2.0"
 
-
-@dataclass(slots=True, kw_only=True)
-class FeatureRelationPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    feature_relation: None | FeatureRelation = field(
+    creation_date: None | XmlDate = field(
         default=None,
         metadata={
-            "name": "FeatureRelation",
+            "name": "creationDate",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
+    termination_date: None | XmlDate = field(
+        default=None,
+        metadata={
+            "name": "terminationDate",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
+    external_reference: list[ExternalReferenceType] = field(
+        default_factory=list,
+        metadata={
+            "name": "externalReference",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
+    generalizes_to: list[GeneralizationRelationType] = field(
+        default_factory=list,
+        metadata={
+            "name": "generalizesTo",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
+    relative_to_terrain: None | RelativeToTerrainType = field(
+        default=None,
+        metadata={
+            "name": "relativeToTerrain",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
+    relative_to_water: None | RelativeToWaterType = field(
+        default=None,
+        metadata={
+            "name": "relativeToWater",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
+    reference_point: list[ReferencePoint] = field(
+        default_factory=list,
+        metadata={
+            "name": "referencePoint",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractFeatureWithLifeSpanType(AbstractAdefeatureType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    identifier: None | CodeType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    valid_from: None | XmlDateTime = field(
-        default=None,
-        metadata={
-            "name": "validFrom",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    valid_to: None | XmlDateTime = field(
-        default=None,
+    valid_to: list[ValidTo] = field(
+        default_factory=list,
         metadata={
             "name": "validTo",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    status: None | CodeType = field(
-        default=None,
+    valid_from: list[ValidFrom] = field(
+        default_factory=list,
+        metadata={
+            "name": "validFrom",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    utility_network_connection: list[UtilityNetworkConnection2] = field(
+        default_factory=list,
+        metadata={
+            "name": "utilityNetworkConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    status: list[Status2] = field(
+        default_factory=list,
         metadata={
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    related_to: list[FeatureRelationPropertyType] = field(
+    sensor_data: list[SensorData2] = field(
+        default_factory=list,
+        metadata={
+            "name": "sensorData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    resource: list[Resource] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    related_to: list[RelatedTo] = field(
         default_factory=list,
         metadata={
             "name": "relatedTo",
@@ -41207,28 +42454,232 @@ class AbstractFeatureWithLifeSpanType(AbstractAdefeatureType):
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
+    layered_construction: list[LayeredConstruction2] = field(
+        default_factory=list,
+        metadata={
+            "name": "layeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    intervention: list[Intervention2] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    indicator: list[Indicator2] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    identifier: list[Identifier] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    device: list[Device] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_attribute_set: list[GenericAttributeSet] = field(
+        default_factory=list,
+        metadata={
+            "name": "genericAttributeSet",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    measure_attribute: list[MeasureAttribute] = field(
+        default_factory=list,
+        metadata={
+            "name": "measureAttribute",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    uri_attribute: list[UriAttribute] = field(
+        default_factory=list,
+        metadata={
+            "name": "uriAttribute",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    date_attribute: list[DateAttribute] = field(
+        default_factory=list,
+        metadata={
+            "name": "dateAttribute",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    double_attribute: list[DoubleAttribute] = field(
+        default_factory=list,
+        metadata={
+            "name": "doubleAttribute",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    int_attribute: list[IntAttribute] = field(
+        default_factory=list,
+        metadata={
+            "name": "intAttribute",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    string_attribute: list[StringAttribute] = field(
+        default_factory=list,
+        metadata={
+            "name": "stringAttribute",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    appearance: list[Appearance2] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractFeatureWithLifeSpan(AbstractFeatureWithLifeSpanType):
+class AbstractFeatureCollectionType(AbstractFeatureType):
+    """
+    A feature collection contains zero or more features.
+    """
+
     class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+        target_namespace = "http://www.opengis.net/gml"
+
+    appearance_member: list[AppearanceMember] = field(
+        default_factory=list,
+        metadata={
+            "name": "appearanceMember",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    city_object_member: list[CityObjectMember] = field(
+        default_factory=list,
+        metadata={
+            "name": "cityObjectMember",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
+    feature_member: list[FeatureMember] = field(
+        default_factory=list,
+        metadata={
+            "name": "featureMember",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    feature_members: None | FeatureMembers = field(
+        default=None,
+        metadata={
+            "name": "featureMembers",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractLayeredConstructionType(AbstractFeatureWithLifeSpanType):
+class AbstractCityObjectSpaceType(AbstractCityObjectType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    area: list[QualifiedAreaPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    volume: list[QualifiedVolumePropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lod0_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod0MultiSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lod1_solid: None | SolidPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1Solid",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lod2_solid: None | SolidPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2Solid",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lod3_solid: None | SolidPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3Solid",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractLayeredConstructionType(AbstractCityObjectType):
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractMaterialType(AbstractFeatureWithLifeSpanType):
+class AbstractLibraryType(AbstractCityObjectType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractMaterialType(AbstractCityObjectType):
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractScheduleType(AbstractFeatureWithLifeSpanType):
+class AbstractScheduleType(AbstractCityObjectType):
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
@@ -41282,7 +42733,7 @@ class AbstractScheduleType(AbstractFeatureWithLifeSpanType):
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractTimeSeriesType(AbstractFeatureWithLifeSpanType):
+class AbstractTimeSeriesType(AbstractCityObjectType):
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
@@ -41297,7 +42748,7 @@ class AbstractTimeSeriesType(AbstractFeatureWithLifeSpanType):
 
 
 @dataclass(slots=True, kw_only=True)
-class EnergyPerformanceCertificateType(AbstractFeatureWithLifeSpanType):
+class EnergyPerformanceCertificateType(AbstractCityObjectType):
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
@@ -41332,7 +42783,7 @@ class EnergyPerformanceCertificateType(AbstractFeatureWithLifeSpanType):
 
 
 @dataclass(slots=True, kw_only=True)
-class InterventionType(AbstractFeatureWithLifeSpanType):
+class InterventionType(AbstractCityObjectType):
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
@@ -41369,7 +42820,7 @@ class InterventionType(AbstractFeatureWithLifeSpanType):
 
 
 @dataclass(slots=True, kw_only=True)
-class UtilityNetworkConnectionType(AbstractFeatureWithLifeSpanType):
+class UtilityNetworkConnectionType(AbstractCityObjectType):
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
@@ -41415,13 +42866,956 @@ class UtilityNetworkConnectionType(AbstractFeatureWithLifeSpanType):
 
 
 @dataclass(slots=True, kw_only=True)
+class WeatherStationType(AbstractCityObjectType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractSiteType(AbstractCityObjectType):
+    """
+    Type describing the abstract superclass for buildings, facilities, etc.
+
+    Future extensions of CityGML like bridges and tunnels would be modelled as subclasses of
+    _Site. As subclass of _CityObject, a _Site inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class CityModelType(AbstractFeatureCollectionType):
+    """
+    Type describing the "root" element of any city model file.
+
+    It is a collection whose members are restricted to be features of a city model. All features
+    are included as cityObjectMember.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class CityObject(AbstractCityObjectType):
+    class Meta:
+        name = "_CityObject"
+        namespace = "http://www.opengis.net/citygml/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractOpeningType1(AbstractCityObjectType):
+    """
+    Type for openings (doors, windows) in boundary surfaces.
+
+    Used in LoD3 and LoD4 only. As subclass of _CityObject, an _Opening inherits all attributes
+    and relations, in particular an id, names, external references, generic attributes and
+    generalization relations.
+    """
+
+    class Meta:
+        name = "AbstractOpeningType"
+        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+    lod3_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    lod4_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class BridgeFurnitureType(AbstractCityObjectType):
+    """
+    Type for bridge furnitures.
+
+    As subclass of _CityObject, a BridgeFurniture inherits all attributes and relations, in
+    particular an id, names, external references, generic attributes and generalization
+    relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    lod4_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractOpeningType2(AbstractCityObjectType):
+    """
+    Type for openings (doors, windows) in boundary surfaces.
+
+    Used in LOD3 and LOD4 only. As subclass of _CityObject, an _Opening inherits all attributes
+    and relations, in particular an id, names, external references, and generalization
+    relations.
+    """
+
+    class Meta:
+        name = "AbstractOpeningType"
+        target_namespace = "http://www.opengis.net/citygml/building/2.0"
+
+    lod3_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    lod4_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    bdg_opn_sky_view_factor: list[BdgOpnSkyViewFactor] = field(
+        default_factory=list,
+        metadata={
+            "name": "bdgOpnSkyViewFactor",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    bdg_opn_ground_view_factor: list[BdgOpnGroundViewFactor] = field(
+        default_factory=list,
+        metadata={
+            "name": "bdgOpnGroundViewFactor",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    bdg_opn_azimuth: list[BdgOpnAzimuth] = field(
+        default_factory=list,
+        metadata={
+            "name": "bdgOpnAzimuth",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    bdg_opn_inclination: list[BdgOpnInclination] = field(
+        default_factory=list,
+        metadata={
+            "name": "bdgOpnInclination",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    bdg_opn_area: list[BdgOpnArea] = field(
+        default_factory=list,
+        metadata={
+            "name": "bdgOpnArea",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class BuildingFurnitureType(AbstractCityObjectType):
+    """
+    Type for building furnitures.
+
+    As subclass of _CityObject, a BuildingFurniture inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/building/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    lod4_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class CityFurnitureType(AbstractCityObjectType):
+    """
+    Type describing city furnitures, like traffic lights, benches, ...
+
+    As subclass of _CityObject, a CityFurniture inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/cityfurniture/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod1_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod2_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod3_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod4_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod1_terrain_intersection: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1TerrainIntersection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod2_terrain_intersection: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2TerrainIntersection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod3_terrain_intersection: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3TerrainIntersection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod4_terrain_intersection: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4TerrainIntersection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod1_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod2_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class CityObjectGroupType(AbstractCityObjectType):
+    """
+    A group may be used to aggregate arbitrary CityObjects according to some user-defined
+    criteria.
+
+    Examples for groups are the buildings in a specific region, the result of a query, or
+    objects put together for visualization purposes. Each group has a name (inherited from
+    AbstractGMLType), functions (e.g., building group), a class and zero or more usages. A
+    geometry may optionally be attached to a group, if the geometry of the whole group differs
+    from the geometry of the parts. Each member of a group may be qualified by a role name,
+    reflecting the role each CityObject plays in the context of the group. As subclass of
+    _CityObject, a CityObjectGroup inherits all attributes and relations, in particular an id,
+    names, external references, and generalization relations. As CityObjectGroup itself is a
+    CityObject, it may also be contained by another group.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/cityobjectgroup/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+        },
+    )
+    group_member: list[CityObjectGroupMemberType] = field(
+        default_factory=list,
+        metadata={
+            "name": "groupMember",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+        },
+    )
+    parent: None | CityObjectGroupParentType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+        },
+    )
+    geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericCityObjectType(AbstractCityObjectType):
+    """
+    Generic (user defined) city objects may be used to model features which are not covered
+    explicitly by the CityGML schema.
+
+    Generic objects must be used with care; they shall only be used if there is no appropiate
+    thematic class available in the overall CityGML schema. Oherwise, problems concerning
+    semantic interoperability may arise. As subclass of _CityObject, a generic city object
+    inherits all attributes and relations, in particular an id, names, external references, and
+    generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/generics/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod0_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod0Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod1_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod2_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod3_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod4_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod0_terrain_intersection: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod0TerrainIntersection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod1_terrain_intersection: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1TerrainIntersection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod2_terrain_intersection: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2TerrainIntersection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod3_terrain_intersection: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3TerrainIntersection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod4_terrain_intersection: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4TerrainIntersection",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod0_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod0ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod1_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod2_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/generics/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class LandUseType(AbstractCityObjectType):
+    """
+    Type describing the class for Land Use in all LOD.
+
+    LandUse objects describe areas of the earth's surface dedicated to a specific land use. The
+    geometry must consist of 3-D surfaces. As subclass of _CityObject, a LandUse inherits all
+    attributes and relations, in particular an id, names, external references, and
+    generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/landuse/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
+        },
+    )
+    lod0_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod0MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
+        },
+    )
+    lod1_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
+        },
+    )
+    lod2_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
+        },
+    )
+    lod3_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
+        },
+    )
+    lod4_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractReliefComponentType(AbstractCityObjectType):
+    """
+    Type describing the components of a relief feature - either a TIN, a Grid, mass points or
+    break lines.
+
+    As subclass of _CityObject, a ReliefComponent inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+    lod: int = field(
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+            "min_inclusive": 0,
+            "max_inclusive": 4,
+        }
+    )
+    extent: None | PolygonPropertyType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractTransportationObjectType(AbstractCityObjectType):
+    """
+    Type describing the abstract superclass for transportation objects.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/transportation/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractOpeningType3(AbstractCityObjectType):
+    """
+    Type for openings (doors, windows) in boundary surfaces.
+
+    Used in LOD3 and LOD4 only. As subclass of _CityObject, an _Opening inherits all attributes
+    and relations, in particular an id, names, external references, and generalization
+    relations.
+    """
+
+    class Meta:
+        name = "AbstractOpeningType"
+        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+    lod3_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    lod4_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TunnelFurnitureType(AbstractCityObjectType):
+    """
+    Movable, functional objects, whether useful or ornamental, usually found in a HollowSpace.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    lod4_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractVegetationObjectType(AbstractCityObjectType):
+    """
+    Type describing the abstract superclass for vegetation objects.
+
+    A subclass is either a SolitaryVegetationObject or a PlantCover.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/vegetation/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractWaterBoundarySurfaceType(AbstractCityObjectType):
+    """
+    A WaterBoundarySurface is a thematic object which classifies surfaces bounding a water body.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
+
+    lod2_surface: None | SurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2Surface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
+        },
+    )
+    lod3_surface: None | SurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3Surface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
+        },
+    )
+    lod4_surface: None | SurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4Surface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractWaterObjectType(AbstractCityObjectType):
+    """
+    Type describing the abstract superclass for water objects.
+
+    As subclass of _CityObject, a _WaterObject inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class FeatureCollectionType(AbstractFeatureCollectionType):
+    """
+    Concrete generic feature collection.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/gml"
+
+
+@dataclass(slots=True, kw_only=True)
+class FeatureCollectionAbstract(AbstractFeatureCollectionType):
+    class Meta:
+        name = "_FeatureCollection"
+        namespace = "http://www.opengis.net/gml"
+
+
+@dataclass(slots=True, kw_only=True)
 class AbstractAtomicScheduleType(AbstractScheduleType):
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
+class AbstractCityObjectSpace(AbstractCityObjectSpaceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
 class AbstractLayeredConstruction(AbstractLayeredConstructionType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractLibrary(AbstractLibraryType):
     class Meta:
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
@@ -41516,6 +43910,12 @@ class AbstractTimeSeriesFileType(AbstractTimeSeriesType):
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractZoneOpeningType(AbstractOpeningType2):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
@@ -42010,10 +44410,827 @@ class TypicalValuesRegularTimeSeriesType(AbstractTimeSeriesType):
 
 
 @dataclass(slots=True, kw_only=True)
+class UrbanFunctionAreaType(CityObjectGroupType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    code: None | CodeType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    area: None | MeasureType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
 class UtilityNetworkConnection1(UtilityNetworkConnectionType):
     class Meta:
         name = "UtilityNetworkConnection"
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WeatherStation(WeatherStationType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class CityModel(CityModelType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Site(AbstractSiteType):
+    class Meta:
+        name = "_Site"
+        namespace = "http://www.opengis.net/citygml/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class BridgeFurniture(BridgeFurnitureType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class DoorType1(AbstractOpeningType1):
+    """
+    Type for doors in boundary surfaces.
+
+    Used in LoD3 and LoD4 only . As subclass of _CityObject, a Door inherits all attributes and
+    relations, in particular an id, names, external references, generic attributes and
+    generalization relations.
+    """
+
+    class Meta:
+        name = "DoorType"
+        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+    address: list[AddressPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class WindowType1(AbstractOpeningType1):
+    """
+    Type for windows in boundary surfaces.
+
+    Used in LoD3 and LoD4 only . As subclass of _CityObject, a window inherits all attributes
+    and relations, in particular an id, names, external references, generic attributes and
+    generalization relations.
+    """
+
+    class Meta:
+        name = "WindowType"
+        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Opening1(AbstractOpeningType1):
+    class Meta:
+        name = "_Opening"
+        namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class BuildingFurniture(BuildingFurnitureType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/building/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class DoorType2(AbstractOpeningType2):
+    """
+    Type for doors in boundary surfaces.
+
+    Used in LOD3 and LOD4 only . As subclass of _CityObject, a Door inherits all attributes and
+    relations, in particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        name = "DoorType"
+        target_namespace = "http://www.opengis.net/citygml/building/2.0"
+
+    address: list[AddressPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class WindowType2(AbstractOpeningType2):
+    """
+    Type for windows in boundary surfaces.
+
+    Used in LOD3 and LOD4 only . As subclass of _CityObject, a window inherits all attributes
+    and relations, in particular an id, names, external references, and generalization
+    relations.
+    """
+
+    class Meta:
+        name = "WindowType"
+        target_namespace = "http://www.opengis.net/citygml/building/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Opening2(AbstractOpeningType2):
+    class Meta:
+        name = "_Opening"
+        namespace = "http://www.opengis.net/citygml/building/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class CityFurniture(CityFurnitureType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/cityfurniture/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class CityObjectGroup(CityObjectGroupType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/cityobjectgroup/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericCityObject(GenericCityObjectType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/generics/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class LandUse(LandUseType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/landuse/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class BreaklineReliefType(AbstractReliefComponentType):
+    """
+    Type describing the break line Component of a relief feature.
+
+    A break line relief consists of break lines or ridgeOrValleyLines. As subclass of
+    _CityObject, a BreaklineRelief inherits all attributes and relations, in particular an id,
+    names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+    ridge_or_valley_lines: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "name": "ridgeOrValleyLines",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        },
+    )
+    breaklines: None | MultiCurvePropertyType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class MassPointReliefType(AbstractReliefComponentType):
+    """
+    Type describing the mass point component of a relief feature.
+
+    As subclass of _CityObject, a MassPoint Relief inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+    relief_points: MultiPointPropertyType = field(
+        metadata={
+            "name": "reliefPoints",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class RasterReliefType(AbstractReliefComponentType):
+    """
+    Type describing the raster component of a relief feature.
+
+    As subclass of _CityObject, a RasterRelief inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+    grid: GridPropertyType = field(
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TinreliefType(AbstractReliefComponentType):
+    """
+    Type describing the TIN component of a relief feature.
+
+    As subclass of _CityObject, a TINRelief inherits all attributes and relations, in particular
+    an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        name = "TINReliefType"
+        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+    tin: TinPropertyType = field(
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/relief/2.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ReliefComponent(AbstractReliefComponentType):
+    class Meta:
+        name = "_ReliefComponent"
+        namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AuxiliaryTrafficAreaType(AbstractTransportationObjectType):
+    """
+    Type describing the class for auxiliary traffic Areas.
+
+    These are the surfaces where no traffic actually takes place, but which belong to a
+    transportation object. Examples are kerbstones, road markings and grass stripes. As subclass
+    of _CityObject, an AuxiliaryTrafficArea inherits all attributes and relations, in particular
+    an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/transportation/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    surface_material: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "surfaceMaterial",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    lod2_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    lod3_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    lod4_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TrafficAreaType(AbstractTransportationObjectType):
+    """
+    Type describing the class for traffic Areas.
+
+    Traffic areas are the surfaces where traffic actually takes place. As subclass of
+    _CityObject, a TrafficArea inherits all attributes and relations, in particular an id,
+    names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/transportation/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    surface_material: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "surfaceMaterial",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    lod2_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    lod3_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+    lod4_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TransportationObject(AbstractTransportationObjectType):
+    class Meta:
+        name = "_TransportationObject"
+        namespace = "http://www.opengis.net/citygml/transportation/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class DoorType3(AbstractOpeningType3):
+    """
+    Construction for closing an _Opening intended primarily for access or regress or both.
+    """
+
+    class Meta:
+        name = "DoorType"
+        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class TunnelFurniture(TunnelFurnitureType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WindowType3(AbstractOpeningType3):
+    """
+    Construction for closing an _Opening not intended for access or regress.
+    """
+
+    class Meta:
+        name = "WindowType"
+        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Opening3(AbstractOpeningType3):
+    class Meta:
+        name = "_Opening"
+        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class PlantCoverType(AbstractVegetationObjectType):
+    """
+    Type describing Plant Covers resp.
+
+    Biotopes. As subclass of _CityObject, a VegetationObject inherits all attributes and
+    relations, in particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/vegetation/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    average_height: None | LengthType = field(
+        default=None,
+        metadata={
+            "name": "averageHeight",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod1_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod2_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod3_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod4_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4MultiSurface",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod1_multi_solid: None | MultiSolidPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1MultiSolid",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod2_multi_solid: None | MultiSolidPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2MultiSolid",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod3_multi_solid: None | MultiSolidPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3MultiSolid",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod4_multi_solid: None | MultiSolidPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4MultiSolid",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class SolitaryVegetationObjectType(AbstractVegetationObjectType):
+    """
+    Type describing solitary vegetation objects, e.g., trees.
+
+    Its geometry is either defined explicitly by a GML 3 geometry with absolute coordinates, or
+    in the case of multiple occurences of the same vegetation object, implicitly by a reference
+    to a shape definition and a transformation. The shape definition may be given in an external
+    file. As subclass of _CityObject, a SolitaryVegetationObject inherits all attributes and
+    relations, in particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/vegetation/2.0"
+
+    class_value: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "class",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    function: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    usage: list[CodeType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    species: None | CodeType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    height: None | LengthType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    trunk_diameter: None | LengthType = field(
+        default=None,
+        metadata={
+            "name": "trunkDiameter",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    crown_diameter: None | LengthType = field(
+        default=None,
+        metadata={
+            "name": "crownDiameter",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod1_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod2_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod3_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod4_geometry: None | GeometryPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4Geometry",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod1_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod1ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod2_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod4ImplicitRepresentation",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class VegetationObject(AbstractVegetationObjectType):
+    class Meta:
+        name = "_VegetationObject"
+        namespace = "http://www.opengis.net/citygml/vegetation/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterClosureSurfaceType(AbstractWaterBoundarySurfaceType):
+    """
+    Type describing the closure surface between water bodys.
+
+    As subclass of _CityObject, a WaterClosureSurface inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterGroundSurfaceType(AbstractWaterBoundarySurfaceType):
+    """
+    Type describing the ground surface of a water body, i.e. the boundary to the digital terrain
+    model.
+
+    As subclass of _CityObject, a WaterGroundSurface inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterSurfaceType(AbstractWaterBoundarySurfaceType):
+    """
+    Type describing the surface of a water body, which separates the water from the air.
+
+    As subclass of _CityObject, a WaterSurface inherits all attributes and relations, in
+    particular an id, names, external references, and generalization relations.
+
+    Attributes:
+        water_level: Type for the specification of the level of a water surface. The optional
+            attribute waterLevel of a WaterSurface can be used to describe the water level,
+            for which the given 3D surface geometry was acquired. This is especially
+            important, when the water body is influenced by the tide. The values of this type
+            are defined in external code lists.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
+
+    water_level: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "waterLevel",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterBoundarySurface(AbstractWaterBoundarySurfaceType):
+    class Meta:
+        name = "_WaterBoundarySurface"
+        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterObject(AbstractWaterObjectType):
+    class Meta:
+        name = "_WaterObject"
+        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class DynamicFeatureCollectionType(FeatureCollectionType):
+    """
+    A dynamic feature collection may possess a history and/or a timestamp.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/gml"
+
+    valid_time: None | ValidTime = field(
+        default=None,
+        metadata={
+            "name": "validTime",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    track: None | Track2 = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    history: None | History = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+    data_source: None | DataSource = field(
+        default=None,
+        metadata={
+            "name": "dataSource",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class FeatureCollection(FeatureCollectionType):
+    class Meta:
+        namespace = "http://www.opengis.net/gml"
 
 
 @dataclass(slots=True, kw_only=True)
@@ -42024,6 +45241,12 @@ class AbstractAtomicSchedule(AbstractAtomicScheduleType):
 
 @dataclass(slots=True, kw_only=True)
 class AbstractTimeSeriesFile(AbstractTimeSeriesFileType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractZoneOpening(AbstractZoneOpeningType):
     class Meta:
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
@@ -42482,6 +45705,12 @@ class TypicalValuesRegularTimeSeriesFileType(AbstractTimeSeriesFileType):
 
 
 @dataclass(slots=True, kw_only=True)
+class UrbanFunctionArea(UrbanFunctionAreaType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
 class UtilityNetworkConnectionPropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
@@ -42555,6 +45784,454 @@ class UtilityNetworkConnectionPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
+
+
+@dataclass(slots=True, kw_only=True)
+class WeatherStationPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    weather_station: None | WeatherStation = field(
+        default=None,
+        metadata={
+            "name": "WeatherStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ZoneDoorType(AbstractZoneOpeningType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class ZoneWindowType(AbstractZoneOpeningType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Door1(DoorType1):
+    class Meta:
+        name = "Door"
+        namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class InteriorFurniturePropertyType1:
+    """
+    Denotes the relation of a BridgeRoom to its interior bridge furniture.
+
+    The InteriorBridgeFurniturePropertyType element must either carry a reference to an
+    BridgeFurniture object or contain an BridgeFurniture object inline, but neither both nor
+    none.
+    """
+
+    class Meta:
+        name = "InteriorFurniturePropertyType"
+        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+    bridge_furniture: None | BridgeFurniture = field(
+        default=None,
+        metadata={
+            "name": "BridgeFurniture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class Window1(WindowType1):
+    class Meta:
+        name = "Window"
+        namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Door2(DoorType2):
+    class Meta:
+        name = "Door"
+        namespace = "http://www.opengis.net/citygml/building/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class InteriorFurniturePropertyType2:
+    """
+    Denotes the relation of a Room to its interior furnitures (movable).
+
+    The InteriorFurniturePropertyType element must either carry a reference to a
+    BuildingFurniture object or contain a BuildingFurniture object inline, but neither both nor
+    none.
+    """
+
+    class Meta:
+        name = "InteriorFurniturePropertyType"
+        target_namespace = "http://www.opengis.net/citygml/building/2.0"
+
+    building_furniture: None | BuildingFurniture = field(
+        default=None,
+        metadata={
+            "name": "BuildingFurniture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/building/2.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class Window2(WindowType2):
+    class Meta:
+        name = "Window"
+        namespace = "http://www.opengis.net/citygml/building/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class BreaklineRelief(BreaklineReliefType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class MassPointRelief(MassPointReliefType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class RasterRelief(RasterReliefType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Tinrelief(TinreliefType):
+    class Meta:
+        name = "TINRelief"
+        namespace = "http://www.opengis.net/citygml/relief/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AuxiliaryTrafficArea(AuxiliaryTrafficAreaType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/transportation/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class TrafficArea(TrafficAreaType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/transportation/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Door3(DoorType3):
+    class Meta:
+        name = "Door"
+        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class InteriorFurniturePropertyType3:
+    """
+    Denotes the relation of a hollow space to the furnitures it contains.
+    """
+
+    class Meta:
+        name = "InteriorFurniturePropertyType"
+        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+    tunnel_furniture: None | TunnelFurniture = field(
+        default=None,
+        metadata={
+            "name": "TunnelFurniture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class Window3(WindowType3):
+    class Meta:
+        name = "Window"
+        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class PlantCover(PlantCoverType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/vegetation/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class SolitaryVegetationObject(SolitaryVegetationObjectType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/vegetation/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterClosureSurface(WaterClosureSurfaceType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterGroundSurface(WaterGroundSurfaceType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterSurface(WaterSurfaceType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
 
 
 @dataclass(slots=True, kw_only=True)
@@ -43458,10108 +47135,6 @@ class TypicalValuesRegularTimeSeriesPropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class EnergyPerformanceCertificate2(EnergyPerformanceCertificatePropertyType):
-    class Meta:
-        name = "energyPerformanceCertificate"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Intervention2(InterventionPropertyType):
-    class Meta:
-        name = "intervention"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class UtilityNetworkConnection2(UtilityNetworkConnectionPropertyType):
-    class Meta:
-        name = "utilityNetworkConnection"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractTimeSeriesFilePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "IrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "MonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    regular_time_series_file: None | RegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "RegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractTimeSeriesPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    typical_values_irregular_time_series: None | TypicalValuesIrregularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    irregular_time_series: None | IrregularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "IrregularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_monthly_time_series: None | TypicalValuesMonthlyTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    monthly_time_series: None | MonthlyTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "MonthlyTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    sensor_connection: None | SensorConnection = field(
-        default=None,
-        metadata={
-            "name": "SensorConnection",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_regular_time_series: None | TypicalValuesRegularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    regular_time_series: None | RegularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "RegularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "IrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "MonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    regular_time_series_file: None | RegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "RegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ConstantValueSchedulePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    constant_value_schedule: None | ConstantValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "ConstantValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class DualValueSchedulePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    dual_value_schedule: None | DualValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "DualValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class IrregularTimeSeriesFilePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "IrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LayerType(AbstractFeatureWithLifeSpanType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    thickness: MeasureType = field(
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    material: AbstractMaterialPropertyType = field(
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class MonthlyTimeSeriesFilePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "MonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class RegularTimeSeriesFilePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    regular_time_series_file: None | RegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "RegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TypicalValuesIrregularTimeSeriesFilePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TypicalValuesMonthlyTimeSeriesFilePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TypicalValuesRegularTimeSeriesFilePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class Layer(LayerType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class SensorDataType(AbstractFeatureWithLifeSpanType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    value_type: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "valueType",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    yearly_value: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "yearlyValue",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    time_dependent_values: None | AbstractTimeSeriesPropertyType = field(
-        default=None,
-        metadata={
-            "name": "timeDependentValues",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    position: None | PointPropertyType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TimeSeriesScheduleType(AbstractAtomicScheduleType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    time_dependent_values: AbstractTimeSeriesPropertyType = field(
-        metadata={
-            "name": "timeDependentValues",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LayerPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    layer: None | Layer = field(
-        default=None,
-        metadata={
-            "name": "Layer",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class SensorData1(SensorDataType):
-    class Meta:
-        name = "SensorData"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class TimeSeriesSchedule(TimeSeriesScheduleType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WeatherDataType(SensorDataType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractAtomicSchedulePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    dual_value_schedule: None | DualValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "DualValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    time_series_schedule: None | TimeSeriesSchedule = field(
-        default=None,
-        metadata={
-            "name": "TimeSeriesSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    constant_value_schedule: None | ConstantValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "ConstantValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractSchedulePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    composite_schedule: None | CompositeSchedule = field(
-        default=None,
-        metadata={
-            "name": "CompositeSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    dual_value_schedule: None | DualValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "DualValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    time_series_schedule: None | TimeSeriesSchedule = field(
-        default=None,
-        metadata={
-            "name": "TimeSeriesSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    constant_value_schedule: None | ConstantValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "ConstantValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LayeredConstructionType(AbstractLayeredConstructionType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    u_value: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "uValue",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    g_value: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "gValue",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    glazing_ratio: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "glazingRatio",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    absorptance: list[AbsorptancePropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    emissivity: list[EmissivityPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    reflectance: list[ReflectancePropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    transmittance: list[TransmittancePropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    inside_convection_coefficient: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "insideConvectionCoefficient",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    outside_convection_coefficient: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "outsideConvectionCoefficient",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layer: list[LayerPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TimeSeriesSchedulePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    time_series_schedule: None | TimeSeriesSchedule = field(
-        default=None,
-        metadata={
-            "name": "TimeSeriesSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WeatherData(WeatherDataType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractResourceType(AbstractFeatureWithLifeSpanType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    operation_type: CodeType = field(
-        metadata={
-            "name": "operationType",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    reference_period: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "referencePeriod",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    amount: None | MeasureType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    year: None | int = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    is_amount_normalized: bool = field(
-        metadata={
-            "name": "isAmountNormalized",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    normalization_value: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "normalizationValue",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    normalization_parameter: None | str = field(
-        default=None,
-        metadata={
-            "name": "normalizationParameter",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    expense: None | MeasureType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    revenue: None | MeasureType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    co2_equivalent: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "co2Equivalent",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    time_dependent_amount: None | AbstractTimeSeriesPropertyType = field(
-        default=None,
-        metadata={
-            "name": "timeDependentAmount",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    time_dependent_expense: None | AbstractTimeSeriesPropertyType = field(
-        default=None,
-        metadata={
-            "name": "timeDependentExpense",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    time_dependent_revenue: None | AbstractTimeSeriesPropertyType = field(
-        default=None,
-        metadata={
-            "name": "timeDependentRevenue",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    amount_based_on: None | AbstractSchedulePropertyType = field(
-        default=None,
-        metadata={
-            "name": "amountBasedOn",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class DeviceOperationType(AbstractFeatureWithLifeSpanType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    yearly_global_efficiency: None | float = field(
-        default=None,
-        metadata={
-            "name": "yearlyGlobalEfficiency",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule: None | AbstractSchedulePropertyType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LayeredConstruction1(LayeredConstructionType):
-    class Meta:
-        name = "LayeredConstruction"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class OccupantsType(AbstractFeatureWithLifeSpanType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    number_of_occupants: None | int = field(
-        default=None,
-        metadata={
-            "name": "numberOfOccupants",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    average_diet_type: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "averageDietType",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    average_income_level: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "averageIncomeLevel",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    average_instruction_level: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "averageInstructionLevel",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_dissipation: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "heatDissipation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_dissipation_convective_fraction: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "heatDissipationConvectiveFraction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_dissipation_latent_fraction: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "heatDissipationLatentFraction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_dissipation_radiant_fraction: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "heatDissipationRadiantFraction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    occupancy_schedule: None | AbstractSchedulePropertyType = field(
-        default=None,
-        metadata={
-            "name": "occupancySchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ScheduleComponentType(AbstractFeatureWithLifeSpanType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    repetitions: int = field(
-        default=1,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    additional_gap: None | TimeIntervalLengthType = field(
-        default=None,
-        metadata={
-            "name": "additionalGap",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_component_member: AbstractSchedulePropertyType = field(
-        metadata={
-            "name": "scheduleComponentMember",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class SensorDataPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    weather_data: None | WeatherData = field(
-        default=None,
-        metadata={
-            "name": "WeatherData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    sensor_data: None | SensorData1 = field(
-        default=None,
-        metadata={
-            "name": "SensorData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WeatherDataPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    weather_data: None | WeatherData = field(
-        default=None,
-        metadata={
-            "name": "WeatherData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractResource(AbstractResourceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class ConstructionMaterialType(AbstractResourceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    end_use: CodeType = field(
-        metadata={
-            "name": "endUse",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class DeviceOperation(DeviceOperationType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class EnergyType(AbstractResourceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    end_use: CodeType = field(
-        metadata={
-            "name": "endUse",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    energy_carrier: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "energyCarrier",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    maximum_load: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "maximumLoad",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    maximum_load_time: None | XmlTime = field(
-        default=None,
-        metadata={
-            "name": "maximumLoadTime",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    maximum_load_day: None | int = field(
-        default=None,
-        metadata={
-            "name": "maximumLoadDay",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    maximum_load_month: None | int = field(
-        default=None,
-        metadata={
-            "name": "maximumLoadMonth",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    source: None | CodeType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class FoodType(AbstractResourceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    end_use: CodeType = field(
-        metadata={
-            "name": "endUse",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LayeredConstructionPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    layered_construction: None | LayeredConstruction1 = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class Occupants(OccupantsType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class OtherResourceType(AbstractResourceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    end_use: CodeType = field(
-        metadata={
-            "name": "endUse",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ScheduleComponent(ScheduleComponentType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class UrbanSpaceType(AbstractResourceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    end_use: CodeType = field(
-        metadata={
-            "name": "endUse",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WasteType(AbstractResourceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    end_use: CodeType = field(
-        metadata={
-            "name": "endUse",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    is_dangerous: None | bool = field(
-        default=None,
-        metadata={
-            "name": "isDangerous",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    is_recyclable: None | bool = field(
-        default=None,
-        metadata={
-            "name": "isRecyclable",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterType(AbstractResourceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    end_use: CodeType = field(
-        metadata={
-            "name": "endUse",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class SensorData2(SensorDataPropertyType):
-    class Meta:
-        name = "sensorData"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class ConstructionMaterial(ConstructionMaterialType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class DeviceOperationPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    device_operation: None | DeviceOperation = field(
-        default=None,
-        metadata={
-            "name": "DeviceOperation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class Energy(EnergyType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Food(FoodType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class OccupantsPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    occupants: None | Occupants = field(
-        default=None,
-        metadata={
-            "name": "Occupants",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class OtherResource(OtherResourceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class ReverseLayeredConstructionType(AbstractLayeredConstructionType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    base_layered_construction: LayeredConstructionPropertyType = field(
-        metadata={
-            "name": "baseLayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ScheduleComponentPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    schedule_component: None | ScheduleComponent = field(
-        default=None,
-        metadata={
-            "name": "ScheduleComponent",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class UrbanSpace(UrbanSpaceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Waste(WasteType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Water(WaterType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractResourcePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    water: None | Water = field(
-        default=None,
-        metadata={
-            "name": "Water",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    waste: None | Waste = field(
-        default=None,
-        metadata={
-            "name": "Waste",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    urban_space: None | UrbanSpace = field(
-        default=None,
-        metadata={
-            "name": "UrbanSpace",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    other_resource: None | OtherResource = field(
-        default=None,
-        metadata={
-            "name": "OtherResource",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    food: None | Food = field(
-        default=None,
-        metadata={
-            "name": "Food",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    energy: None | Energy = field(
-        default=None,
-        metadata={
-            "name": "Energy",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    construction_material: None | ConstructionMaterial = field(
-        default=None,
-        metadata={
-            "name": "ConstructionMaterial",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class CompositeScheduleType(AbstractScheduleType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    schedule_component: list[ScheduleComponentPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "name": "scheduleComponent",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-            "min_occurs": 1,
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ConstructionMaterialPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    construction_material: None | ConstructionMaterial = field(
-        default=None,
-        metadata={
-            "name": "ConstructionMaterial",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class EnergyPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    energy: None | Energy = field(
-        default=None,
-        metadata={
-            "name": "Energy",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class FoodPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    food: None | Food = field(
-        default=None,
-        metadata={
-            "name": "Food",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class OtherResourcePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    other_resource: None | OtherResource = field(
-        default=None,
-        metadata={
-            "name": "OtherResource",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ReverseLayeredConstruction(ReverseLayeredConstructionType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class UrbanSpacePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    urban_space: None | UrbanSpace = field(
-        default=None,
-        metadata={
-            "name": "UrbanSpace",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WastePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    waste: None | Waste = field(
-        default=None,
-        metadata={
-            "name": "Waste",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    water: None | Water = field(
-        default=None,
-        metadata={
-            "name": "Water",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class OccupiedBy(OccupantsPropertyType):
-    class Meta:
-        name = "occupiedBy"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractLayeredConstructionPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    reverse_layered_construction: None | ReverseLayeredConstruction = field(
-        default=None,
-        metadata={
-            "name": "ReverseLayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction: None | LayeredConstruction1 = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class CompositeSchedule(CompositeScheduleType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class ReverseLayeredConstructionPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    reverse_layered_construction: None | ReverseLayeredConstruction = field(
-        default=None,
-        metadata={
-            "name": "ReverseLayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class Resource(AbstractResourcePropertyType):
-    class Meta:
-        name = "resource"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractAdefeaturePropertyType:
-    class Meta:
-        name = "AbstractADEFeaturePropertyType"
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    layer: None | Layer = field(
-        default=None,
-        metadata={
-            "name": "Layer",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solid_material: None | SolidMaterial = field(
-        default=None,
-        metadata={
-            "name": "SolidMaterial",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    liquid: None | Liquid = field(
-        default=None,
-        metadata={
-            "name": "Liquid",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    gas: None | Gas = field(
-        default=None,
-        metadata={
-            "name": "Gas",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_component: None | ScheduleComponent = field(
-        default=None,
-        metadata={
-            "name": "ScheduleComponent",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    occupants: None | Occupants = field(
-        default=None,
-        metadata={
-            "name": "Occupants",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    energy_performance_certificate: None | EnergyPerformanceCertificate1 = field(
-        default=None,
-        metadata={
-            "name": "EnergyPerformanceCertificate",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    utility_network_connection: None | UtilityNetworkConnection1 = field(
-        default=None,
-        metadata={
-            "name": "UtilityNetworkConnection",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    water: None | Water = field(
-        default=None,
-        metadata={
-            "name": "Water",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    waste: None | Waste = field(
-        default=None,
-        metadata={
-            "name": "Waste",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    urban_space: None | UrbanSpace = field(
-        default=None,
-        metadata={
-            "name": "UrbanSpace",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    other_resource: None | OtherResource = field(
-        default=None,
-        metadata={
-            "name": "OtherResource",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    food: None | Food = field(
-        default=None,
-        metadata={
-            "name": "Food",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    energy: None | Energy = field(
-        default=None,
-        metadata={
-            "name": "Energy",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    construction_material: None | ConstructionMaterial = field(
-        default=None,
-        metadata={
-            "name": "ConstructionMaterial",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    weather_data: None | WeatherData = field(
-        default=None,
-        metadata={
-            "name": "WeatherData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    sensor_data: None | SensorData1 = field(
-        default=None,
-        metadata={
-            "name": "SensorData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    intervention: None | Intervention1 = field(
-        default=None,
-        metadata={
-            "name": "Intervention",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    device_operation: None | DeviceOperation = field(
-        default=None,
-        metadata={
-            "name": "DeviceOperation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_irregular_time_series: None | TypicalValuesIrregularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    irregular_time_series: None | IrregularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "IrregularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_monthly_time_series: None | TypicalValuesMonthlyTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    monthly_time_series: None | MonthlyTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "MonthlyTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    sensor_connection: None | SensorConnection = field(
-        default=None,
-        metadata={
-            "name": "SensorConnection",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_regular_time_series: None | TypicalValuesRegularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    regular_time_series: None | RegularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "RegularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "IrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "MonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    regular_time_series_file: None | RegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "RegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    composite_schedule: None | CompositeSchedule = field(
-        default=None,
-        metadata={
-            "name": "CompositeSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    dual_value_schedule: None | DualValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "DualValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    time_series_schedule: None | TimeSeriesSchedule = field(
-        default=None,
-        metadata={
-            "name": "TimeSeriesSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    constant_value_schedule: None | ConstantValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "ConstantValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    reverse_layered_construction: None | ReverseLayeredConstruction = field(
-        default=None,
-        metadata={
-            "name": "ReverseLayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction: None | LayeredConstruction1 = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractFeatureWithLifeSpanPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    occupants: None | Occupants = field(
-        default=None,
-        metadata={
-            "name": "Occupants",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    energy_performance_certificate: None | EnergyPerformanceCertificate1 = field(
-        default=None,
-        metadata={
-            "name": "EnergyPerformanceCertificate",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    utility_network_connection: None | UtilityNetworkConnection1 = field(
-        default=None,
-        metadata={
-            "name": "UtilityNetworkConnection",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    water: None | Water = field(
-        default=None,
-        metadata={
-            "name": "Water",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    waste: None | Waste = field(
-        default=None,
-        metadata={
-            "name": "Waste",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    urban_space: None | UrbanSpace = field(
-        default=None,
-        metadata={
-            "name": "UrbanSpace",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    other_resource: None | OtherResource = field(
-        default=None,
-        metadata={
-            "name": "OtherResource",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    food: None | Food = field(
-        default=None,
-        metadata={
-            "name": "Food",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    energy: None | Energy = field(
-        default=None,
-        metadata={
-            "name": "Energy",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    construction_material: None | ConstructionMaterial = field(
-        default=None,
-        metadata={
-            "name": "ConstructionMaterial",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    weather_data: None | WeatherData = field(
-        default=None,
-        metadata={
-            "name": "WeatherData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    sensor_data: None | SensorData1 = field(
-        default=None,
-        metadata={
-            "name": "SensorData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    intervention: None | Intervention1 = field(
-        default=None,
-        metadata={
-            "name": "Intervention",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    device_operation: None | DeviceOperation = field(
-        default=None,
-        metadata={
-            "name": "DeviceOperation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_irregular_time_series: None | TypicalValuesIrregularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    irregular_time_series: None | IrregularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "IrregularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_monthly_time_series: None | TypicalValuesMonthlyTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    monthly_time_series: None | MonthlyTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "MonthlyTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    sensor_connection: None | SensorConnection = field(
-        default=None,
-        metadata={
-            "name": "SensorConnection",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_regular_time_series: None | TypicalValuesRegularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    regular_time_series: None | RegularTimeSeries = field(
-        default=None,
-        metadata={
-            "name": "RegularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "IrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "MonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    regular_time_series_file: None | RegularTimeSeriesFile = field(
-        default=None,
-        metadata={
-            "name": "RegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    composite_schedule: None | CompositeSchedule = field(
-        default=None,
-        metadata={
-            "name": "CompositeSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    dual_value_schedule: None | DualValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "DualValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    time_series_schedule: None | TimeSeriesSchedule = field(
-        default=None,
-        metadata={
-            "name": "TimeSeriesSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    constant_value_schedule: None | ConstantValueSchedule = field(
-        default=None,
-        metadata={
-            "name": "ConstantValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    reverse_layered_construction: None | ReverseLayeredConstruction = field(
-        default=None,
-        metadata={
-            "name": "ReverseLayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction: None | LayeredConstruction1 = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class CompositeSchedulePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    composite_schedule: None | CompositeSchedule = field(
-        default=None,
-        metadata={
-            "name": "CompositeSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LayeredConstruction2(AbstractLayeredConstructionPropertyType):
-    class Meta:
-        name = "layeredConstruction"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class FeatureArrayPropertyType:
-    """
-    Container for features - follow gml:ArrayAssociationType pattern.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/gml"
-
-    layer: list[Layer] = field(
-        default_factory=list,
-        metadata={
-            "name": "Layer",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solid_material: list[SolidMaterial] = field(
-        default_factory=list,
-        metadata={
-            "name": "SolidMaterial",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    liquid: list[Liquid] = field(
-        default_factory=list,
-        metadata={
-            "name": "Liquid",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    gas: list[Gas] = field(
-        default_factory=list,
-        metadata={
-            "name": "Gas",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_component: list[ScheduleComponent] = field(
-        default_factory=list,
-        metadata={
-            "name": "ScheduleComponent",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    occupants: list[Occupants] = field(
-        default_factory=list,
-        metadata={
-            "name": "Occupants",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    energy_performance_certificate: list[EnergyPerformanceCertificate1] = field(
-        default_factory=list,
-        metadata={
-            "name": "EnergyPerformanceCertificate",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    utility_network_connection: list[UtilityNetworkConnection1] = field(
-        default_factory=list,
-        metadata={
-            "name": "UtilityNetworkConnection",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    water: list[Water] = field(
-        default_factory=list,
-        metadata={
-            "name": "Water",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    waste: list[Waste] = field(
-        default_factory=list,
-        metadata={
-            "name": "Waste",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    urban_space: list[UrbanSpace] = field(
-        default_factory=list,
-        metadata={
-            "name": "UrbanSpace",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    other_resource: list[OtherResource] = field(
-        default_factory=list,
-        metadata={
-            "name": "OtherResource",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    food: list[Food] = field(
-        default_factory=list,
-        metadata={
-            "name": "Food",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    energy: list[Energy] = field(
-        default_factory=list,
-        metadata={
-            "name": "Energy",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    construction_material: list[ConstructionMaterial] = field(
-        default_factory=list,
-        metadata={
-            "name": "ConstructionMaterial",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    weather_data: list[WeatherData] = field(
-        default_factory=list,
-        metadata={
-            "name": "WeatherData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    sensor_data: list[SensorData1] = field(
-        default_factory=list,
-        metadata={
-            "name": "SensorData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    intervention: list[Intervention1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Intervention",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    device_operation: list[DeviceOperation] = field(
-        default_factory=list,
-        metadata={
-            "name": "DeviceOperation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_irregular_time_series: list[TypicalValuesIrregularTimeSeries] = field(
-        default_factory=list,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    irregular_time_series: list[IrregularTimeSeries] = field(
-        default_factory=list,
-        metadata={
-            "name": "IrregularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_monthly_time_series: list[TypicalValuesMonthlyTimeSeries] = field(
-        default_factory=list,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    monthly_time_series: list[MonthlyTimeSeries] = field(
-        default_factory=list,
-        metadata={
-            "name": "MonthlyTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    sensor_connection: list[SensorConnection] = field(
-        default_factory=list,
-        metadata={
-            "name": "SensorConnection",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_regular_time_series: list[TypicalValuesRegularTimeSeries] = field(
-        default_factory=list,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    regular_time_series: list[RegularTimeSeries] = field(
-        default_factory=list,
-        metadata={
-            "name": "RegularTimeSeries",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_irregular_time_series_file: list[TypicalValuesIrregularTimeSeriesFile] = field(
-        default_factory=list,
-        metadata={
-            "name": "TypicalValuesIrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    irregular_time_series_file: list[IrregularTimeSeriesFile] = field(
-        default_factory=list,
-        metadata={
-            "name": "IrregularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_monthly_time_series_file: list[TypicalValuesMonthlyTimeSeriesFile] = field(
-        default_factory=list,
-        metadata={
-            "name": "TypicalValuesMonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    monthly_time_series_file: list[MonthlyTimeSeriesFile] = field(
-        default_factory=list,
-        metadata={
-            "name": "MonthlyTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    typical_values_regular_time_series_file: list[TypicalValuesRegularTimeSeriesFile] = field(
-        default_factory=list,
-        metadata={
-            "name": "TypicalValuesRegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    regular_time_series_file: list[RegularTimeSeriesFile] = field(
-        default_factory=list,
-        metadata={
-            "name": "RegularTimeSeriesFile",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    composite_schedule: list[CompositeSchedule] = field(
-        default_factory=list,
-        metadata={
-            "name": "CompositeSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    dual_value_schedule: list[DualValueSchedule] = field(
-        default_factory=list,
-        metadata={
-            "name": "DualValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    time_series_schedule: list[TimeSeriesSchedule] = field(
-        default_factory=list,
-        metadata={
-            "name": "TimeSeriesSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    constant_value_schedule: list[ConstantValueSchedule] = field(
-        default_factory=list,
-        metadata={
-            "name": "ConstantValueSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    reverse_layered_construction: list[ReverseLayeredConstruction] = field(
-        default_factory=list,
-        metadata={
-            "name": "ReverseLayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction: list[LayeredConstruction1] = field(
-        default_factory=list,
-        metadata={
-            "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    x3_dmaterial: list[X3Dmaterial] = field(
-        default_factory=list,
-        metadata={
-            "name": "X3DMaterial",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    georeferenced_texture: list[GeoreferencedTexture] = field(
-        default_factory=list,
-        metadata={
-            "name": "GeoreferencedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    parameterized_texture: list[ParameterizedTexture] = field(
-        default_factory=list,
-        metadata={
-            "name": "ParameterizedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    appearance: list[Appearance1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Appearance",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    address: list[Address] = field(
-        default_factory=list,
-        metadata={
-            "name": "Address",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    weather_station: list[WeatherStation] = field(
-        default_factory=list,
-        metadata={
-            "name": "WeatherStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    material_library: list[MaterialLibrary] = field(
-        default_factory=list,
-        metadata={
-            "name": "MaterialLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction_library: list[LayeredConstructionLibrary] = field(
-        default_factory=list,
-        metadata={
-            "name": "LayeredConstructionLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_library: list[ScheduleLibrary] = field(
-        default_factory=list,
-        metadata={
-            "name": "ScheduleLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_distribution: list[ThermalDistribution] = field(
-        default_factory=list,
-        metadata={
-            "name": "ThermalDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    power_distribution: list[PowerDistribution] = field(
-        default_factory=list,
-        metadata={
-            "name": "PowerDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_storage_device: list[ThermalStorageDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "ThermalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_storage_device: list[GenericStorageDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    electrical_storage_device: list[ElectricalStorageDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "ElectricalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    movable_shading_device: list[MovableShadingDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "MovableShadingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lighting_device: list[LightingDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "LightingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_pump: list[HeatPump] = field(
-        default_factory=list,
-        metadata={
-            "name": "HeatPump",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_electrical_device: list[GenericElectricalDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericElectricalDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_device: list[GenericDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    evcharging_station: list[EvchargingStation] = field(
-        default_factory=list,
-        metadata={
-            "name": "EVChargingStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    boiler: list[Boiler] = field(
-        default_factory=list,
-        metadata={
-            "name": "Boiler",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solar_thermal_collector: list[SolarThermalCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "SolarThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_thermal_collector: list[PhotovoltaicThermalCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "PhotovoltaicThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_collector: list[PhotovoltaicCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "PhotovoltaicCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_solar_collector: list[GenericSolarCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericSolarCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_part: list[ZonePart] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZonePart",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone: list[Zone1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Zone",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    building_unit: list[BuildingUnit1] = field(
-        default_factory=list,
-        metadata={
-            "name": "BuildingUnit",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    water_closure_surface: list[WaterClosureSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "WaterClosureSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
-        },
-    )
-    water_ground_surface: list[WaterGroundSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "WaterGroundSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
-        },
-    )
-    water_surface: list[WaterSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "WaterSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
-        },
-    )
-    water_body: list[WaterBody] = field(
-        default_factory=list,
-        metadata={
-            "name": "WaterBody",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
-        },
-    )
-    solitary_vegetation_object: list[SolitaryVegetationObject] = field(
-        default_factory=list,
-        metadata={
-            "name": "SolitaryVegetationObject",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    plant_cover: list[PlantCover] = field(
-        default_factory=list,
-        metadata={
-            "name": "PlantCover",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    door: list[Door3] = field(
-        default_factory=list,
-        metadata={
-            "name": "Door",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    window: list[Window3] = field(
-        default_factory=list,
-        metadata={
-            "name": "Window",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    tunnel_furniture: list[TunnelFurniture] = field(
-        default_factory=list,
-        metadata={
-            "name": "TunnelFurniture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    hollow_space: list[HollowSpace] = field(
-        default_factory=list,
-        metadata={
-            "name": "HollowSpace",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    outer_ceiling_surface: list[OuterCeilingSurface3] = field(
-        default_factory=list,
-        metadata={
-            "name": "OuterCeilingSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    ceiling_surface: list[CeilingSurface3] = field(
-        default_factory=list,
-        metadata={
-            "name": "CeilingSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    interior_wall_surface: list[InteriorWallSurface3] = field(
-        default_factory=list,
-        metadata={
-            "name": "InteriorWallSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    outer_floor_surface: list[OuterFloorSurface3] = field(
-        default_factory=list,
-        metadata={
-            "name": "OuterFloorSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    floor_surface: list[FloorSurface3] = field(
-        default_factory=list,
-        metadata={
-            "name": "FloorSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    closure_surface: list[ClosureSurface3] = field(
-        default_factory=list,
-        metadata={
-            "name": "ClosureSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    ground_surface: list[GroundSurface3] = field(
-        default_factory=list,
-        metadata={
-            "name": "GroundSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    wall_surface: list[WallSurface3] = field(
-        default_factory=list,
-        metadata={
-            "name": "WallSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    roof_surface: list[RoofSurface3] = field(
-        default_factory=list,
-        metadata={
-            "name": "RoofSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    int_tunnel_installation: list[IntTunnelInstallation] = field(
-        default_factory=list,
-        metadata={
-            "name": "IntTunnelInstallation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    tunnel_installation: list[TunnelInstallation] = field(
-        default_factory=list,
-        metadata={
-            "name": "TunnelInstallation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    auxiliary_traffic_area: list[AuxiliaryTrafficArea] = field(
-        default_factory=list,
-        metadata={
-            "name": "AuxiliaryTrafficArea",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    traffic_area: list[TrafficArea] = field(
-        default_factory=list,
-        metadata={
-            "name": "TrafficArea",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    square: list[Square] = field(
-        default_factory=list,
-        metadata={
-            "name": "Square",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    railway: list[Railway] = field(
-        default_factory=list,
-        metadata={
-            "name": "Railway",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    road: list[Road] = field(
-        default_factory=list,
-        metadata={
-            "name": "Road",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    track: list[Track1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Track",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    transportation_complex: list[TransportationComplex] = field(
-        default_factory=list,
-        metadata={
-            "name": "TransportationComplex",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    breakline_relief: list[BreaklineRelief] = field(
-        default_factory=list,
-        metadata={
-            "name": "BreaklineRelief",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        },
-    )
-    mass_point_relief: list[MassPointRelief] = field(
-        default_factory=list,
-        metadata={
-            "name": "MassPointRelief",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        },
-    )
-    raster_relief: list[RasterRelief] = field(
-        default_factory=list,
-        metadata={
-            "name": "RasterRelief",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        },
-    )
-    tinrelief: list[Tinrelief] = field(
-        default_factory=list,
-        metadata={
-            "name": "TINRelief",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        },
-    )
-    relief_feature: list[ReliefFeature] = field(
-        default_factory=list,
-        metadata={
-            "name": "ReliefFeature",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        },
-    )
-    land_use: list[LandUse] = field(
-        default_factory=list,
-        metadata={
-            "name": "LandUse",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
-        },
-    )
-    generic_city_object: list[GenericCityObject] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericCityObject",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    urban_function_area: list[UrbanFunctionArea] = field(
-        default_factory=list,
-        metadata={
-            "name": "UrbanFunctionArea",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    city_object_group: list[CityObjectGroup] = field(
-        default_factory=list,
-        metadata={
-            "name": "CityObjectGroup",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
-        },
-    )
-    city_furniture: list[CityFurniture] = field(
-        default_factory=list,
-        metadata={
-            "name": "CityFurniture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    building_furniture: list[BuildingFurniture] = field(
-        default_factory=list,
-        metadata={
-            "name": "BuildingFurniture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    room: list[Room] = field(
-        default_factory=list,
-        metadata={
-            "name": "Room",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    zone_window: list[ZoneWindow] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneWindow",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_door: list[ZoneDoor] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneDoor",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    door_1: list[Door2] = field(
-        default_factory=list,
-        metadata={
-            "name": "Door",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    window_1: list[Window2] = field(
-        default_factory=list,
-        metadata={
-            "name": "Window",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    zone_underground_wall_surface: list[ZoneUndergroundWallSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneUndergroundWallSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_roof_surface: list[ZoneRoofSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneRoofSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_outer_floor_surface: list[ZoneOuterFloorSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneOuterFloorSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_outer_ceiling_surface: list[ZoneOuterCeilingSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneOuterCeilingSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_intermediate_floor_surface: list[ZoneIntermediateFloorSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneIntermediateFloorSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_ground_surface: list[ZoneGroundSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneGroundSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_wall_surface: list[ZoneWallSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneWallSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_closure_surface: list[ZoneClosureSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneClosureSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_basement_ceiling_surface: list[ZoneBasementCeilingSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneBasementCeilingSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_attic_floor_surface: list[ZoneAtticFloorSurface] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZoneAtticFloorSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    outer_ceiling_surface_1: list[OuterCeilingSurface2] = field(
-        default_factory=list,
-        metadata={
-            "name": "OuterCeilingSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    ceiling_surface_1: list[CeilingSurface2] = field(
-        default_factory=list,
-        metadata={
-            "name": "CeilingSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    interior_wall_surface_1: list[InteriorWallSurface2] = field(
-        default_factory=list,
-        metadata={
-            "name": "InteriorWallSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    outer_floor_surface_1: list[OuterFloorSurface2] = field(
-        default_factory=list,
-        metadata={
-            "name": "OuterFloorSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    floor_surface_1: list[FloorSurface2] = field(
-        default_factory=list,
-        metadata={
-            "name": "FloorSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    closure_surface_1: list[ClosureSurface2] = field(
-        default_factory=list,
-        metadata={
-            "name": "ClosureSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    ground_surface_1: list[GroundSurface2] = field(
-        default_factory=list,
-        metadata={
-            "name": "GroundSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    wall_surface_1: list[WallSurface2] = field(
-        default_factory=list,
-        metadata={
-            "name": "WallSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    roof_surface_1: list[RoofSurface2] = field(
-        default_factory=list,
-        metadata={
-            "name": "RoofSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    int_building_installation: list[IntBuildingInstallation] = field(
-        default_factory=list,
-        metadata={
-            "name": "IntBuildingInstallation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    building_installation: list[BuildingInstallation] = field(
-        default_factory=list,
-        metadata={
-            "name": "BuildingInstallation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    bridge_furniture: list[BridgeFurniture] = field(
-        default_factory=list,
-        metadata={
-            "name": "BridgeFurniture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    bridge_room: list[BridgeRoom] = field(
-        default_factory=list,
-        metadata={
-            "name": "BridgeRoom",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    door_2: list[Door1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Door",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    window_2: list[Window1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Window",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    ceiling_surface_2: list[CeilingSurface1] = field(
-        default_factory=list,
-        metadata={
-            "name": "CeilingSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    interior_wall_surface_2: list[InteriorWallSurface1] = field(
-        default_factory=list,
-        metadata={
-            "name": "InteriorWallSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    floor_surface_2: list[FloorSurface1] = field(
-        default_factory=list,
-        metadata={
-            "name": "FloorSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    outer_ceiling_surface_2: list[OuterCeilingSurface1] = field(
-        default_factory=list,
-        metadata={
-            "name": "OuterCeilingSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    outer_floor_surface_2: list[OuterFloorSurface1] = field(
-        default_factory=list,
-        metadata={
-            "name": "OuterFloorSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    closure_surface_2: list[ClosureSurface1] = field(
-        default_factory=list,
-        metadata={
-            "name": "ClosureSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    ground_surface_2: list[GroundSurface1] = field(
-        default_factory=list,
-        metadata={
-            "name": "GroundSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    wall_surface_2: list[WallSurface1] = field(
-        default_factory=list,
-        metadata={
-            "name": "WallSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    roof_surface_2: list[RoofSurface1] = field(
-        default_factory=list,
-        metadata={
-            "name": "RoofSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    bridge_construction_element: list[BridgeConstructionElement] = field(
-        default_factory=list,
-        metadata={
-            "name": "BridgeConstructionElement",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    int_bridge_installation: list[IntBridgeInstallation] = field(
-        default_factory=list,
-        metadata={
-            "name": "IntBridgeInstallation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    bridge_installation: list[BridgeInstallation] = field(
-        default_factory=list,
-        metadata={
-            "name": "BridgeInstallation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    tunnel_part: list[TunnelPart] = field(
-        default_factory=list,
-        metadata={
-            "name": "TunnelPart",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    tunnel: list[Tunnel] = field(
-        default_factory=list,
-        metadata={
-            "name": "Tunnel",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    building_part: list[BuildingPart] = field(
-        default_factory=list,
-        metadata={
-            "name": "BuildingPart",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    building: list[Building] = field(
-        default_factory=list,
-        metadata={
-            "name": "Building",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    bridge_part: list[BridgePart] = field(
-        default_factory=list,
-        metadata={
-            "name": "BridgePart",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    bridge: list[Bridge] = field(
-        default_factory=list,
-        metadata={
-            "name": "Bridge",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    directed_observation_at_distance: list[DirectedObservationAtDistance] = field(
-        default_factory=list,
-        metadata={
-            "name": "DirectedObservationAtDistance",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    directed_observation: list[DirectedObservation] = field(
-        default_factory=list,
-        metadata={
-            "name": "DirectedObservation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    observation: list[Observation] = field(
-        default_factory=list,
-        metadata={
-            "name": "Observation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    rectified_grid_coverage: list[RectifiedGridCoverage] = field(
-        default_factory=list,
-        metadata={
-            "name": "RectifiedGridCoverage",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    grid_coverage: list[GridCoverage] = field(
-        default_factory=list,
-        metadata={
-            "name": "GridCoverage",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    multi_solid_coverage: list[MultiSolidCoverage] = field(
-        default_factory=list,
-        metadata={
-            "name": "MultiSolidCoverage",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    multi_surface_coverage: list[MultiSurfaceCoverage] = field(
-        default_factory=list,
-        metadata={
-            "name": "MultiSurfaceCoverage",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    multi_curve_coverage: list[MultiCurveCoverage] = field(
-        default_factory=list,
-        metadata={
-            "name": "MultiCurveCoverage",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    multi_point_coverage: list[MultiPointCoverage] = field(
-        default_factory=list,
-        metadata={
-            "name": "MultiPointCoverage",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    feature_collection: list[FeatureCollection] = field(
-        default_factory=list,
-        metadata={
-            "name": "FeatureCollection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    city_model: list[CityModel] = field(
-        default_factory=list,
-        metadata={
-            "name": "CityModel",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractCityObjectType(AbstractFeatureType):
-    """
-    Type describing the abstract superclass of most CityGML features.
-
-    Its purpose is to provide a creation and a termination date as well as a reference to
-    corresponding objects in other information systems. A generalization relation may be used to
-    relate features, which represent the same real-world object in different Levels-of-Detail,
-    i.e. a feature and its generalized counterpart(s). The direction of this relation is from
-    the feature to the corresponding generalized feature.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/2.0"
-
-    creation_date: None | XmlDate = field(
-        default=None,
-        metadata={
-            "name": "creationDate",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    termination_date: None | XmlDate = field(
-        default=None,
-        metadata={
-            "name": "terminationDate",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    external_reference: list[ExternalReferenceType1] = field(
-        default_factory=list,
-        metadata={
-            "name": "externalReference",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    generalizes_to: list[GeneralizationRelationType] = field(
-        default_factory=list,
-        metadata={
-            "name": "generalizesTo",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    relative_to_terrain: None | RelativeToTerrainType = field(
-        default=None,
-        metadata={
-            "name": "relativeToTerrain",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    relative_to_water: None | RelativeToWaterType = field(
-        default=None,
-        metadata={
-            "name": "relativeToWater",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    reference_point: list[ReferencePoint] = field(
-        default_factory=list,
-        metadata={
-            "name": "referencePoint",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    valid_to: list[ValidTo] = field(
-        default_factory=list,
-        metadata={
-            "name": "validTo",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    valid_from: list[ValidFrom] = field(
-        default_factory=list,
-        metadata={
-            "name": "validFrom",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    utility_network_connection: list[UtilityNetworkConnection2] = field(
-        default_factory=list,
-        metadata={
-            "name": "utilityNetworkConnection",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    status: list[Status2] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    sensor_data: list[SensorData2] = field(
-        default_factory=list,
-        metadata={
-            "name": "sensorData",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    resource: list[Resource] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    related_to: list[RelatedTo] = field(
-        default_factory=list,
-        metadata={
-            "name": "relatedTo",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction: list[LayeredConstruction2] = field(
-        default_factory=list,
-        metadata={
-            "name": "layeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    intervention: list[Intervention2] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    indicator: list[Indicator2] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    identifier: list[Identifier] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    device: list[Device] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_attribute_set: list[GenericAttributeSet] = field(
-        default_factory=list,
-        metadata={
-            "name": "genericAttributeSet",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    measure_attribute: list[MeasureAttribute] = field(
-        default_factory=list,
-        metadata={
-            "name": "measureAttribute",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    uri_attribute: list[UriAttribute] = field(
-        default_factory=list,
-        metadata={
-            "name": "uriAttribute",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    date_attribute: list[DateAttribute] = field(
-        default_factory=list,
-        metadata={
-            "name": "dateAttribute",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    double_attribute: list[DoubleAttribute] = field(
-        default_factory=list,
-        metadata={
-            "name": "doubleAttribute",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    int_attribute: list[IntAttribute] = field(
-        default_factory=list,
-        metadata={
-            "name": "intAttribute",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    string_attribute: list[StringAttribute] = field(
-        default_factory=list,
-        metadata={
-            "name": "stringAttribute",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    appearance: list[Appearance2] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class FeatureMembers(FeatureArrayPropertyType):
-    class Meta:
-        name = "featureMembers"
-        namespace = "http://www.opengis.net/gml"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractCityObjectSpaceType(AbstractCityObjectType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    area: list[QualifiedAreaPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    volume: list[QualifiedVolumePropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lod0_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod0MultiSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lod1_solid: None | SolidPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1Solid",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lod2_solid: None | SolidPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2Solid",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lod3_solid: None | SolidPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3Solid",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractDeviceType(AbstractCityObjectType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    model: None | str = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    year_of_installation: None | int = field(
-        default=None,
-        metadata={
-            "name": "yearOfInstallation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    year_of_manufacture: None | int = field(
-        default=None,
-        metadata={
-            "name": "yearOfManufacture",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    number_of_devices: None | int = field(
-        default=None,
-        metadata={
-            "name": "numberOfDevices",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    installed_power: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "installedPower",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    nominal_efficiency: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "nominalEfficiency",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    efficiency_indicator: None | str = field(
-        default=None,
-        metadata={
-            "name": "efficiencyIndicator",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_dissipation: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "heatDissipation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_dissipation_convective_fraction: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "heatDissipationConvectiveFraction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_dissipation_latent_fraction: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "heatDissipationLatentFraction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_dissipation_radiant_fraction: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "heatDissipationRadiantFraction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    device_operation: list[DeviceOperationPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "name": "deviceOperation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractLibraryType(AbstractCityObjectType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WeatherStationType(AbstractCityObjectType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractSiteType(AbstractCityObjectType):
-    """
-    Type describing the abstract superclass for buildings, facilities, etc.
-
-    Future extensions of CityGML like bridges and tunnels would be modelled as subclasses of
-    _Site. As subclass of _CityObject, a _Site inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class CityObject(AbstractCityObjectType):
-    class Meta:
-        name = "_CityObject"
-        namespace = "http://www.opengis.net/citygml/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractOpeningType1(AbstractCityObjectType):
-    """
-    Type for openings (doors, windows) in boundary surfaces.
-
-    Used in LoD3 and LoD4 only. As subclass of _CityObject, an _Opening inherits all attributes
-    and relations, in particular an id, names, external references, generic attributes and
-    generalization relations.
-    """
-
-    class Meta:
-        name = "AbstractOpeningType"
-        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-    lod3_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    lod4_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class BridgeFurnitureType(AbstractCityObjectType):
-    """
-    Type for bridge furnitures.
-
-    As subclass of _CityObject, a BridgeFurniture inherits all attributes and relations, in
-    particular an id, names, external references, generic attributes and generalization
-    relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    lod4_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractOpeningType2(AbstractCityObjectType):
-    """
-    Type for openings (doors, windows) in boundary surfaces.
-
-    Used in LOD3 and LOD4 only. As subclass of _CityObject, an _Opening inherits all attributes
-    and relations, in particular an id, names, external references, and generalization
-    relations.
-    """
-
-    class Meta:
-        name = "AbstractOpeningType"
-        target_namespace = "http://www.opengis.net/citygml/building/2.0"
-
-    lod3_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    lod4_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    bdg_opn_sky_view_factor: list[BdgOpnSkyViewFactor] = field(
-        default_factory=list,
-        metadata={
-            "name": "bdgOpnSkyViewFactor",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    bdg_opn_ground_view_factor: list[BdgOpnGroundViewFactor] = field(
-        default_factory=list,
-        metadata={
-            "name": "bdgOpnGroundViewFactor",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    bdg_opn_azimuth: list[BdgOpnAzimuth] = field(
-        default_factory=list,
-        metadata={
-            "name": "bdgOpnAzimuth",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    bdg_opn_inclination: list[BdgOpnInclination] = field(
-        default_factory=list,
-        metadata={
-            "name": "bdgOpnInclination",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    bdg_opn_area: list[BdgOpnArea] = field(
-        default_factory=list,
-        metadata={
-            "name": "bdgOpnArea",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class BuildingFurnitureType(AbstractCityObjectType):
-    """
-    Type for building furnitures.
-
-    As subclass of _CityObject, a BuildingFurniture inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/building/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    lod4_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class CityFurnitureType(AbstractCityObjectType):
-    """
-    Type describing city furnitures, like traffic lights, benches, ...
-
-    As subclass of _CityObject, a CityFurniture inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/cityfurniture/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod1_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod2_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod3_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod4_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod1_terrain_intersection: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1TerrainIntersection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod2_terrain_intersection: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2TerrainIntersection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod3_terrain_intersection: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3TerrainIntersection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod4_terrain_intersection: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4TerrainIntersection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod1_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod2_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityfurniture/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class CityObjectGroupType(AbstractCityObjectType):
-    """
-    A group may be used to aggregate arbitrary CityObjects according to some user-defined
-    criteria.
-
-    Examples for groups are the buildings in a specific region, the result of a query, or
-    objects put together for visualization purposes. Each group has a name (inherited from
-    AbstractGMLType), functions (e.g., building group), a class and zero or more usages. A
-    geometry may optionally be attached to a group, if the geometry of the whole group differs
-    from the geometry of the parts. Each member of a group may be qualified by a role name,
-    reflecting the role each CityObject plays in the context of the group. As subclass of
-    _CityObject, a CityObjectGroup inherits all attributes and relations, in particular an id,
-    names, external references, and generalization relations. As CityObjectGroup itself is a
-    CityObject, it may also be contained by another group.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/cityobjectgroup/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
-        },
-    )
-    group_member: list[CityObjectGroupMemberType] = field(
-        default_factory=list,
-        metadata={
-            "name": "groupMember",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
-        },
-    )
-    parent: None | CityObjectGroupParentType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
-        },
-    )
-    geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/cityobjectgroup/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericCityObjectType(AbstractCityObjectType):
-    """
-    Generic (user defined) city objects may be used to model features which are not covered
-    explicitly by the CityGML schema.
-
-    Generic objects must be used with care; they shall only be used if there is no appropiate
-    thematic class available in the overall CityGML schema. Oherwise, problems concerning
-    semantic interoperability may arise. As subclass of _CityObject, a generic city object
-    inherits all attributes and relations, in particular an id, names, external references, and
-    generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/generics/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod0_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod0Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod1_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod2_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod3_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod4_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod0_terrain_intersection: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod0TerrainIntersection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod1_terrain_intersection: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1TerrainIntersection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod2_terrain_intersection: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2TerrainIntersection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod3_terrain_intersection: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3TerrainIntersection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod4_terrain_intersection: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4TerrainIntersection",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod0_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod0ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod1_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod2_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/generics/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LandUseType(AbstractCityObjectType):
-    """
-    Type describing the class for Land Use in all LOD.
-
-    LandUse objects describe areas of the earth's surface dedicated to a specific land use. The
-    geometry must consist of 3-D surfaces. As subclass of _CityObject, a LandUse inherits all
-    attributes and relations, in particular an id, names, external references, and
-    generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/landuse/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
-        },
-    )
-    lod0_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod0MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
-        },
-    )
-    lod1_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
-        },
-    )
-    lod2_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
-        },
-    )
-    lod3_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
-        },
-    )
-    lod4_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/landuse/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractReliefComponentType(AbstractCityObjectType):
-    """
-    Type describing the components of a relief feature - either a TIN, a Grid, mass points or
-    break lines.
-
-    As subclass of _CityObject, a ReliefComponent inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-    lod: int = field(
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-            "min_inclusive": 0,
-            "max_inclusive": 4,
-        }
-    )
-    extent: None | PolygonPropertyType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractTransportationObjectType(AbstractCityObjectType):
-    """
-    Type describing the abstract superclass for transportation objects.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/transportation/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractOpeningType3(AbstractCityObjectType):
-    """
-    Type for openings (doors, windows) in boundary surfaces.
-
-    Used in LOD3 and LOD4 only. As subclass of _CityObject, an _Opening inherits all attributes
-    and relations, in particular an id, names, external references, and generalization
-    relations.
-    """
-
-    class Meta:
-        name = "AbstractOpeningType"
-        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-    lod3_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    lod4_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TunnelFurnitureType(AbstractCityObjectType):
-    """
-    Movable, functional objects, whether useful or ornamental, usually found in a HollowSpace.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    lod4_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractVegetationObjectType(AbstractCityObjectType):
-    """
-    Type describing the abstract superclass for vegetation objects.
-
-    A subclass is either a SolitaryVegetationObject or a PlantCover.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/vegetation/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractWaterBoundarySurfaceType(AbstractCityObjectType):
-    """
-    A WaterBoundarySurface is a thematic object which classifies surfaces bounding a water body.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-    lod2_surface: None | SurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2Surface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
-        },
-    )
-    lod3_surface: None | SurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3Surface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
-        },
-    )
-    lod4_surface: None | SurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4Surface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractWaterObjectType(AbstractCityObjectType):
-    """
-    Type describing the abstract superclass for water objects.
-
-    As subclass of _CityObject, a _WaterObject inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractFeatureCollectionType(AbstractFeatureType):
-    """
-    A feature collection contains zero or more features.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/gml"
-
-    appearance_member: list[AppearanceMember] = field(
-        default_factory=list,
-        metadata={
-            "name": "appearanceMember",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    city_object_member: list[CityObjectMember] = field(
-        default_factory=list,
-        metadata={
-            "name": "cityObjectMember",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    feature_member: list[FeatureMember] = field(
-        default_factory=list,
-        metadata={
-            "name": "featureMember",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    feature_members: None | FeatureMembers = field(
-        default=None,
-        metadata={
-            "name": "featureMembers",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractBuildingSpaceType(AbstractCityObjectSpaceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    occupied_by: list[OccupantsPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "name": "occupiedBy",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractCityObjectSpace(AbstractCityObjectSpaceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractDevice(AbstractDeviceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractLibrary(AbstractLibraryType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractSolarCollectorType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    module_area: None | AreaType = field(
-        default=None,
-        metadata={
-            "name": "moduleArea",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    aperture_area: None | AreaType = field(
-        default=None,
-        metadata={
-            "name": "apertureArea",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    azimuth: None | AngleType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    inclination: None | AngleType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lod2_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2MultiSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lod3_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3MultiSurface",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractZoneOpeningType(AbstractOpeningType2):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class BoilerType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    has_condensation: bool = field(
-        metadata={
-            "name": "hasCondensation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class EvchargingStationType(AbstractDeviceType):
-    class Meta:
-        name = "EVChargingStationType"
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    charging_speed_level: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "chargingSpeedLevel",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    connector_type: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "connectorType",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    has_load_management: None | bool = field(
-        default=None,
-        metadata={
-            "name": "hasLoadManagement",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    access: None | CodeType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ElectricalStorageDeviceType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    battery_technology: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "batteryTechnology",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    power_capacity: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "powerCapacity",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericDeviceType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericElectricalDeviceType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericStorageDeviceType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    capacity: None | MeasureType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class HeatPumpType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    heat_source: CodeType = field(
-        metadata={
-            "name": "heatSource",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    cop_source_temperature: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "copSourceTemperature",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    cop_operation_temperature: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "copOperationTemperature",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LayeredConstructionLibraryType(AbstractLibraryType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    library_member: list[AbstractLayeredConstructionPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "name": "libraryMember",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-            "min_occurs": 1,
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LightingDeviceType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class MaterialLibraryType(AbstractLibraryType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    library_member: list[AbstractMaterialPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "name": "libraryMember",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-            "min_occurs": 1,
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class MovableShadingDeviceType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    installation_side: SurfaceSideType = field(
-        metadata={
-            "name": "installationSide",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    maximum_cover_ratio: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "maximumCoverRatio",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    transmittance: None | TransmittancePropertyType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class PowerDistributionType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    distribution_perimeter: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "distributionPerimeter",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    current: None | MeasureType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    voltage: None | MeasureType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ScheduleLibraryType(AbstractLibraryType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    library_member: list[AbstractSchedulePropertyType] = field(
-        default_factory=list,
-        metadata={
-            "name": "libraryMember",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-            "min_occurs": 1,
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ThermalDistributionType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    distribution_perimeter: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "distributionPerimeter",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    is_circulation: None | bool = field(
-        default=None,
-        metadata={
-            "name": "isCirculation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    medium: None | CodeType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    nominal_flow: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "nominalFlow",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    return_temperature: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "returnTemperature",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    supply_temperature: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "supplyTemperature",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_losses_factor: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "thermalLossesFactor",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ThermalStorageDeviceType(AbstractDeviceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    preparation_temperature: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "preparationTemperature",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    medium: None | CodeType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_losses_factor: None | MeasureType = field(
-        default=None,
-        metadata={
-            "name": "thermalLossesFactor",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    volume: None | VolumeType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class UrbanFunctionAreaType(CityObjectGroupType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    code: None | CodeType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    area: None | MeasureType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WeatherStation(WeatherStationType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class CityModelType(AbstractFeatureCollectionType):
-    """
-    Type describing the "root" element of any city model file.
-
-    It is a collection whose members are restricted to be features of a city model. All features
-    are included as cityObjectMember.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Site(AbstractSiteType):
-    class Meta:
-        name = "_Site"
-        namespace = "http://www.opengis.net/citygml/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class BridgeFurniture(BridgeFurnitureType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class DoorType1(AbstractOpeningType1):
-    """
-    Type for doors in boundary surfaces.
-
-    Used in LoD3 and LoD4 only . As subclass of _CityObject, a Door inherits all attributes and
-    relations, in particular an id, names, external references, generic attributes and
-    generalization relations.
-    """
-
-    class Meta:
-        name = "DoorType"
-        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-    address: list[AddressPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WindowType1(AbstractOpeningType1):
-    """
-    Type for windows in boundary surfaces.
-
-    Used in LoD3 and LoD4 only . As subclass of _CityObject, a window inherits all attributes
-    and relations, in particular an id, names, external references, generic attributes and
-    generalization relations.
-    """
-
-    class Meta:
-        name = "WindowType"
-        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Opening1(AbstractOpeningType1):
-    class Meta:
-        name = "_Opening"
-        namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class BuildingFurniture(BuildingFurnitureType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/building/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class DoorType2(AbstractOpeningType2):
-    """
-    Type for doors in boundary surfaces.
-
-    Used in LOD3 and LOD4 only . As subclass of _CityObject, a Door inherits all attributes and
-    relations, in particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        name = "DoorType"
-        target_namespace = "http://www.opengis.net/citygml/building/2.0"
-
-    address: list[AddressPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WindowType2(AbstractOpeningType2):
-    """
-    Type for windows in boundary surfaces.
-
-    Used in LOD3 and LOD4 only . As subclass of _CityObject, a window inherits all attributes
-    and relations, in particular an id, names, external references, and generalization
-    relations.
-    """
-
-    class Meta:
-        name = "WindowType"
-        target_namespace = "http://www.opengis.net/citygml/building/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Opening2(AbstractOpeningType2):
-    class Meta:
-        name = "_Opening"
-        namespace = "http://www.opengis.net/citygml/building/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class CityFurniture(CityFurnitureType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/cityfurniture/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class CityObjectGroup(CityObjectGroupType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/cityobjectgroup/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericCityObject(GenericCityObjectType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/generics/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class LandUse(LandUseType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/landuse/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class BreaklineReliefType(AbstractReliefComponentType):
-    """
-    Type describing the break line Component of a relief feature.
-
-    A break line relief consists of break lines or ridgeOrValleyLines. As subclass of
-    _CityObject, a BreaklineRelief inherits all attributes and relations, in particular an id,
-    names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-    ridge_or_valley_lines: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "name": "ridgeOrValleyLines",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        },
-    )
-    breaklines: None | MultiCurvePropertyType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class MassPointReliefType(AbstractReliefComponentType):
-    """
-    Type describing the mass point component of a relief feature.
-
-    As subclass of _CityObject, a MassPoint Relief inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-    relief_points: MultiPointPropertyType = field(
-        metadata={
-            "name": "reliefPoints",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class RasterReliefType(AbstractReliefComponentType):
-    """
-    Type describing the raster component of a relief feature.
-
-    As subclass of _CityObject, a RasterRelief inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-    grid: GridPropertyType = field(
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TinreliefType(AbstractReliefComponentType):
-    """
-    Type describing the TIN component of a relief feature.
-
-    As subclass of _CityObject, a TINRelief inherits all attributes and relations, in particular
-    an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        name = "TINReliefType"
-        target_namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-    tin: TinPropertyType = field(
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/relief/2.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ReliefComponent(AbstractReliefComponentType):
-    class Meta:
-        name = "_ReliefComponent"
-        namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AuxiliaryTrafficAreaType(AbstractTransportationObjectType):
-    """
-    Type describing the class for auxiliary traffic Areas.
-
-    These are the surfaces where no traffic actually takes place, but which belong to a
-    transportation object. Examples are kerbstones, road markings and grass stripes. As subclass
-    of _CityObject, an AuxiliaryTrafficArea inherits all attributes and relations, in particular
-    an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/transportation/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    surface_material: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "surfaceMaterial",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    lod2_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    lod3_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    lod4_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TrafficAreaType(AbstractTransportationObjectType):
-    """
-    Type describing the class for traffic Areas.
-
-    Traffic areas are the surfaces where traffic actually takes place. As subclass of
-    _CityObject, a TrafficArea inherits all attributes and relations, in particular an id,
-    names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/transportation/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    surface_material: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "surfaceMaterial",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    lod2_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    lod3_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-    lod4_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/transportation/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TransportationObject(AbstractTransportationObjectType):
-    class Meta:
-        name = "_TransportationObject"
-        namespace = "http://www.opengis.net/citygml/transportation/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class DoorType3(AbstractOpeningType3):
-    """
-    Construction for closing an _Opening intended primarily for access or regress or both.
-    """
-
-    class Meta:
-        name = "DoorType"
-        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class TunnelFurniture(TunnelFurnitureType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WindowType3(AbstractOpeningType3):
-    """
-    Construction for closing an _Opening not intended for access or regress.
-    """
-
-    class Meta:
-        name = "WindowType"
-        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Opening3(AbstractOpeningType3):
-    class Meta:
-        name = "_Opening"
-        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class PlantCoverType(AbstractVegetationObjectType):
-    """
-    Type describing Plant Covers resp.
-
-    Biotopes. As subclass of _CityObject, a VegetationObject inherits all attributes and
-    relations, in particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/vegetation/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    average_height: None | LengthType = field(
-        default=None,
-        metadata={
-            "name": "averageHeight",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod1_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod2_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod3_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod4_multi_surface: None | MultiSurfacePropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4MultiSurface",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod1_multi_solid: None | MultiSolidPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1MultiSolid",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod2_multi_solid: None | MultiSolidPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2MultiSolid",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod3_multi_solid: None | MultiSolidPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3MultiSolid",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod4_multi_solid: None | MultiSolidPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4MultiSolid",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class SolitaryVegetationObjectType(AbstractVegetationObjectType):
-    """
-    Type describing solitary vegetation objects, e.g., trees.
-
-    Its geometry is either defined explicitly by a GML 3 geometry with absolute coordinates, or
-    in the case of multiple occurences of the same vegetation object, implicitly by a reference
-    to a shape definition and a transformation. The shape definition may be given in an external
-    file. As subclass of _CityObject, a SolitaryVegetationObject inherits all attributes and
-    relations, in particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/vegetation/2.0"
-
-    class_value: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "class",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    function: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    usage: list[CodeType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    species: None | CodeType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    height: None | LengthType = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    trunk_diameter: None | LengthType = field(
-        default=None,
-        metadata={
-            "name": "trunkDiameter",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    crown_diameter: None | LengthType = field(
-        default=None,
-        metadata={
-            "name": "crownDiameter",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod1_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod2_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod3_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod4_geometry: None | GeometryPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4Geometry",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod1_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod1ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod2_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod2ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod3_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod3ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-    lod4_implicit_representation: None | ImplicitRepresentationPropertyType = field(
-        default=None,
-        metadata={
-            "name": "lod4ImplicitRepresentation",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/vegetation/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class VegetationObject(AbstractVegetationObjectType):
-    class Meta:
-        name = "_VegetationObject"
-        namespace = "http://www.opengis.net/citygml/vegetation/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterClosureSurfaceType(AbstractWaterBoundarySurfaceType):
-    """
-    Type describing the closure surface between water bodys.
-
-    As subclass of _CityObject, a WaterClosureSurface inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterGroundSurfaceType(AbstractWaterBoundarySurfaceType):
-    """
-    Type describing the ground surface of a water body, i.e. the boundary to the digital terrain
-    model.
-
-    As subclass of _CityObject, a WaterGroundSurface inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterSurfaceType(AbstractWaterBoundarySurfaceType):
-    """
-    Type describing the surface of a water body, which separates the water from the air.
-
-    As subclass of _CityObject, a WaterSurface inherits all attributes and relations, in
-    particular an id, names, external references, and generalization relations.
-
-    Attributes:
-        water_level: Type for the specification of the level of a water surface. The optional
-            attribute waterLevel of a WaterSurface can be used to describe the water level,
-            for which the given 3D surface geometry was acquired. This is especially
-            important, when the water body is influenced by the tide. The values of this type
-            are defined in external code lists.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-    water_level: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "waterLevel",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/waterbody/2.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterBoundarySurface(AbstractWaterBoundarySurfaceType):
-    class Meta:
-        name = "_WaterBoundarySurface"
-        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterObject(AbstractWaterObjectType):
-    class Meta:
-        name = "_WaterObject"
-        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class FeatureCollectionType(AbstractFeatureCollectionType):
-    """
-    Concrete generic feature collection.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/gml"
-
-
-@dataclass(slots=True, kw_only=True)
-class FeatureCollectionAbstract(AbstractFeatureCollectionType):
-    class Meta:
-        name = "_FeatureCollection"
-        namespace = "http://www.opengis.net/gml"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractBuildingSpace(AbstractBuildingSpaceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractSolarCollector(AbstractSolarCollectorType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractZoneOpening(AbstractZoneOpeningType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Boiler(BoilerType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class BuildingUnitType(AbstractBuildingSpaceType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    floor_number_from: None | float = field(
-        default=None,
-        metadata={
-            "name": "floorNumberFrom",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    floor_number_to: None | float = field(
-        default=None,
-        metadata={
-            "name": "floorNumberTo",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    number_of_rooms: None | int = field(
-        default=None,
-        metadata={
-            "name": "numberOfRooms",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    owner_name: None | str = field(
-        default=None,
-        metadata={
-            "name": "ownerName",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    ownership_type: None | CodeType = field(
-        default=None,
-        metadata={
-            "name": "ownershipType",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    address: list[AddressPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    energy_performance_certificate: list[EnergyPerformanceCertificatePropertyType] = field(
-        default_factory=list,
-        metadata={
-            "name": "energyPerformanceCertificate",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class EvchargingStation(EvchargingStationType):
-    class Meta:
-        name = "EVChargingStation"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class ElectricalStorageDevice(ElectricalStorageDeviceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericDevice(GenericDeviceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericElectricalDevice(GenericElectricalDeviceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericSolarCollectorType(AbstractSolarCollectorType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericStorageDevice(GenericStorageDeviceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class HeatPump(HeatPumpType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class LayeredConstructionLibrary(LayeredConstructionLibraryType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class LightingDevice(LightingDeviceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class MaterialLibrary(MaterialLibraryType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class MovableShadingDevice(MovableShadingDeviceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class PhotovoltaicCollectorType(AbstractSolarCollectorType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    cell_type: CodeType = field(
-        metadata={
-            "name": "cellType",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class PhotovoltaicThermalCollectorType(AbstractSolarCollectorType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    cell_type: CodeType = field(
-        metadata={
-            "name": "cellType",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    optical_efficiency: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "opticalEfficiency",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    linear_heat_loss_coefficient: None | float = field(
-        default=None,
-        metadata={
-            "name": "linearHeatLossCoefficient",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    quadratic_heat_loss_coefficient: None | float = field(
-        default=None,
-        metadata={
-            "name": "quadraticHeatLossCoefficient",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class PowerDistribution(PowerDistributionType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class ScheduleLibrary(ScheduleLibraryType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class SolarThermalCollectorType(AbstractSolarCollectorType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    type_value: CodeType = field(
-        metadata={
-            "name": "type",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        }
-    )
-    optical_efficiency: None | ScaleType = field(
-        default=None,
-        metadata={
-            "name": "opticalEfficiency",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    linear_heat_loss_coefficient: None | float = field(
-        default=None,
-        metadata={
-            "name": "linearHeatLossCoefficient",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    quadratic_heat_loss_coefficient: None | float = field(
-        default=None,
-        metadata={
-            "name": "quadraticHeatLossCoefficient",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ThermalDistribution(ThermalDistributionType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class ThermalStorageDevice(ThermalStorageDeviceType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class UrbanFunctionArea(UrbanFunctionAreaType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WeatherStationPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    weather_station: None | WeatherStation = field(
-        default=None,
-        metadata={
-            "name": "WeatherStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ZoneDoorType(AbstractZoneOpeningType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class ZoneWindowType(AbstractZoneOpeningType):
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class CityModel(CityModelType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Door1(DoorType1):
-    class Meta:
-        name = "Door"
-        namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class InteriorFurniturePropertyType1:
-    """
-    Denotes the relation of a BridgeRoom to its interior bridge furniture.
-
-    The InteriorBridgeFurniturePropertyType element must either carry a reference to an
-    BridgeFurniture object or contain an BridgeFurniture object inline, but neither both nor
-    none.
-    """
-
-    class Meta:
-        name = "InteriorFurniturePropertyType"
-        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-    bridge_furniture: None | BridgeFurniture = field(
-        default=None,
-        metadata={
-            "name": "BridgeFurniture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class Window1(WindowType1):
-    class Meta:
-        name = "Window"
-        namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Door2(DoorType2):
-    class Meta:
-        name = "Door"
-        namespace = "http://www.opengis.net/citygml/building/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class InteriorFurniturePropertyType2:
-    """
-    Denotes the relation of a Room to its interior furnitures (movable).
-
-    The InteriorFurniturePropertyType element must either carry a reference to a
-    BuildingFurniture object or contain a BuildingFurniture object inline, but neither both nor
-    none.
-    """
-
-    class Meta:
-        name = "InteriorFurniturePropertyType"
-        target_namespace = "http://www.opengis.net/citygml/building/2.0"
-
-    building_furniture: None | BuildingFurniture = field(
-        default=None,
-        metadata={
-            "name": "BuildingFurniture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/building/2.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class Window2(WindowType2):
-    class Meta:
-        name = "Window"
-        namespace = "http://www.opengis.net/citygml/building/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class BreaklineRelief(BreaklineReliefType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class MassPointRelief(MassPointReliefType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class RasterRelief(RasterReliefType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Tinrelief(TinreliefType):
-    class Meta:
-        name = "TINRelief"
-        namespace = "http://www.opengis.net/citygml/relief/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class AuxiliaryTrafficArea(AuxiliaryTrafficAreaType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/transportation/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class TrafficArea(TrafficAreaType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/transportation/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Door3(DoorType3):
-    class Meta:
-        name = "Door"
-        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class InteriorFurniturePropertyType3:
-    """
-    Denotes the relation of a hollow space to the furnitures it contains.
-    """
-
-    class Meta:
-        name = "InteriorFurniturePropertyType"
-        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-    tunnel_furniture: None | TunnelFurniture = field(
-        default=None,
-        metadata={
-            "name": "TunnelFurniture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class Window3(WindowType3):
-    class Meta:
-        name = "Window"
-        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class PlantCover(PlantCoverType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/vegetation/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class SolitaryVegetationObject(SolitaryVegetationObjectType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/vegetation/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterClosureSurface(WaterClosureSurfaceType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterGroundSurface(WaterGroundSurfaceType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class WaterSurface(WaterSurfaceType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/waterbody/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class DynamicFeatureCollectionType(FeatureCollectionType):
-    """
-    A dynamic feature collection may possess a history and/or a timestamp.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/gml"
-
-    valid_time: None | ValidTime = field(
-        default=None,
-        metadata={
-            "name": "validTime",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    track: None | Track2 = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    history: None | History = field(
-        default=None,
-        metadata={
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-    data_source: None | DataSource = field(
-        default=None,
-        metadata={
-            "name": "dataSource",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class FeatureCollection(FeatureCollectionType):
-    class Meta:
-        namespace = "http://www.opengis.net/gml"
-
-
-@dataclass(slots=True, kw_only=True)
-class AbstractLibraryPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    material_library: None | MaterialLibrary = field(
-        default=None,
-        metadata={
-            "name": "MaterialLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction_library: None | LayeredConstructionLibrary = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstructionLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_library: None | ScheduleLibrary = field(
-        default=None,
-        metadata={
-            "name": "ScheduleLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class BoilerPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    boiler: None | Boiler = field(
-        default=None,
-        metadata={
-            "name": "Boiler",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class BuildingUnit1(BuildingUnitType):
-    class Meta:
-        name = "BuildingUnit"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class EvchargingStationPropertyType:
-    class Meta:
-        name = "EVChargingStationPropertyType"
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    evcharging_station: None | EvchargingStation = field(
-        default=None,
-        metadata={
-            "name": "EVChargingStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ElectricalStorageDevicePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    electrical_storage_device: None | ElectricalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ElectricalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericDevicePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    generic_device: None | GenericDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericElectricalDevicePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    generic_electrical_device: None | GenericElectricalDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericElectricalDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericSolarCollector(GenericSolarCollectorType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class GenericStorageDevicePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    generic_storage_device: None | GenericStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class HeatPumpPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    heat_pump: None | HeatPump = field(
-        default=None,
-        metadata={
-            "name": "HeatPump",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LayeredConstructionLibraryPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    layered_construction_library: None | LayeredConstructionLibrary = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstructionLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class LightingDevicePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    lighting_device: None | LightingDevice = field(
-        default=None,
-        metadata={
-            "name": "LightingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class MaterialLibraryPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    material_library: None | MaterialLibrary = field(
-        default=None,
-        metadata={
-            "name": "MaterialLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class MovableShadingDevicePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    movable_shading_device: None | MovableShadingDevice = field(
-        default=None,
-        metadata={
-            "name": "MovableShadingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class PhotovoltaicCollector(PhotovoltaicCollectorType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class PhotovoltaicThermalCollector(PhotovoltaicThermalCollectorType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class PowerDistributionPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    power_distribution: None | PowerDistribution = field(
-        default=None,
-        metadata={
-            "name": "PowerDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ScheduleLibraryPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    schedule_library: None | ScheduleLibrary = field(
-        default=None,
-        metadata={
-            "name": "ScheduleLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class SolarThermalCollector(SolarThermalCollectorType):
-    class Meta:
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class ThermalDistributionPropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    thermal_distribution: None | ThermalDistribution = field(
-        default=None,
-        metadata={
-            "name": "ThermalDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class ThermalStorageDevicePropertyType:
-    class Meta:
-        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-    thermal_storage_device: None | ThermalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ThermalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
 class UrbanFunctionAreaPropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
@@ -53644,6 +47219,27 @@ class ZoneDoor(ZoneDoorType):
 @dataclass(slots=True, kw_only=True)
 class ZoneWindow(ZoneWindowType):
     class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class EnergyPerformanceCertificate2(EnergyPerformanceCertificatePropertyType):
+    class Meta:
+        name = "energyPerformanceCertificate"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Intervention2(InterventionPropertyType):
+    class Meta:
+        name = "intervention"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class UtilityNetworkConnection2(UtilityNetworkConnectionPropertyType):
+    class Meta:
+        name = "utilityNetworkConnection"
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
@@ -54207,134 +47803,54 @@ class BoundedByWaterSurfacePropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractDevicePropertyType:
+class AbstractTimeSeriesFilePropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    thermal_distribution: None | ThermalDistribution = field(
+    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
         default=None,
         metadata={
-            "name": "ThermalDistribution",
+            "name": "TypicalValuesIrregularTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    power_distribution: None | PowerDistribution = field(
+    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
         default=None,
         metadata={
-            "name": "PowerDistribution",
+            "name": "IrregularTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    thermal_storage_device: None | ThermalStorageDevice = field(
+    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
         default=None,
         metadata={
-            "name": "ThermalStorageDevice",
+            "name": "TypicalValuesMonthlyTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    generic_storage_device: None | GenericStorageDevice = field(
+    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
         default=None,
         metadata={
-            "name": "GenericStorageDevice",
+            "name": "MonthlyTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    electrical_storage_device: None | ElectricalStorageDevice = field(
+    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
         default=None,
         metadata={
-            "name": "ElectricalStorageDevice",
+            "name": "TypicalValuesRegularTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    movable_shading_device: None | MovableShadingDevice = field(
+    regular_time_series_file: None | RegularTimeSeriesFile = field(
         default=None,
         metadata={
-            "name": "MovableShadingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lighting_device: None | LightingDevice = field(
-        default=None,
-        metadata={
-            "name": "LightingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_pump: None | HeatPump = field(
-        default=None,
-        metadata={
-            "name": "HeatPump",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_electrical_device: None | GenericElectricalDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericElectricalDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_device: None | GenericDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    evcharging_station: None | EvchargingStation = field(
-        default=None,
-        metadata={
-            "name": "EVChargingStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    boiler: None | Boiler = field(
-        default=None,
-        metadata={
-            "name": "Boiler",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solar_thermal_collector: None | SolarThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "SolarThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_collector: None | PhotovoltaicCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_solar_collector: None | GenericSolarCollector = field(
-        default=None,
-        metadata={
-            "name": "GenericSolarCollector",
+            "name": "RegularTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -54403,38 +47919,110 @@ class AbstractDevicePropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractSolarCollectorPropertyType:
+class AbstractTimeSeriesPropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    solar_thermal_collector: None | SolarThermalCollector = field(
+    typical_values_irregular_time_series: None | TypicalValuesIrregularTimeSeries = field(
         default=None,
         metadata={
-            "name": "SolarThermalCollector",
+            "name": "TypicalValuesIrregularTimeSeries",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
+    irregular_time_series: None | IrregularTimeSeries = field(
         default=None,
         metadata={
-            "name": "PhotovoltaicThermalCollector",
+            "name": "IrregularTimeSeries",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    photovoltaic_collector: None | PhotovoltaicCollector = field(
+    typical_values_monthly_time_series: None | TypicalValuesMonthlyTimeSeries = field(
         default=None,
         metadata={
-            "name": "PhotovoltaicCollector",
+            "name": "TypicalValuesMonthlyTimeSeries",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    generic_solar_collector: None | GenericSolarCollector = field(
+    monthly_time_series: None | MonthlyTimeSeries = field(
         default=None,
         metadata={
-            "name": "GenericSolarCollector",
+            "name": "MonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_connection: None | SensorConnection = field(
+        default=None,
+        metadata={
+            "name": "SensorConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series: None | TypicalValuesRegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series: None | RegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "IrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "MonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series_file: None | RegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -54587,14 +48175,14 @@ class AbstractZoneOpeningPropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class BuildingUnitPropertyType:
+class ConstantValueSchedulePropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    building_unit: None | BuildingUnit1 = field(
+    constant_value_schedule: None | ConstantValueSchedule = field(
         default=None,
         metadata={
-            "name": "BuildingUnit",
+            "name": "ConstantValueSchedule",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -54663,14 +48251,14 @@ class BuildingUnitPropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class GenericSolarCollectorPropertyType:
+class DualValueSchedulePropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    generic_solar_collector: None | GenericSolarCollector = field(
+    dual_value_schedule: None | DualValueSchedule = field(
         default=None,
         metadata={
-            "name": "GenericSolarCollector",
+            "name": "DualValueSchedule",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -54739,14 +48327,14 @@ class GenericSolarCollectorPropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class PhotovoltaicCollectorPropertyType:
+class IrregularTimeSeriesFilePropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    photovoltaic_collector: None | PhotovoltaicCollector = field(
+    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
         default=None,
         metadata={
-            "name": "PhotovoltaicCollector",
+            "name": "IrregularTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -54815,14 +48403,49 @@ class PhotovoltaicCollectorPropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class PhotovoltaicThermalCollectorPropertyType:
+class LayerType(AbstractCityObjectType):
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
+    thickness: MeasureType = field(
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    material: AbstractMaterialPropertyType = field(
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class MaterialLibraryType(AbstractLibraryType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    library_member: list[AbstractMaterialPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "libraryMember",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "min_occurs": 1,
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class MonthlyTimeSeriesFilePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
         default=None,
         metadata={
-            "name": "PhotovoltaicThermalCollector",
+            "name": "MonthlyTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -54891,14 +48514,242 @@ class PhotovoltaicThermalCollectorPropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class SolarThermalCollectorPropertyType:
+class RegularTimeSeriesFilePropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    solar_thermal_collector: None | SolarThermalCollector = field(
+    regular_time_series_file: None | RegularTimeSeriesFile = field(
         default=None,
         metadata={
-            "name": "SolarThermalCollector",
+            "name": "RegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TypicalValuesIrregularTimeSeriesFilePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TypicalValuesMonthlyTimeSeriesFilePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TypicalValuesRegularTimeSeriesFilePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeriesFile",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -55552,17 +49403,74 @@ class WaterBodyType(AbstractWaterObjectType):
 
 
 @dataclass(slots=True, kw_only=True)
-class BuildingUnit2(BuildingUnitPropertyType):
+class Layer(LayerType):
     class Meta:
-        name = "buildingUnit"
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
-class Device(AbstractDevicePropertyType):
+class MaterialLibrary(MaterialLibraryType):
     class Meta:
-        name = "device"
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class SensorDataType(AbstractCityObjectType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    value_type: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "valueType",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    yearly_value: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "yearlyValue",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_dependent_values: None | AbstractTimeSeriesPropertyType = field(
+        default=None,
+        metadata={
+            "name": "timeDependentValues",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    position: None | PointPropertyType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TimeSeriesScheduleType(AbstractAtomicScheduleType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    time_dependent_values: AbstractTimeSeriesPropertyType = field(
+        metadata={
+            "name": "timeDependentValues",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
 
 
 @dataclass(slots=True, kw_only=True)
@@ -55966,6 +49874,177 @@ class AbstractZoneBoundarySurfaceType(AbstractBoundarySurfaceType2):
 
 
 @dataclass(slots=True, kw_only=True)
+class LayerPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    layer: None | Layer = field(
+        default=None,
+        metadata={
+            "name": "Layer",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class MaterialLibraryPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    material_library: None | MaterialLibrary = field(
+        default=None,
+        metadata={
+            "name": "MaterialLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class SensorData1(SensorDataType):
+    class Meta:
+        name = "SensorData"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class TimeSeriesSchedule(TimeSeriesScheduleType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class WeatherDataType(SensorDataType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
 class CeilingSurface1(CeilingSurfaceType1):
     class Meta:
         name = "CeilingSurface"
@@ -56187,7 +50266,370 @@ class WallSurface3(WallSurfaceType3):
 
 
 @dataclass(slots=True, kw_only=True)
+class AbstractAtomicSchedulePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    dual_value_schedule: None | DualValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "DualValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_series_schedule: None | TimeSeriesSchedule = field(
+        default=None,
+        metadata={
+            "name": "TimeSeriesSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    constant_value_schedule: None | ConstantValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "ConstantValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractSchedulePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    composite_schedule: None | CompositeSchedule = field(
+        default=None,
+        metadata={
+            "name": "CompositeSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    dual_value_schedule: None | DualValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "DualValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_series_schedule: None | TimeSeriesSchedule = field(
+        default=None,
+        metadata={
+            "name": "TimeSeriesSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    constant_value_schedule: None | ConstantValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "ConstantValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
 class AbstractZoneBoundarySurface(AbstractZoneBoundarySurfaceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class LayeredConstructionType(AbstractLayeredConstructionType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    u_value: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "uValue",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    g_value: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "gValue",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    glazing_ratio: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "glazingRatio",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    absorptance: list[AbsorptancePropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    emissivity: list[EmissivityPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    reflectance: list[ReflectancePropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    transmittance: list[TransmittancePropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    inside_convection_coefficient: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "insideConvectionCoefficient",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    outside_convection_coefficient: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "outsideConvectionCoefficient",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layer: list[LayerPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TimeSeriesSchedulePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    time_series_schedule: None | TimeSeriesSchedule = field(
+        default=None,
+        metadata={
+            "name": "TimeSeriesSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class WeatherData(WeatherDataType):
     class Meta:
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
@@ -56554,6 +50996,453 @@ class BoundarySurfacePropertyType3:
             "name": "RoofSurface",
             "type": "Element",
             "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractResourceType(AbstractCityObjectType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    operation_type: CodeType = field(
+        metadata={
+            "name": "operationType",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    reference_period: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "referencePeriod",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    amount: None | MeasureType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    year: None | int = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    is_amount_normalized: bool = field(
+        metadata={
+            "name": "isAmountNormalized",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    normalization_value: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "normalizationValue",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    normalization_parameter: None | str = field(
+        default=None,
+        metadata={
+            "name": "normalizationParameter",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    expense: None | MeasureType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    revenue: None | MeasureType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    co2_equivalent: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "co2Equivalent",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_dependent_amount: None | AbstractTimeSeriesPropertyType = field(
+        default=None,
+        metadata={
+            "name": "timeDependentAmount",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_dependent_expense: None | AbstractTimeSeriesPropertyType = field(
+        default=None,
+        metadata={
+            "name": "timeDependentExpense",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_dependent_revenue: None | AbstractTimeSeriesPropertyType = field(
+        default=None,
+        metadata={
+            "name": "timeDependentRevenue",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    amount_based_on: None | AbstractSchedulePropertyType = field(
+        default=None,
+        metadata={
+            "name": "amountBasedOn",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class DeviceOperationType(AbstractCityObjectType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    yearly_global_efficiency: None | float = field(
+        default=None,
+        metadata={
+            "name": "yearlyGlobalEfficiency",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule: None | AbstractSchedulePropertyType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class LayeredConstruction1(LayeredConstructionType):
+    class Meta:
+        name = "LayeredConstruction"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class OccupantsType(AbstractCityObjectType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    number_of_occupants: None | int = field(
+        default=None,
+        metadata={
+            "name": "numberOfOccupants",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    average_diet_type: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "averageDietType",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    average_income_level: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "averageIncomeLevel",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    average_instruction_level: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "averageInstructionLevel",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_dissipation: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "heatDissipation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_dissipation_convective_fraction: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "heatDissipationConvectiveFraction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_dissipation_latent_fraction: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "heatDissipationLatentFraction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_dissipation_radiant_fraction: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "heatDissipationRadiantFraction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    occupancy_schedule: None | AbstractSchedulePropertyType = field(
+        default=None,
+        metadata={
+            "name": "occupancySchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ScheduleComponentType(AbstractCityObjectType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    repetitions: int = field(
+        default=1,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    additional_gap: None | TimeIntervalLengthType = field(
+        default=None,
+        metadata={
+            "name": "additionalGap",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component_member: AbstractSchedulePropertyType = field(
+        metadata={
+            "name": "scheduleComponentMember",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ScheduleLibraryType(AbstractLibraryType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    library_member: list[AbstractSchedulePropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "libraryMember",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "min_occurs": 1,
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class SensorDataPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    weather_data: None | WeatherData = field(
+        default=None,
+        metadata={
+            "name": "WeatherData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_data: None | SensorData1 = field(
+        default=None,
+        metadata={
+            "name": "SensorData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class WeatherDataPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    weather_data: None | WeatherData = field(
+        default=None,
+        metadata={
+            "name": "WeatherData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
     type_value: TypeType | None = field(
@@ -57144,6 +52033,12 @@ class TunnelInstallationType(AbstractCityObjectType):
 
 
 @dataclass(slots=True, kw_only=True)
+class AbstractResource(AbstractResourceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
 class AbstractZoneBoundarySurfacePropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
@@ -57288,6 +52183,316 @@ class AbstractZoneBoundarySurfacePropertyType:
             "type": "Attribute",
             "namespace": "http://www.opengis.net/gml",
         },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ConstructionMaterialType(AbstractResourceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    end_use: CodeType = field(
+        metadata={
+            "name": "endUse",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class DeviceOperation(DeviceOperationType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class EnergyType(AbstractResourceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    end_use: CodeType = field(
+        metadata={
+            "name": "endUse",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    energy_carrier: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "energyCarrier",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    maximum_load: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "maximumLoad",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    maximum_load_time: None | XmlTime = field(
+        default=None,
+        metadata={
+            "name": "maximumLoadTime",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    maximum_load_day: None | int = field(
+        default=None,
+        metadata={
+            "name": "maximumLoadDay",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    maximum_load_month: None | int = field(
+        default=None,
+        metadata={
+            "name": "maximumLoadMonth",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    source: None | CodeType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class FoodType(AbstractResourceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    end_use: CodeType = field(
+        metadata={
+            "name": "endUse",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class LayeredConstructionPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    layered_construction: None | LayeredConstruction1 = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class Occupants(OccupantsType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class OtherResourceType(AbstractResourceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    end_use: CodeType = field(
+        metadata={
+            "name": "endUse",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ScheduleComponent(ScheduleComponentType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class ScheduleLibrary(ScheduleLibraryType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class UrbanSpaceType(AbstractResourceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    end_use: CodeType = field(
+        metadata={
+            "name": "endUse",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class WasteType(AbstractResourceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    end_use: CodeType = field(
+        metadata={
+            "name": "endUse",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    is_dangerous: None | bool = field(
+        default=None,
+        metadata={
+            "name": "isDangerous",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    is_recyclable: None | bool = field(
+        default=None,
+        metadata={
+            "name": "isRecyclable",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterType(AbstractResourceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    end_use: CodeType = field(
+        metadata={
+            "name": "endUse",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
     )
 
 
@@ -58052,6 +53257,13 @@ class ZoneWallSurfacePropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
+class SensorData2(SensorDataPropertyType):
+    class Meta:
+        name = "sensorData"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
 class BridgeConstructionElement(BridgeConstructionElementType):
     class Meta:
         namespace = "http://www.opengis.net/citygml/bridge/2.0"
@@ -58315,153 +53527,363 @@ class TunnelInstallation(TunnelInstallationType):
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractZoneType(AbstractBuildingSpaceType):
+class ConstructionMaterial(ConstructionMaterialType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class DeviceOperationPropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    type_value: CodeType = field(
+    device_operation: None | DeviceOperation = field(
+        default=None,
+        metadata={
+            "name": "DeviceOperation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
         metadata={
             "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class Energy(EnergyType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Food(FoodType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class OccupantsPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    occupants: None | Occupants = field(
+        default=None,
+        metadata={
+            "name": "Occupants",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class OtherResource(OtherResourceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class ReverseLayeredConstructionType(AbstractLayeredConstructionType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    base_layered_construction: LayeredConstructionPropertyType = field(
+        metadata={
+            "name": "baseLayeredConstruction",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         }
     )
-    is_cooled: None | bool = field(
+
+
+@dataclass(slots=True, kw_only=True)
+class ScheduleComponentPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    schedule_component: None | ScheduleComponent = field(
         default=None,
         metadata={
-            "name": "isCooled",
+            "name": "ScheduleComponent",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    is_heated: None | bool = field(
+    type_value: TypeType | None = field(
+        init=False,
         default=None,
         metadata={
-            "name": "isHeated",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
         },
     )
-    is_mechanically_ventilated: None | bool = field(
+    href: None | str = field(
         default=None,
         metadata={
-            "name": "isMechanicallyVentilated",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
         },
     )
-    infiltration_rate: None | MeasureType = field(
+    role: None | str = field(
         default=None,
         metadata={
-            "name": "infiltrationRate",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
         },
     )
-    heat_capacity: None | MeasureType = field(
+    arcrole: None | str = field(
         default=None,
         metadata={
-            "name": "heatCapacity",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
         },
     )
-    internal_heat_gains: None | MeasureType = field(
+    title: None | str = field(
         default=None,
         metadata={
-            "name": "internalHeatGains",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
         },
     )
-    internal_heat_gains_convective_fraction: None | ScaleType = field(
+    show: None | ShowType = field(
         default=None,
         metadata={
-            "name": "internalHeatGainsConvectiveFraction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
         },
     )
-    internal_heat_gains_latent_fraction: None | ScaleType = field(
+    actuate: None | ActuateType = field(
         default=None,
         metadata={
-            "name": "internalHeatGainsLatentFraction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
         },
     )
-    internal_heat_gains_radiant_fraction: None | ScaleType = field(
+    remote_schema: None | str = field(
         default=None,
         metadata={
-            "name": "internalHeatGainsRadiantFraction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
         },
     )
-    number_of_building_units: None | int = field(
+
+
+@dataclass(slots=True, kw_only=True)
+class ScheduleLibraryPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    schedule_library: None | ScheduleLibrary = field(
         default=None,
         metadata={
-            "name": "numberOfBuildingUnits",
+            "name": "ScheduleLibrary",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    coincides_with_lod2_hull: bool = field(
-        default=False,
-        metadata={
-            "name": "coincidesWithLod2Hull",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    coincides_with_lod3_hull: bool = field(
-        default=False,
-        metadata={
-            "name": "coincidesWithLod3Hull",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    building_unit: list[BuildingUnitPropertyType] = field(
-        default_factory=list,
-        metadata={
-            "name": "buildingUnit",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heating_schedule: None | AbstractSchedulePropertyType = field(
+    type_value: TypeType | None = field(
+        init=False,
         default=None,
         metadata={
-            "name": "heatingSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
         },
     )
-    cooling_schedule: None | AbstractSchedulePropertyType = field(
+    href: None | str = field(
         default=None,
         metadata={
-            "name": "coolingSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
         },
     )
-    mechanical_ventilation_schedule: None | AbstractSchedulePropertyType = field(
+    role: None | str = field(
         default=None,
         metadata={
-            "name": "mechanicalVentilationSchedule",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
         },
     )
-    zone_boundary: list[AbstractZoneBoundarySurfacePropertyType] = field(
-        default_factory=list,
+    arcrole: None | str = field(
+        default=None,
         metadata={
-            "name": "zoneBoundary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
         },
     )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class UrbanSpace(UrbanSpaceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Waste(WasteType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Water(WaterType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
@@ -59041,15 +54463,805 @@ class TunnelInstallationPropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class AbstractZone(AbstractZoneType):
+class AbstractBuildingSpaceType(AbstractCityObjectSpaceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    occupied_by: list[OccupantsPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "occupiedBy",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractDeviceType(AbstractCityObjectType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    model: None | str = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    year_of_installation: None | int = field(
+        default=None,
+        metadata={
+            "name": "yearOfInstallation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    year_of_manufacture: None | int = field(
+        default=None,
+        metadata={
+            "name": "yearOfManufacture",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    number_of_devices: None | int = field(
+        default=None,
+        metadata={
+            "name": "numberOfDevices",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    installed_power: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "installedPower",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    nominal_efficiency: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "nominalEfficiency",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    efficiency_indicator: None | str = field(
+        default=None,
+        metadata={
+            "name": "efficiencyIndicator",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_dissipation: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "heatDissipation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_dissipation_convective_fraction: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "heatDissipationConvectiveFraction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_dissipation_latent_fraction: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "heatDissipationLatentFraction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_dissipation_radiant_fraction: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "heatDissipationRadiantFraction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    device_operation: list[DeviceOperationPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "deviceOperation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractResourcePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    water: None | Water = field(
+        default=None,
+        metadata={
+            "name": "Water",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    waste: None | Waste = field(
+        default=None,
+        metadata={
+            "name": "Waste",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    urban_space: None | UrbanSpace = field(
+        default=None,
+        metadata={
+            "name": "UrbanSpace",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    other_resource: None | OtherResource = field(
+        default=None,
+        metadata={
+            "name": "OtherResource",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    food: None | Food = field(
+        default=None,
+        metadata={
+            "name": "Food",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy: None | Energy = field(
+        default=None,
+        metadata={
+            "name": "Energy",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    construction_material: None | ConstructionMaterial = field(
+        default=None,
+        metadata={
+            "name": "ConstructionMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class CompositeScheduleType(AbstractScheduleType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    schedule_component: list[ScheduleComponentPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "scheduleComponent",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "min_occurs": 1,
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ConstructionMaterialPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    construction_material: None | ConstructionMaterial = field(
+        default=None,
+        metadata={
+            "name": "ConstructionMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class EnergyPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    energy: None | Energy = field(
+        default=None,
+        metadata={
+            "name": "Energy",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class FoodPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    food: None | Food = field(
+        default=None,
+        metadata={
+            "name": "Food",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class OtherResourcePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    other_resource: None | OtherResource = field(
+        default=None,
+        metadata={
+            "name": "OtherResource",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ReverseLayeredConstruction(ReverseLayeredConstructionType):
     class Meta:
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
-class ZonePartType(AbstractZoneType):
+class UrbanSpacePropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    urban_space: None | UrbanSpace = field(
+        default=None,
+        metadata={
+            "name": "UrbanSpace",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class WastePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    waste: None | Waste = field(
+        default=None,
+        metadata={
+            "name": "Waste",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class WaterPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    water: None | Water = field(
+        default=None,
+        metadata={
+            "name": "Water",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class OccupiedBy(OccupantsPropertyType):
+    class Meta:
+        name = "occupiedBy"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
@@ -59219,8 +55431,619 @@ class HollowSpaceType(AbstractCityObjectType):
 
 
 @dataclass(slots=True, kw_only=True)
-class ZonePart(ZonePartType):
+class AbstractBuildingSpace(AbstractBuildingSpaceType):
     class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractDevice(AbstractDeviceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractLayeredConstructionPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    reverse_layered_construction: None | ReverseLayeredConstruction = field(
+        default=None,
+        metadata={
+            "name": "ReverseLayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction: None | LayeredConstruction1 = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractSolarCollectorType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    module_area: None | AreaType = field(
+        default=None,
+        metadata={
+            "name": "moduleArea",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    aperture_area: None | AreaType = field(
+        default=None,
+        metadata={
+            "name": "apertureArea",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    azimuth: None | AngleType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    inclination: None | AngleType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lod2_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod2MultiSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lod3_multi_surface: None | MultiSurfacePropertyType = field(
+        default=None,
+        metadata={
+            "name": "lod3MultiSurface",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class BoilerType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    has_condensation: bool = field(
+        metadata={
+            "name": "hasCondensation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class BuildingUnitType(AbstractBuildingSpaceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    floor_number_from: None | float = field(
+        default=None,
+        metadata={
+            "name": "floorNumberFrom",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    floor_number_to: None | float = field(
+        default=None,
+        metadata={
+            "name": "floorNumberTo",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    number_of_rooms: None | int = field(
+        default=None,
+        metadata={
+            "name": "numberOfRooms",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    owner_name: None | str = field(
+        default=None,
+        metadata={
+            "name": "ownerName",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    ownership_type: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "ownershipType",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    address: list[AddressPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy_performance_certificate: list[EnergyPerformanceCertificatePropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "energyPerformanceCertificate",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class CompositeSchedule(CompositeScheduleType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class EvchargingStationType(AbstractDeviceType):
+    class Meta:
+        name = "EVChargingStationType"
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    charging_speed_level: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "chargingSpeedLevel",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    connector_type: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "connectorType",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    has_load_management: None | bool = field(
+        default=None,
+        metadata={
+            "name": "hasLoadManagement",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    access_type: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "accessType",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ElectricalStorageDeviceType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    battery_technology: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "batteryTechnology",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    power_capacity: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "powerCapacity",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericDeviceType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericElectricalDeviceType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericStorageDeviceType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    capacity: None | MeasureType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class HeatPumpType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    heat_source: CodeType = field(
+        metadata={
+            "name": "heatSource",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    cop_source_temperature: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "copSourceTemperature",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    cop_operation_temperature: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "copOperationTemperature",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class LightingDeviceType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class MovableShadingDeviceType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    installation_side: SurfaceSideType = field(
+        metadata={
+            "name": "installationSide",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    maximum_cover_ratio: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "maximumCoverRatio",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    transmittance: None | TransmittancePropertyType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class PowerDistributionType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    distribution_perimeter: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "distributionPerimeter",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    current: None | MeasureType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    voltage: None | MeasureType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ReverseLayeredConstructionPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    reverse_layered_construction: None | ReverseLayeredConstruction = field(
+        default=None,
+        metadata={
+            "name": "ReverseLayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ThermalDistributionType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    distribution_perimeter: None | CodeType = field(
+        default=None,
+        metadata={
+            "name": "distributionPerimeter",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    is_circulation: None | bool = field(
+        default=None,
+        metadata={
+            "name": "isCirculation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    medium: None | CodeType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    nominal_flow: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "nominalFlow",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    return_temperature: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "returnTemperature",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    supply_temperature: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "supplyTemperature",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_losses_factor: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "thermalLossesFactor",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ThermalStorageDeviceType(AbstractDeviceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    preparation_temperature: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "preparationTemperature",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    medium: None | CodeType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_losses_factor: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "thermalLossesFactor",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    volume: None | VolumeType = field(
+        default=None,
+        metadata={
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class Resource(AbstractResourcePropertyType):
+    class Meta:
+        name = "resource"
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
@@ -59405,14 +56228,33 @@ class HollowSpace(HollowSpaceType):
 
 
 @dataclass(slots=True, kw_only=True)
-class ZonePartPropertyType:
+class AbstractSolarCollector(AbstractSolarCollectorType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Boiler(BoilerType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class BuildingUnit1(BuildingUnitType):
+    class Meta:
+        name = "BuildingUnit"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class CompositeSchedulePropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    zone_part: None | ZonePart = field(
+    composite_schedule: None | CompositeSchedule = field(
         default=None,
         metadata={
-            "name": "ZonePart",
+            "name": "CompositeSchedule",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -59478,6 +56320,199 @@ class ZonePartPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
+
+
+@dataclass(slots=True, kw_only=True)
+class EvchargingStation(EvchargingStationType):
+    class Meta:
+        name = "EVChargingStation"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class ElectricalStorageDevice(ElectricalStorageDeviceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericDevice(GenericDeviceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericElectricalDevice(GenericElectricalDeviceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericSolarCollectorType(AbstractSolarCollectorType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericStorageDevice(GenericStorageDeviceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class HeatPump(HeatPumpType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class LayeredConstructionLibraryType(AbstractLibraryType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    library_member: list[AbstractLayeredConstructionPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "libraryMember",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+            "min_occurs": 1,
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class LightingDevice(LightingDeviceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class MovableShadingDevice(MovableShadingDeviceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class PhotovoltaicCollectorType(AbstractSolarCollectorType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    cell_type: CodeType = field(
+        metadata={
+            "name": "cellType",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class PhotovoltaicThermalCollectorType(AbstractSolarCollectorType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    cell_type: CodeType = field(
+        metadata={
+            "name": "cellType",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    optical_efficiency: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "opticalEfficiency",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    linear_heat_loss_coefficient: None | float = field(
+        default=None,
+        metadata={
+            "name": "linearHeatLossCoefficient",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    quadratic_heat_loss_coefficient: None | float = field(
+        default=None,
+        metadata={
+            "name": "quadraticHeatLossCoefficient",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class PowerDistribution(PowerDistributionType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class SolarThermalCollectorType(AbstractSolarCollectorType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    optical_efficiency: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "opticalEfficiency",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    linear_heat_loss_coefficient: None | float = field(
+        default=None,
+        metadata={
+            "name": "linearHeatLossCoefficient",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    quadratic_heat_loss_coefficient: None | float = field(
+        default=None,
+        metadata={
+            "name": "quadraticHeatLossCoefficient",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ThermalDistribution(ThermalDistributionType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class ThermalStorageDevice(ThermalStorageDeviceType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class LayeredConstruction2(AbstractLayeredConstructionPropertyType):
+    class Meta:
+        name = "layeredConstruction"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
@@ -59728,16 +56763,1020 @@ class InteriorHollowSpacePropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class ZoneType(AbstractZoneType):
+class BoilerPropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
-    zone_part: list[ZonePartPropertyType] = field(
-        default_factory=list,
+    boiler: None | Boiler = field(
+        default=None,
         metadata={
-            "name": "zonePart",
+            "name": "Boiler",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class BuildingUnitPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    building_unit: None | BuildingUnit1 = field(
+        default=None,
+        metadata={
+            "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class EvchargingStationPropertyType:
+    class Meta:
+        name = "EVChargingStationPropertyType"
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    evcharging_station: None | EvchargingStation = field(
+        default=None,
+        metadata={
+            "name": "EVChargingStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ElectricalStorageDevicePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    electrical_storage_device: None | ElectricalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ElectricalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericDevicePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    generic_device: None | GenericDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericElectricalDevicePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    generic_electrical_device: None | GenericElectricalDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericElectricalDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericSolarCollector(GenericSolarCollectorType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericStorageDevicePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    generic_storage_device: None | GenericStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class HeatPumpPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    heat_pump: None | HeatPump = field(
+        default=None,
+        metadata={
+            "name": "HeatPump",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class LayeredConstructionLibrary(LayeredConstructionLibraryType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class LightingDevicePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    lighting_device: None | LightingDevice = field(
+        default=None,
+        metadata={
+            "name": "LightingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class MovableShadingDevicePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    movable_shading_device: None | MovableShadingDevice = field(
+        default=None,
+        metadata={
+            "name": "MovableShadingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class PhotovoltaicCollector(PhotovoltaicCollectorType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class PhotovoltaicThermalCollector(PhotovoltaicThermalCollectorType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class PowerDistributionPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    power_distribution: None | PowerDistribution = field(
+        default=None,
+        metadata={
+            "name": "PowerDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class SolarThermalCollector(SolarThermalCollectorType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class ThermalDistributionPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    thermal_distribution: None | ThermalDistribution = field(
+        default=None,
+        metadata={
+            "name": "ThermalDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ThermalStorageDevicePropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    thermal_storage_device: None | ThermalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ThermalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
         },
     )
 
@@ -60197,9 +58236,927 @@ class AbstractTunnelType(AbstractSiteType):
 
 
 @dataclass(slots=True, kw_only=True)
-class Zone1(ZoneType):
+class AbstractDevicePropertyType:
     class Meta:
-        name = "Zone"
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    thermal_distribution: None | ThermalDistribution = field(
+        default=None,
+        metadata={
+            "name": "ThermalDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    power_distribution: None | PowerDistribution = field(
+        default=None,
+        metadata={
+            "name": "PowerDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_storage_device: None | ThermalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ThermalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_storage_device: None | GenericStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    electrical_storage_device: None | ElectricalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ElectricalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    movable_shading_device: None | MovableShadingDevice = field(
+        default=None,
+        metadata={
+            "name": "MovableShadingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lighting_device: None | LightingDevice = field(
+        default=None,
+        metadata={
+            "name": "LightingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_pump: None | HeatPump = field(
+        default=None,
+        metadata={
+            "name": "HeatPump",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_electrical_device: None | GenericElectricalDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericElectricalDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_device: None | GenericDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    evcharging_station: None | EvchargingStation = field(
+        default=None,
+        metadata={
+            "name": "EVChargingStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    boiler: None | Boiler = field(
+        default=None,
+        metadata={
+            "name": "Boiler",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solar_thermal_collector: None | SolarThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_collector: None | PhotovoltaicCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_solar_collector: None | GenericSolarCollector = field(
+        default=None,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractLibraryPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    material_library: None | MaterialLibrary = field(
+        default=None,
+        metadata={
+            "name": "MaterialLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction_library: None | LayeredConstructionLibrary = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstructionLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_library: None | ScheduleLibrary = field(
+        default=None,
+        metadata={
+            "name": "ScheduleLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractSolarCollectorPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    solar_thermal_collector: None | SolarThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_collector: None | PhotovoltaicCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_solar_collector: None | GenericSolarCollector = field(
+        default=None,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractZoneType(AbstractBuildingSpaceType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    type_value: CodeType = field(
+        metadata={
+            "name": "type",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        }
+    )
+    is_cooled: None | bool = field(
+        default=None,
+        metadata={
+            "name": "isCooled",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    is_heated: None | bool = field(
+        default=None,
+        metadata={
+            "name": "isHeated",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    is_mechanically_ventilated: None | bool = field(
+        default=None,
+        metadata={
+            "name": "isMechanicallyVentilated",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    infiltration_rate: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "infiltrationRate",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_capacity: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "heatCapacity",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    internal_heat_gains: None | MeasureType = field(
+        default=None,
+        metadata={
+            "name": "internalHeatGains",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    internal_heat_gains_convective_fraction: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "internalHeatGainsConvectiveFraction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    internal_heat_gains_latent_fraction: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "internalHeatGainsLatentFraction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    internal_heat_gains_radiant_fraction: None | ScaleType = field(
+        default=None,
+        metadata={
+            "name": "internalHeatGainsRadiantFraction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    number_of_building_units: None | int = field(
+        default=None,
+        metadata={
+            "name": "numberOfBuildingUnits",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    coincides_with_lod2_hull: bool = field(
+        default=False,
+        metadata={
+            "name": "coincidesWithLod2Hull",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    coincides_with_lod3_hull: bool = field(
+        default=False,
+        metadata={
+            "name": "coincidesWithLod3Hull",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    building_unit: list[BuildingUnitPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "buildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heating_schedule: None | AbstractSchedulePropertyType = field(
+        default=None,
+        metadata={
+            "name": "heatingSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    cooling_schedule: None | AbstractSchedulePropertyType = field(
+        default=None,
+        metadata={
+            "name": "coolingSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    mechanical_ventilation_schedule: None | AbstractSchedulePropertyType = field(
+        default=None,
+        metadata={
+            "name": "mechanicalVentilationSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_boundary: list[AbstractZoneBoundarySurfacePropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "zoneBoundary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class GenericSolarCollectorPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    generic_solar_collector: None | GenericSolarCollector = field(
+        default=None,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class LayeredConstructionLibraryPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    layered_construction_library: None | LayeredConstructionLibrary = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstructionLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class PhotovoltaicCollectorPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    photovoltaic_collector: None | PhotovoltaicCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class PhotovoltaicThermalCollectorPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class SolarThermalCollectorPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    solar_thermal_collector: None | SolarThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class BuildingUnit2(BuildingUnitPropertyType):
+    class Meta:
+        name = "buildingUnit"
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
@@ -60332,6 +59289,319 @@ class AbstractTunnel(AbstractTunnelType):
     class Meta:
         name = "_AbstractTunnel"
         namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class AbstractZone(AbstractZoneType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class ZonePartType(AbstractZoneType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Device(AbstractDevicePropertyType):
+    class Meta:
+        name = "device"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Bridge(BridgeType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class BridgePart(BridgePartType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class Tunnel(TunnelType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class TunnelPart(TunnelPartType):
+    class Meta:
+        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class ZonePart(ZonePartType):
+    class Meta:
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+
+@dataclass(slots=True, kw_only=True)
+class BridgePartPropertyType:
+    """
+    Denotes the relation of an _AbstractBridge to its bridge parts.
+
+    The BridgePartPropertyType element must either carry a reference to a BridgePart object or
+    contain a BridgePart object inline, but neither both nor none.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
+
+    bridge_part: None | BridgePart = field(
+        default=None,
+        metadata={
+            "name": "BridgePart",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class TunnelPartPropertyType:
+    """
+    Denotes the relation of an _AbstractTunnel to its parts.
+
+    The TunnelPartPropertyType element must either carry a reference to a TunnelPart object or
+    contain a TunnelPart object inline, but neither both nor none.
+    """
+
+    class Meta:
+        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
+
+    tunnel_part: None | TunnelPart = field(
+        default=None,
+        metadata={
+            "name": "TunnelPart",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ZonePartPropertyType:
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    zone_part: None | ZonePart = field(
+        default=None,
+        metadata={
+            "name": "ZonePart",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    type_value: TypeType | None = field(
+        init=False,
+        default=None,
+        metadata={
+            "name": "type",
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    href: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    role: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    arcrole: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+            "min_length": 1,
+        },
+    )
+    title: None | str = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    show: None | ShowType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    actuate: None | ActuateType = field(
+        default=None,
+        metadata={
+            "type": "Attribute",
+            "namespace": "http://www.w3.org/1999/xlink",
+        },
+    )
+    remote_schema: None | str = field(
+        default=None,
+        metadata={
+            "name": "remoteSchema",
+            "type": "Attribute",
+            "namespace": "http://www.opengis.net/gml",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class ZoneType(AbstractZoneType):
+    class Meta:
+        target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
+
+    zone_part: list[ZonePartPropertyType] = field(
+        default_factory=list,
+        metadata={
+            "name": "zonePart",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+
+
+@dataclass(slots=True, kw_only=True)
+class Zone1(ZoneType):
+    class Meta:
+        name = "Zone"
+        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
 
 @dataclass(slots=True, kw_only=True)
@@ -60679,200 +59949,10 @@ class ZonePropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class Bridge(BridgeType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class BridgePart(BridgePartType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class Tunnel(TunnelType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class TunnelPart(TunnelPartType):
-    class Meta:
-        namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-
-@dataclass(slots=True, kw_only=True)
 class Zone2(AbstractZonePropertyType):
     class Meta:
         name = "zone"
         namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
-class BridgePartPropertyType:
-    """
-    Denotes the relation of an _AbstractBridge to its bridge parts.
-
-    The BridgePartPropertyType element must either carry a reference to a BridgePart object or
-    contain a BridgePart object inline, but neither both nor none.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/bridge/2.0"
-
-    bridge_part: None | BridgePart = field(
-        default=None,
-        metadata={
-            "name": "BridgePart",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/bridge/2.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
-
-
-@dataclass(slots=True, kw_only=True)
-class TunnelPartPropertyType:
-    """
-    Denotes the relation of an _AbstractTunnel to its parts.
-
-    The TunnelPartPropertyType element must either carry a reference to a TunnelPart object or
-    contain a TunnelPart object inline, but neither both nor none.
-    """
-
-    class Meta:
-        target_namespace = "http://www.opengis.net/citygml/tunnel/2.0"
-
-    tunnel_part: None | TunnelPart = field(
-        default=None,
-        metadata={
-            "name": "TunnelPart",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/tunnel/2.0",
-        },
-    )
-    type_value: TypeType | None = field(
-        init=False,
-        default=None,
-        metadata={
-            "name": "type",
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    href: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    role: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    arcrole: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-            "min_length": 1,
-        },
-    )
-    title: None | str = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    show: None | ShowType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    actuate: None | ActuateType = field(
-        default=None,
-        metadata={
-            "type": "Attribute",
-            "namespace": "http://www.w3.org/1999/xlink",
-        },
-    )
-    remote_schema: None | str = field(
-        default=None,
-        metadata={
-            "name": "remoteSchema",
-            "type": "Attribute",
-            "namespace": "http://www.opengis.net/gml",
-        },
-    )
 
 
 @dataclass(slots=True, kw_only=True)
@@ -61321,10 +60401,58 @@ class AbstractCityObjectPropertyType:
     class Meta:
         target_namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 
+    layer: None | Layer = field(
+        default=None,
+        metadata={
+            "name": "Layer",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solid_material: None | SolidMaterial = field(
+        default=None,
+        metadata={
+            "name": "SolidMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    liquid: None | Liquid = field(
+        default=None,
+        metadata={
+            "name": "Liquid",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    gas: None | Gas = field(
+        default=None,
+        metadata={
+            "name": "Gas",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
     weather_station: None | WeatherStation = field(
         default=None,
         metadata={
             "name": "WeatherStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    occupants: None | Occupants = field(
+        default=None,
+        metadata={
+            "name": "Occupants",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy_performance_certificate: None | EnergyPerformanceCertificate1 = field(
+        default=None,
+        metadata={
+            "name": "EnergyPerformanceCertificate",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -61501,6 +60629,262 @@ class AbstractCityObjectPropertyType:
         default=None,
         metadata={
             "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: None | ScheduleComponent = field(
+        default=None,
+        metadata={
+            "name": "ScheduleComponent",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    utility_network_connection: None | UtilityNetworkConnection1 = field(
+        default=None,
+        metadata={
+            "name": "UtilityNetworkConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    water: None | Water = field(
+        default=None,
+        metadata={
+            "name": "Water",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    waste: None | Waste = field(
+        default=None,
+        metadata={
+            "name": "Waste",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    urban_space: None | UrbanSpace = field(
+        default=None,
+        metadata={
+            "name": "UrbanSpace",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    other_resource: None | OtherResource = field(
+        default=None,
+        metadata={
+            "name": "OtherResource",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    food: None | Food = field(
+        default=None,
+        metadata={
+            "name": "Food",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy: None | Energy = field(
+        default=None,
+        metadata={
+            "name": "Energy",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    construction_material: None | ConstructionMaterial = field(
+        default=None,
+        metadata={
+            "name": "ConstructionMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    weather_data: None | WeatherData = field(
+        default=None,
+        metadata={
+            "name": "WeatherData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_data: None | SensorData1 = field(
+        default=None,
+        metadata={
+            "name": "SensorData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    intervention: None | Intervention1 = field(
+        default=None,
+        metadata={
+            "name": "Intervention",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    device_operation: None | DeviceOperation = field(
+        default=None,
+        metadata={
+            "name": "DeviceOperation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series: None | TypicalValuesIrregularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series: None | IrregularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "IrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series: None | TypicalValuesMonthlyTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series: None | MonthlyTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "MonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_connection: None | SensorConnection = field(
+        default=None,
+        metadata={
+            "name": "SensorConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series: None | TypicalValuesRegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series: None | RegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "IrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "MonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series_file: None | RegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    composite_schedule: None | CompositeSchedule = field(
+        default=None,
+        metadata={
+            "name": "CompositeSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    dual_value_schedule: None | DualValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "DualValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_series_schedule: None | TimeSeriesSchedule = field(
+        default=None,
+        metadata={
+            "name": "TimeSeriesSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    constant_value_schedule: None | ConstantValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "ConstantValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    reverse_layered_construction: None | ReverseLayeredConstruction = field(
+        default=None,
+        metadata={
+            "name": "ReverseLayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction: None | LayeredConstruction1 = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstruction",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -62277,10 +61661,58 @@ class GeneralizationRelationType:
     class Meta:
         target_namespace = "http://www.opengis.net/citygml/2.0"
 
+    layer: None | Layer = field(
+        default=None,
+        metadata={
+            "name": "Layer",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solid_material: None | SolidMaterial = field(
+        default=None,
+        metadata={
+            "name": "SolidMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    liquid: None | Liquid = field(
+        default=None,
+        metadata={
+            "name": "Liquid",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    gas: None | Gas = field(
+        default=None,
+        metadata={
+            "name": "Gas",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
     weather_station: None | WeatherStation = field(
         default=None,
         metadata={
             "name": "WeatherStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    occupants: None | Occupants = field(
+        default=None,
+        metadata={
+            "name": "Occupants",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy_performance_certificate: None | EnergyPerformanceCertificate1 = field(
+        default=None,
+        metadata={
+            "name": "EnergyPerformanceCertificate",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -62457,6 +61889,262 @@ class GeneralizationRelationType:
         default=None,
         metadata={
             "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: None | ScheduleComponent = field(
+        default=None,
+        metadata={
+            "name": "ScheduleComponent",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    utility_network_connection: None | UtilityNetworkConnection1 = field(
+        default=None,
+        metadata={
+            "name": "UtilityNetworkConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    water: None | Water = field(
+        default=None,
+        metadata={
+            "name": "Water",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    waste: None | Waste = field(
+        default=None,
+        metadata={
+            "name": "Waste",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    urban_space: None | UrbanSpace = field(
+        default=None,
+        metadata={
+            "name": "UrbanSpace",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    other_resource: None | OtherResource = field(
+        default=None,
+        metadata={
+            "name": "OtherResource",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    food: None | Food = field(
+        default=None,
+        metadata={
+            "name": "Food",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy: None | Energy = field(
+        default=None,
+        metadata={
+            "name": "Energy",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    construction_material: None | ConstructionMaterial = field(
+        default=None,
+        metadata={
+            "name": "ConstructionMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    weather_data: None | WeatherData = field(
+        default=None,
+        metadata={
+            "name": "WeatherData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_data: None | SensorData1 = field(
+        default=None,
+        metadata={
+            "name": "SensorData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    intervention: None | Intervention1 = field(
+        default=None,
+        metadata={
+            "name": "Intervention",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    device_operation: None | DeviceOperation = field(
+        default=None,
+        metadata={
+            "name": "DeviceOperation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series: None | TypicalValuesIrregularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series: None | IrregularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "IrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series: None | TypicalValuesMonthlyTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series: None | MonthlyTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "MonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_connection: None | SensorConnection = field(
+        default=None,
+        metadata={
+            "name": "SensorConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series: None | TypicalValuesRegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series: None | RegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "IrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "MonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series_file: None | RegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    composite_schedule: None | CompositeSchedule = field(
+        default=None,
+        metadata={
+            "name": "CompositeSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    dual_value_schedule: None | DualValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "DualValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_series_schedule: None | TimeSeriesSchedule = field(
+        default=None,
+        metadata={
+            "name": "TimeSeriesSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    constant_value_schedule: None | ConstantValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "ConstantValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    reverse_layered_construction: None | ReverseLayeredConstruction = field(
+        default=None,
+        metadata={
+            "name": "ReverseLayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction: None | LayeredConstruction1 = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstruction",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -63315,10 +63003,58 @@ class CityObjectGroupMemberType:
     class Meta:
         target_namespace = "http://www.opengis.net/citygml/cityobjectgroup/2.0"
 
+    layer: None | Layer = field(
+        default=None,
+        metadata={
+            "name": "Layer",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solid_material: None | SolidMaterial = field(
+        default=None,
+        metadata={
+            "name": "SolidMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    liquid: None | Liquid = field(
+        default=None,
+        metadata={
+            "name": "Liquid",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    gas: None | Gas = field(
+        default=None,
+        metadata={
+            "name": "Gas",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
     weather_station: None | WeatherStation = field(
         default=None,
         metadata={
             "name": "WeatherStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    occupants: None | Occupants = field(
+        default=None,
+        metadata={
+            "name": "Occupants",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy_performance_certificate: None | EnergyPerformanceCertificate1 = field(
+        default=None,
+        metadata={
+            "name": "EnergyPerformanceCertificate",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -63495,6 +63231,262 @@ class CityObjectGroupMemberType:
         default=None,
         metadata={
             "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: None | ScheduleComponent = field(
+        default=None,
+        metadata={
+            "name": "ScheduleComponent",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    utility_network_connection: None | UtilityNetworkConnection1 = field(
+        default=None,
+        metadata={
+            "name": "UtilityNetworkConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    water: None | Water = field(
+        default=None,
+        metadata={
+            "name": "Water",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    waste: None | Waste = field(
+        default=None,
+        metadata={
+            "name": "Waste",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    urban_space: None | UrbanSpace = field(
+        default=None,
+        metadata={
+            "name": "UrbanSpace",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    other_resource: None | OtherResource = field(
+        default=None,
+        metadata={
+            "name": "OtherResource",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    food: None | Food = field(
+        default=None,
+        metadata={
+            "name": "Food",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy: None | Energy = field(
+        default=None,
+        metadata={
+            "name": "Energy",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    construction_material: None | ConstructionMaterial = field(
+        default=None,
+        metadata={
+            "name": "ConstructionMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    weather_data: None | WeatherData = field(
+        default=None,
+        metadata={
+            "name": "WeatherData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_data: None | SensorData1 = field(
+        default=None,
+        metadata={
+            "name": "SensorData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    intervention: None | Intervention1 = field(
+        default=None,
+        metadata={
+            "name": "Intervention",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    device_operation: None | DeviceOperation = field(
+        default=None,
+        metadata={
+            "name": "DeviceOperation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series: None | TypicalValuesIrregularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series: None | IrregularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "IrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series: None | TypicalValuesMonthlyTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series: None | MonthlyTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "MonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_connection: None | SensorConnection = field(
+        default=None,
+        metadata={
+            "name": "SensorConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series: None | TypicalValuesRegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series: None | RegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "IrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "MonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series_file: None | RegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    composite_schedule: None | CompositeSchedule = field(
+        default=None,
+        metadata={
+            "name": "CompositeSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    dual_value_schedule: None | DualValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "DualValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_series_schedule: None | TimeSeriesSchedule = field(
+        default=None,
+        metadata={
+            "name": "TimeSeriesSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    constant_value_schedule: None | ConstantValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "ConstantValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    reverse_layered_construction: None | ReverseLayeredConstruction = field(
+        default=None,
+        metadata={
+            "name": "ReverseLayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction: None | LayeredConstruction1 = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstruction",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -64281,10 +64273,58 @@ class CityObjectGroupParentType:
     class Meta:
         target_namespace = "http://www.opengis.net/citygml/cityobjectgroup/2.0"
 
+    layer: None | Layer = field(
+        default=None,
+        metadata={
+            "name": "Layer",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solid_material: None | SolidMaterial = field(
+        default=None,
+        metadata={
+            "name": "SolidMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    liquid: None | Liquid = field(
+        default=None,
+        metadata={
+            "name": "Liquid",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    gas: None | Gas = field(
+        default=None,
+        metadata={
+            "name": "Gas",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
     weather_station: None | WeatherStation = field(
         default=None,
         metadata={
             "name": "WeatherStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    occupants: None | Occupants = field(
+        default=None,
+        metadata={
+            "name": "Occupants",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy_performance_certificate: None | EnergyPerformanceCertificate1 = field(
+        default=None,
+        metadata={
+            "name": "EnergyPerformanceCertificate",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -64461,6 +64501,262 @@ class CityObjectGroupParentType:
         default=None,
         metadata={
             "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: None | ScheduleComponent = field(
+        default=None,
+        metadata={
+            "name": "ScheduleComponent",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    utility_network_connection: None | UtilityNetworkConnection1 = field(
+        default=None,
+        metadata={
+            "name": "UtilityNetworkConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    water: None | Water = field(
+        default=None,
+        metadata={
+            "name": "Water",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    waste: None | Waste = field(
+        default=None,
+        metadata={
+            "name": "Waste",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    urban_space: None | UrbanSpace = field(
+        default=None,
+        metadata={
+            "name": "UrbanSpace",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    other_resource: None | OtherResource = field(
+        default=None,
+        metadata={
+            "name": "OtherResource",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    food: None | Food = field(
+        default=None,
+        metadata={
+            "name": "Food",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    energy: None | Energy = field(
+        default=None,
+        metadata={
+            "name": "Energy",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    construction_material: None | ConstructionMaterial = field(
+        default=None,
+        metadata={
+            "name": "ConstructionMaterial",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    weather_data: None | WeatherData = field(
+        default=None,
+        metadata={
+            "name": "WeatherData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_data: None | SensorData1 = field(
+        default=None,
+        metadata={
+            "name": "SensorData",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    intervention: None | Intervention1 = field(
+        default=None,
+        metadata={
+            "name": "Intervention",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    device_operation: None | DeviceOperation = field(
+        default=None,
+        metadata={
+            "name": "DeviceOperation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series: None | TypicalValuesIrregularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series: None | IrregularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "IrregularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series: None | TypicalValuesMonthlyTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series: None | MonthlyTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "MonthlyTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    sensor_connection: None | SensorConnection = field(
+        default=None,
+        metadata={
+            "name": "SensorConnection",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series: None | TypicalValuesRegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series: None | RegularTimeSeries = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeries",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_irregular_time_series_file: None | TypicalValuesIrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesIrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    irregular_time_series_file: None | IrregularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "IrregularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_monthly_time_series_file: None | TypicalValuesMonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesMonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    monthly_time_series_file: None | MonthlyTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "MonthlyTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    typical_values_regular_time_series_file: None | TypicalValuesRegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "TypicalValuesRegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    regular_time_series_file: None | RegularTimeSeriesFile = field(
+        default=None,
+        metadata={
+            "name": "RegularTimeSeriesFile",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    composite_schedule: None | CompositeSchedule = field(
+        default=None,
+        metadata={
+            "name": "CompositeSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    dual_value_schedule: None | DualValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "DualValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    time_series_schedule: None | TimeSeriesSchedule = field(
+        default=None,
+        metadata={
+            "name": "TimeSeriesSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    constant_value_schedule: None | ConstantValueSchedule = field(
+        default=None,
+        metadata={
+            "name": "ConstantValueSchedule",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    reverse_layered_construction: None | ReverseLayeredConstruction = field(
+        default=None,
+        metadata={
+            "name": "ReverseLayeredConstruction",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction: None | LayeredConstruction1 = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstruction",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -65233,6 +65529,46 @@ class TargetPropertyType:
     class Meta:
         target_namespace = "http://www.opengis.net/gml"
 
+    x3_dmaterial: None | X3Dmaterial = field(
+        default=None,
+        metadata={
+            "name": "X3DMaterial",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    georeferenced_texture: None | GeoreferencedTexture = field(
+        default=None,
+        metadata={
+            "name": "GeoreferencedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    parameterized_texture: None | ParameterizedTexture = field(
+        default=None,
+        metadata={
+            "name": "ParameterizedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    appearance: None | Appearance1 = field(
+        default=None,
+        metadata={
+            "name": "Appearance",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    address: None | Address = field(
+        default=None,
+        metadata={
+            "name": "Address",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
     layer: None | Layer = field(
         default=None,
         metadata={
@@ -65265,10 +65601,10 @@ class TargetPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    schedule_component: None | ScheduleComponent = field(
+    weather_station: None | WeatherStation = field(
         default=None,
         metadata={
-            "name": "ScheduleComponent",
+            "name": "WeatherStation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -65285,6 +65621,190 @@ class TargetPropertyType:
         default=None,
         metadata={
             "name": "EnergyPerformanceCertificate",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    material_library: None | MaterialLibrary = field(
+        default=None,
+        metadata={
+            "name": "MaterialLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction_library: None | LayeredConstructionLibrary = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstructionLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_library: None | ScheduleLibrary = field(
+        default=None,
+        metadata={
+            "name": "ScheduleLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_distribution: None | ThermalDistribution = field(
+        default=None,
+        metadata={
+            "name": "ThermalDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    power_distribution: None | PowerDistribution = field(
+        default=None,
+        metadata={
+            "name": "PowerDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_storage_device: None | ThermalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ThermalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_storage_device: None | GenericStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    electrical_storage_device: None | ElectricalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ElectricalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    movable_shading_device: None | MovableShadingDevice = field(
+        default=None,
+        metadata={
+            "name": "MovableShadingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lighting_device: None | LightingDevice = field(
+        default=None,
+        metadata={
+            "name": "LightingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_pump: None | HeatPump = field(
+        default=None,
+        metadata={
+            "name": "HeatPump",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_electrical_device: None | GenericElectricalDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericElectricalDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_device: None | GenericDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    evcharging_station: None | EvchargingStation = field(
+        default=None,
+        metadata={
+            "name": "EVChargingStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    boiler: None | Boiler = field(
+        default=None,
+        metadata={
+            "name": "Boiler",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solar_thermal_collector: None | SolarThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_collector: None | PhotovoltaicCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_solar_collector: None | GenericSolarCollector = field(
+        default=None,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_part: None | ZonePart = field(
+        default=None,
+        metadata={
+            "name": "ZonePart",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone: None | Zone1 = field(
+        default=None,
+        metadata={
+            "name": "Zone",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    building_unit: None | BuildingUnit1 = field(
+        default=None,
+        metadata={
+            "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: None | ScheduleComponent = field(
+        default=None,
+        metadata={
+            "name": "ScheduleComponent",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -65533,230 +66053,6 @@ class TargetPropertyType:
         default=None,
         metadata={
             "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    x3_dmaterial: None | X3Dmaterial = field(
-        default=None,
-        metadata={
-            "name": "X3DMaterial",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    georeferenced_texture: None | GeoreferencedTexture = field(
-        default=None,
-        metadata={
-            "name": "GeoreferencedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    parameterized_texture: None | ParameterizedTexture = field(
-        default=None,
-        metadata={
-            "name": "ParameterizedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    appearance: None | Appearance1 = field(
-        default=None,
-        metadata={
-            "name": "Appearance",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    address: None | Address = field(
-        default=None,
-        metadata={
-            "name": "Address",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    weather_station: None | WeatherStation = field(
-        default=None,
-        metadata={
-            "name": "WeatherStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    material_library: None | MaterialLibrary = field(
-        default=None,
-        metadata={
-            "name": "MaterialLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction_library: None | LayeredConstructionLibrary = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstructionLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_library: None | ScheduleLibrary = field(
-        default=None,
-        metadata={
-            "name": "ScheduleLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_distribution: None | ThermalDistribution = field(
-        default=None,
-        metadata={
-            "name": "ThermalDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    power_distribution: None | PowerDistribution = field(
-        default=None,
-        metadata={
-            "name": "PowerDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_storage_device: None | ThermalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ThermalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_storage_device: None | GenericStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    electrical_storage_device: None | ElectricalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ElectricalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    movable_shading_device: None | MovableShadingDevice = field(
-        default=None,
-        metadata={
-            "name": "MovableShadingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lighting_device: None | LightingDevice = field(
-        default=None,
-        metadata={
-            "name": "LightingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_pump: None | HeatPump = field(
-        default=None,
-        metadata={
-            "name": "HeatPump",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_electrical_device: None | GenericElectricalDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericElectricalDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_device: None | GenericDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    evcharging_station: None | EvchargingStation = field(
-        default=None,
-        metadata={
-            "name": "EVChargingStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    boiler: None | Boiler = field(
-        default=None,
-        metadata={
-            "name": "Boiler",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solar_thermal_collector: None | SolarThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "SolarThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_collector: None | PhotovoltaicCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_solar_collector: None | GenericSolarCollector = field(
-        default=None,
-        metadata={
-            "name": "GenericSolarCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_part: None | ZonePart = field(
-        default=None,
-        metadata={
-            "name": "ZonePart",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone: None | Zone1 = field(
-        default=None,
-        metadata={
-            "name": "Zone",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    building_unit: None | BuildingUnit1 = field(
-        default=None,
-        metadata={
-            "name": "BuildingUnit",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -66989,26 +67285,10 @@ class ArrayAssociationType:
     class Meta:
         target_namespace = "http://www.opengis.net/gml"
 
-    external_reference: list[ExternalReference] = field(
-        default_factory=list,
-        metadata={
-            "name": "ExternalReference",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
     city_object_relation: list[CityObjectRelation] = field(
         default_factory=list,
         metadata={
             "name": "CityObjectRelation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    feature_relation: list[FeatureRelation] = field(
-        default_factory=list,
-        metadata={
-            "name": "FeatureRelation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -67229,6 +67509,46 @@ class ArrayAssociationType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
+    x3_dmaterial: list[X3Dmaterial] = field(
+        default_factory=list,
+        metadata={
+            "name": "X3DMaterial",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    georeferenced_texture: list[GeoreferencedTexture] = field(
+        default_factory=list,
+        metadata={
+            "name": "GeoreferencedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    parameterized_texture: list[ParameterizedTexture] = field(
+        default_factory=list,
+        metadata={
+            "name": "ParameterizedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    appearance: list[Appearance1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Appearance",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    address: list[Address] = field(
+        default_factory=list,
+        metadata={
+            "name": "Address",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
     layer: list[Layer] = field(
         default_factory=list,
         metadata={
@@ -67261,10 +67581,10 @@ class ArrayAssociationType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    schedule_component: list[ScheduleComponent] = field(
+    weather_station: list[WeatherStation] = field(
         default_factory=list,
         metadata={
-            "name": "ScheduleComponent",
+            "name": "WeatherStation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -67281,6 +67601,190 @@ class ArrayAssociationType:
         default_factory=list,
         metadata={
             "name": "EnergyPerformanceCertificate",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    material_library: list[MaterialLibrary] = field(
+        default_factory=list,
+        metadata={
+            "name": "MaterialLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction_library: list[LayeredConstructionLibrary] = field(
+        default_factory=list,
+        metadata={
+            "name": "LayeredConstructionLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_library: list[ScheduleLibrary] = field(
+        default_factory=list,
+        metadata={
+            "name": "ScheduleLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_distribution: list[ThermalDistribution] = field(
+        default_factory=list,
+        metadata={
+            "name": "ThermalDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    power_distribution: list[PowerDistribution] = field(
+        default_factory=list,
+        metadata={
+            "name": "PowerDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_storage_device: list[ThermalStorageDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "ThermalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_storage_device: list[GenericStorageDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    electrical_storage_device: list[ElectricalStorageDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "ElectricalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    movable_shading_device: list[MovableShadingDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "MovableShadingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lighting_device: list[LightingDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "LightingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_pump: list[HeatPump] = field(
+        default_factory=list,
+        metadata={
+            "name": "HeatPump",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_electrical_device: list[GenericElectricalDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericElectricalDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_device: list[GenericDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    evcharging_station: list[EvchargingStation] = field(
+        default_factory=list,
+        metadata={
+            "name": "EVChargingStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    boiler: list[Boiler] = field(
+        default_factory=list,
+        metadata={
+            "name": "Boiler",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solar_thermal_collector: list[SolarThermalCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_thermal_collector: list[PhotovoltaicThermalCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_collector: list[PhotovoltaicCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_solar_collector: list[GenericSolarCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_part: list[ZonePart] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZonePart",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone: list[Zone1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Zone",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    building_unit: list[BuildingUnit1] = field(
+        default_factory=list,
+        metadata={
+            "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: list[ScheduleComponent] = field(
+        default_factory=list,
+        metadata={
+            "name": "ScheduleComponent",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -67529,230 +68033,6 @@ class ArrayAssociationType:
         default_factory=list,
         metadata={
             "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    x3_dmaterial: list[X3Dmaterial] = field(
-        default_factory=list,
-        metadata={
-            "name": "X3DMaterial",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    georeferenced_texture: list[GeoreferencedTexture] = field(
-        default_factory=list,
-        metadata={
-            "name": "GeoreferencedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    parameterized_texture: list[ParameterizedTexture] = field(
-        default_factory=list,
-        metadata={
-            "name": "ParameterizedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    appearance: list[Appearance1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Appearance",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    address: list[Address] = field(
-        default_factory=list,
-        metadata={
-            "name": "Address",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    weather_station: list[WeatherStation] = field(
-        default_factory=list,
-        metadata={
-            "name": "WeatherStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    material_library: list[MaterialLibrary] = field(
-        default_factory=list,
-        metadata={
-            "name": "MaterialLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction_library: list[LayeredConstructionLibrary] = field(
-        default_factory=list,
-        metadata={
-            "name": "LayeredConstructionLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_library: list[ScheduleLibrary] = field(
-        default_factory=list,
-        metadata={
-            "name": "ScheduleLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_distribution: list[ThermalDistribution] = field(
-        default_factory=list,
-        metadata={
-            "name": "ThermalDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    power_distribution: list[PowerDistribution] = field(
-        default_factory=list,
-        metadata={
-            "name": "PowerDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_storage_device: list[ThermalStorageDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "ThermalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_storage_device: list[GenericStorageDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    electrical_storage_device: list[ElectricalStorageDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "ElectricalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    movable_shading_device: list[MovableShadingDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "MovableShadingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lighting_device: list[LightingDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "LightingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_pump: list[HeatPump] = field(
-        default_factory=list,
-        metadata={
-            "name": "HeatPump",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_electrical_device: list[GenericElectricalDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericElectricalDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_device: list[GenericDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    evcharging_station: list[EvchargingStation] = field(
-        default_factory=list,
-        metadata={
-            "name": "EVChargingStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    boiler: list[Boiler] = field(
-        default_factory=list,
-        metadata={
-            "name": "Boiler",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solar_thermal_collector: list[SolarThermalCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "SolarThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_thermal_collector: list[PhotovoltaicThermalCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "PhotovoltaicThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_collector: list[PhotovoltaicCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "PhotovoltaicCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_solar_collector: list[GenericSolarCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericSolarCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_part: list[ZonePart] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZonePart",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone: list[Zone1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Zone",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    building_unit: list[BuildingUnit1] = field(
-        default_factory=list,
-        metadata={
-            "name": "BuildingUnit",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -69296,26 +69576,10 @@ class ValueArrayPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    external_reference: list[ExternalReference] = field(
-        default_factory=list,
-        metadata={
-            "name": "ExternalReference",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
     city_object_relation: list[CityObjectRelation] = field(
         default_factory=list,
         metadata={
             "name": "CityObjectRelation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    feature_relation: list[FeatureRelation] = field(
-        default_factory=list,
-        metadata={
-            "name": "FeatureRelation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -69536,6 +69800,46 @@ class ValueArrayPropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
+    x3_dmaterial: list[X3Dmaterial] = field(
+        default_factory=list,
+        metadata={
+            "name": "X3DMaterial",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    georeferenced_texture: list[GeoreferencedTexture] = field(
+        default_factory=list,
+        metadata={
+            "name": "GeoreferencedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    parameterized_texture: list[ParameterizedTexture] = field(
+        default_factory=list,
+        metadata={
+            "name": "ParameterizedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    appearance: list[Appearance1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Appearance",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    address: list[Address] = field(
+        default_factory=list,
+        metadata={
+            "name": "Address",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
     layer: list[Layer] = field(
         default_factory=list,
         metadata={
@@ -69568,10 +69872,10 @@ class ValueArrayPropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    schedule_component: list[ScheduleComponent] = field(
+    weather_station: list[WeatherStation] = field(
         default_factory=list,
         metadata={
-            "name": "ScheduleComponent",
+            "name": "WeatherStation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -69588,6 +69892,190 @@ class ValueArrayPropertyType:
         default_factory=list,
         metadata={
             "name": "EnergyPerformanceCertificate",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    material_library: list[MaterialLibrary] = field(
+        default_factory=list,
+        metadata={
+            "name": "MaterialLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction_library: list[LayeredConstructionLibrary] = field(
+        default_factory=list,
+        metadata={
+            "name": "LayeredConstructionLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_library: list[ScheduleLibrary] = field(
+        default_factory=list,
+        metadata={
+            "name": "ScheduleLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_distribution: list[ThermalDistribution] = field(
+        default_factory=list,
+        metadata={
+            "name": "ThermalDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    power_distribution: list[PowerDistribution] = field(
+        default_factory=list,
+        metadata={
+            "name": "PowerDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_storage_device: list[ThermalStorageDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "ThermalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_storage_device: list[GenericStorageDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    electrical_storage_device: list[ElectricalStorageDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "ElectricalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    movable_shading_device: list[MovableShadingDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "MovableShadingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lighting_device: list[LightingDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "LightingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_pump: list[HeatPump] = field(
+        default_factory=list,
+        metadata={
+            "name": "HeatPump",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_electrical_device: list[GenericElectricalDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericElectricalDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_device: list[GenericDevice] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    evcharging_station: list[EvchargingStation] = field(
+        default_factory=list,
+        metadata={
+            "name": "EVChargingStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    boiler: list[Boiler] = field(
+        default_factory=list,
+        metadata={
+            "name": "Boiler",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solar_thermal_collector: list[SolarThermalCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_thermal_collector: list[PhotovoltaicThermalCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_collector: list[PhotovoltaicCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_solar_collector: list[GenericSolarCollector] = field(
+        default_factory=list,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_part: list[ZonePart] = field(
+        default_factory=list,
+        metadata={
+            "name": "ZonePart",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone: list[Zone1] = field(
+        default_factory=list,
+        metadata={
+            "name": "Zone",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    building_unit: list[BuildingUnit1] = field(
+        default_factory=list,
+        metadata={
+            "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: list[ScheduleComponent] = field(
+        default_factory=list,
+        metadata={
+            "name": "ScheduleComponent",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -69836,230 +70324,6 @@ class ValueArrayPropertyType:
         default_factory=list,
         metadata={
             "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    x3_dmaterial: list[X3Dmaterial] = field(
-        default_factory=list,
-        metadata={
-            "name": "X3DMaterial",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    georeferenced_texture: list[GeoreferencedTexture] = field(
-        default_factory=list,
-        metadata={
-            "name": "GeoreferencedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    parameterized_texture: list[ParameterizedTexture] = field(
-        default_factory=list,
-        metadata={
-            "name": "ParameterizedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    appearance: list[Appearance1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Appearance",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    address: list[Address] = field(
-        default_factory=list,
-        metadata={
-            "name": "Address",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    weather_station: list[WeatherStation] = field(
-        default_factory=list,
-        metadata={
-            "name": "WeatherStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    material_library: list[MaterialLibrary] = field(
-        default_factory=list,
-        metadata={
-            "name": "MaterialLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction_library: list[LayeredConstructionLibrary] = field(
-        default_factory=list,
-        metadata={
-            "name": "LayeredConstructionLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_library: list[ScheduleLibrary] = field(
-        default_factory=list,
-        metadata={
-            "name": "ScheduleLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_distribution: list[ThermalDistribution] = field(
-        default_factory=list,
-        metadata={
-            "name": "ThermalDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    power_distribution: list[PowerDistribution] = field(
-        default_factory=list,
-        metadata={
-            "name": "PowerDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_storage_device: list[ThermalStorageDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "ThermalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_storage_device: list[GenericStorageDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    electrical_storage_device: list[ElectricalStorageDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "ElectricalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    movable_shading_device: list[MovableShadingDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "MovableShadingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lighting_device: list[LightingDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "LightingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_pump: list[HeatPump] = field(
-        default_factory=list,
-        metadata={
-            "name": "HeatPump",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_electrical_device: list[GenericElectricalDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericElectricalDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_device: list[GenericDevice] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    evcharging_station: list[EvchargingStation] = field(
-        default_factory=list,
-        metadata={
-            "name": "EVChargingStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    boiler: list[Boiler] = field(
-        default_factory=list,
-        metadata={
-            "name": "Boiler",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solar_thermal_collector: list[SolarThermalCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "SolarThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_thermal_collector: list[PhotovoltaicThermalCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "PhotovoltaicThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_collector: list[PhotovoltaicCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "PhotovoltaicCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_solar_collector: list[GenericSolarCollector] = field(
-        default_factory=list,
-        metadata={
-            "name": "GenericSolarCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_part: list[ZonePart] = field(
-        default_factory=list,
-        metadata={
-            "name": "ZonePart",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone: list[Zone1] = field(
-        default_factory=list,
-        metadata={
-            "name": "Zone",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    building_unit: list[BuildingUnit1] = field(
-        default_factory=list,
-        metadata={
-            "name": "BuildingUnit",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -71611,26 +71875,10 @@ class ValuePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
-    external_reference: None | ExternalReference = field(
-        default=None,
-        metadata={
-            "name": "ExternalReference",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
     city_object_relation: None | CityObjectRelation = field(
         default=None,
         metadata={
             "name": "CityObjectRelation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    feature_relation: None | FeatureRelation = field(
-        default=None,
-        metadata={
-            "name": "FeatureRelation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -71851,6 +72099,46 @@ class ValuePropertyType:
             "namespace": "http://www.opengis.net/gml",
         },
     )
+    x3_dmaterial: None | X3Dmaterial = field(
+        default=None,
+        metadata={
+            "name": "X3DMaterial",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    georeferenced_texture: None | GeoreferencedTexture = field(
+        default=None,
+        metadata={
+            "name": "GeoreferencedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    parameterized_texture: None | ParameterizedTexture = field(
+        default=None,
+        metadata={
+            "name": "ParameterizedTexture",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    appearance: None | Appearance1 = field(
+        default=None,
+        metadata={
+            "name": "Appearance",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
+        },
+    )
+    address: None | Address = field(
+        default=None,
+        metadata={
+            "name": "Address",
+            "type": "Element",
+            "namespace": "http://www.opengis.net/citygml/2.0",
+        },
+    )
     layer: None | Layer = field(
         default=None,
         metadata={
@@ -71883,10 +72171,10 @@ class ValuePropertyType:
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
     )
-    schedule_component: None | ScheduleComponent = field(
+    weather_station: None | WeatherStation = field(
         default=None,
         metadata={
-            "name": "ScheduleComponent",
+            "name": "WeatherStation",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -71903,6 +72191,190 @@ class ValuePropertyType:
         default=None,
         metadata={
             "name": "EnergyPerformanceCertificate",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    material_library: None | MaterialLibrary = field(
+        default=None,
+        metadata={
+            "name": "MaterialLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    layered_construction_library: None | LayeredConstructionLibrary = field(
+        default=None,
+        metadata={
+            "name": "LayeredConstructionLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_library: None | ScheduleLibrary = field(
+        default=None,
+        metadata={
+            "name": "ScheduleLibrary",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_distribution: None | ThermalDistribution = field(
+        default=None,
+        metadata={
+            "name": "ThermalDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    power_distribution: None | PowerDistribution = field(
+        default=None,
+        metadata={
+            "name": "PowerDistribution",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    thermal_storage_device: None | ThermalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ThermalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_storage_device: None | GenericStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    electrical_storage_device: None | ElectricalStorageDevice = field(
+        default=None,
+        metadata={
+            "name": "ElectricalStorageDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    movable_shading_device: None | MovableShadingDevice = field(
+        default=None,
+        metadata={
+            "name": "MovableShadingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    lighting_device: None | LightingDevice = field(
+        default=None,
+        metadata={
+            "name": "LightingDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    heat_pump: None | HeatPump = field(
+        default=None,
+        metadata={
+            "name": "HeatPump",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_electrical_device: None | GenericElectricalDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericElectricalDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_device: None | GenericDevice = field(
+        default=None,
+        metadata={
+            "name": "GenericDevice",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    evcharging_station: None | EvchargingStation = field(
+        default=None,
+        metadata={
+            "name": "EVChargingStation",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    boiler: None | Boiler = field(
+        default=None,
+        metadata={
+            "name": "Boiler",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    solar_thermal_collector: None | SolarThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "SolarThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicThermalCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    photovoltaic_collector: None | PhotovoltaicCollector = field(
+        default=None,
+        metadata={
+            "name": "PhotovoltaicCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    generic_solar_collector: None | GenericSolarCollector = field(
+        default=None,
+        metadata={
+            "name": "GenericSolarCollector",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone_part: None | ZonePart = field(
+        default=None,
+        metadata={
+            "name": "ZonePart",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    zone: None | Zone1 = field(
+        default=None,
+        metadata={
+            "name": "Zone",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    building_unit: None | BuildingUnit1 = field(
+        default=None,
+        metadata={
+            "name": "BuildingUnit",
+            "type": "Element",
+            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
+        },
+    )
+    schedule_component: None | ScheduleComponent = field(
+        default=None,
+        metadata={
+            "name": "ScheduleComponent",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -72151,230 +72623,6 @@ class ValuePropertyType:
         default=None,
         metadata={
             "name": "LayeredConstruction",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    x3_dmaterial: None | X3Dmaterial = field(
-        default=None,
-        metadata={
-            "name": "X3DMaterial",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    georeferenced_texture: None | GeoreferencedTexture = field(
-        default=None,
-        metadata={
-            "name": "GeoreferencedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    parameterized_texture: None | ParameterizedTexture = field(
-        default=None,
-        metadata={
-            "name": "ParameterizedTexture",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    appearance: None | Appearance1 = field(
-        default=None,
-        metadata={
-            "name": "Appearance",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/appearance/2.0",
-        },
-    )
-    address: None | Address = field(
-        default=None,
-        metadata={
-            "name": "Address",
-            "type": "Element",
-            "namespace": "http://www.opengis.net/citygml/2.0",
-        },
-    )
-    weather_station: None | WeatherStation = field(
-        default=None,
-        metadata={
-            "name": "WeatherStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    material_library: None | MaterialLibrary = field(
-        default=None,
-        metadata={
-            "name": "MaterialLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    layered_construction_library: None | LayeredConstructionLibrary = field(
-        default=None,
-        metadata={
-            "name": "LayeredConstructionLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    schedule_library: None | ScheduleLibrary = field(
-        default=None,
-        metadata={
-            "name": "ScheduleLibrary",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_distribution: None | ThermalDistribution = field(
-        default=None,
-        metadata={
-            "name": "ThermalDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    power_distribution: None | PowerDistribution = field(
-        default=None,
-        metadata={
-            "name": "PowerDistribution",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    thermal_storage_device: None | ThermalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ThermalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_storage_device: None | GenericStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    electrical_storage_device: None | ElectricalStorageDevice = field(
-        default=None,
-        metadata={
-            "name": "ElectricalStorageDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    movable_shading_device: None | MovableShadingDevice = field(
-        default=None,
-        metadata={
-            "name": "MovableShadingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    lighting_device: None | LightingDevice = field(
-        default=None,
-        metadata={
-            "name": "LightingDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    heat_pump: None | HeatPump = field(
-        default=None,
-        metadata={
-            "name": "HeatPump",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_electrical_device: None | GenericElectricalDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericElectricalDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_device: None | GenericDevice = field(
-        default=None,
-        metadata={
-            "name": "GenericDevice",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    evcharging_station: None | EvchargingStation = field(
-        default=None,
-        metadata={
-            "name": "EVChargingStation",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    boiler: None | Boiler = field(
-        default=None,
-        metadata={
-            "name": "Boiler",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    solar_thermal_collector: None | SolarThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "SolarThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_thermal_collector: None | PhotovoltaicThermalCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicThermalCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    photovoltaic_collector: None | PhotovoltaicCollector = field(
-        default=None,
-        metadata={
-            "name": "PhotovoltaicCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    generic_solar_collector: None | GenericSolarCollector = field(
-        default=None,
-        metadata={
-            "name": "GenericSolarCollector",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone_part: None | ZonePart = field(
-        default=None,
-        metadata={
-            "name": "ZonePart",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    zone: None | Zone1 = field(
-        default=None,
-        metadata={
-            "name": "Zone",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    building_unit: None | BuildingUnit1 = field(
-        default=None,
-        metadata={
-            "name": "BuildingUnit",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },
@@ -73967,21 +74215,7 @@ class BooleanPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    external_reference: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
     city_object_relation: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    feature_relation: Any = field(
         init=False,
         default=None,
         metadata={
@@ -74177,6 +74411,41 @@ class BooleanPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
+    x3_dmaterial: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    georeferenced_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    parameterized_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    appearance: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    address: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
     layer: Any = field(
         init=False,
         default=None,
@@ -74205,7 +74474,7 @@ class BooleanPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    schedule_component: Any = field(
+    weather_station: Any = field(
         init=False,
         default=None,
         metadata={
@@ -74220,6 +74489,167 @@ class BooleanPropertyType(ValuePropertyType):
         },
     )
     energy_performance_certificate: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    material_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    layered_construction_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    power_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    electrical_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    movable_shading_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    lighting_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    heat_pump: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_electrical_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    evcharging_station: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    boiler: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    solar_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_solar_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone_part: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    building_unit: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_component: Any = field(
         init=False,
         default=None,
         metadata={
@@ -74437,202 +74867,6 @@ class BooleanPropertyType(ValuePropertyType):
         },
     )
     layered_construction: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    x3_dmaterial: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    georeferenced_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    parameterized_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    appearance: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    address: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    weather_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    material_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    layered_construction_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    schedule_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    power_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    electrical_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    movable_shading_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    lighting_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    heat_pump: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_electrical_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    evcharging_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    boiler: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    solar_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_solar_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone_part: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    building_unit: Any = field(
         init=False,
         default=None,
         metadata={
@@ -75987,21 +76221,7 @@ class CategoryPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    external_reference: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
     city_object_relation: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    feature_relation: Any = field(
         init=False,
         default=None,
         metadata={
@@ -76197,6 +76417,41 @@ class CategoryPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
+    x3_dmaterial: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    georeferenced_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    parameterized_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    appearance: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    address: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
     layer: Any = field(
         init=False,
         default=None,
@@ -76225,7 +76480,7 @@ class CategoryPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    schedule_component: Any = field(
+    weather_station: Any = field(
         init=False,
         default=None,
         metadata={
@@ -76240,6 +76495,167 @@ class CategoryPropertyType(ValuePropertyType):
         },
     )
     energy_performance_certificate: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    material_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    layered_construction_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    power_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    electrical_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    movable_shading_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    lighting_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    heat_pump: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_electrical_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    evcharging_station: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    boiler: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    solar_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_solar_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone_part: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    building_unit: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_component: Any = field(
         init=False,
         default=None,
         metadata={
@@ -76457,202 +76873,6 @@ class CategoryPropertyType(ValuePropertyType):
         },
     )
     layered_construction: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    x3_dmaterial: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    georeferenced_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    parameterized_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    appearance: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    address: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    weather_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    material_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    layered_construction_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    schedule_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    power_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    electrical_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    movable_shading_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    lighting_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    heat_pump: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_electrical_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    evcharging_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    boiler: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    solar_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_solar_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone_part: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    building_unit: Any = field(
         init=False,
         default=None,
         metadata={
@@ -78007,21 +78227,7 @@ class CountPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    external_reference: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
     city_object_relation: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    feature_relation: Any = field(
         init=False,
         default=None,
         metadata={
@@ -78217,6 +78423,41 @@ class CountPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
+    x3_dmaterial: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    georeferenced_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    parameterized_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    appearance: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    address: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
     layer: Any = field(
         init=False,
         default=None,
@@ -78245,7 +78486,7 @@ class CountPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    schedule_component: Any = field(
+    weather_station: Any = field(
         init=False,
         default=None,
         metadata={
@@ -78260,6 +78501,167 @@ class CountPropertyType(ValuePropertyType):
         },
     )
     energy_performance_certificate: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    material_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    layered_construction_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    power_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    electrical_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    movable_shading_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    lighting_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    heat_pump: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_electrical_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    evcharging_station: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    boiler: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    solar_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_solar_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone_part: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    building_unit: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_component: Any = field(
         init=False,
         default=None,
         metadata={
@@ -78477,202 +78879,6 @@ class CountPropertyType(ValuePropertyType):
         },
     )
     layered_construction: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    x3_dmaterial: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    georeferenced_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    parameterized_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    appearance: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    address: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    weather_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    material_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    layered_construction_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    schedule_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    power_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    electrical_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    movable_shading_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    lighting_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    heat_pump: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_electrical_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    evcharging_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    boiler: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    solar_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_solar_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone_part: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    building_unit: Any = field(
         init=False,
         default=None,
         metadata={
@@ -80027,21 +80233,7 @@ class QuantityPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    external_reference: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
     city_object_relation: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    feature_relation: Any = field(
         init=False,
         default=None,
         metadata={
@@ -80237,6 +80429,41 @@ class QuantityPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
+    x3_dmaterial: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    georeferenced_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    parameterized_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    appearance: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    address: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
     layer: Any = field(
         init=False,
         default=None,
@@ -80265,7 +80492,7 @@ class QuantityPropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    schedule_component: Any = field(
+    weather_station: Any = field(
         init=False,
         default=None,
         metadata={
@@ -80280,6 +80507,167 @@ class QuantityPropertyType(ValuePropertyType):
         },
     )
     energy_performance_certificate: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    material_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    layered_construction_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    power_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    electrical_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    movable_shading_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    lighting_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    heat_pump: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_electrical_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    evcharging_station: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    boiler: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    solar_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_solar_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone_part: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    building_unit: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_component: Any = field(
         init=False,
         default=None,
         metadata={
@@ -80497,202 +80885,6 @@ class QuantityPropertyType(ValuePropertyType):
         },
     )
     layered_construction: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    x3_dmaterial: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    georeferenced_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    parameterized_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    appearance: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    address: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    weather_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    material_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    layered_construction_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    schedule_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    power_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    electrical_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    movable_shading_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    lighting_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    heat_pump: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_electrical_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    evcharging_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    boiler: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    solar_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_solar_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone_part: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    building_unit: Any = field(
         init=False,
         default=None,
         metadata={
@@ -82026,21 +82218,7 @@ class ScalarValuePropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    external_reference: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
     city_object_relation: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    feature_relation: Any = field(
         init=False,
         default=None,
         metadata={
@@ -82236,6 +82414,41 @@ class ScalarValuePropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
+    x3_dmaterial: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    georeferenced_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    parameterized_texture: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    appearance: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    address: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
     layer: Any = field(
         init=False,
         default=None,
@@ -82264,7 +82477,7 @@ class ScalarValuePropertyType(ValuePropertyType):
             "type": "Ignore",
         },
     )
-    schedule_component: Any = field(
+    weather_station: Any = field(
         init=False,
         default=None,
         metadata={
@@ -82279,6 +82492,167 @@ class ScalarValuePropertyType(ValuePropertyType):
         },
     )
     energy_performance_certificate: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    material_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    layered_construction_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_library: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    power_distribution: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    thermal_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    electrical_storage_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    movable_shading_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    lighting_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    heat_pump: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_electrical_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_device: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    evcharging_station: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    boiler: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    solar_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_thermal_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    photovoltaic_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    generic_solar_collector: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone_part: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    zone: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    building_unit: Any = field(
+        init=False,
+        default=None,
+        metadata={
+            "type": "Ignore",
+        },
+    )
+    schedule_component: Any = field(
         init=False,
         default=None,
         metadata={
@@ -82496,202 +82870,6 @@ class ScalarValuePropertyType(ValuePropertyType):
         },
     )
     layered_construction: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    x3_dmaterial: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    georeferenced_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    parameterized_texture: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    appearance: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    address: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    weather_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    material_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    layered_construction_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    schedule_library: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    power_distribution: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    thermal_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    electrical_storage_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    movable_shading_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    lighting_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    heat_pump: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_electrical_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_device: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    evcharging_station: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    boiler: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    solar_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_thermal_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    photovoltaic_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    generic_solar_collector: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone_part: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    zone: Any = field(
-        init=False,
-        default=None,
-        metadata={
-            "type": "Ignore",
-        },
-    )
-    building_unit: Any = field(
         init=False,
         default=None,
         metadata={

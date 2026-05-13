@@ -86,9 +86,7 @@ def build_city_model(
     boundary_geom = _maybe_load_boundary(config)
 
     _LOG.info("Fetching municipality outline: %s", config.municipality)
-    outline = muni_fetchers.fetch_municipality_outline(
-        session, name=config.municipality
-    )
+    outline = muni_fetchers.fetch_municipality_outline(session, name=config.municipality)
     bbox = _resolve_bbox(config, outline=outline, boundary_geom=boundary_geom)
     cbs_code = outline.cbs_code or None
     _LOG.info("CBS code: %r  bbox: %s", cbs_code, bbox)
@@ -101,23 +99,15 @@ def build_city_model(
     # safe here: its underlying urllib3 connection pool is thread-safe
     # for read-only GETs, and each fetcher's cache writes land under a
     # disjoint cache-key prefix so there is no shared-file race.
-    _LOG.info(
-        "Fetching BAG panden, VBOs, 3DBAG tiles, and CBS Postcode6 concurrently …"
-    )
+    _LOG.info("Fetching BAG panden, VBOs, 3DBAG tiles, and CBS Postcode6 concurrently …")
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        fut_panden = pool.submit(
-            bag_fetchers.fetch_panden, session, bbox=bbox, cbs_code=cbs_code
-        )
+        fut_panden = pool.submit(bag_fetchers.fetch_panden, session, bbox=bbox, cbs_code=cbs_code)
         fut_vbos = (
-            pool.submit(
-                bag_fetchers.fetch_verblijfsobjecten, session, bbox=bbox, cbs_code=cbs_code
-            )
+            pool.submit(bag_fetchers.fetch_verblijfsobjecten, session, bbox=bbox, cbs_code=cbs_code)
             if config.include_addresses
             else None
         )
-        fut_3dbag = pool.submit(
-            _fetch_parsed_buildings, session, outline=outline, bbox=bbox
-        )
+        fut_3dbag = pool.submit(_fetch_parsed_buildings, session, outline=outline, bbox=bbox)
         fut_cbs = (
             pool.submit(
                 postcode6_step.safely_fetch_postcode6_areas,
@@ -160,7 +150,8 @@ def build_city_model(
     parsed_by_id = {pb.pand_id: pb for pb in parsed_buildings if pb.pand_id in known_pand_ids}
     _LOG.info(
         "%d buildings from 3DBAG tiles; %d match known BAG panden",
-        len(parsed_buildings), len(parsed_by_id),
+        len(parsed_buildings),
+        len(parsed_by_id),
     )
     skipped = len(panden) - len(parsed_by_id)
     if skipped:
@@ -174,11 +165,15 @@ def build_city_model(
         panden = [p for p in panden if p.identificatie in kept_ids]
         _LOG.info(
             "Boundary polygon kept %d / %d buildings (%d outside)",
-            len(parsed_by_id), before, dropped,
+            len(parsed_by_id),
+            before,
+            dropped,
         )
 
     pv_matches_per_pand = _maybe_match_pv_panels(
-        config=config, bbox=bbox, parsed_by_id=parsed_by_id,
+        config=config,
+        bbox=bbox,
+        parsed_by_id=parsed_by_id,
     )
 
     tree_bundle = vegetation_module.fetch_and_match_trees(
@@ -199,20 +194,18 @@ def build_city_model(
         postcode6_areas=postcode6_areas,
         boundary_geom=boundary_geom,
     )
-    building_count = sum(
-        1 for m in model.xsd.city_object_member if m.building is not None
-    )
+    building_count = sum(1 for m in model.xsd.city_object_member if m.building is not None)
     vegetation_count = sum(
-        1 for m in model.xsd.city_object_member
-        if m.solitary_vegetation_object is not None
+        1 for m in model.xsd.city_object_member if m.solitary_vegetation_object is not None
     )
     postcode_count = sum(
-        1 for m in model.xsd.city_object_member
-        if m.urban_function_area is not None
+        1 for m in model.xsd.city_object_member if m.urban_function_area is not None
     )
     _LOG.info(
         "Done: %d buildings + %d trees + %d postcode areas in model",
-        building_count, vegetation_count, postcode_count,
+        building_count,
+        vegetation_count,
+        postcode_count,
     )
     return model
 
@@ -233,9 +226,7 @@ def _maybe_match_pv_panels(
     if source is None:
         return {}
     if 2 not in config.lods:
-        _LOG.warning(
-            "pv_panels configured but LoD 2 is disabled; skipping PV attach"
-        )
+        _LOG.warning("pv_panels configured but LoD 2 is disabled; skipping PV attach")
         return {}
 
     _LOG.info("Loading PV panels: %s (%s)", source.path.name, source.layer)
@@ -252,7 +243,9 @@ def _maybe_match_pv_panels(
     total = sum(len(v) for v in matches.values())
     _LOG.info(
         "PV panels: %d projected onto %d buildings (%d skipped, no LoD 2 roof overlap)",
-        total, len(matches), skipped,
+        total,
+        len(matches),
+        skipped,
     )
     return matches
 
@@ -333,11 +326,7 @@ def filter_buildings_by_boundary(
         # one LoD0 footprint polygon. Checking only ``lod0[0]`` would
         # drop any building whose first polygon lies outside the
         # boundary but whose second polygon crosses it.
-        parts = [
-            poly
-            for sp in lod0
-            if (poly := _footprint_xy(sp, ShapelyPolygon)) is not None
-        ]
+        parts = [poly for sp in lod0 if (poly := _footprint_xy(sp, ShapelyPolygon)) is not None]
         if not parts:
             continue
         footprint = parts[0] if len(parts) == 1 else unary_union(parts)
@@ -360,9 +349,7 @@ def _footprint_xy(sp: SemanticPolygon, polygon_cls: Any) -> Any:
     from shapely.errors import ShapelyError
 
     exterior = [(x, y) for (x, y, _z) in ring]
-    interiors = [
-        [(x, y) for (x, y, _z) in hole] for hole in sp.polygon.interiors
-    ]
+    interiors = [[(x, y) for (x, y, _z) in hole] for hole in sp.polygon.interiors]
     try:
         poly = polygon_cls(exterior, interiors)
         if not poly.is_valid:
@@ -404,9 +391,7 @@ def _maybe_fetch_energy_labels(
 
     wanted_ids = {v.identificatie for v in vbos}
     wanted_keys = {
-        address_key_from_vbo(v)
-        for v in vbos
-        if v.postcode is not None and v.huisnummer is not None
+        address_key_from_vbo(v) for v in vbos if v.postcode is not None and v.huisnummer is not None
     }
 
     wanted_digest = _wanted_sets_digest(wanted_ids, wanted_keys)
@@ -511,13 +496,16 @@ def _try_load_filtered_labels(
             return pickle.load(handle)
     except (pickle.UnpicklingError, EOFError, ValueError, OSError, AttributeError) as exc:
         logging.getLogger(__name__).warning(
-            "EP-online filter cache %s unreadable (%s); re-parsing", cache_path.name, exc,
+            "EP-online filter cache %s unreadable (%s); re-parsing",
+            cache_path.name,
+            exc,
         )
         return None
 
 
 def _try_save_filtered_labels(
-    cache_path: Path, labels: list[eponline_fetchers.EnergyLabel],
+    cache_path: Path,
+    labels: list[eponline_fetchers.EnergyLabel],
 ) -> None:
     """Persist *labels* to *cache_path*. Swallow IO errors; caching is best-effort."""
     try:
@@ -529,7 +517,8 @@ def _try_save_filtered_labels(
     except OSError as exc:
         logging.getLogger(__name__).warning(
             "EP-online filter cache write to %s failed (%s); continuing without cache",
-            cache_path.name, exc,
+            cache_path.name,
+            exc,
         )
 
 
@@ -619,11 +608,11 @@ def _assemble_city_model(
     # Capture colorable surface ids as each building is built so the
     # appearance step doesn't need a second ``iter_instances`` tree walk.
     targets_by_gml_id: dict[str, list[str]] = {}
-    for building, resolved, targets, coords in build_results:
-        model.add(building)
-        building_label_pairs.append((building, resolved))
-        targets_by_gml_id[building.id] = targets
-        all_coords.extend(coords)
+    for art in build_results:
+        model.add(art.building)
+        building_label_pairs.append((art.building, art.resolved))
+        targets_by_gml_id[art.building.id] = art.targets
+        all_coords.extend(art.coords)
 
     append_energy_label_appearance(
         model,

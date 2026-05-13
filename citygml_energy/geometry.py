@@ -300,11 +300,14 @@ def _discover_property_map(wrapper_cls: type) -> dict[str, _PropertyEntry]:
         # element namespace; only real member elements do. Filter them out.
         if info.namespace is None:
             continue
-        entries.setdefault(info.xml_name, _PropertyEntry(
-            xsd_name=info.xml_name,
-            element_cls=info.inner_type,
-            field_name=info.name,
-        ))
+        entries.setdefault(
+            info.xml_name,
+            _PropertyEntry(
+                xsd_name=info.xml_name,
+                element_cls=info.inner_type,
+                field_name=info.name,
+            ),
+        )
     return entries
 
 
@@ -427,9 +430,7 @@ def _apply_building_source(
 ) -> list[Coord3D]:
     """Handle one ``step-building-lod{0..4}`` source."""
     target_building_id = str(source["target_building_id"])
-    target_pv_id = (
-        str(source["target_pv_id"]) if source.get("target_pv_id") is not None else None
-    )
+    target_pv_id = str(source["target_pv_id"]) if source.get("target_pv_id") is not None else None
 
     if spec.lod_level <= 1:
         return _apply_aggregate_building_geometry(
@@ -444,9 +445,7 @@ def _apply_building_source(
 
     surface_wrapper = _discover_wrapper(building_cls, "bounded_by")
     if surface_wrapper is None:
-        raise RuntimeError(
-            "bldg:Building has no 'bounded_by' list field in the current bindings"
-        )
+        raise RuntimeError("bldg:Building has no 'bounded_by' list field in the current bindings")
     surface_map = _discover_property_map(surface_wrapper)
 
     shells = parse_named_shells(step_path, origin=ctx.origin)
@@ -532,9 +531,7 @@ def _apply_zonepart_source(
         setattr(
             zone,
             f"lod{spec.lod_level}_solid",
-            build_solid(
-                gml_id, polygons, srs_name=ctx.srs_name, srs_dimension=ctx.srs_dimension
-            ),
+            build_solid(gml_id, polygons, srs_name=ctx.srs_name, srs_dimension=ctx.srs_dimension),
         )
 
     if spec.lod_level >= 2:
@@ -636,9 +633,7 @@ def _apply_aggregate_building_geometry(
             gml_id, polygons, srs_name=ctx.srs_name, srs_dimension=ctx.srs_dimension
         )
     else:
-        raise ValueError(
-            f"Aggregate building geometry only supports LOD 0 or 1, got {lod_level}"
-        )
+        raise ValueError(f"Aggregate building geometry only supports LOD 0 or 1, got {lod_level}")
 
     return all_coordinates
 
@@ -909,9 +904,7 @@ def _attach_pending_openings(
                 f"{type(parent_surface).__name__} has no 'opening' field; "
                 f"cannot attach {feature.entry.xsd_name}"
             )
-        parent_surface.opening.append(
-            opening_wrapper(**{feature.entry.field_name: opening_obj})
-        )
+        parent_surface.opening.append(opening_wrapper(**{feature.entry.field_name: opening_obj}))
 
 
 def _attach_solar_panels(
@@ -1014,7 +1007,7 @@ def _apply_surface_name_remap(name: str, remap: dict[str, str]) -> str:
         if name == src:
             return dst
         if name.startswith(src + "_"):
-            return dst + name[len(src):]
+            return dst + name[len(src) :]
     return name
 
 

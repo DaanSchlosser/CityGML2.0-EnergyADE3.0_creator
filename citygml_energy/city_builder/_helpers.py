@@ -66,7 +66,9 @@ def to_int(
         if logger is not None:
             logger.warning(
                 "%s integer field not coercible (%r): %s",
-                label or "value", value, exc,
+                label or "value",
+                value,
+                exc,
             )
         return None
 
@@ -90,7 +92,9 @@ def to_float(
         if logger is not None:
             logger.warning(
                 "%s float field not coercible (%r): %s",
-                label or "value", value, exc,
+                label or "value",
+                value,
+                exc,
             )
         return None
 

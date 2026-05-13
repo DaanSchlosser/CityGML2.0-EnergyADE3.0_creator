@@ -83,9 +83,7 @@ _STEP_ARG_SPECIALS_RE = re.compile(r"[',()]")
 # ---------------------------------------------------------------------------
 
 
-def parse_named_shells(
-    path: Path, *, origin: Coord3D = (0.0, 0.0, 0.0)
-) -> list[StepShell]:
+def parse_named_shells(path: Path, *, origin: Coord3D = (0.0, 0.0, 0.0)) -> list[StepShell]:
     """Return every ``SHELL_BASED_SURFACE_MODEL`` in *path* as a ``StepShell``.
 
     Shells are returned in entity-ID order (stable across runs). *origin*
@@ -115,7 +113,9 @@ def parse_named_shells(
         if origin != (0.0, 0.0, 0.0):
             polygons = [_offset_polygon(p, origin) for p in polygons]
 
-        shells.append(StepShell(object_name=object_name, parent_name=parent_name, polygons=polygons))
+        shells.append(
+            StepShell(object_name=object_name, parent_name=parent_name, polygons=polygons)
+        )
 
     return shells
 
@@ -145,8 +145,15 @@ def parse_all_polygons(
                     entities, shell_ref, expected_type="OPEN_SHELL", source_path=path
                 )
                 for face_ref in _parse_step_ref_list(shell_entity.args[1]):
-                    _collect_face(entities, face_ref, path, origin, needs_offset,
-                                  all_polygons, all_coordinates)
+                    _collect_face(
+                        entities,
+                        face_ref,
+                        path,
+                        origin,
+                        needs_offset,
+                        all_polygons,
+                        all_coordinates,
+                    )
             continue
 
         if entity.entity_type == "MANIFOLD_SOLID_BREP":
@@ -155,8 +162,9 @@ def parse_all_polygons(
                 entities, shell_ref, expected_type="CLOSED_SHELL", source_path=path
             )
             for face_ref in _parse_step_ref_list(shell_entity.args[1]):
-                _collect_face(entities, face_ref, path, origin, needs_offset,
-                              all_polygons, all_coordinates)
+                _collect_face(
+                    entities, face_ref, path, origin, needs_offset, all_polygons, all_coordinates
+                )
             continue
 
     return all_polygons, all_coordinates
@@ -175,11 +183,7 @@ def points_close(first: Coord3D, second: Coord3D, tolerance: float = 1e-9) -> bo
     """
     x1, y1, z1 = first
     x2, y2, z2 = second
-    return (
-        abs(x1 - x2) <= tolerance
-        and abs(y1 - y2) <= tolerance
-        and abs(z1 - z2) <= tolerance
-    )
+    return abs(x1 - x2) <= tolerance and abs(y1 - y2) <= tolerance and abs(z1 - z2) <= tolerance
 
 
 def offset_coords(coords: list[Coord3D], origin: Coord3D) -> list[Coord3D]:
@@ -498,9 +502,7 @@ def _get_step_vertex_coordinates(
 
     parts = [part.strip() for part in coordinate_values[1:-1].split(",")]
     if len(parts) != 3:
-        raise ValueError(
-            f"STEP geometry {path} point #{vertex_ref} does not contain 3 coordinates"
-        )
+        raise ValueError(f"STEP geometry {path} point #{vertex_ref} does not contain 3 coordinates")
 
     return (float(parts[0]), float(parts[1]), float(parts[2]))
 

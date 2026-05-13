@@ -100,6 +100,9 @@ def match_nearest_within[C](
 
     _LOG.info(
         "Matched %d of %d CFTree trees to a %s record (radius=%.1f m)",
-        len(out), len(tree_list), register_label, radius_m,
+        len(out),
+        len(tree_list),
+        register_label,
+        radius_m,
     )
     return out

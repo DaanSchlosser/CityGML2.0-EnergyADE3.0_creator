@@ -112,9 +112,7 @@ def _load_from_geojson(source: BoundarySource) -> BaseGeometry:
         with source.path.open("r", encoding="utf-8") as handle:
             data = json.load(handle)
     except FileNotFoundError as exc:
-        raise FileNotFoundError(
-            f"boundary.path could not be opened: {source.path}"
-        ) from exc
+        raise FileNotFoundError(f"boundary.path could not be opened: {source.path}") from exc
     except json.JSONDecodeError as exc:
         raise CityBuildError(
             f"boundary.path {source.path} is not valid JSON "
@@ -127,17 +125,18 @@ def _load_from_geojson(source: BoundarySource) -> BaseGeometry:
 
     geom_dict = feature.get("geometry")
     if not geom_dict:
-        raise CityBuildError(
-            f"boundary feature in {source.path} has no geometry"
-        )
+        raise CityBuildError(f"boundary feature in {source.path} has no geometry")
     geom = shape(geom_dict)
     return _validate_polygon_geometry(
-        geom, context=f"boundary feature in {source.path}",
+        geom,
+        context=f"boundary feature in {source.path}",
     )
 
 
 def _extract_single_feature(
-    data: dict[str, Any], *, source_path: Path,
+    data: dict[str, Any],
+    *,
+    source_path: Path,
 ) -> dict[str, Any]:
     """Return the single GeoJSON ``Feature`` carried by *data*.
 
@@ -162,8 +161,7 @@ def _extract_single_feature(
         features = data.get("features")
         if not isinstance(features, list):
             raise CityBuildError(
-                f"boundary.path {source_path} is a FeatureCollection with no "
-                f"'features' array"
+                f"boundary.path {source_path} is a FeatureCollection with no 'features' array"
             )
         if len(features) == 0:
             raise CityBuildError(
@@ -183,8 +181,7 @@ def _extract_single_feature(
                 f"sole member is not a GeoJSON Feature"
             )
         _LOG.debug(
-            "Unwrapped single-feature FeatureCollection in %s "
-            "(QGIS default export shape).",
+            "Unwrapped single-feature FeatureCollection in %s (QGIS default export shape).",
             source_path,
         )
         return feature
@@ -250,9 +247,7 @@ def _validate_polygon_geometry(geom: Any, *, context: str) -> Any:
     if geom.is_empty:
         raise CityBuildError(f"{context} is empty")
     if geom.geom_type not in {"Polygon", "MultiPolygon"}:
-        raise CityBuildError(
-            f"{context} must be (Multi)Polygon, got {geom.geom_type!r}"
-        )
+        raise CityBuildError(f"{context} must be (Multi)Polygon, got {geom.geom_type!r}")
     # ``buffer(0)`` heals self-intersecting hand-drawn rings without
     # changing the polygon's overall shape when it is already valid;
     # cheap insurance against a non-noded vertex slipping through QGIS.

@@ -30,9 +30,13 @@ from ...bindings import (
     BdgType,
     CodeType,
     IntAttribute,
+    MeasureAttribute,
     MeasureType,
     Metadata1,
+    Status2,
     StringAttribute,
+    ValidFrom,
+    ValidTo,
 )
 from ...mapping import resolve_class
 from ...namespaces import (
@@ -81,9 +85,7 @@ def apply_bag_year_metadata_to_building(building: Any) -> None:
     building.metadata.append(
         Metadata1(
             source="BAG bag:pand.bouwjaar (PDOK WFS v2.0)",
-            quality_description=(
-                "Source for bldg:yearOfConstruction on this Pand."
-            ),
+            quality_description=("Source for bldg:yearOfConstruction on this Pand."),
         )
     )
 
@@ -141,10 +143,12 @@ def apply_eponline_pand_attribution_to_building(
     label has either ``Bouwjaar`` or ``Gebouwtype`` set.
     """
     bouwjaar_label = _pick_canonical_eponline_label(
-        addresses, has_field=lambda lab: lab.bouwjaar is not None,
+        addresses,
+        has_field=lambda lab: lab.bouwjaar is not None,
     )
     bdg_type_label = _pick_canonical_eponline_label(
-        addresses, has_field=lambda lab: bool(lab.gebouwtype),
+        addresses,
+        has_field=lambda lab: bool(lab.gebouwtype),
     )
 
     description_parts: list[str] = []
@@ -158,7 +162,7 @@ def apply_eponline_pand_attribution_to_building(
             )
         )
         description_parts.append(
-            "gen:intAttribute name=\"yearOfConstructionEPOnline\" "
+            'gen:intAttribute name="yearOfConstructionEPOnline" '
             "(picked from the most-recently-registered EP-online "
             "certificate across this Pand's VBOs that carries Bouwjaar)"
         )
@@ -305,8 +309,7 @@ def _apply_eponline_classification_to_building_unit(
             )
         )
         description_parts.append(
-            "gen:stringAttribute name=\"bdgSubtypeEPOnline\" "
-            "(Dutch RVO Gebouwsubtype, verbatim)"
+            'gen:stringAttribute name="bdgSubtypeEPOnline" (Dutch RVO Gebouwsubtype, verbatim)'
         )
 
     # Renewable-share, thermal-zone area, and Energy resources are
@@ -315,7 +318,7 @@ def _apply_eponline_classification_to_building_unit(
     # emission predicates here so the boilerplate stays in sync.
     if label.aandeel_hernieuwbare_energie is not None:
         description_parts.append(
-            "gen:measureAttribute name=\"epOnlineAandeelHernieuwbareEnergie\" "
+            'gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie" '
             "(BENG-3 renewable-energy share, %)"
         )
     if (
@@ -323,7 +326,7 @@ def _apply_eponline_classification_to_building_unit(
         and label.gebruiksoppervlakte_thermische_zone > 0
     ):
         description_parts.append(
-            "nrg3:QualifiedArea type=\"netFloorArea\" sourced from "
+            'nrg3:QualifiedArea type="netFloorArea" sourced from '
             "GebruiksoppervlakteThermischeZone (NTA 8800 thermal-zone area)"
         )
     # The energy-resource enumeration mirrors the regime dispatch in
@@ -343,13 +346,10 @@ def _apply_eponline_classification_to_building_unit(
         if label.primaire_fossiele_energie is not None:
             nta_resources.append("PrimaireFossieleEnergie (BENG-2, primary)")
         if label.berekende_energieverbruik is not None:
-            nta_resources.append(
-                "BerekendeEnergieverbruik (NTA 8800 delivered/finaal total)"
-            )
+            nta_resources.append("BerekendeEnergieverbruik (NTA 8800 delivered/finaal total)")
         if nta_resources:
             description_parts.append(
-                "nrg3:Energy resources via nrg3:resource: "
-                + ", ".join(nta_resources)
+                "nrg3:Energy resources via nrg3:resource: " + ", ".join(nta_resources)
             )
     elif regime == "legacy_total":
         if label.berekende_energieverbruik is not None:
@@ -439,51 +439,58 @@ def build_epc(
         label=label.energieklasse,
     )
 
-    # ``nrg3:status`` is inherited from ``AbstractFeatureWithLifeSpan``
-    # (XSD line 479, gml:CodeType, minOccurs=0). The EPCStatusValue
-    # codelist (``actual | potential | unknown``) distinguishes a
-    # registered, real certificate from a simulated forecast (Alderaan's
-    # demo EPCs are all ``simulated``, which is not a codelist member —
-    # likely a stale draft). Every cert in the EP-online Mutatiebestand
-    # is by definition the registered, legally-valid certificate for the
-    # VBO ("alleen deze geregistreerde labels zijn rechtsgeldig" — RVO
-    # Handleiding EP-online: opvragen van bestanden, v1.0 feb 2025, §1),
-    # so ``actual`` is the correct value.
-    epc.status = CodeType(value="actual", code_space=CS_NRG3_EPC_STATUS)
+    # ``nrg3:status`` is an Energy ADE hook substituting into
+    # ``core:_GenericApplicationPropertyOfCityObject`` (Energy_ADE_3.0_beta8.xsd
+    # line 1291, gml:CodeType, list-valued on every CityObject). The
+    # EPCStatusValue codelist (``actual | potential | unknown``)
+    # distinguishes a registered, real certificate from a simulated
+    # forecast (Alderaan's demo EPCs are all ``simulated``, which is not
+    # a codelist member — likely a stale draft). Every cert in the
+    # EP-online Mutatiebestand is by definition the registered,
+    # legally-valid certificate for the VBO ("alleen deze geregistreerde
+    # labels zijn rechtsgeldig" — RVO Handleiding EP-online: opvragen
+    # van bestanden, v1.0 feb 2025, §1), so ``actual`` is the correct
+    # value. Beta8 moved EPC under ``core:AbstractCityObject`` directly
+    # (no more ``nrg3:AbstractFeatureWithLifeSpan`` base), so these
+    # former-inherited attributes are now ADE-hook list elements on
+    # ``AbstractCityObjectType``; populate as a singleton list.
+    epc.status.append(Status2(value="actual", code_space=CS_NRG3_EPC_STATUS))
 
     # Date columns:
     #
     # * ``Opnamedatum`` (date of the on-site inspection by the energy
-    #   advisor) -> ``creationDate`` (xs:date, inherited from
-    #   AbstractADEFeature, line 454). The certificate object comes into
-    #   existence as a document on the day of the inspection, before any
-    #   subsequent registration step.
+    #   advisor) -> ``core:creationDate`` (xs:date, inherited from
+    #   ``core:AbstractCityObjectType``). The certificate object comes
+    #   into existence as a document on the day of the inspection, before
+    #   any subsequent registration step.
     # * ``Registratiedatum`` (date the cert was registered with RVO;
     #   "Datum van registreren van het label. Dit hoeft niet gelijk te
     #   zijn aan de opnamedatum." — RVO Handleiding § Bijlage 2) ->
-    #   ``validFrom`` (xs:dateTime). The cert becomes legally valid only
-    #   on registration: "alleen deze geregistreerde labels zijn
-    #   rechtsgeldig" (same RVO source). Cast date->datetime at midnight
-    #   Europe/Amsterdam (no offset; xsdata serialises naive dateTimes
-    #   without a timezone, matching the rest of the project).
+    #   ``nrg3:validFrom`` (xs:dateTime, ADE-hook list on every CityObject;
+    #   Energy_ADE_3.0_beta8.xsd line 1305). The cert becomes legally
+    #   valid only on registration: "alleen deze geregistreerde labels
+    #   zijn rechtsgeldig" (same RVO source). Cast date->datetime at
+    #   midnight Europe/Amsterdam (no offset; xsdata serialises naive
+    #   dateTimes without a timezone, matching the rest of the project).
     # * ``Geldig_tot`` ("Geldigheid label = opnamedatum + 10 jaar" —
-    #   same source) -> ``validTo`` (xs:dateTime, also at midnight).
-    # * ``terminationDate`` (xs:date, line 455) is reserved for
-    #   Stuurcode-2 deletions in the Mutatiebestand and is NOT set
-    #   equal to ``validTo``: a cert that simply hits its expiry is
-    #   still in the totaalbestand and should not be terminated. Left
-    #   absent for active certs.
+    #   same source) -> ``nrg3:validTo`` (xs:dateTime ADE-hook list,
+    #   line 1312).
+    # * ``core:terminationDate`` (xs:date) is reserved for Stuurcode-2
+    #   deletions in the Mutatiebestand and is NOT set equal to
+    #   ``validTo``: a cert that simply hits its expiry is still in the
+    #   totaalbestand and should not be terminated. Left absent for
+    #   active certs.
     if label.opnamedatum is not None:
         from xsdata.models.datatype import XmlDate
 
         epc.creation_date = XmlDate.from_string(label.opnamedatum.isoformat())
     if label.registratiedatum is not None:
-        epc.valid_from = XmlDateTime.from_string(
-            f"{label.registratiedatum.isoformat()}T00:00:00"
+        epc.valid_from.append(
+            ValidFrom(value=XmlDateTime.from_string(f"{label.registratiedatum.isoformat()}T00:00:00"))
         )
     if label.geldig_tot is not None:
-        epc.valid_to = XmlDateTime.from_string(
-            f"{label.geldig_tot.isoformat()}T00:00:00"
+        epc.valid_to.append(
+            ValidTo(value=XmlDateTime.from_string(f"{label.geldig_tot.isoformat()}T00:00:00"))
         )
 
     method = _certification_method_string(label)
@@ -567,11 +574,7 @@ def _certification_method_string(label: EnergyLabel) -> str | None:
     deliberately avoids the em dash per the project's annotation
     convention; downstream tools can split on `` / `` to recover both.
     """
-    parts = [
-        text
-        for text in (label.soort_opname, label.berekeningstype)
-        if text and text.strip()
-    ]
+    parts = [text for text in (label.soort_opname, label.berekeningstype) if text and text.strip()]
     if not parts:
         return None
     return " / ".join(p.strip() for p in parts)

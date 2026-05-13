@@ -62,11 +62,7 @@ _ALLOWED_CITY_MODEL_KEYS = {"description", "name"}
 # accepted by the validator. The spec is the single source of truth.
 _ALLOWED_GEOMETRY_SOURCE_KEYS: frozenset[str] = frozenset(
     {"type", "path"}
-    | {
-        field_name
-        for spec in GEOMETRY_SOURCE_SPECS.values()
-        for field_name in spec.target_fields
-    }
+    | {field_name for spec in GEOMETRY_SOURCE_SPECS.values() for field_name in spec.target_fields}
 )
 
 # Parent-type constraints. Keys are child feature type strings; values are
@@ -281,8 +277,7 @@ def build_city_model_from_feature_collection(
             obj = build_from_dict(cls, attrs)
         except (TypeError, ValueError) as exc:
             raise InputFileError(
-                f"features[{index}] (id={feature.get('id')!r}, "
-                f"type={feature.get('type')!r}): {exc}"
+                f"features[{index}] (id={feature.get('id')!r}, type={feature.get('type')!r}): {exc}"
             ) from exc
         built.append((feature.get("parent"), feature.get("parent_field"), obj))
         gml_id = feature.get("id")
@@ -439,9 +434,7 @@ def _validate_geometry_source(
 
     path_value = geometry_source.get("path")
     if not isinstance(path_value, str) or not path_value.strip():
-        raise InputFileError(
-            f"{source}: geometry_sources[{index}].path must be a non-empty string"
-        )
+        raise InputFileError(f"{source}: geometry_sources[{index}].path must be a non-empty string")
 
     if base_path is None and not Path(path_value).is_absolute():
         raise InputFileError(
@@ -508,8 +501,7 @@ def _validate_geometry_target(
         )
     if target_id not in feature_ids:
         raise InputFileError(
-            f"{source}: geometry_sources[{index}].{field_name} references missing id "
-            f"{target_id!r}"
+            f"{source}: geometry_sources[{index}].{field_name} references missing id {target_id!r}"
         )
     actual_type = feature_types_by_id.get(target_id)
     if actual_type != expected_type:
@@ -562,10 +554,8 @@ def _check_parent_cycles(edges: Mapping[str, str], *, source: str) -> None:
         node: str | None = start
         while node is not None:
             if node in seen:
-                cycle = " -> ".join(seen[seen.index(node):] + [node])
-                raise InputFileError(
-                    f"{source}: cyclic parent relation detected: {cycle}"
-                )
+                cycle = " -> ".join(seen[seen.index(node) :] + [node])
+                raise InputFileError(f"{source}: cyclic parent relation detected: {cycle}")
             seen.append(node)
             node = edges.get(node)
 
@@ -590,9 +580,7 @@ def _validate_construction_mapping(
             continue
         sub = mapping[sub_key]
         if not isinstance(sub, dict):
-            raise InputFileError(
-                f"{source}: construction_mapping.{sub_key} must be an object"
-            )
+            raise InputFileError(f"{source}: construction_mapping.{sub_key} must be an object")
         for k, v in sub.items():
             if not isinstance(k, str) or not k.strip():
                 raise InputFileError(
@@ -620,9 +608,7 @@ def _validate_construction_mapping(
             )
 
 
-def _resolve_geometry_source_paths(
-    data: dict[str, Any], base_path: Path
-) -> dict[str, Any]:
+def _resolve_geometry_source_paths(data: dict[str, Any], base_path: Path) -> dict[str, Any]:
     """Return a shallow copy of *data* with geometry-source paths resolved.
 
     The input dict is left unmodified: both ``geometry_sources`` and each
@@ -638,9 +624,7 @@ def _resolve_geometry_source_paths(
             path_value = geometry_source.get("path")
             if isinstance(path_value, str) and path_value.strip():
                 source_copy = dict(geometry_source)
-                source_copy["path"] = str(
-                    _resolve_geometry_source_path(path_value, base_path)
-                )
+                source_copy["path"] = str(_resolve_geometry_source_path(path_value, base_path))
                 resolved_sources.append(source_copy)
                 continue
         resolved_sources.append(geometry_source)

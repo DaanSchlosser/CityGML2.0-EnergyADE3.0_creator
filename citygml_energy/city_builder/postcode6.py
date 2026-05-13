@@ -71,8 +71,8 @@ from ..bindings import (
     CodeType,
     Description,
     Energy,
-    ExternalObjectReferenceType1,
-    ExternalReferenceType1,
+    ExternalObjectReferenceType,
+    ExternalReferenceType,
     GeometryPropertyType,
     IntAttribute,
     MeasureType,
@@ -218,7 +218,9 @@ def safely_fetch_postcode6_areas(
     _LOG.info("Fetching CBS Postcode6 statistics (year=%d) …", source.year)
     try:
         return cbs_postcode6_fetchers.fetch_postcode6_areas(
-            session, bbox=bbox, year=source.year,
+            session,
+            bbox=bbox,
+            year=source.year,
         )
     except (_requests.RequestException, OSError, ValueError, KeyError) as exc:
         _LOG.warning(
@@ -309,21 +311,21 @@ def attach_postcode6_areas_to_model(
         member_count = 0
         for gml_id, x, y in centroids:
             if area_geom.intersects(ShapelyPoint(x, y)):
-                ufa.group_member.append(
-                    CityObjectGroupMemberType(href=f"#{gml_id}")
-                )
+                ufa.group_member.append(CityObjectGroupMemberType(href=f"#{gml_id}"))
                 member_count += 1
 
         model.add(ufa)
         emitted += 1
         _LOG.debug(
             "CBS Postcode6 %s: %d group members",
-            area.postcode, member_count,
+            area.postcode,
+            member_count,
         )
 
     _LOG.info(
         "CBS Postcode6: emitted %d UrbanFunctionArea features (of %d fetched)",
-        emitted, len(areas),
+        emitted,
+        len(areas),
     )
 
 
@@ -384,7 +386,8 @@ def _build_postcode6_urban_function_area(
 
         if area_geom.area > 0.0:
             obj.area = MeasureType(
-                value=round(float(area_geom.area), 3), uom=UOM_AREA_M2,
+                value=round(float(area_geom.area), 3),
+                uom=UOM_AREA_M2,
             )
 
         for poly in area.polygons:
@@ -393,9 +396,9 @@ def _build_postcode6_urban_function_area(
                 coords_sink.extend(hole)
 
     obj.external_reference.append(
-        ExternalReferenceType1(
+        ExternalReferenceType(
             information_system=CBS_POSTCODE6_INFORMATION_SYSTEM_URL,
-            external_object=ExternalObjectReferenceType1(name=area.postcode),
+            external_object=ExternalObjectReferenceType(name=area.postcode),
         )
     )
 
@@ -500,21 +503,24 @@ def _build_cbs_energy(
             code_space=CS_NRG3_RESOURCE_OPERATION_TYPE,
         ),
         reference_period=CodeType(
-            value=_REFERENCE_YEAR, code_space=CS_NRG3_REFERENCE_PERIOD,
+            value=_REFERENCE_YEAR,
+            code_space=CS_NRG3_REFERENCE_PERIOD,
         ),
         amount=MeasureType(value=amount, uom=uom),
         is_amount_normalized=True,
         normalization_parameter="dwelling",
         description=Description(value=description),
         type_value=CodeType(
-            value=_ENERGY_TYPE_ACTUAL, code_space=CS_NRG3_ENERGY_TYPE,
+            value=_ENERGY_TYPE_ACTUAL,
+            code_space=CS_NRG3_ENERGY_TYPE,
         ),
         end_use=CodeType(
             value=_END_USE_OTHER_OR_COMBINATION,
             code_space=CS_NRG3_ENERGY_END_USE,
         ),
         energy_carrier=CodeType(
-            value=carrier, code_space=CS_NRG3_ENERGY_CARRIER,
+            value=carrier,
+            code_space=CS_NRG3_ENERGY_CARRIER,
         ),
     )
 

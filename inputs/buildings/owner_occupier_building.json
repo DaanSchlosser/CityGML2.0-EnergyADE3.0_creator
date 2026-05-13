@@ -275,7 +275,7 @@
       "charging_speed_level": {"value": "Level 2", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingSpeedLevelValue.xml"},
       "connector_type": {"value": "AC - Mennekes (Type2)", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingConnectorTypeValue.xml"},
       "has_load_management": true,
-      "access": {"value": "private", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingAccessTypeValue.xml"}
+      "access_type": {"value": "private", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EVChargingAccessTypeValue.xml"}
     },
     {
       "type": "nrg3:Energy",

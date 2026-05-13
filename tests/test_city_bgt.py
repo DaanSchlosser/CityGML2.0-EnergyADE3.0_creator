@@ -32,7 +32,7 @@ pytest.importorskip("shapely")
 
 from citygml_energy.bindings import (
     DateAttribute,
-    ExternalReferenceType1,
+    ExternalReferenceType,
     SolitaryVegetationObject,
 )
 from citygml_energy.city_builder.builders import build_solitary_vegetation_object
@@ -334,7 +334,7 @@ def test_build_tree_emits_bgt_external_reference() -> None:
     assert isinstance(obj, SolitaryVegetationObject)
     assert len(obj.external_reference) == 1
     ref = obj.external_reference[0]
-    assert isinstance(ref, ExternalReferenceType1)
+    assert isinstance(ref, ExternalReferenceType)
     assert ref.information_system == BGT_INFORMATION_SYSTEM_URL
     assert ref.external_object.uri == (
         "https://api.pdok.nl/lv/bgt/ogc/v1/collections/"

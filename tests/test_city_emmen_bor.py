@@ -32,7 +32,7 @@ pytest.importorskip("shapely")
 
 from citygml_energy.bindings import (
     CodeType,
-    ExternalReferenceType1,
+    ExternalReferenceType,
     IntAttribute,
     SolitaryVegetationObject,
     StringAttribute,
@@ -399,7 +399,7 @@ def test_build_tree_emits_bor_external_reference_with_boom_id_uri() -> None:
     obj = build_solitary_vegetation_object(tree, bor_match=_bor("25649", 0.3, 0.3))
     assert len(obj.external_reference) == 1
     ref = obj.external_reference[0]
-    assert isinstance(ref, ExternalReferenceType1)
+    assert isinstance(ref, ExternalReferenceType)
     assert ref.information_system == BOR_INFORMATION_SYSTEM_URL
     assert ref.external_object is not None
     uri = ref.external_object.uri

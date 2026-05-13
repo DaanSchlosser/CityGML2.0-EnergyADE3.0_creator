@@ -71,7 +71,9 @@ class BuildContext:
         )
 
 
-from .boundary import BoundarySource  # noqa: E402  - imported after BuildContext to break a circular import
+from .boundary import (
+    BoundarySource,  # noqa: E402  - imported after BuildContext to break a circular import
+)
 from .pv_panels import PvPanelsSource  # noqa: E402
 from .vegetation import VegetationSource  # noqa: E402
 
@@ -89,6 +91,7 @@ class CbsPostcode6Source:
     """
 
     year: int
+
 
 # Environment variable name the builder consults for the EP-online key when
 # no explicit ``ep_online_api_key_file`` is given. Works with python-dotenv:
@@ -222,26 +225,28 @@ class CityBuildConfig:
         return None
 
 
-_ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset({
-    "$schema",
-    "schema_version",
-    "municipality",
-    "bbox",
-    "boundary",
-    "lods",
-    "include_addresses",
-    "include_energy_labels",
-    "ep_online_api_key_file",
-    "cache_dir",
-    "output",
-    "srs_name",
-    "srs_dimension",
-    "city_model",
-    "gml_id_prefix",
-    "pv_panels",
-    "vegetation",
-    "cbs_postcode6",
-})
+_ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
+    {
+        "$schema",
+        "schema_version",
+        "municipality",
+        "bbox",
+        "boundary",
+        "lods",
+        "include_addresses",
+        "include_energy_labels",
+        "ep_online_api_key_file",
+        "cache_dir",
+        "output",
+        "srs_name",
+        "srs_dimension",
+        "city_model",
+        "gml_id_prefix",
+        "pv_panels",
+        "vegetation",
+        "cbs_postcode6",
+    }
+)
 
 _ALLOWED_CITY_MODEL_KEYS: frozenset[str] = frozenset({"name", "description"})
 _ALLOWED_PV_PANELS_KEYS: frozenset[str] = frozenset({"path", "layer", "z_offset_m"})
@@ -275,8 +280,7 @@ def load_city_config(path: PathLike) -> CityBuildConfig:
         data = json.loads(raw_text)
     except json.JSONDecodeError as exc:
         raise CityBuildError(
-            f"Invalid JSON in {source_path} at line {exc.lineno}, "
-            f"column {exc.colno}: {exc.msg}"
+            f"Invalid JSON in {source_path} at line {exc.lineno}, column {exc.colno}: {exc.msg}"
         ) from exc
 
     return _validate(data, source=str(source_path), source_path=source_path)
@@ -288,14 +292,10 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
 
     unexpected = sorted(set(data) - _ALLOWED_TOP_LEVEL_KEYS)
     if unexpected:
-        raise CityBuildError(
-            f"{source}: unexpected top-level key(s): {', '.join(unexpected)}"
-        )
+        raise CityBuildError(f"{source}: unexpected top-level key(s): {', '.join(unexpected)}")
 
     if data.get("schema_version") != SCHEMA_VERSION:
-        raise CityBuildError(
-            f"{source}: schema_version must be {SCHEMA_VERSION!r}"
-        )
+        raise CityBuildError(f"{source}: schema_version must be {SCHEMA_VERSION!r}")
 
     if "$schema" in data and not isinstance(data["$schema"], str):
         raise CityBuildError(f"{source}: $schema must be a string when provided")
@@ -307,9 +307,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
     bbox = _validate_bbox(data.get("bbox"), source=source)
     lods = _validate_lods(data.get("lods"), source=source)
 
-    include_addresses = _validate_bool(
-        data, "include_addresses", source=source, default=True
-    )
+    include_addresses = _validate_bool(data, "include_addresses", source=source, default=True)
     include_energy_labels = _validate_bool(
         data, "include_energy_labels", source=source, default=True
     )
@@ -357,8 +355,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         or srs_dimension not in (2, 3)
     ):
         raise CityBuildError(
-            f"{source}: srs_dimension must be 2 or 3 when provided "
-            f"(got {srs_dimension!r})"
+            f"{source}: srs_dimension must be 2 or 3 when provided (got {srs_dimension!r})"
         )
 
     city_model = data.get("city_model", {})
@@ -366,9 +363,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         raise CityBuildError(f"{source}: city_model must be an object when provided")
     unexpected_cm = sorted(set(city_model) - _ALLOWED_CITY_MODEL_KEYS)
     if unexpected_cm:
-        raise CityBuildError(
-            f"{source}: unexpected city_model key(s): {', '.join(unexpected_cm)}"
-        )
+        raise CityBuildError(f"{source}: unexpected city_model key(s): {', '.join(unexpected_cm)}")
     for key, value in city_model.items():
         if not isinstance(value, str):
             raise CityBuildError(f"{source}: city_model.{key} must be a string")
@@ -381,17 +376,14 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
             f"{source}: gml_id_prefix {gml_id_prefix!r} is not a valid XML NCName prefix"
         )
 
-    pv_panels_source = _validate_pv_panels(
-        data.get("pv_panels"), source=source, base_dir=base_dir
-    )
-    boundary_source = _validate_boundary(
-        data.get("boundary"), source=source, base_dir=base_dir
-    )
+    pv_panels_source = _validate_pv_panels(data.get("pv_panels"), source=source, base_dir=base_dir)
+    boundary_source = _validate_boundary(data.get("boundary"), source=source, base_dir=base_dir)
     vegetation_source = _validate_vegetation(
         data.get("vegetation"), source=source, base_dir=base_dir
     )
     cbs_postcode6_source = _validate_cbs_postcode6(
-        data.get("cbs_postcode6"), source=source,
+        data.get("cbs_postcode6"),
+        source=source,
     )
     if boundary_source is not None and bbox is not None:
         raise CityBuildError(
@@ -421,9 +413,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
     )
 
 
-def _validate_bbox(
-    value: Any, *, source: str
-) -> tuple[float, float, float, float] | None:
+def _validate_bbox(value: Any, *, source: str) -> tuple[float, float, float, float] | None:
     if value is None:
         return None
     if (
@@ -432,8 +422,7 @@ def _validate_bbox(
         or any(isinstance(v, bool) or not isinstance(v, (int, float)) for v in value)
     ):
         raise CityBuildError(
-            f"{source}: bbox must be an array of 4 numbers [minx, miny, maxx, maxy] "
-            f"(got {value!r})"
+            f"{source}: bbox must be an array of 4 numbers [minx, miny, maxx, maxy] (got {value!r})"
         )
     minx, miny, maxx, maxy = (float(v) for v in value)
     if minx >= maxx or miny >= maxy:
@@ -461,9 +450,7 @@ def _validate_lods(value: Any, *, source: str) -> tuple[int, ...]:
     return tuple(sorted(lods))
 
 
-def _validate_pv_panels(
-    value: Any, *, source: str, base_dir: Path
-) -> PvPanelsSource | None:
+def _validate_pv_panels(value: Any, *, source: str, base_dir: Path) -> PvPanelsSource | None:
     """Validate the optional ``pv_panels`` block.
 
     Returns ``None`` when unset. Path is resolved relative to the
@@ -480,14 +467,10 @@ def _validate_pv_panels(
     if value is None:
         return None
     if not isinstance(value, dict):
-        raise CityBuildError(
-            f"{source}: pv_panels must be an object when provided"
-        )
+        raise CityBuildError(f"{source}: pv_panels must be an object when provided")
     unexpected = sorted(set(value) - _ALLOWED_PV_PANELS_KEYS)
     if unexpected:
-        raise CityBuildError(
-            f"{source}: unexpected pv_panels key(s): {', '.join(unexpected)}"
-        )
+        raise CityBuildError(f"{source}: unexpected pv_panels key(s): {', '.join(unexpected)}")
     path_raw = value.get("path")
     if not isinstance(path_raw, str) or not path_raw.strip():
         raise CityBuildError(f"{source}: pv_panels.path must be a non-empty string")
@@ -516,9 +499,7 @@ def _validate_pv_panels(
     return PvPanelsSource(**kwargs)
 
 
-def _validate_vegetation(
-    value: Any, *, source: str, base_dir: Path
-) -> VegetationSource | None:
+def _validate_vegetation(value: Any, *, source: str, base_dir: Path) -> VegetationSource | None:
     """Validate the optional ``vegetation`` block.
 
     Returns ``None`` when unset. The path is resolved relative to the
@@ -532,31 +513,22 @@ def _validate_vegetation(
     if value is None:
         return None
     if not isinstance(value, dict):
-        raise CityBuildError(
-            f"{source}: vegetation must be an object when provided"
-        )
+        raise CityBuildError(f"{source}: vegetation must be an object when provided")
     unexpected = sorted(set(value) - _ALLOWED_VEGETATION_KEYS)
     if unexpected:
-        raise CityBuildError(
-            f"{source}: unexpected vegetation key(s): {', '.join(unexpected)}"
-        )
+        raise CityBuildError(f"{source}: unexpected vegetation key(s): {', '.join(unexpected)}")
     path_raw = value.get("path")
     if not isinstance(path_raw, str) or not path_raw.strip():
-        raise CityBuildError(
-            f"{source}: vegetation.path must be a non-empty string"
-        )
+        raise CityBuildError(f"{source}: vegetation.path must be a non-empty string")
     resolved_path = _resolve_path(path_raw, base_dir)
     if not resolved_path.name.endswith(".city.json"):
         raise CityBuildError(
-            f"{source}: vegetation.path must end in .city.json "
-            f"(got {resolved_path.name!r})"
+            f"{source}: vegetation.path must end in .city.json (got {resolved_path.name!r})"
         )
     return VegetationSource(path=resolved_path)
 
 
-def _validate_cbs_postcode6(
-    value: Any, *, source: str
-) -> CbsPostcode6Source | None:
+def _validate_cbs_postcode6(value: Any, *, source: str) -> CbsPostcode6Source | None:
     """Validate the optional ``cbs_postcode6`` block.
 
     Returns ``None`` when unset. Only ``year`` is configurable; the
@@ -574,14 +546,10 @@ def _validate_cbs_postcode6(
     if value is None:
         return None
     if not isinstance(value, dict):
-        raise CityBuildError(
-            f"{source}: cbs_postcode6 must be an object when provided"
-        )
+        raise CityBuildError(f"{source}: cbs_postcode6 must be an object when provided")
     unexpected = sorted(set(value) - _ALLOWED_CBS_POSTCODE6_KEYS)
     if unexpected:
-        raise CityBuildError(
-            f"{source}: unexpected cbs_postcode6 key(s): {', '.join(unexpected)}"
-        )
+        raise CityBuildError(f"{source}: unexpected cbs_postcode6 key(s): {', '.join(unexpected)}")
     year_raw = value.get("year")
     if (
         isinstance(year_raw, bool)
@@ -596,9 +564,7 @@ def _validate_cbs_postcode6(
     return CbsPostcode6Source(year=int(year_raw))
 
 
-def _validate_boundary(
-    value: Any, *, source: str, base_dir: Path
-) -> BoundarySource | None:
+def _validate_boundary(value: Any, *, source: str, base_dir: Path) -> BoundarySource | None:
     """Validate the optional ``boundary`` block.
 
     Returns ``None`` when unset. Path is resolved relative to the
@@ -611,22 +577,17 @@ def _validate_boundary(
     if value is None:
         return None
     if not isinstance(value, dict):
-        raise CityBuildError(
-            f"{source}: boundary must be an object when provided"
-        )
+        raise CityBuildError(f"{source}: boundary must be an object when provided")
     unexpected = sorted(set(value) - _ALLOWED_BOUNDARY_KEYS)
     if unexpected:
-        raise CityBuildError(
-            f"{source}: unexpected boundary key(s): {', '.join(unexpected)}"
-        )
+        raise CityBuildError(f"{source}: unexpected boundary key(s): {', '.join(unexpected)}")
     path_raw = value.get("path")
     if not isinstance(path_raw, str) or not path_raw.strip():
         raise CityBuildError(f"{source}: boundary.path must be a non-empty string")
     resolved_path = _resolve_path(path_raw, base_dir)
     if resolved_path.suffix.lower() not in (".geojson", ".json"):
         raise CityBuildError(
-            f"{source}: boundary.path must be a .geojson file "
-            f"(got {resolved_path.suffix!r})"
+            f"{source}: boundary.path must be a .geojson file (got {resolved_path.suffix!r})"
         )
     return BoundarySource(path=resolved_path)
 

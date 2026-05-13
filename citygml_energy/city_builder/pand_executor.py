@@ -4,7 +4,7 @@ The orchestrator in :mod:`citygml_energy.city_builder.pipeline` is the
 "what" of the city build (load BAG, fetch 3DBAG, match addresses, fan
 out per-Pand work, assemble city model). This module is the "how" of
 the per-Pand step: given a list of Panden plus pre-fetched per-Pand
-inputs, produce the list of :data:`PandArtifacts` tuples the
+inputs, produce the list of :class:`PandArtifacts` records the
 orchestrator then folds into the :class:`citygml_energy.core.CityModel`.
 
 Splitting the executor out of ``pipeline.py`` keeps the orchestrator
@@ -52,9 +52,21 @@ __all__ = [
 _LOG = logging.getLogger(__name__)
 
 
-# Compact tuple type emitted by the per-pand build step: small, picklable,
-# and exactly what the main process needs to assemble the final CityModel.
-PandArtifacts = tuple[Any, list[ResolvedAddress], list[str], list[Coord3D]]
+@dataclass(frozen=True, slots=True)
+class PandArtifacts:
+    """Per-pand build output the main process folds into the CityModel.
+
+    Frozen + slots so the four fields stay picklable across the
+    ``spawn`` worker-pool boundary at no extra cost relative to the
+    plain tuple this used to be. Adding a new per-pand output
+    (thermal zones, indicators, ...) is a one-line addition here
+    instead of re-plumbing every unpack site.
+    """
+
+    building: Any
+    resolved: list[ResolvedAddress]
+    targets: list[str]
+    coords: list[Coord3D]
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,7 +148,7 @@ def run_per_pand_build(
     *workers* of ``1`` runs in-process; any value > 1 spawns a
     multiprocessing pool (caller is expected to have already passed
     *workers* through :func:`assembly_worker_count`). Returns the same
-    list of :data:`PandArtifacts` tuples in either case so the caller
+    list of :class:`PandArtifacts` records in either case so the caller
     is agnostic to the execution strategy.
     """
     if workers > 1:
@@ -219,7 +231,8 @@ def _build_pand_artifacts_parallel(
     chunksize = max(1, len(jobs) // (workers * 4))
     _LOG.info(
         "Assembly worker pool: %d processes x %d panden/chunk",
-        workers, chunksize,
+        workers,
+        chunksize,
     )
     # ``spawn`` is the right start method here: fork-safety with xsdata's
     # lazy registry and requests sessions is not guaranteed, and ``spawn``
@@ -236,7 +249,10 @@ def _build_pand_worker(
     """Worker entry point: must be module-level to be picklable on spawn."""
     pand, parsed, inputs, build_context = job
     return _build_pand_artifacts(
-        pand=pand, parsed=parsed, inputs=inputs, build_context=build_context,
+        pand=pand,
+        parsed=parsed,
+        inputs=inputs,
+        build_context=build_context,
     )
 
 
@@ -249,11 +265,12 @@ def _build_pand_artifacts(
 ) -> PandArtifacts:
     """Build the xsdata artefacts for one Pand.
 
-    Returned tuple is the minimal slice the main process needs to
-    assemble the city model: the xsdata Building object, the list of
-    matched addresses, the pre-collected appearance target ids, and the
-    flat coordinate sequence used to widen the model envelope. All four
-    values pickle cheaply across the worker-pool boundary.
+    The returned :class:`PandArtifacts` carries the minimal slice the
+    main process needs to assemble the city model: the xsdata Building
+    object, the list of matched addresses, the pre-collected appearance
+    target ids, and the flat coordinate sequence used to widen the model
+    envelope. All four fields pickle cheaply across the worker-pool
+    boundary.
 
     The five-builder sequence (build_building → attach_building_units →
     apply_bag_year_metadata → apply_eponline_pand_attribution → optional
@@ -284,11 +301,18 @@ def _build_pand_artifacts(
     apply_eponline_pand_attribution_to_building(building, inputs.resolved)
     if inputs.pv_panels:
         attach_pv_collectors_to_building(
-            building, list(inputs.pv_panels), build_context,
+            building,
+            list(inputs.pv_panels),
+            build_context,
         )
     coords: list[Coord3D] = []
     _collect_coordinates(parsed, coords)
-    return building, inputs.resolved, targets, coords
+    return PandArtifacts(
+        building=building,
+        resolved=inputs.resolved,
+        targets=targets,
+        coords=coords,
+    )
 
 
 def _merge_attributes(parsed_attrs: dict[str, Any], pand: bag_fetchers.Pand) -> None:
@@ -304,9 +328,7 @@ def _merge_attributes(parsed_attrs: dict[str, Any], pand: bag_fetchers.Pand) -> 
         parsed_attrs["status"] = pand.status
 
 
-def _collect_coordinates(
-    parsed: ParsedBuilding, sink: list[Coord3D]
-) -> None:
+def _collect_coordinates(parsed: ParsedBuilding, sink: list[Coord3D]) -> None:
     for polygons in parsed.geometries.values():
         for sp in polygons:
             _extend_polygon_coords(sp, sink)

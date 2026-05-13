@@ -128,9 +128,7 @@ def parse_cftree_tile(data: dict[str, Any]) -> list[ParsedTree]:
     if not isinstance(data, dict):
         raise ValueError("CFTree CityJSON payload must be a dict")
     if data.get("type") not in {"CityJSON", "CityJSONFeature"}:
-        raise ValueError(
-            f"Expected CityJSON/CityJSONFeature, got {data.get('type')!r}"
-        )
+        raise ValueError(f"Expected CityJSON/CityJSONFeature, got {data.get('type')!r}")
 
     vertices = _dequantize_vertices(
         data.get("vertices") or [],
@@ -154,14 +152,13 @@ def parse_cftree_tile(data: dict[str, Any]) -> list[ParsedTree]:
 
 
 def _dequantize_vertices(
-    raw_vertices: list[list[float]], transform: dict[str, Any],
+    raw_vertices: list[list[float]],
+    transform: dict[str, Any],
 ) -> list[Coord3D]:
     scale = transform.get("scale") or [1.0, 1.0, 1.0]
     translate = transform.get("translate") or [0.0, 0.0, 0.0]
     if scale == [1.0, 1.0, 1.0] and translate == [0.0, 0.0, 0.0]:
-        return [
-            (float(v[0]), float(v[1]), float(v[2])) for v in raw_vertices
-        ]
+        return [(float(v[0]), float(v[1]), float(v[2])) for v in raw_vertices]
     sx, sy, sz = (float(s) for s in scale)
     tx, ty, tz = (float(t) for t in translate)
     # CFTree quantizes to millimetre precision; rounding here mirrors the
@@ -178,7 +175,9 @@ def _dequantize_vertices(
 
 
 def _parse_tree_object(
-    obj_id: str, obj: dict[str, Any], vertices: list[Coord3D],
+    obj_id: str,
+    obj: dict[str, Any],
+    vertices: list[Coord3D],
 ) -> ParsedTree:
     merged: list[GeometryPolygon] = []
     lod_observed: str | None = None
@@ -213,7 +212,8 @@ def _parse_tree_object(
 
 
 def _solid_to_polygons(
-    boundaries: list[Any], vertices: list[Coord3D],
+    boundaries: list[Any],
+    vertices: list[Coord3D],
 ) -> list[GeometryPolygon]:
     """Flatten a CityJSON Solid ``boundaries`` tree into polygons.
 
@@ -247,7 +247,8 @@ def _solid_to_polygons(
 
 
 def _ring_to_coords(
-    ring: Any, vertices: list[Coord3D],
+    ring: Any,
+    vertices: list[Coord3D],
 ) -> list[Coord3D]:
     if not isinstance(ring, list):
         return []

@@ -65,8 +65,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..._step import GeometryPolygon
-from .._helpers import bbox_cache_key, to_clean_str, to_int
+from .._helpers import to_clean_str, to_int
 from ..http import CachedSession
+from ..pdok_wfs import DEFAULT_PAGE_SIZE, paginate_features
 
 __all__ = [
     "CBS_POSTCODE6_WFS_URL_TEMPLATE",
@@ -81,9 +82,7 @@ _LOG = logging.getLogger(__name__)
 # into the URL at fetch time. The 2024 vintage (current at time of
 # writing) covers the 2023 calendar year per CBS's documented one-year
 # offset between publication and data scope.
-CBS_POSTCODE6_WFS_URL_TEMPLATE: str = (
-    "https://service.pdok.nl/cbs/postcode6/{year}/wfs/v1_0"
-)
+CBS_POSTCODE6_WFS_URL_TEMPLATE: str = "https://service.pdok.nl/cbs/postcode6/{year}/wfs/v1_0"
 
 # WFS layer name and the two energy properties we read. Spelled
 # verbatim against the live DescribeFeatureType response (camelCase, not
@@ -122,10 +121,11 @@ _F_AANTAL_NIET_BEWOOND: str = "aantalNietBewoondeWoningen"
 # rounded-to-50 figure CBS publishes.
 _SUPPRESSION_THRESHOLD: int = -99000
 
-# WFS pagination matches the BAG fetcher: PDOK caps GetFeature at ~50k;
-# 1000 / page is the documented sweet spot, and we never expect a single
-# city's bbox to ship more than a few hundred PC6 polygons.
-_PAGE_SIZE: int = 1000
+# Bbox subdivision is deliberately NOT used here: a single municipality
+# tops out at ~30 k PC6 polygons (well below PDOK's ~50 k startIndex
+# cap), and the city pipeline's bbox is always a fraction of one
+# municipality. Pagination alone is enough.
+_PAGE_SIZE: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,9 +224,7 @@ def fetch_postcode6_areas(
             Postcode6Area(
                 postcode=postcode,
                 gemiddeld_gasverbruik_woning=_int_preserve_sentinel(props.get(_F_GAS)),
-                gemiddeld_elektriciteitsverbruik_woning=_int_preserve_sentinel(
-                    props.get(_F_ELEC)
-                ),
+                gemiddeld_elektriciteitsverbruik_woning=_int_preserve_sentinel(props.get(_F_ELEC)),
                 aantal_woningen=_value_or_suppressed(props.get(_F_AANTAL_WONINGEN)),
                 aantal_niet_bewoonde_woningen=_value_or_suppressed(
                     props.get(_F_AANTAL_NIET_BEWOOND)
@@ -251,11 +249,7 @@ def normalise_postcode(value: Any) -> str | None:
     cleaned = "".join(text.split()).upper()
     # 4 digits + 2 letters is the only valid PC6 shape; anything else is
     # corrupt and would join to nothing on the BAG side anyway.
-    if (
-        len(cleaned) != 6
-        or not cleaned[:4].isdigit()
-        or not cleaned[4:].isalpha()
-    ):
+    if len(cleaned) != 6 or not cleaned[:4].isdigit() or not cleaned[4:].isalpha():
         _LOG.warning("CBS Postcode6 value not in NNNNAA shape (%r)", value)
         return None
     return cleaned
@@ -323,40 +317,19 @@ def _fetch_layer(
 ) -> list[dict[str, Any]]:
     """Paginate through the CBS Postcode6 layer for *bbox*.
 
-    Mirrors the BAG paginator's contract (1000 features per page,
-    walk until a short page comes back). The WFS does not impose a
-    50k startIndex cap that would warrant bbox subdivision: a single
-    municipality has at most ~30 000 PC6 polygons, well below the
-    pagination ceiling, and the city pipeline's bbox is always a
-    fraction of one municipality.
+    The CBS vintage year folds into the cache prefix so two builds
+    against different vintages (e.g. 2023 vs. 2024) do not share
+    on-disk cache entries: the underlying postcode polygons drift
+    slightly year-over-year and CBS occasionally re-aggregates a row.
     """
-    features: list[dict[str, Any]] = []
-    start = 0
-    while True:
-        params = {
-            "service": "WFS",
-            "version": "2.0.0",
-            "request": "GetFeature",
-            "typeNames": _LAYER,
-            "outputFormat": "application/json",
-            "srsName": "EPSG:28992",
-            "count": _PAGE_SIZE,
-            "startIndex": start,
-            "bbox": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]},EPSG:28992",
-        }
-        page_index = start // _PAGE_SIZE
-        page = session.get_json(
-            url,
-            params=params,
-            cache_key=bbox_cache_key(
-                f"cbs_postcode6.{year}", bbox, page=page_index,
-            ),
-        )
-        batch = page.get("features") or []
-        features.extend(batch)
-        if len(batch) < _PAGE_SIZE:
-            return features
-        start += _PAGE_SIZE
+    return paginate_features(
+        session,
+        url,
+        type_names=_LAYER,
+        cache_prefix=f"cbs_postcode6.{year}",
+        bbox=bbox,
+        page_size=_PAGE_SIZE,
+    )
 
 
 def _extract_polygons(geometry: Any) -> list[GeometryPolygon]:

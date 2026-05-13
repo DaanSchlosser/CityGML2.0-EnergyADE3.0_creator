@@ -326,7 +326,7 @@ For every column, one verdict:
 |---|---|---|---|---|
 | `Berekeningstype` | NTA 8800 calculation variant string | `nrg3:EnergyPerformanceCertificate.certificationMethod` | Native | Verbatim string; no codelist in NTA 8800 maps cleanly. Joined with `SoortOpname` via ` / ` (no em dash). Implementation: [`builders/epc.py::_certification_method_string`](../citygml_energy/city_builder/builders/epc.py). |
 | `SoortOpname` | `Basisopname` / `Detailopname` | concatenated into `certificationMethod` (e.g. `"Basisopname / NTA 8800:2024 (basisopname woningbouw)"`) | Native (derived) | Inspection-rigour qualifier. Concatenation chosen over a separate field. |
-| (no source column) | XSD-required cert validity flag | `nrg3:EnergyPerformanceCertificate.status` (inherited from `nrg3:AbstractFeatureWithLifeSpan`, `gml:CodeType`, codeSpace = `EPCStatusValue.xml`) | Native (constant) | Hard-coded `"actual"` for every emitted cert. Every row in the EP-online Mutatiebestand is by definition the registered, legally-valid certificate for the VBO ("alleen deze geregistreerde labels zijn rechtsgeldig" — RVO Handleiding EP-online: opvragen van bestanden, v1.0 feb 2025, §1), so the codelist member `actual` (vs. `potential` / `unknown`) is correct unconditionally. Implementation: [`builders/epc.py::build_epc`](../citygml_energy/city_builder/builders/epc.py) line ~452. Distinct from EP-online's `Status` column (Bestaand / Nieuwbouw / Verbouw) directly below — that is a *lifecycle* signal, not a *cert-validity* one. |
+| (no source column) | XSD-required cert validity flag | `nrg3:EnergyPerformanceCertificate.status` (`gml:CodeType`, codeSpace = `EPCStatusValue.xml`; in beta8 status is an ADE-hook list element substituting into `core:_GenericApplicationPropertyOfCityObject`, list-valued on every CityObject; the EPC populates it with a single member) | Native (constant) | Hard-coded `"actual"` for every emitted cert. Every row in the EP-online Mutatiebestand is by definition the registered, legally-valid certificate for the VBO ("alleen deze geregistreerde labels zijn rechtsgeldig" — RVO Handleiding EP-online: opvragen van bestanden, v1.0 feb 2025, §1), so the codelist member `actual` (vs. `potential` / `unknown`) is correct unconditionally. Implementation: [`builders/epc.py::build_epc`](../citygml_energy/city_builder/builders/epc.py). Distinct from EP-online's `Status` column (Bestaand / Nieuwbouw / Verbouw) directly below — that is a *lifecycle* signal, not a *cert-validity* one. |
 | `Status` | `Bestaand` / `Nieuwbouw` / `Verbouw` | none today; potential target = `gen:stringAttribute name="epOnlineStatus"` on the BuildingUnit, OR a future `bldg:condition`-style lifecycle field | Skip (latent) | Lifecycle signal at certification time. SIG3D's `bldg:class` is a CityGML usage codelist (residential / commercial), not a lifecycle one. No native Energy ADE lifecycle slot. The cert-level `nrg3:status` row above is a *different* field and is always emitted. |
 | `OpBasisVanReferentiegebouw` | `Ja`/`Nee`: was the cert based on a reference building rather than measured | none today; potential target = `gen:stringAttribute name="epOnlineReferenceBuildingBased"` on the EPC | Skip (latent) | Quality flag. Important for thesis-grade interpretation but not load-bearing for the building-physics output. The information is also encodable as part of `certificationMethod` if needed later. |
 | `Certificaathouder` | Name of the certifying organisation | none | Drop | Personal-ish data and not load-bearing for energy modelling. The cert *type* (`type="totalEnergyDemand"` on the EPC) plus `nrg3:Metadata/source = "EP-online Mutatiebestand v4 (RVO)"` already attributes the source register; adding the certifier introduces FAIR-data noise without modelling value. |
@@ -379,7 +379,7 @@ For every column, one verdict:
 |---|---|---|---|---|
 | `PrimaireFossieleEnergie` (BENG-2) | Primary fossil energy use (kWh/m²·yr) | `nrg3:Energy` resource on the BuildingUnit: `type="primary"`, `endUse="otherOrCombination"`, `operationType="demands"`, `referencePeriod="year"`, `amount` with uom `kWh/m2/a`, `isAmountNormalized=true`. The BENG-2 resource also carries `co2Equivalent` (see `BerekendeCO2Emissie` in § 6.5k). | Native (NTA 8800 only) | The clean BENG-2 fit. `EnergyTypeValue.xml` includes `primary` exactly for this purpose (UML page 20). BENG-2 aggregates every NTA-8800 demand category, so `endUse=otherOrCombination`. Empty for legacy-regime rows; the legacy "total annual primary energy" is reported instead in `BerekendeEnergieverbruik` in MJ/yr. |
 | `PrimaireFossieleEnergieEMGForfaitair` | Same with EMG-Forfaitair correction | none | Drop | Same physical quantity computed under a different convention; the schema has no slot for "the same metric, calculated differently". The Forfaitair correction is an internal NTA 8800 calculation step, not an independent metric. |
-| `AandeelHernieuwbareEnergie` (BENG-3) | Renewable-energy share (%) | `gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie"` on the **BuildingUnit** (not the EPC), uom `percent` | gen:Attribute (NTA 8800 only) | Energy ADE 3.0 has no renewable-share slot. `nrg3:EnergyPerformanceCertificateType` extends `AbstractFeatureWithLifeSpanType` directly (not via CityObject), so the EPC cannot host `gen:*Attribute` children. The BuildingUnit (which descends from CityObject) is the closest container at the same per-VBO scope. Empty for legacy-regime rows. |
+| `AandeelHernieuwbareEnergie` (BENG-3) | Renewable-energy share (%) | `gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie"` on the **EPC**, uom `percent` | gen:Attribute (NTA 8800 only) | Energy ADE 3.0 has no renewable-share slot. Beta8 (2026-05-06) re-rooted `nrg3:EnergyPerformanceCertificateType` under `core:AbstractCityObjectType` directly (the former `nrg3:AbstractFeatureWithLifeSpan` base was removed), so the EPC now hosts `gen:_GenericApplicationPropertyOfCityObject` substitutions itself. The renewable share is a property of the certificate, so it lives on the EPC. Empty for legacy-regime rows. |
 | `AandeelHernieuwbareEnergieEMGForfaitair` | Same with EMG-Forfaitair | none | Drop | Same Forfaitair-convention reasoning as `PrimaireFossieleEnergieEMGForfaitair`. |
 
 #### 6.5k. Calculated emissions and use (3)
@@ -559,11 +559,13 @@ The snippet below is **schema-derived, not byte-verified against a city-pipeline
 
       <nrg3:energyPerformanceCertificate>
         <nrg3:EnergyPerformanceCertificate gml:id="epc_0114010000274521">
-          <!-- Dates are inherited from nrg3:AbstractADEFeatureType /
-               AbstractFeatureWithLifeSpanType (Energy_ADE_3.0_beta8.xsd
-               lines 454, 477-478) and therefore serialise in the
-               Energy ADE namespace, NOT in core:. -->
-          <nrg3:creationDate>2024-05-01</nrg3:creationDate>
+          <!-- Beta8 re-rooted EnergyPerformanceCertificate under
+               core:AbstractCityObject directly. creationDate is the
+               CityGML-core attribute (core: namespace); validFrom,
+               validTo and status are Energy-ADE hooks substituting
+               into core:_GenericApplicationPropertyOfCityObject
+               (nrg3: namespace, list-valued on every CityObject). -->
+          <core:creationDate>2024-05-01</core:creationDate>
           <nrg3:validFrom>2024-05-14T00:00:00</nrg3:validFrom>
           <nrg3:validTo>2034-05-13T00:00:00</nrg3:validTo>
           <!-- Every cert in the EP-online register is rechtsgeldig per
@@ -657,9 +659,10 @@ For comparison, here is what a row from VBO `0114010000280857` (Hoofdkanaal WZ 3
 
   <nrg3:energyPerformanceCertificate>
     <nrg3:EnergyPerformanceCertificate gml:id="epc_0114010000280857">
-      <!-- Dates inherited from nrg3:AbstractFeatureWithLifeSpanType
-           serialise in the Energy ADE namespace, not in core:. -->
-      <nrg3:creationDate>2019-06-14</nrg3:creationDate>
+      <!-- Beta8: creationDate inherited from core:AbstractCityObject (core:
+           namespace); validFrom/validTo are nrg3: ADE-hook list elements
+           substituting into core:_GenericApplicationPropertyOfCityObject. -->
+      <core:creationDate>2019-06-14</core:creationDate>
       <nrg3:validFrom>2019-06-14T00:00:00</nrg3:validFrom>
       <nrg3:validTo>2029-06-14T00:00:00</nrg3:validTo>
       <nrg3:status codeSpace="...EPCStatusValue.xml">actual</nrg3:status>

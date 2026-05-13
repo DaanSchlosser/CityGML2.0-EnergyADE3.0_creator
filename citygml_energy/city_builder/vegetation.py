@@ -156,9 +156,7 @@ def load_trees_in_bbox(
     try:
         parsed = parse_cftree_tile_file(file_path)
     except (ValueError, OSError) as exc:  # narrow: malformed JSON / unreadable
-        _LOG.warning(
-            "Skipping malformed CFTree file %s: %s", file_path, exc
-        )
+        _LOG.warning("Skipping malformed CFTree file %s: %s", file_path, exc)
         return []
 
     minx, miny, maxx, maxy = bbox
@@ -360,7 +358,8 @@ def _match_to_bgt(
     _LOG.info("Fetching BGT vegetatieobject_punt (boom) …")
     bgt_trees = fetch_bgt_trees(session, bbox)
     matches = match_nearest_within(
-        trees, bgt_trees,
+        trees,
+        bgt_trees,
         candidate_xy=lambda b: (b.x_rd, b.y_rd),
         radius_m=MATCH_RADIUS_M,
         register_label="BGT boom",
@@ -368,7 +367,9 @@ def _match_to_bgt(
     _LOG.info(
         "BGT cross-reference: %d of %d CFTree trees matched a BGT boom record "
         "(%d BGT features in bbox)",
-        len(matches), len(trees), len(bgt_trees),
+        len(matches),
+        len(trees),
+        len(bgt_trees),
     )
     return matches
 
@@ -388,14 +389,16 @@ def _match_to_bor(
     _LOG.info("Fetching Gemeente Emmen BOR tree register …")
     bor_trees = fetch_bor_trees(session, bbox)
     matches = match_nearest_within(
-        trees, bor_trees,
+        trees,
+        bor_trees,
         candidate_xy=lambda b: (b.x_rd, b.y_rd),
         radius_m=MATCH_RADIUS_M,
         register_label="Emmen BOR",
     )
     _LOG.info(
-        "BOR enrichment: %d of %d CFTree trees matched a BOR record "
-        "(%d BOR features in bbox)",
-        len(matches), len(trees), len(bor_trees),
+        "BOR enrichment: %d of %d CFTree trees matched a BOR record (%d BOR features in bbox)",
+        len(matches),
+        len(trees),
+        len(bor_trees),
     )
     return matches

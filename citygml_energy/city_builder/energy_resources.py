@@ -367,10 +367,12 @@ def _attach_legacy_total_resource(unit: Any, label: EnergyLabel) -> None:
 
     energy = Energy(
         operation_type=CodeType(
-            value=_OPERATION_DEMANDS, code_space=CS_NRG3_RESOURCE_OPERATION_TYPE,
+            value=_OPERATION_DEMANDS,
+            code_space=CS_NRG3_RESOURCE_OPERATION_TYPE,
         ),
         reference_period=CodeType(
-            value=_REFERENCE_YEAR, code_space=CS_NRG3_REFERENCE_PERIOD,
+            value=_REFERENCE_YEAR,
+            code_space=CS_NRG3_REFERENCE_PERIOD,
         ),
         is_amount_normalized=False,
         type_value=CodeType(
@@ -379,14 +381,16 @@ def _attach_legacy_total_resource(unit: Any, label: EnergyLabel) -> None:
             # ``primary`` not ``final``; the cross-regime divergence with
             # NTA 8800's same-named column is intentional and documented
             # in this module's top-level docstring.
-            value=_ENERGY_TYPE_PRIMARY, code_space=CS_NRG3_ENERGY_TYPE,
+            value=_ENERGY_TYPE_PRIMARY,
+            code_space=CS_NRG3_ENERGY_TYPE,
         ),
         end_use=CodeType(
             # Legacy ``BerekendeEnergieverbruik`` is the total primary
             # fossil energy across every NTA-8800 demand category —
             # same multi-end-use scope as the NTA 8800 BENG-2 figure,
             # so it lands in the same ``otherOrCombination`` bucket.
-            value=_END_USE_OTHER_OR_COMBINATION, code_space=CS_NRG3_ENERGY_END_USE,
+            value=_END_USE_OTHER_OR_COMBINATION,
+            code_space=CS_NRG3_ENERGY_END_USE,
         ),
         description=Description(
             value=(
@@ -396,16 +400,15 @@ def _attach_legacy_total_resource(unit: Any, label: EnergyLabel) -> None:
             ),
         ),
         amount=MeasureType(
-            value=float(label.berekende_energieverbruik), uom=UOM_MJ_PER_A,
+            value=float(label.berekende_energieverbruik),
+            uom=UOM_MJ_PER_A,
         ),
     )
 
-    if (
-        label.berekende_co2_emissie is not None
-        and not label.co2_is_placeholder()
-    ):
+    if label.berekende_co2_emissie is not None and not label.co2_is_placeholder():
         energy.co2_equivalent = MeasureType(
-            value=float(label.berekende_co2_emissie), uom=_UOM_KG_PER_A,
+            value=float(label.berekende_co2_emissie),
+            uom=_UOM_KG_PER_A,
         )
 
     unit.resource.append(Resource(energy=energy))
@@ -450,23 +453,28 @@ def _build_per_area_energy(
         return None
     energy = Energy(
         operation_type=CodeType(
-            value=_OPERATION_DEMANDS, code_space=CS_NRG3_RESOURCE_OPERATION_TYPE,
+            value=_OPERATION_DEMANDS,
+            code_space=CS_NRG3_RESOURCE_OPERATION_TYPE,
         ),
         reference_period=CodeType(
-            value=_REFERENCE_YEAR, code_space=CS_NRG3_REFERENCE_PERIOD,
+            value=_REFERENCE_YEAR,
+            code_space=CS_NRG3_REFERENCE_PERIOD,
         ),
         is_amount_normalized=True,
         type_value=CodeType(
-            value=type_value, code_space=CS_NRG3_ENERGY_TYPE,
+            value=type_value,
+            code_space=CS_NRG3_ENERGY_TYPE,
         ),
         end_use=CodeType(
-            value=end_use, code_space=CS_NRG3_ENERGY_END_USE,
+            value=end_use,
+            code_space=CS_NRG3_ENERGY_END_USE,
         ),
         description=Description(value=description),
         amount=MeasureType(value=float(amount), uom=UOM_KWH_PER_M2_PER_A),
     )
     if co2_equivalent is not None:
         energy.co2_equivalent = MeasureType(
-            value=float(co2_equivalent), uom=_UOM_KG_PER_M2_PER_A,
+            value=float(co2_equivalent),
+            uom=_UOM_KG_PER_M2_PER_A,
         )
     return energy

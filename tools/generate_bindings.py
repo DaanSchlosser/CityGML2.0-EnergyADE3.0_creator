@@ -290,6 +290,14 @@ def main() -> int:
     output_file = REPO_ROOT / "citygml_energy" / "bindings.py"
     output_dir = REPO_ROOT / OUTPUT_PACKAGE
 
+    # xsdata writes a parent-package ``__init__.py`` alongside the bindings
+    # that re-exports every generated class, which silently clobbers the
+    # hand-curated public API in ``citygml_energy/__init__.py``. Capture
+    # the current contents and restore after generation so the regen is
+    # purely additive to ``bindings.py``.
+    package_init = REPO_ROOT / "citygml_energy" / "__init__.py"
+    init_backup = package_init.read_bytes() if package_init.exists() else None
+
     if output_file.exists() and output_file.is_file():
         output_file.unlink()
     if output_dir.exists() and output_dir.is_dir():
@@ -328,6 +336,9 @@ def main() -> int:
         print()
 
         result = subprocess.run(cmd, cwd=str(REPO_ROOT))
+
+    if init_backup is not None:
+        package_init.write_bytes(init_backup)
 
     if result.returncode == 0:
         n = _patch_bindings(output_file)

@@ -219,9 +219,7 @@ def _coerce(target: type, raw: Any) -> Any:
     # ``"{'a': 1}"`` and silently emit nonsense XML content.
     if target is str:
         if isinstance(raw, (dict, list)):
-            raise TypeError(
-                f"Cannot coerce {type(raw).__name__} to str: expected a scalar value"
-            )
+            raise TypeError(f"Cannot coerce {type(raw).__name__} to str: expected a scalar value")
         return str(raw)
     if target is float:
         return float(raw)
@@ -246,8 +244,7 @@ def _coerce(target: type, raw: Any) -> Any:
     # of producing malformed XML at serialization time.
     target_name = getattr(target, "__name__", repr(target))
     raise TypeError(
-        f"Cannot coerce {type(raw).__name__} {raw!r} to {target_name}: "
-        f"no conversion rule applies"
+        f"Cannot coerce {type(raw).__name__} {raw!r} to {target_name}: no conversion rule applies"
     )
 
 
@@ -268,9 +265,7 @@ def _coerce_enum(cls: type[enum.Enum], raw: Any) -> enum.Enum:
     if isinstance(raw, str) and raw in cls.__members__:
         return cls[raw]
     valid = ", ".join(repr(m.value) for m in cls)
-    raise ValueError(
-        f"Cannot coerce {raw!r} to {cls.__name__}: expected one of {valid}"
-    )
+    raise ValueError(f"Cannot coerce {raw!r} to {cls.__name__}: expected one of {valid}")
 
 
 def _scalar_to_dataclass(cls: type, scalar: Any) -> Any:
@@ -563,9 +558,7 @@ def iter_instances(root: Any) -> Iterator[Any]:
                 continue
             if type(value) is list:
                 stack_extend(
-                    item
-                    for item in value
-                    if not isinstance(item, type) and is_dataclass(item)
+                    item for item in value if not isinstance(item, type) and is_dataclass(item)
                 )
             elif is_dataclass(value) and not isinstance(value, type):
                 stack_append(value)

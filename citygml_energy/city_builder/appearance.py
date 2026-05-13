@@ -245,9 +245,7 @@ def append_vegetation_appearance(
 # ---------------------------------------------------------------------------
 
 
-def _collect_per_feature_targets(
-    city_model: Any, feature_cls: type
-) -> list[str]:
+def _collect_per_feature_targets(city_model: Any, feature_cls: type) -> list[str]:
     """Return ``#<gml:id>`` refs for every colorable surface under instances of *feature_cls*.
 
     Walks the underlying xsdata tree once (:func:`iter_instances` is

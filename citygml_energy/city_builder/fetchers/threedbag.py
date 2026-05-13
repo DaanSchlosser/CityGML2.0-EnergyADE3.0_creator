@@ -105,7 +105,12 @@ def fetch_tile_index(session: CachedSession, outline: BaseGeometry) -> list[Tile
 
     if session.use_cache:
         index_cache.write_text(
-            json.dumps([{"tile_id": t.tile_id, "download_url": t.download_url, "bbox": list(t.bbox)} for t in tiles]),
+            json.dumps(
+                [
+                    {"tile_id": t.tile_id, "download_url": t.download_url, "bbox": list(t.bbox)}
+                    for t in tiles
+                ]
+            ),
             encoding="utf-8",
         )
     return tiles
@@ -159,16 +164,12 @@ def fetch_buildings_for_outline(
         # ``map`` preserves tile order, so the resulting ``buildings`` list
         # is deterministic across runs, which is important for stable gml:id
         # ordering in downstream CityModel output.
-        for per_tile in pool.map(
-            lambda t: _tile_parsed_buildings(session, t), tiles
-        ):
+        for per_tile in pool.map(lambda t: _tile_parsed_buildings(session, t), tiles):
             buildings.extend(per_tile)
     return buildings
 
 
-def _tile_parsed_buildings(
-    session: CachedSession, tile: Tile
-) -> list[ParsedBuilding]:
+def _tile_parsed_buildings(session: CachedSession, tile: Tile) -> list[ParsedBuilding]:
     """Return parsed buildings for one tile, hitting the parsed-tile cache first.
 
     The on-disk cache is keyed by the tile's raw-ZIP content hash so any
@@ -208,7 +209,8 @@ def _try_load_parsed_tile(cache_path: Path) -> list[ParsedBuilding] | None:
     except (pickle.UnpicklingError, EOFError, ValueError, OSError, AttributeError) as exc:
         _LOG.warning(
             "3DBAG parsed-tile cache %s unreadable (%s); re-parsing",
-            cache_path.name, exc,
+            cache_path.name,
+            exc,
         )
         return None
 
@@ -224,7 +226,8 @@ def _try_save_parsed_tile(cache_path: Path, parsed: list[ParsedBuilding]) -> Non
     except OSError as exc:
         _LOG.warning(
             "3DBAG parsed-tile cache write to %s failed (%s); continuing without cache",
-            cache_path.name, exc,
+            cache_path.name,
+            exc,
         )
 
 

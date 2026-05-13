@@ -166,13 +166,13 @@ def fetch_bgt_trees(
                 x_rd=float(coords[0]),
                 y_rd=float(coords[1]),
                 creation_date=_parse_iso_date(props.get("creation_date")),
-                bronhouder=(
-                    str(props["bronhouder"]) if props.get("bronhouder") else None
-                ),
+                bronhouder=(str(props["bronhouder"]) if props.get("bronhouder") else None),
             )
         )
     _LOG.info(
-        "Fetched %d BGT boom points inside bbox (%s)", len(trees), bbox,
+        "Fetched %d BGT boom points inside bbox (%s)",
+        len(trees),
+        bbox,
     )
     return trees
 

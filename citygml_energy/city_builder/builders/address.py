@@ -192,9 +192,7 @@ def build_address(
     details_cls = resolve_class(XAL_ADDRESS_DETAILS)
     address_details = details_cls(country=country)
 
-    address_id = safe_gml_id(
-        build_context.gml_id_prefix, "addr", resolved.vbo.identificatie
-    )
+    address_id = safe_gml_id(build_context.gml_id_prefix, "addr", resolved.vbo.identificatie)
     multi_point = None
     if resolved.point is not None:
         multi_point = build_multi_point(
@@ -299,7 +297,10 @@ def _build_locality(
 
 
 def _assemble_number(
-    *, huisnummer: int, huisletter: str | None, toevoeging: str | None,
+    *,
+    huisnummer: int,
+    huisletter: str | None,
+    toevoeging: str | None,
 ) -> str:
     """Concatenate huisnummer, huisletter, toevoeging into the flat form.
 

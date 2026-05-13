@@ -18,13 +18,14 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from .._helpers import bbox_cache_key, to_clean_str, to_float, to_int
+from .._helpers import to_clean_str, to_float, to_int
 from ..http import CachedSession
+from ..pdok_wfs import DEFAULT_PAGE_SIZE, paginate_features
 
 _LOGGER = logging.getLogger(__name__)
 
 BAG_WFS_URL = "https://service.pdok.nl/lv/bag/wfs/v2_0"
-BAG_PAGE_SIZE = 1000
+BAG_PAGE_SIZE = DEFAULT_PAGE_SIZE
 # PDOK's GetFeature hard-caps around 50 000; subdivide when we cross this
 # threshold on a single bbox. Very generous so small cities never bother.
 BAG_SUBDIVIDE_THRESHOLD = 40_000
@@ -214,35 +215,29 @@ def _fetch_layer(
 ) -> list[dict[str, Any]]:
     """Paginate through every feature in *layer* inside *bbox*.
 
-    Subdivides when a single bbox exceeds the PDOK startIndex soft limit.
+    Delegates the WFS 2.0 page walk to
+    :func:`citygml_energy.city_builder.pdok_wfs.paginate_features`; the
+    BAG-specific concern this wrapper adds is bbox subdivision when a
+    single rectangle would cross PDOK's ~50 k startIndex cap. Subdivision
+    is depth-limited so a pathological layer cannot recurse forever.
     """
-    features: list[dict[str, Any]] = []
-    start = 0
-    while True:
-        params = {
-            "service": "WFS",
-            "version": "2.0.0",
-            "request": "GetFeature",
-            "typeNames": layer,
-            "outputFormat": "application/json",
-            "srsName": "EPSG:28992",
-            "count": BAG_PAGE_SIZE,
-            "startIndex": start,
-            "bbox": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]},EPSG:28992",
-        }
-        page_index = start // BAG_PAGE_SIZE
-        page = session.get_json(
-            BAG_WFS_URL,
-            params=params,
-            cache_key=bbox_cache_key(layer, bbox, page=page_index),
-        )
-        batch = page.get("features") or []
-        features.extend(batch)
-        if len(batch) < BAG_PAGE_SIZE:
-            return features
-        start += BAG_PAGE_SIZE
-        if start >= BAG_SUBDIVIDE_THRESHOLD and _depth < 6:
-            return _subdivide(session, layer, bbox, depth=_depth + 1)
+    features = paginate_features(
+        session,
+        BAG_WFS_URL,
+        type_names=layer,
+        cache_prefix=layer,
+        bbox=bbox,
+        page_size=BAG_PAGE_SIZE,
+    )
+    # PDOK silently truncates a single bbox past ~50 k features. When we
+    # hit a result that *could* have been truncated -- a full sweep that
+    # ran right up against the soft ceiling -- recurse into quadrants so
+    # the missing rows are recoverable. Subdivision is depth-limited
+    # because a degenerate input (zero-width bbox, server bug) must not
+    # recurse forever.
+    if len(features) >= BAG_SUBDIVIDE_THRESHOLD and _depth < 6:
+        return _subdivide(session, layer, bbox, depth=_depth + 1)
+    return features
 
 
 def _subdivide(

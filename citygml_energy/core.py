@@ -107,9 +107,7 @@ class CityModel:
         if field_name is None:
             attach_child(self._model, city_object, field_hint=_MEMBER_FIELD_HINT)
         else:
-            self._model.city_object_member.append(
-                CityObjectMember(**{field_name: city_object})
-            )
+            self._model.city_object_member.append(CityObjectMember(**{field_name: city_object}))
         return self
 
     def set_envelope(self, envelope: Envelope) -> None:
@@ -155,5 +153,3 @@ def _resolve_bounded_by_field() -> str:
             "that reshaped AbstractFeatureType; review core.set_envelope."
         )
     return matches[0]
-
-

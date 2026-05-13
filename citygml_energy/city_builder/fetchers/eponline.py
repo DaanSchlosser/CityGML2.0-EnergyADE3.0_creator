@@ -855,37 +855,19 @@ def _iter_matching_rows(
             registratiedatum=parse_ymd(row[i_reg] if 0 <= i_reg < row_len else ""),
             opnamedatum=parse_ymd(row[i_opn] if 0 <= i_opn < row_len else ""),
             geldig_tot=parse_ymd(row[i_geld] if 0 <= i_geld < row_len else ""),
-            berekeningstype=(
-                row[i_berek].strip() if 0 <= i_berek < row_len else ""
-            ) or None,
-            soort_opname=(
-                row[i_opname].strip() if 0 <= i_opname < row_len else ""
-            ) or None,
-            gebouwtype=(
-                row[i_gtype].strip() if 0 <= i_gtype < row_len else ""
-            ) or None,
-            gebouwsubtype=(
-                row[i_gsubtype].strip() if 0 <= i_gsubtype < row_len else ""
-            ) or None,
+            berekeningstype=(row[i_berek].strip() if 0 <= i_berek < row_len else "") or None,
+            soort_opname=(row[i_opname].strip() if 0 <= i_opname < row_len else "") or None,
+            gebouwtype=(row[i_gtype].strip() if 0 <= i_gtype < row_len else "") or None,
+            gebouwsubtype=(row[i_gsubtype].strip() if 0 <= i_gsubtype < row_len else "") or None,
             bouwjaar=parse_int(row[i_bouw] if 0 <= i_bouw < row_len else ""),
             gebruiksoppervlakte_thermische_zone=parse_dec(
                 row[i_floor] if 0 <= i_floor < row_len else ""
             ),
-            energiebehoefte=parse_dec(
-                row[i_e_demand] if 0 <= i_e_demand < row_len else ""
-            ),
-            warmtebehoefte=parse_dec(
-                row[i_heat_demand] if 0 <= i_heat_demand < row_len else ""
-            ),
-            primaire_fossiele_energie=parse_dec(
-                row[i_primary] if 0 <= i_primary < row_len else ""
-            ),
-            berekende_energieverbruik=parse_dec(
-                row[i_final] if 0 <= i_final < row_len else ""
-            ),
-            berekende_co2_emissie=parse_dec(
-                row[i_co2] if 0 <= i_co2 < row_len else ""
-            ),
+            energiebehoefte=parse_dec(row[i_e_demand] if 0 <= i_e_demand < row_len else ""),
+            warmtebehoefte=parse_dec(row[i_heat_demand] if 0 <= i_heat_demand < row_len else ""),
+            primaire_fossiele_energie=parse_dec(row[i_primary] if 0 <= i_primary < row_len else ""),
+            berekende_energieverbruik=parse_dec(row[i_final] if 0 <= i_final < row_len else ""),
+            berekende_co2_emissie=parse_dec(row[i_co2] if 0 <= i_co2 < row_len else ""),
             aandeel_hernieuwbare_energie=parse_dec(
                 row[i_renewable] if 0 <= i_renewable < row_len else ""
             ),

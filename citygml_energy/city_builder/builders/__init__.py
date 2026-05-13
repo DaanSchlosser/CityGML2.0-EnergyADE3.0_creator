@@ -41,7 +41,6 @@ from .building import (
     iter_lod2_thematic_classification,
     lod2_thematic_surface_gml_id,
 )
-
 from .epc import (
     apply_bag_year_metadata_to_building,
     apply_eponline_pand_attribution_to_building,

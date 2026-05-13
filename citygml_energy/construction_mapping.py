@@ -40,7 +40,8 @@ __all__ = ["EMITTERS"]
 
 
 def _compute_layered_construction(
-    obj: Any, ctx: DerivedContext,
+    obj: Any,
+    ctx: DerivedContext,
 ) -> list[Any] | None:
     """Return ``[xlink-wrapper]`` when *obj* maps to a construction, else None.
 
