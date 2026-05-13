@@ -31,7 +31,7 @@
     "**/__pycache__": true,
     "**/.pytest_cache": true,
     ".venv": true,
-    "KITModelViewer_V7.5_Build-3636": true
+    "KITModelViewer_V7.5.2_Build-3777": true
   },
 
   // ── JSON schema for input files ──────────────────────────────────────

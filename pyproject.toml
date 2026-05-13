@@ -123,7 +123,7 @@ exclude = [
     "**/__pycache__",
     "**/.venv",
     "**/.git",
-    "KITModelViewer_V7.5_Build-3636",
+    "KITModelViewer_V7.5.2_Build-3777",
     "Energy_ADE-3.0beta8",
     "generated",
     "build",
