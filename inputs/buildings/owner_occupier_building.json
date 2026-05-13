@@ -95,7 +95,7 @@
       "type": "nrg3:BuildingUnit",
       "parent": "id_building_1",
       "id": "id_building_unit_1",
-      "description": "Sole verblijfsobject (VBO) inside the owner-occupier Pand. NL EP-online certificates are issued per-VBO, and the address, net floor area, occupants, and energy-performance certificate live at this unit-level rather than on the parent Building, so the structure is self-similar between the per-building and city-scale pipelines.",
+      "description": "Sole verblijfsobject (VBO) inside the owner-occupier Pand. NL EP-online certificates are issued per-VBO, and the net floor area, occupants, and energy-performance certificate live at this unit-level rather than on the parent Building, so the structure is self-similar between the per-building and city-scale pipelines. The address itself is owned by the parent Building (CityGML 2.0 composition slot `bldg:address`) and referenced from here via an xlink (Energy ADE 3.0 UML tags `BuildingUnit.address` as `relationType=association`, i.e. a pointer).",
       "name": ["Han Solo's House"],
       "creation_date": "2026-04-04",
       "identifier": [{"value": "0000000000000002", "code_space": "http://bag.basisregistraties.overheid.nl/bag/id/verblijfsobject/"}],
@@ -103,6 +103,7 @@
       "number_of_rooms": 5,
       "owner_name": "Han Solo",
       "ownership_type": {"value": "occupantPrivateOwner", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml"},
+      "address": [{"href": "#id_address_1"}],
       "area": [
         {
           "qualified_area": {
@@ -116,7 +117,7 @@
     },
     {
       "type": "core:Address",
-      "parent": "id_building_unit_1",
+      "parent": "id_building_1",
       "id": "id_address_1",
       "xal_address": {
         "address_details": {
@@ -192,7 +193,7 @@
     },
     {
       "type": "nrg3:PhotovoltaicCollector",
-      "parent": "id_building_unit_1",
+      "parent": "id_building_1",
       "id": "pv_panel_1",
       "description": "36 × 270 Wp polycrystalline / monocrystalline silicon module array (cellType not on the panel datasheet collected from the owner-occupier, recorded as `unknown`). The `nominal_efficiency` (0.164 W/W) is the module-area-based efficiency consistent with 9720 W / 59.4 m² at 1000 W/m² STC; the `aperture_area` (55.8 m²) is the active light-receiving cell area, conventionally ≈ 94% of the module footprint for crystalline-silicon panels of this generation. Both values are typical-product estimates from the panel rating, not measured datasheet figures.",
       "name": ["PV collector (36x270 Wp)"],

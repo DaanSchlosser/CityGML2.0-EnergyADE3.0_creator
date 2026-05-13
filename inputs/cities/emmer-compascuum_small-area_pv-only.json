@@ -14,7 +14,7 @@
   "srs_dimension": 3,
   "city_model": {
     "name": "Emmer-Compascuum (small area, PV only)",
-    "description": "Emmer-Compascuum small-area AOI without vegetation: BAG + 3DBAG LoD 0/1/2 + EP-online, extended with PV panel polygons from the University of Groningen aerial-imagery dataset (Zenodo 14860030, CC-BY-4.0). PV panels are attached as nrg3:PhotovoltaicCollector features with lod2MultiSurface geometry, lifted to the roof plane Z at the panel centroid plus a flat 0.1 m Z offset."
+    "description": "Emmer-Compascuum small-area AOI without vegetation: BAG + 3DBAG LoD 0/1/2 + EP-online, extended with PV panel polygons from the University of Groningen aerial-imagery dataset (Zenodo 14860030, CC-BY-4.0). PV panels are attached as nrg3:GenericSolarCollector features (technology-agnostic: the aerial-imagery source has no cell-type metadata) with lod2MultiSurface geometry, lifted to the roof plane Z at the panel centroid plus a flat 0.1 m Z offset."
   },
   "pv_panels": {
     "path": "../pv_panels/pv_panels.gpkg",

@@ -71,8 +71,10 @@ def build_schema() -> dict[str, Any]:
                     "fetch extent is derived from the polygon's own bounds, and "
                     "buildings whose 2D LoD 0 footprint does not intersect the "
                     "polygon are dropped. Mutually exclusive with 'bbox'. Must be "
-                    "a GeoJSON file (.geojson / .json) containing a single Feature "
-                    "with a Polygon or MultiPolygon geometry in EPSG:28992."
+                    "a GeoJSON file (.geojson / .json) whose root is a single "
+                    "Feature (or a FeatureCollection carrying exactly one Feature, "
+                    "the QGIS default export shape) with a Polygon or MultiPolygon "
+                    "geometry in EPSG:28992."
                 ),
                 "additionalProperties": False,
                 "required": ["path"],
@@ -82,8 +84,9 @@ def build_schema() -> dict[str, Any]:
                         "minLength": 1,
                         "description": (
                             "Path to a GeoJSON (.geojson / .json) file in "
-                            "EPSG:28992 with a single Feature polygon, absolute "
-                            "or relative to this JSON file."
+                            "EPSG:28992 with a single Polygon or MultiPolygon "
+                            "Feature (or a one-Feature FeatureCollection), "
+                            "absolute or relative to this JSON file."
                         ),
                     },
                 },
@@ -163,11 +166,14 @@ def build_schema() -> dict[str, Any]:
             "pv_panels": {
                 "type": "object",
                 "description": (
-                    "Optional external PV panel polygon source. When set, the "
-                    "pipeline attaches one nrg3:PhotovoltaicCollector per panel "
-                    "to the Building with the largest 2D LoD 2 roof overlap. "
-                    "Geometry is stamped flat at the roof plane Z evaluated "
-                    "at the panel centroid plus z_offset_m."
+                    "Optional external solar panel polygon source. When set, "
+                    "the pipeline attaches one nrg3:GenericSolarCollector per "
+                    "panel to the Building with the largest 2D LoD 2 roof "
+                    "overlap. The technology-agnostic GenericSolarCollector is "
+                    "emitted (rather than PhotovoltaicCollector) because the "
+                    "aerial-imagery source has no cell-type metadata. Geometry "
+                    "is stamped flat at the roof plane Z evaluated at the "
+                    "panel centroid plus z_offset_m."
                 ),
                 "additionalProperties": False,
                 "required": ["path", "layer"],

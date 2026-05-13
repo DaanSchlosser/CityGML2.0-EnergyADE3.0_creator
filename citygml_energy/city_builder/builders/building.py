@@ -20,9 +20,11 @@ index for buildings lives in ``docs/mapping_city.md``.
 BuildingUnit construction is co-located here because it is the only
 caller of :func:`build_building_unit` aside from a handful of focused
 unit tests; pulling it into its own module would just add an import
-cycle (BuildingUnit needs the Address builder, and the Building needs
-to attach BuildingUnits). The address + EPC bits are imported from
-sibling modules.
+cycle (the per-Pand orchestrator :func:`attach_building_units_to_building`
+needs both the Address builder — addresses are owned by the Building
+under :func:`bldg:address` — and the BuildingUnit builder, which it
+links to each address via an xlink reference). The address + EPC
+bits are imported from sibling modules.
 """
 
 from __future__ import annotations
@@ -164,7 +166,9 @@ def build_building(
     # viewers (FZK FZKViewer) would then surface the BAG number where the
     # user expects an address. Leaving ``gml:name`` empty is honest about
     # the fact that BAG carries no per-Pand human-readable label — only
-    # per-VBO addresses (which land on ``nrg3:BuildingUnit/bldg:address``).
+    # per-VBO addresses (which land on ``bldg:Building/bldg:address``,
+    # with each ``nrg3:BuildingUnit/nrg3:address`` xlinking the one that
+    # belongs to its VBO).
     building = building_cls(id=gml_id)
 
     # BAG Pand id attached as an nrg3:identifier with the authoritative
@@ -548,19 +552,29 @@ def _extend_polygon_targets(
 def build_building_unit(
     resolved: ResolvedAddress,
     build_context: BuildContext = BuildContext(),
+    *,
+    address_href: str | None = None,
 ) -> Any:
     """Build an ``nrg3:BuildingUnit`` for one VBO.
 
-    The VBO's address is attached via ``nrg3:address`` (the address
-    property on ``nrg3:BuildingUnit`` lives in the Energy ADE namespace,
-    not the ``bldg:`` namespace); the EP-online energy label (when
-    matched) is attached via ``nrg3:energyPerformanceCertificate``.
-    The mandatory ``nrg3:type`` element is filled with the first
-    ``gebruiksdoel`` value (``woonfunctie``, ``kantoorfunctie``, …).
+    The address itself is **not** attached here. Energy ADE 3.0's UML
+    tags ``BuildingUnit.address`` as ``relationType=association`` (XSD
+    line 1520-1526), meaning the property is a pointer; the address is
+    owned by the parent ``bldg:Building`` via the CityGML 2.0
+    composition slot ``bldg:AbstractBuildingType.address`` (composition,
+    XSD ``building.xsd`` line 78). The caller is expected to
+    :func:`build_address` once per VBO, append the result to
+    ``building.address``, and pass the resulting ``"#<gml:id>"``
+    fragment as *address_href* — this builder then emits an
+    xlink-only ``nrg3:address`` reference on the unit, preserving
+    the BuildingUnit→Address relationship without duplicating the
+    payload. See :func:`attach_building_units_to_building` for the
+    canonical orchestration.
 
-    The build context's SRS fields are passed through to
-    :func:`build_address` for the VBO ``geometriePunt``
-    (``core:Address/core:multiPoint``).
+    The EP-online energy label (when matched) is attached via
+    ``nrg3:energyPerformanceCertificate`` (composition, owned by the
+    unit). The mandatory ``nrg3:type`` element is filled with the first
+    ``gebruiksdoel`` value (``woonfunctie``, ``kantoorfunctie``, …).
     """
     unit_cls = resolve_class(BUILDING_UNIT)
 
@@ -660,11 +674,10 @@ def build_building_unit(
             )
         )
 
-    address = build_address(resolved, build_context)
-    if address is not None:
+    if address_href is not None:
         address_prop_cls = inner_type(unit_cls, "address")
         if address_prop_cls is not None:
-            unit.address.append(address_prop_cls(address=address))
+            unit.address.append(address_prop_cls(href=address_href))
 
     epc = build_epc(resolved, build_context)
     if epc is not None:
@@ -717,13 +730,30 @@ def attach_building_units_to_building(
     addresses: list[ResolvedAddress],
     build_context: BuildContext = BuildContext(),
 ) -> None:
-    """Wrap each resolved VBO in a ``BuildingUnit2`` and attach to *building*."""
+    """Wrap each resolved VBO in a ``BuildingUnit2`` and attach to *building*.
+
+    Each VBO's address is built once and attached to ``building.address``
+    (CityGML 2.0 composition slot, XSD ``building.xsd`` line 78); the
+    BuildingUnit then references it via xlink ``nrg3:address/@href``.
+    This matches the Energy ADE 3.0 UML tagging on ``BuildingUnit.address``
+    (``relationType=association``, XSD line 1520-1526): the address lives
+    once on the Building, and each unit-level reference is a pointer.
+    """
     if not addresses:
         return
     # mypy stub for ``_lru_cache_wrapper`` rejects ``type[Any]``; safe.
     wrapper_cls = inner_type(type(building), "building_unit")  # type: ignore[arg-type]
     if wrapper_cls is None:
         return
+    address_prop_cls = inner_type(type(building), "address")  # type: ignore[arg-type]
     for resolved in addresses:
-        unit = build_building_unit(resolved, build_context)
+        address_href: str | None = None
+        if address_prop_cls is not None:
+            address = build_address(resolved, build_context)
+            if address is not None:
+                building.address.append(address_prop_cls(address=address))
+                address_href = f"#{address.id}"
+        unit = build_building_unit(
+            resolved, build_context, address_href=address_href,
+        )
         building.building_unit.append(wrapper_cls(building_unit=unit))

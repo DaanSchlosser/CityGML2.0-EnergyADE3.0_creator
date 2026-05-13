@@ -93,7 +93,7 @@
       "type": "nrg3:BuildingUnit",
       "parent": "id_building_1",
       "id": "id_building_unit_1",
-      "description": "Sole verblijfsobject (VBO) inside the sample Pand. Net floor area, occupants, ownership and (when present) energy-performance certificate live here, mirroring the city-scale pipeline's per-VBO BuildingUnit shape.",
+      "description": "Sole verblijfsobject (VBO) inside the sample Pand. Net floor area, occupants, ownership and (when present) energy-performance certificate live here, mirroring the city-scale pipeline's per-VBO BuildingUnit shape. The address itself is owned by the parent Building (`bldg:address`, composition) and referenced from here via an xlink (Energy ADE 3.0 UML tags `BuildingUnit.address` as `relationType=association`).",
       "name": ["Sample Residence"],
       "creation_date": "2000-01-01",
       "identifier": [{"value": "SAMPLE-VBO-0000000000000000", "code_space": "https://example.invalid/register/verblijfsobject"}],
@@ -101,6 +101,7 @@
       "number_of_rooms": 4,
       "owner_name": "Sample Owner",
       "ownership_type": {"value": "occupantPrivateOwner", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OwnershipTypeValue.xml"},
+      "address": [{"href": "#id_address_1"}],
       "area": [
         {
           "qualified_area": {
@@ -114,7 +115,7 @@
     },
     {
       "type": "core:Address",
-      "parent": "id_building_unit_1",
+      "parent": "id_building_1",
       "id": "id_address_1",
       "xal_address": {
         "address_details": {
@@ -190,7 +191,7 @@
     },
     {
       "type": "nrg3:PhotovoltaicCollector",
-      "parent": "id_building_unit_1",
+      "parent": "id_building_1",
       "id": "pv_panel_1",
       "name": ["Sample PV collector"],
       "creation_date": "2000-01-02",

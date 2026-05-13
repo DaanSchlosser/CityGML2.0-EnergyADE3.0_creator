@@ -100,15 +100,29 @@ def test_multi_point_inherits_default_srs_name() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_building_unit_serialises_address_with_multi_point() -> None:
+def test_building_owns_address_and_unit_xlinks_to_it() -> None:
+    """Address is a child of Building (`bldg:address`, composition); the
+    BuildingUnit holds an xlink reference (`nrg3:address/@href`) per the
+    Energy ADE 3.0 UML ``BuildingUnit.address relationType=association``
+    tagging (XSD line 1520-1526). The multi_point lives on the inline
+    Address under the Building, not on the unit-level pointer.
+    """
     building = build_building(_parsed())
     attach_building_units_to_building(building, [_resolved(point=(85000.0, 446500.0))])
 
-    # Walk into the nested address dataclass to confirm the multi_point is
-    # present on the attached Address (not just on the builder's output).
-    unit = building.building_unit[0].building_unit
-    address = unit.address[0].address
+    # The inline address sits on the Building's composition slot.
+    assert len(building.address) == 1
+    address = building.address[0].address
+    assert address is not None
     assert address.multi_point is not None
+
+    # The BuildingUnit references the Building's address by xlink. The
+    # inline ``address`` field is None on a pure-href property type.
+    unit = building.building_unit[0].building_unit
+    assert len(unit.address) == 1
+    unit_address_prop = unit.address[0]
+    assert unit_address_prop.address is None
+    assert unit_address_prop.href == f"#{address.id}"
 
 
 def test_serialised_xml_contains_multi_point_with_pos() -> None:
@@ -128,3 +142,9 @@ def test_serialised_xml_contains_multi_point_with_pos() -> None:
     assert "<gml:pos" in xml
     # BAG x=85000, y=446500 appear together in the pos payload.
     assert "85000.0 446500.0" in xml
+    # Address is emitted once at Building level (`bldg:address`) and
+    # referenced from the BuildingUnit via xlink (`nrg3:address/@href`).
+    assert "<bldg:address" in xml
+    assert "<nrg3:address" in xml
+    # Exactly one inline ``<core:Address`` payload, owned by the Building.
+    assert xml.count("<core:Address ") == 1

@@ -133,11 +133,16 @@ class CityBuildConfig:
         gml_id_prefix: reserved for a future disambiguation scheme when
             multiple cities are merged; the BAG identificatie is
             globally unique already so this is left as an opt-in.
-        pv_panels_source: optional external PV panel polygon GeoPackage;
-            see :class:`citygml_energy.city_builder.pv_panels.PvPanelsSource`.
+        pv_panels_source: optional external solar panel polygon
+            GeoPackage; see
+            :class:`citygml_energy.city_builder.pv_panels.PvPanelsSource`.
             When present, the pipeline attaches one
-            ``nrg3:PhotovoltaicCollector`` per panel to the Building
-            whose LoD 2 RoofSurface has the largest 2D overlap.
+            ``nrg3:GenericSolarCollector`` per panel to the Building
+            whose LoD 2 RoofSurface has the largest 2D overlap. The
+            source is a 2D aerial annotation with no module-level
+            metadata, so the technology-agnostic
+            ``GenericSolarCollector`` is emitted rather than asserting
+            a specific cell type via ``PhotovoltaicCollector``.
         boundary_source: optional (free-form, possibly concave) polygon
             from a GeoPackage; see
             :class:`citygml_energy.city_builder.boundary.BoundarySource`.

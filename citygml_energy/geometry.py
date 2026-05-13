@@ -6,9 +6,13 @@ High-level flow:
   each geometry-source dict to the handler declared in
   :data:`GEOMETRY_SOURCE_SPECS`, then writes the accumulated bounding
   envelope onto the ``CityModel``.
-* :func:`apply_construction_mapping` post-processes the model to append
-  ``nrg3:layeredConstruction`` xlink:href references wherever the bindings
-  permit them.
+* Energy ADE 3.0 derived properties (``nrg3:layeredConstruction``,
+  ``bdgBdrySurf*``, ``bdgOpn*``) are appended in a single post-processing
+  pass by :func:`citygml_energy.derived_attributes.apply_derived_attributes`,
+  which consumes per-ADE emitter registrations from
+  :mod:`.construction_mapping` and :mod:`.boundary_attributes`. Adding
+  a new ADE (e.g. Scenario ADE) is a matter of dropping a sibling
+  emitter module and appending its ``EMITTERS`` at the call site.
 
 XSD-agnostic by design:
 
@@ -60,7 +64,6 @@ from ._step import (
     parse_named_shells,
 )
 from .bindings import Envelope
-from .construction_mapping import apply_construction_mapping  # re-exported
 from .core import CityModel
 from .device_relations import (  # re-exported; also sole source of _index_features
     DEFAULT_INSTALLED_ON_RELATION,
@@ -401,12 +404,17 @@ def apply_geometry_sources(
 # ---------------------------------------------------------------------------
 # Per-source-type dispatch
 #
-# ``apply_device_relations`` and ``apply_construction_mapping`` used to
-# live here; they now sit in their own modules (:mod:`.device_relations`
-# and :mod:`.construction_mapping`) and are re-imported at the top of
+# ``apply_device_relations`` used to live here; it now sits in its own
+# module (:mod:`.device_relations`) and is re-imported at the top of
 # this file so the public API (``from .geometry import
-# apply_device_relations, apply_construction_mapping``) is preserved
-# for existing callers.
+# apply_device_relations``) is preserved for existing callers.
+#
+# ``apply_construction_mapping`` and ``attach_boundary_surface_attributes``
+# have been replaced by :func:`citygml_energy.derived_attributes.apply_derived_attributes`,
+# which walks the model once and dispatches to per-ADE emitter
+# registrations declared in :mod:`.construction_mapping` and
+# :mod:`.boundary_attributes`. See :mod:`.derived_attributes` for the
+# seam contract.
 # ---------------------------------------------------------------------------
 
 
@@ -1032,7 +1040,6 @@ __all__ = [
     "SUPPORTED_GEOMETRY_SOURCE_TYPES",
     "GeometrySourceSpec",
     "TargetFieldSpec",
-    "apply_construction_mapping",
     "apply_device_relations",
     "apply_geometry_sources",
 ]

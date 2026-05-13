@@ -14,13 +14,13 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from .boundary_attributes import attach_boundary_surface_attributes
+from . import boundary_attributes, construction_mapping
 from .core import CityModel
+from .derived_attributes import apply_derived_attributes
 from .errors import InputFileError
 from .geometry import (
     GEOMETRY_SOURCE_SPECS,
     SUPPORTED_GEOMETRY_SOURCE_TYPES,
-    apply_construction_mapping,
     apply_device_relations,
     apply_geometry_sources,
 )
@@ -339,26 +339,28 @@ def build_city_model_from_feature_collection(
 
     # Device-to-surface relations resolve against the surface_name_index
     # populated during apply_geometry_sources, so they must run *after*
-    # geometry attachment.
+    # geometry attachment. Stays on its own seam: its config-driven shape
+    # (raise on unresolved device or target) does not fit the model-walk
+    # seam used for the derived-attribute properties below.
     try:
         apply_device_relations(model, device_relations)
     except ValueError as exc:
         raise InputFileError(str(exc)) from exc
 
-    construction_mapping = data.get("construction_mapping")
-    if construction_mapping is not None:
-        apply_construction_mapping(model, construction_mapping)
-
-    # Energy ADE 3.0 per-surface descriptors (``bdgBdrySurf*`` and
-    # ``bdgOpn*``) are computed last so the boundary attribute attacher
-    # can read both the geometry attached above and the
-    # ``layeredConstruction`` xlinks just resolved by
-    # :func:`apply_construction_mapping`. The attacher is a no-op for any
-    # surface or opening that has neither geometry nor a mapped
-    # construction, so a model authored without a construction_mapping
-    # block still gets clean Area / Inclination / Azimuth on every
-    # surface that has geometry.
-    attach_boundary_surface_attributes(model)
+    # Energy ADE 3.0 derived properties in one model walk. The seam owns
+    # iteration, list-field discovery, idempotence, and verification;
+    # the per-ADE compute functions live in ``construction_mapping``
+    # and ``boundary_attributes``. Registration order matters: the
+    # construction emitter writes ``layered_construction``; the
+    # boundary thickness + heat-capacity emitters read it. Adding a
+    # new ADE (Scenario, Noise, …) means dropping a sibling module and
+    # appending its ``EMITTERS`` here. No edit to the seam itself.
+    apply_derived_attributes(
+        model,
+        emitters=(*construction_mapping.EMITTERS, *boundary_attributes.EMITTERS),
+        setups=boundary_attributes.SETUPS,
+        construction_mapping=data.get("construction_mapping") or {},
+    )
 
     return model
 

@@ -1,13 +1,16 @@
-"""End-to-end test of the PV panel integration in the city pipeline.
+"""End-to-end test of the solar-panel integration in the city pipeline.
 
 Covers:
 
 * Config parsing of the optional ``pv_panels`` block.
 * Full pipeline path with :func:`load_panels_in_bbox` mocked to return
   fixture shapely polygons, asserting that the emitted ``CityModel``
-  carries ``nrg3:PhotovoltaicCollector`` features with the right
-  ``lod2MultiSurface`` Z, ``moduleArea``, ``cellType``, and
-  ``installedOn`` xlink back to the matched per-planar RoofSurface.
+  carries ``nrg3:GenericSolarCollector`` features with the right
+  ``lod2MultiSurface`` Z, ``moduleArea``, and ``installedOn`` xlink
+  back to the matched per-planar RoofSurface. The city pipeline emits
+  ``GenericSolarCollector`` (technology-agnostic) rather than
+  ``PhotovoltaicCollector`` because the aerial-imagery source has no
+  cell-type metadata.
 * XSD validity of the serialised GML.
 * Panels that overlap no LoD 2 roof are silently skipped.
 
@@ -400,36 +403,41 @@ def test_attach_pv_emits_expected_xsd_structure() -> None:
     attached = attach_pv_collectors_to_building(building, [panel], ctx)
     assert attached == 1
     assert len(building.device) == 1
-    pv = building.device[0].photovoltaic_collector
-    assert pv is not None
-    assert pv.id == f"pv_{_PAND_ID}_7"
-    assert pv.lod2_multi_surface is not None
-    assert pv.cell_type.value == "unknown"
+    # The city pipeline emits the technology-agnostic
+    # nrg3:GenericSolarCollector, not nrg3:PhotovoltaicCollector,
+    # because the aerial-imagery source has no cell-type metadata.
+    collector = building.device[0].generic_solar_collector
+    assert collector is not None
+    assert building.device[0].photovoltaic_collector is None
+    assert collector.id == f"pv_{_PAND_ID}_7"
+    assert collector.lod2_multi_surface is not None
+    # cellType is photovoltaic-specific and does not exist on
+    # GenericSolarCollectorType, so it is neither emitted nor checked.
 
     # uom tokens match the KIT SDM_KITModelViewer UOMList.xml primary ids
     # (m2 for SQUARE_METRE) and altIds (deg for DEGREE). An earlier version
     # of this test asserted "m^2" / "decimal degrees" which matched neither
     # the UoM XML nor the code — the viewer accepts only the canonical
     # tokens, so the test is pinned to what the pipeline actually emits.
-    assert pv.module_area.uom == "m2"
-    assert pv.module_area.value == 1.0
-    assert pv.inclination.uom == "deg"
-    assert pv.inclination.value == 30.0
-    assert pv.azimuth is not None
-    assert pv.azimuth.uom == "deg"
-    assert pv.azimuth.value == 180.0
+    assert collector.module_area.uom == "m2"
+    assert collector.module_area.value == 1.0
+    assert collector.inclination.uom == "deg"
+    assert collector.inclination.value == 30.0
+    assert collector.azimuth is not None
+    assert collector.azimuth.uom == "deg"
+    assert collector.azimuth.value == 180.0
 
     # referencePoint is a single gml:Point with 3D coords.
-    assert len(pv.reference_point) == 1
-    pt = pv.reference_point[0].point
+    assert len(collector.reference_point) == 1
+    pt = collector.reference_point[0].point
     assert pt.pos.value == [0.5, 0.5, 3.35]
     assert pt.srs_dimension == 3
 
     # installedOn href points at the specific RoofSurface polygon the
     # panel was matched to. With per-planar splitting the cube fixture
     # has exactly one RoofSurface (index 1).
-    assert len(pv.related_to) == 1
-    cor = pv.related_to[0].city_object_relation
+    assert len(collector.related_to) == 1
+    cor = collector.related_to[0].city_object_relation
     assert cor.relation_type.value == "installedOn"
     assert cor.related_to.href == f"#pand_{_PAND_ID}_roofsurface_1"
 
@@ -446,9 +454,9 @@ def test_attach_omits_azimuth_on_flat_roof() -> None:
         original_fid=3, azimuth_deg=None, inclination_deg=0.0
     )
     attach_pv_collectors_to_building(building, [panel], ctx)
-    pv = building.device[0].photovoltaic_collector
-    assert pv.azimuth is None
-    assert pv.inclination.value == 0.0
+    collector = building.device[0].generic_solar_collector
+    assert collector.azimuth is None
+    assert collector.inclination.value == 0.0
 
 
 def test_attach_drops_panels_when_no_lod2_roof_surface() -> None:
@@ -528,15 +536,15 @@ def test_pipeline_attaches_pv_collectors(
     building = model.xsd.city_object_member[0].building
     assert len(building.device) == 2  # the two on-roof panels only
 
-    pv_ids = {d.photovoltaic_collector.id for d in building.device}
-    assert pv_ids == {f"pv_{_PAND_ID}_1", f"pv_{_PAND_ID}_2"}
+    collector_ids = {d.generic_solar_collector.id for d in building.device}
+    assert collector_ids == {f"pv_{_PAND_ID}_1", f"pv_{_PAND_ID}_2"}
 
-    # Every PV points installedOn → the matched per-planar RoofSurface
-    # id. The cube fixture has exactly one RoofSurface, so both panels
-    # resolve to ``_roofsurface_1``.
+    # Every solar collector points installedOn → the matched per-planar
+    # RoofSurface id. The cube fixture has exactly one RoofSurface, so
+    # both panels resolve to ``_roofsurface_1``.
     expected_href = f"#pand_{_PAND_ID}_roofsurface_1"
     for d in building.device:
-        cor = d.photovoltaic_collector.related_to[0].city_object_relation
+        cor = d.generic_solar_collector.related_to[0].city_object_relation
         assert cor.related_to.href == expected_href
 
 

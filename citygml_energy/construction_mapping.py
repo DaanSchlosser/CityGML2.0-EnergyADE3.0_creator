@@ -1,15 +1,22 @@
-"""Post-processor: attach ``nrg3:layeredConstruction`` xlink refs.
+"""Energy ADE 3.0 emitter: ``nrg3:layeredConstruction`` xlink references.
 
-Split out of :mod:`citygml_energy.geometry` so the mapping concern has
-its own place. This module's only public surface is
-:func:`apply_construction_mapping`; every helper below it is private
-support for that one operation.
+Plug-in module for the :mod:`citygml_energy.derived_attributes` seam.
+Exports one :class:`DerivedAttribute` that, on every dataclass carrying
+a ``layered_construction`` list field, appends an xlink:href pointing at
+a LayeredConstruction library entry. The construction is resolved per
+object via:
 
-The traversal is XSD-agnostic: we walk the whole model via
-:func:`citygml_energy.mapping.iter_instances` and for every dataclass
-that declares a ``layered_construction`` list field in its bindings, we
-append an xlink:href based on ``by_id`` (keyed by ``gml:id``) or
-``by_type`` (keyed by the class's XSD element name). Regenerating the
+* ``construction_mapping["by_id"]``, keyed on the object's ``gml:id``.
+* ``construction_mapping["by_type"]``, keyed on the object's XSD element
+  name (``WallSurface``, ``RoofSurface``, ...). Fallback when the gml:id
+  is not in the by-id map.
+
+The compute function reads its config from the
+:class:`citygml_energy.derived_attributes.DerivedContext` under
+``construction_mapping`` (set by the call site).
+
+The traversal is binding-driven: every dataclass the XSD declares
+``layered_construction`` on participates automatically. Regenerating the
 bindings with new surface / opening / zone-boundary classes therefore
 picks up matching mappings without code changes.
 """
@@ -20,42 +27,52 @@ from functools import cache
 from typing import Any
 
 from .bindings import TypeType
-from .core import CityModel
-from .mapping import get_fields, iter_instances, resolve_class
+from .derived_attributes import DerivedAttribute, DerivedContext
+from .mapping import get_fields, resolve_class
 from .schema_types import LAYERED_CONSTRUCTION
 
-__all__ = ["apply_construction_mapping"]
+__all__ = ["EMITTERS"]
 
 
-def apply_construction_mapping(
-    model: CityModel,
-    mapping: dict[str, Any],
-) -> None:
-    """Append ``nrg3:layeredConstruction`` references wherever the XSD permits them.
+# ---------------------------------------------------------------------------
+# Compute
+# ---------------------------------------------------------------------------
 
-    Traverses the entire ``CityModel`` and, for each dataclass instance
-    that carries a ``layered_construction`` *list* field (per the generated
-    bindings), resolves a construction ID via ``by_id`` (keyed by
-    ``gml:id``) or falls back to ``by_type`` (keyed by the class's XSD
-    element name). A ``LayeredConstruction2`` xlink:href is appended when
-    a mapping is found.
 
-    Scope is therefore determined by the bindings, not by hand-maintained
-    taxonomy: boundary surfaces, openings, zone boundaries, and any other
-    class the XSD gives ``layered_construction`` receive matching mappings
-    without code changes. The caller is responsible for keeping the mapping
-    keys semantically appropriate for its domain.
+def _compute_layered_construction(
+    obj: Any, ctx: DerivedContext,
+) -> list[Any] | None:
+    """Return ``[xlink-wrapper]`` when *obj* maps to a construction, else None.
+
+    The seam handles idempotence (only called when ``layered_construction``
+    is empty) and field-presence (only called when the dataclass declares
+    the field as a list). The check on element-type matching is kept
+    locally: an unrelated xsdata class could in principle reuse the name
+    ``layered_construction``, and instantiating the wrong wrapper would
+    serialise to wrong XML rather than fail.
     """
-    by_type: dict[str, str] = mapping.get("by_type", {})
-    by_id: dict[str, str] = mapping.get("by_id", {})
+    info = get_fields(type(obj)).get("layered_construction")
+    if info is None or not info.is_list:
+        return None
+    if info.inner_type is not _layered_construction_ref_cls():
+        return None
 
-    for obj in iter_instances(model.xsd):
-        construction_list = _layered_construction_list(obj)
-        if construction_list is None:
-            continue
-        constr_id = _resolve_construction_id(obj, by_id, by_type)
-        if constr_id is not None:
-            construction_list.append(_make_construction_ref(constr_id))
+    mapping_cfg: dict[str, Any] = getattr(ctx, "construction_mapping", None) or {}
+    by_id: dict[str, str] = mapping_cfg.get("by_id", {})
+    by_type: dict[str, str] = mapping_cfg.get("by_type", {})
+
+    constr_id = _resolve_construction_id(obj, by_id, by_type)
+    if constr_id is None:
+        return None
+    return [_make_construction_ref(constr_id)]
+
+
+EMITTERS: tuple[DerivedAttribute, ...] = (
+    DerivedAttribute(
+        field_name="layered_construction",
+        compute=_compute_layered_construction,
+    ),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -74,25 +91,6 @@ def _make_construction_ref(construction_id: str) -> Any:
     ref = _layered_construction_ref_cls()(href=f"#{construction_id}")
     ref.type_value = TypeType.SIMPLE
     return ref
-
-
-def _layered_construction_list(obj: Any) -> list[Any] | None:
-    """Return the ``layered_construction`` list on *obj* if present.
-
-    Also verifies the list's element type matches the
-    ``nrg3:layeredConstruction`` wrapper. The field name alone isn't
-    enough because unrelated xsdata classes could theoretically reuse it.
-    """
-    # mypy's stub for ``_lru_cache_wrapper.__call__`` wants ``Hashable``;
-    # ``type[Any]`` is Hashable at runtime but the stub chain doesn't
-    # prove it. Safe to ignore until mypy ships a correct stub.
-    info = get_fields(type(obj)).get("layered_construction")  # type: ignore[arg-type]
-    if info is None or not info.is_list:
-        return None
-    if info.inner_type is not _layered_construction_ref_cls():
-        return None
-    value = getattr(obj, "layered_construction", None)
-    return value if isinstance(value, list) else None
 
 
 def _resolve_construction_id(

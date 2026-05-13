@@ -2,8 +2,10 @@
 
 Covers:
 
-* :func:`load_boundary_polygon` reads a single GeoJSON Feature and raises
-  actionable errors on FeatureCollection input, wrong CRS, or bad geometry.
+* :func:`load_boundary_polygon` reads a single GeoJSON Feature, accepts
+  a single-feature ``FeatureCollection`` (the QGIS default export shape),
+  and raises actionable errors on empty / multi-feature collections,
+  wrong CRS, or bad geometry.
 * :func:`filter_buildings_by_boundary` keeps only buildings whose 2D LoD 0
   footprint intersects the polygon, using "any overlap" semantics.
 * Config validation rejects ``bbox`` + ``boundary`` set simultaneously,
@@ -181,11 +183,14 @@ def _write_geojson(
     *,
     crs: str | None = "urn:ogc:def:crs:EPSG::28992",
     geojson_type: str = "Feature",
+    feature_count: int = 1,
 ) -> None:
     """Write a minimal GeoJSON file in the given CRS.
 
-    *geojson_type* controls the root ``type`` field so tests can verify
-    that non-Feature roots are rejected.
+    *geojson_type* controls the root ``type`` field (``Feature`` or
+    ``FeatureCollection``). *feature_count* controls how many features
+    a FeatureCollection carries; ignored when *geojson_type* is
+    ``Feature``.
     """
     import json
 
@@ -194,7 +199,10 @@ def _write_geojson(
     if geojson_type == "Feature":
         doc: dict = feature
     else:
-        doc = {"type": geojson_type, "features": [feature]}
+        doc = {
+            "type": geojson_type,
+            "features": [feature for _ in range(feature_count)],
+        }
     if crs is not None:
         doc["crs"] = {"type": "name", "properties": {"name": crs}}
     path.write_text(json.dumps(doc), encoding="utf-8")
@@ -207,11 +215,51 @@ def test_load_boundary_from_geojson_feature(tmp_path: Path) -> None:
     assert geom.bounds == (0.0, 0.0, 10.0, 10.0)
 
 
-def test_load_boundary_rejects_feature_collection(tmp_path: Path) -> None:
-    """A FeatureCollection is not a single-polygon boundary and must be rejected."""
+def test_load_boundary_accepts_single_feature_collection(tmp_path: Path) -> None:
+    """QGIS' "Export selected features" default emits a single-Feature
+    FeatureCollection even for one polygon; the loader unwraps it
+    rather than forcing every author to hand-edit the file.
+    """
     path = tmp_path / "area.geojson"
-    _write_geojson(path, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)], geojson_type="FeatureCollection")
-    with pytest.raises(ValueError, match="single"):
+    _write_geojson(
+        path,
+        [(0, 0), (10, 0), (10, 10), (0, 10), (0, 0)],
+        geojson_type="FeatureCollection",
+        feature_count=1,
+    )
+    geom = load_boundary_polygon(BoundarySource(path=path))
+    assert geom.bounds == (0.0, 0.0, 10.0, 10.0)
+
+
+def test_load_boundary_rejects_empty_feature_collection(tmp_path: Path) -> None:
+    """A FeatureCollection with no features is an authoring slip, not a
+    valid boundary; it must fail loudly rather than silently producing
+    an empty extent that would drop every building.
+    """
+    path = tmp_path / "area.geojson"
+    _write_geojson(
+        path,
+        [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)],
+        geojson_type="FeatureCollection",
+        feature_count=0,
+    )
+    with pytest.raises(ValueError, match="empty FeatureCollection"):
+        load_boundary_polygon(BoundarySource(path=path))
+
+
+def test_load_boundary_rejects_multi_feature_collection(tmp_path: Path) -> None:
+    """The build extent is a single, deliberately authored polygon, so a
+    FeatureCollection with two or more features must be rejected
+    rather than silently picking the first.
+    """
+    path = tmp_path / "area.geojson"
+    _write_geojson(
+        path,
+        [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)],
+        geojson_type="FeatureCollection",
+        feature_count=2,
+    )
+    with pytest.raises(ValueError, match="2 features"):
         load_boundary_polygon(BoundarySource(path=path))
 
 

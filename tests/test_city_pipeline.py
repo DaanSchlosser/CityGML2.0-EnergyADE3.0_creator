@@ -211,9 +211,17 @@ def test_pipeline_builds_and_serialises(tmp_path: Path, mocked_pipeline) -> None
     assert len(building.building_unit) == 1
 
     unit = building.building_unit[0].building_unit
-    assert unit.address  # at least one bldg:address
     assert unit.energy_performance_certificate  # EP-online matched
     assert unit.energy_performance_certificate[0].energy_performance_certificate.label == "A"
+
+    # The inline ``core:Address`` payload lives once on the Building via
+    # the CityGML 2.0 composition slot ``bldg:address`` (XSD line 78);
+    # the BuildingUnit carries an xlink reference only. See
+    # :func:`attach_building_units_to_building` for the orchestration.
+    assert len(building.address) == 1
+    assert unit.address and unit.address[0].address is None
+    assert unit.address[0].href is not None and unit.address[0].href.startswith("#")
+    assert unit.address[0].href == f"#{building.address[0].address.id}"
 
     # Address now wraps the locality in an ``xAL:Country`` element. The
     # locality name comes from the VBO's BAG ``woonplaats`` when set,
@@ -221,7 +229,7 @@ def test_pipeline_builds_and_serialises(tmp_path: Path, mocked_pipeline) -> None
     # municipality). This fixture's VBO has no woonplaats, so the
     # ``city_name="Delft"`` fallback shows up here; in production every
     # PDOK BAG VBO carries woonplaats directly.
-    addr_details = unit.address[0].address.xal_address.address_details
+    addr_details = building.address[0].address.xal_address.address_details
     country = addr_details.country
     assert country is not None
     assert country.country_name_code[0].content[0] == "NL"

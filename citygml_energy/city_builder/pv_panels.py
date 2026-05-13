@@ -1,9 +1,19 @@
-"""Attach external PV panel polygons to LoD 2 roofs as ``nrg3:PhotovoltaicCollector``.
+"""Attach external solar panel polygons to LoD 2 roofs as ``nrg3:GenericSolarCollector``.
 
 The city-scale pipeline consumes 3DBAG + BAG + EP-online. This module
 plugs a third geometry source on top: an OGC GeoPackage of 2D panel
 array polygons (e.g. the University of Groningen aerial-imagery dataset
 at Zenodo 14860030, CC-BY-4.0).
+
+The source dataset is a 2D aerial-imagery annotation of "solar panel"
+polygons with no module-level metadata. We cannot tell from the source
+whether a given polygon is photovoltaic, solar-thermal, or hybrid, so
+the emitter uses ``nrg3:GenericSolarCollector`` (the type-agnostic
+substitution group member under ``nrg3:AbstractSolarCollector``) rather
+than asserting any specific cell technology with
+``nrg3:PhotovoltaicCollector``. All inherited solar-collector fields
+from :class:`AbstractSolarCollectorType` (``moduleArea``, ``azimuth``,
+``inclination``, ``lod2MultiSurface``) still apply.
 
 The integration is deliberately narrow:
 
@@ -19,7 +29,7 @@ The integration is deliberately narrow:
   annotation is a 2D footprint from aerial imagery with no tilt
   information, so stamping a planar projection avoids inventing
   geometry we cannot verify. One consequence: the emitted
-  :class:`PhotovoltaicCollector` leaves ``azimuth`` and ``inclination``
+  :class:`GenericSolarCollector` leaves ``azimuth`` and ``inclination``
   unset — a slope-derived value would contradict the horizontal polygon.
 
 All CPU-heavy work (GPKG read, spatial index build, matching,
@@ -48,7 +58,7 @@ from ..bindings import (
     CityObjectRelation,
     CodeType,
     Device,
-    PhotovoltaicCollector,
+    GenericSolarCollector,
     Point,
     Pos,
     ReferencePoint,
@@ -56,7 +66,7 @@ from ..bindings import (
     TypeType,
 )
 from ..gml_builders import build_multi_surface, newell_normal
-from ..namespaces import CS_NRG3_CELL_TYPE, CS_NRG3_RELATION_TYPE
+from ..namespaces import CS_NRG3_RELATION_TYPE
 from .builders._common import UOM_AREA_M2, UOM_DEGREES
 from .config import BuildContext
 from .builders.building import (
@@ -98,13 +108,15 @@ _UOM_DEGREES: str = UOM_DEGREES
 _HORIZONTAL_EPS: float = 1e-6
 
 # gml:id prefix for the collectors. BAG identificaties lead with a
-# digit, so the prefix is what keeps them as valid XML NCNames.
+# digit, so the prefix is what keeps them as valid XML NCNames. The
+# ``pv_`` prefix is retained for stability with the source dataset's
+# name ("PV panels GeoPackage"); the emitted XSD type is the
+# technology-agnostic ``nrg3:GenericSolarCollector``.
 _PV_ID_PREFIX: str = "pv_"
 
-# Pre-built CodeType singletons. Every collector we emit shares these
-# exact values, and xsdata serialisation is read-only, so caching at
+# Pre-built CodeType singleton. Every collector we emit shares this
+# exact value, and xsdata serialisation is read-only, so caching at
 # module scope saves a few hundred allocations on a full-town run.
-_CELL_TYPE_UNKNOWN: CodeType = CodeType(value="unknown", code_space=CS_NRG3_CELL_TYPE)
 _RELATION_INSTALLED_ON: CodeType = CodeType(
     value="installedOn", code_space=CS_NRG3_RELATION_TYPE
 )
@@ -622,7 +634,7 @@ def _inclination_from_normal(n_unit: tuple[float, float, float]) -> float:
 
 
 # ---------------------------------------------------------------------------
-# xsdata authoring: per-building PhotovoltaicCollector attach
+# xsdata authoring: per-building GenericSolarCollector attach
 # ---------------------------------------------------------------------------
 
 
@@ -631,18 +643,26 @@ def attach_pv_collectors_to_building(
     panels_for_pand: list[ProjectedPanel],
     build_context: BuildContext = BuildContext(),
 ) -> int:
-    """Append one ``nrg3:PhotovoltaicCollector`` per panel; return the count.
+    """Append one ``nrg3:GenericSolarCollector`` per panel; return the count.
+
+    The source dataset is a 2D aerial-imagery annotation of "solar
+    panel" polygons with no module-level metadata, so we cannot tell
+    whether a given polygon is photovoltaic, solar-thermal, or hybrid.
+    Each panel is emitted as the technology-agnostic
+    ``nrg3:GenericSolarCollector`` (substitution-group member under
+    ``nrg3:AbstractSolarCollector``), not ``nrg3:PhotovoltaicCollector``
+    — the latter would imply a ``cellType`` we have no source for.
 
     A collector carries:
 
     * ``gml:id = "pv_{pand_id}_{original_fid}"`` — NCName-safe via the
-      ``pv_`` prefix (BAG identificatie starts with a digit).
+      ``pv_`` prefix (BAG identificatie starts with a digit). The
+      prefix is kept for traceability to the source ("PV panels"
+      GeoPackage) even though the emitted XSD type is generic.
     * ``lod2MultiSurface`` — the pre-projected polygons from
       :func:`match_and_project_panels`.
     * ``moduleArea`` (m²) — the 2D polygon area, which equals the
       emitted surface area because the panel is stamped flat.
-    * ``cellType = "unknown"`` — the aerial-imagery source has no
-      module-level detail.
     * ``relatedTo[installedOn] → #<roof_gml_id>`` — intra-document
       xlink to the specific LoD 2 ``bldg:RoofSurface`` polygon the
       panel was matched to. The target id is derived from
@@ -672,7 +692,7 @@ def attach_pv_collectors_to_building(
         # output document. Dropping the panels keeps the GML free of
         # dangling hrefs.
         _LOG.warning(
-            "building %r has no LoD 2 boundary surfaces; %d PV panel(s) dropped",
+            "building %r has no LoD 2 boundary surfaces; %d solar panel(s) dropped",
             building_id,
             len(panels_for_pand),
         )
@@ -686,57 +706,63 @@ def attach_pv_collectors_to_building(
         roof_gml_id = lod2_thematic_surface_gml_id(
             building_id, "RoofSurface", panel.roof_index,
         )
-        pv = _build_pv_collector(
-            pv_gml_id=f"{_PV_ID_PREFIX}{pand_id}_{panel.original_fid}",
+        collector = _build_solar_collector(
+            collector_gml_id=f"{_PV_ID_PREFIX}{pand_id}_{panel.original_fid}",
             roof_gml_id=roof_gml_id,
             panel=panel,
             srs_name=build_context.srs_name,
             srs_dimension=build_context.srs_dimension,
         )
-        building.device.append(Device(photovoltaic_collector=pv))
+        building.device.append(Device(generic_solar_collector=collector))
     return len(panels_for_pand)
 
 
-def _build_pv_collector(
+def _build_solar_collector(
     *,
-    pv_gml_id: str,
+    collector_gml_id: str,
     roof_gml_id: str,
     panel: ProjectedPanel,
     srs_name: str,
     srs_dimension: int,
-) -> PhotovoltaicCollector:
-    """Materialise one ``nrg3:PhotovoltaicCollector`` from a :class:`ProjectedPanel`.
+) -> GenericSolarCollector:
+    """Materialise one ``nrg3:GenericSolarCollector`` from a :class:`ProjectedPanel`.
 
-    Populated fields match the Alderaan reference in
-    ``Energy_ADE-3.0beta8/test_data/Alderaan_Energy_ADE_All.gml``.
-    Device-catalog fields (``model``, ``yearOfManufacture``,
-    ``numberOfDevices``, ``installedPower``, ``nominalEfficiency``,
-    ``heatDissipation*``, ``apertureArea``, ``deviceOperation``,
-    ``validFrom``/``validTo``) are deliberately left unset: a single
-    2D aerial polygon carries no information about any of them.
+    Populated fields match the ``AbstractSolarCollectorType`` slots
+    exposed by ``GenericSolarCollector``: ``moduleArea``,
+    ``inclination``, optional ``azimuth``, ``lod2MultiSurface``, plus
+    the inherited ``referencePoint`` and ``relatedTo`` carried from
+    ``AbstractDeviceType``. Device-catalog fields (``model``,
+    ``yearOfManufacture``, ``numberOfDevices``, ``installedPower``,
+    ``nominalEfficiency``, ``heatDissipation*``, ``apertureArea``,
+    ``deviceOperation``, ``validFrom``/``validTo``) are deliberately
+    left unset: a single 2D aerial polygon carries no information
+    about any of them. ``cellType`` does not exist on
+    ``GenericSolarCollector`` at all (it is photovoltaic-specific), so
+    there is nothing to emit even as a sentinel.
     """
-    pv = PhotovoltaicCollector(
-        id=pv_gml_id,
-        cell_type=_CELL_TYPE_UNKNOWN,
+    collector = GenericSolarCollector(
+        id=collector_gml_id,
         module_area=AreaType(value=round(panel.footprint_area_m2, 3), uom=_UOM_AREA_M2),
         inclination=AngleType(
             value=round(panel.inclination_deg, 2), uom=_UOM_DEGREES
         ),
         lod2_multi_surface=build_multi_surface(
-            f"{pv_gml_id}_lod2",
+            f"{collector_gml_id}_lod2",
             list(panel.lod2_polygons),
             srs_name=srs_name,
             srs_dimension=srs_dimension,
         ),
     )
     if panel.azimuth_deg is not None:
-        pv.azimuth = AngleType(value=round(panel.azimuth_deg, 2), uom=_UOM_DEGREES)
+        collector.azimuth = AngleType(
+            value=round(panel.azimuth_deg, 2), uom=_UOM_DEGREES
+        )
 
     rx, ry, rz = panel.reference_point
-    pv.reference_point.append(
+    collector.reference_point.append(
         ReferencePoint(
             point=Point(
-                id=f"{pv_gml_id}_refpoint",
+                id=f"{collector_gml_id}_refpoint",
                 srs_name_attribute=srs_name,
                 srs_dimension=srs_dimension,
                 pos=Pos(value=[rx, ry, rz]),
@@ -746,7 +772,7 @@ def _build_pv_collector(
 
     _related_to_ref = AbstractCityObjectPropertyType(href=f"#{roof_gml_id}")
     _related_to_ref.type_value = TypeType.SIMPLE
-    pv.related_to.append(
+    collector.related_to.append(
         RelatedTo(
             city_object_relation=CityObjectRelation(
                 relation_type=_RELATION_INSTALLED_ON,
@@ -754,6 +780,6 @@ def _build_pv_collector(
             )
         )
     )
-    return pv
+    return collector
 
 

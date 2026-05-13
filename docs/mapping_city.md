@@ -27,7 +27,7 @@
 
 All `codeSpace` URLs are pinned in [`citygml_energy/namespaces.py`](../citygml_energy/namespaces.py). The two `core:externalReference/informationSystem` URLs (`BGT_INFORMATION_SYSTEM_URL`, `BOR_INFORMATION_SYSTEM_URL`) are pinned in their respective fetcher modules ([`fetchers/bgt.py`](../citygml_energy/city_builder/fetchers/bgt.py), [`fetchers/emmen_bor.py`](../citygml_energy/city_builder/fetchers/emmen_bor.py)) because they are not codeSpaces. The codeSpace of a `gml:CodeType` identifies the vocabulary, not the field; off-codelist values are valid as long as the codeSpace names the vocabulary they belong to.
 
-**Output features.** Every BAG Pand becomes one `bldg:Building`; every BAG VBO becomes one `nrg3:BuildingUnit` parented to its Pand. Every CFTree reconstruction becomes one `veg:SolitaryVegetationObject`. Every PV panel polygon becomes one `nrg3:PhotovoltaicCollector` parented to a Building.
+**Output features.** Every BAG Pand becomes one `bldg:Building`; every BAG VBO becomes one `nrg3:BuildingUnit` parented to its Pand. Every CFTree reconstruction becomes one `veg:SolitaryVegetationObject`. Every PV-panel polygon becomes one `nrg3:GenericSolarCollector` parented to a Building (technology-agnostic: the aerial-imagery source has no cell-type metadata, so we deliberately do not assert `nrg3:PhotovoltaicCollector`).
 
 ## At-a-glance
 
@@ -39,7 +39,7 @@ All `codeSpace` URLs are pinned in [`citygml_energy/namespaces.py`](../citygml_e
 | 4 | PDOK BAG `bag:verblijfsobject` | 14 properties + geometry | 11 + geometry | `nrg3:BuildingUnit` + `core:Address` |
 | 5 | 3DBAG CityJSON tile | 62 `Building` attributes + LoD 0/1.2/2.2 geometries | 8 attributes + 3 LoD geometries | `bldg:lod0FootPrint` + `bldg:lod1Solid` + `bldg:boundedBy/lod2MultiSurface` + `nrg3:bdgHeight` (`QualifiedHeight`, `type="maxHeightAboveGround"`) + `bldg:roofType` + `bldg:storeysAboveGround` + `nrg3:bdgVolume` |
 | 6 | EP-online `Mutatiebestand` CSV | 42 columns | 20 | `nrg3:EnergyPerformanceCertificate` + `app:Appearance` (theme `energyLabel`) + per-VBO `nrg3:QualifiedArea` (thermal-zone) + per-VBO `nrg3:Energy` resources (regime-aware) + native `nrg3:bdgType` (Pand level) + per-VBO `gen:*Attribute` classification + `nrg3:Metadata` source attribution |
-| 7 | PV panels GeoPackage | 2 columns + geometry | 2 + geometry | `nrg3:PhotovoltaicCollector` |
+| 7 | PV panels GeoPackage | 2 columns + geometry | 2 + geometry | `nrg3:GenericSolarCollector` |
 | 8 | CFTree `trees_lod3.city.json` | 10 attributes + LoD 3 geometry | 9 + geometry | `veg:SolitaryVegetationObject` + `veg:lod3Geometry` |
 | 9 | BGT `vegetatieobject_punt` | 23 properties + geometry | 5 + geometry | `core:externalReference` + `gen:dateAttribute` (cross-reference layer; no biological attributes) |
 | 10 | Gemeente Emmen `bor_groen_bomen_beschermd` | 11 fields | 11 | `veg:species` + `core:externalReference` + `gen:*Attribute` siblings (BOR enrichment, only used in Emmen runs) |
@@ -132,7 +132,7 @@ VBO-level attributes go on `nrg3:BuildingUnit` (one VBO per BuildingUnit, parent
 | `pandstatus` | `"Pand in gebruik"` |   |   | Redundant with the Pand's own `status`. Ignored. |
 | `rdf_seealso` | — |   |   | Linked-data URI; implicit (same URL shape as the Pand `rdf_seealso` drives the VBO codeSpace). |
 
-**Address property element is `nrg3:address`, not `bldg:address`.** The address attaches to `nrg3:BuildingUnit` via the Energy ADE-defined `address` element on `BuildingUnitType` (XSD line 1520, `core:AddressPropertyType`, `[0..*]`), not via the CityGML 2.0 `bldg:address` slot on `bldg:Building`. The `core:Address` payload inside is identical, but a consumer that walks CityGML 2.0 buildings looking for `bldg:address` will miss every Dutch address this pipeline emits; consumers should look under `nrg3:address` of each `nrg3:BuildingUnit` instead.
+**Address ownership: `bldg:Building/bldg:address` (composition); `nrg3:BuildingUnit/nrg3:address` is an xlink reference.** Each VBO's `core:Address` is emitted exactly once, as a child of the parent `bldg:Building` via the CityGML 2.0 composition slot `bldg:AbstractBuildingType.address` (XSD `building.xsd` line 78, `core:AddressPropertyType`, `[0..*]`). Each `nrg3:BuildingUnit` then references its own address via `nrg3:address/@xlink:href`, with no inline `core:Address` payload. This matches the Energy ADE 3.0 UML, which tags `BuildingUnit.address` as `relationType=association` (XSD line 1520-1526) — i.e. a pointer to a `core:Address` owned elsewhere, not a composition. A consumer that walks CityGML 2.0 buildings looking for `bldg:address` therefore sees every Dutch address; the unit-level `nrg3:address/@xlink:href` makes the BuildingUnit → Address relationship resolvable without duplicating the payload.
 
 **Tooling caveat for huisletter / huisnummertoevoeging.** 3DCityDB v5's `XALAddressWalker` overrides `visit()` for `ThoroughfareName` / `ThoroughfareNumber` / `LocalityName` / `PostalCodeNumber` / `CountryName` / `PostBoxNumber` only; the `ThoroughfareNumberSuffix` elements are never copied into the `HOUSE_NUMBER` column. Round-tripping a BAG address through 3DCityDB therefore loses the structured suffixes. The flat-form denormalisation embedded in `ThoroughfareNumber` (`38B-rood-2`) keeps the full identifier accessible to such consumers; the structured suffix elements remain available for tools that look for them.
 
@@ -414,7 +414,7 @@ Structural distribution to keep in mind:
 - The remaining EP-online emissions (`bdgSubtypeEPOnline`, `epOnlineAandeelHernieuwbareEnergie`, and however many `nrg3:Energy` resources the regime emits) live on each `nrg3:BuildingUnit`.
 - One `nrg3:Metadata` block per BuildingUnit attributes EP-online for the per-VBO emissions on that unit.
 
-The snippet below is **schema-derived, not byte-verified against a city-pipeline run**: the surrounding fact tables are exercised by `tests/test_mapping_index_in_sync.py`, but the exact xsdata serialization order shown here has not been diffed against a fresh AOI output. Element ordering follows the XSD sequence as resolved by xsdata: inside `nrg3:Metadata`, `qualityDescription` precedes `source`; on `bldg:Building`, every `_GenericApplicationPropertyOfCityObject` substitution (`nrg3:Metadata`, `nrg3:identifier`, `gen:intAttribute`) appears *before* the `bldg:Building` sequence (`yearOfConstruction`, `roofType`, `storeysAboveGround`, `buildingUnit`), and every `_GenericApplicationPropertyOfAbstractBuilding` substitution (`nrg3:bdgType`, `nrg3:bdgVolume`, `nrg3:bdgHeight`) appears *after* it; on `nrg3:BuildingUnit`, children fall as `Metadata`, then resources, identifier, generic attributes, areas, type, address, EPC. No `gml:name` on the Building (BAG carries no per-Pand human-readable label, see §3); no `gml:id` on the `nrg3:Energy` resources (the code does not assign one). The four NTA 8800 resources are emitted in the order BENG-2 → BENG-1 → Warmtebehoefte → BerekendeEnergieverbruik (the order in [`_attach_nta8800_resources`](../citygml_energy/city_builder/energy_resources.py)). When this section is reconciled against a real city-AOI GML, any divergence should update the snippet rather than the code.
+The snippet below is **schema-derived, not byte-verified against a city-pipeline run**: the surrounding fact tables are exercised by `tests/test_mapping_index_in_sync.py`, but the exact xsdata serialization order shown here has not been diffed against a fresh AOI output. Element ordering follows the XSD sequence as resolved by xsdata: inside `nrg3:Metadata`, `qualityDescription` precedes `source`; on `bldg:Building`, every `_GenericApplicationPropertyOfCityObject` substitution (`nrg3:Metadata`, `nrg3:identifier`, `gen:intAttribute`) appears *before* the `bldg:Building` sequence (`yearOfConstruction`, `roofType`, `storeysAboveGround`, `buildingUnit`, `bldg:address`), and every `_GenericApplicationPropertyOfAbstractBuilding` substitution (`nrg3:bdgType`, `nrg3:bdgVolume`, `nrg3:bdgHeight`) appears *after* it; on `nrg3:BuildingUnit`, children fall as `Metadata`, then resources, identifier, generic attributes, areas, type, address (xlink only), EPC. The full inline `core:Address` (xAL + multiPoint) is emitted once at Building level under `bldg:address`; each `nrg3:address` on a BuildingUnit carries only an `xlink:href` to it. No `gml:name` on the Building (BAG carries no per-Pand human-readable label, see §3); no `gml:id` on the `nrg3:Energy` resources (the code does not assign one). The four NTA 8800 resources are emitted in the order BENG-2 → BENG-1 → Warmtebehoefte → BerekendeEnergieverbruik (the order in [`_attach_nta8800_resources`](../citygml_energy/city_builder/energy_resources.py)). When this section is reconciled against a real city-AOI GML, any divergence should update the snippet rather than the code.
 
 ```xml
 <bldg:Building gml:id="pand_0114100000206140">
@@ -442,6 +442,18 @@ The snippet below is **schema-derived, not byte-verified against a city-pipeline
   <!-- ...remaining 3DBAG-derived bldg:* attributes (bldg:roofType,
        bldg:storeysAboveGround) and LoD 0/1/2 geometries elided for
        brevity; see §5 for the full inventory... -->
+
+  <!-- Each VBO's address is emitted once at Building level under the
+       CityGML 2.0 composition slot bldg:address (XSD bldg:AbstractBuildingType
+       line 78). Below, nrg3:BuildingUnit/nrg3:address holds only an
+       xlink:href to the matching addr_<VBO-id>. The inline payload (xAL
+       + multiPoint from BAG geometriePunt) lives here, not on the unit. -->
+  <bldg:address>
+    <core:Address gml:id="addr_0114010000274521">
+      <core:xalAddress>...xAL...</core:xalAddress>
+      <core:multiPoint>...gml:MultiPoint (BAG geometriePunt)...</core:multiPoint>
+    </core:Address>
+  </bldg:address>
 
   <nrg3:buildingUnit>
     <nrg3:BuildingUnit gml:id="bu_0114010000274521">
@@ -537,15 +549,13 @@ The snippet below is **schema-derived, not byte-verified against a city-pipeline
 
       <nrg3:type codeSpace="http://bag.basisregistraties.overheid.nl/id/concept/Gebruiksdoel">woonfunctie</nrg3:type>
 
-      <!-- Address property on nrg3:BuildingUnit lives in the Energy ADE
-           namespace (nrg3:address), NOT bldg:address. The xAL payload
-           inside is identical to the per-building pipeline's address. -->
-      <nrg3:address>
-        <core:Address gml:id="addr_0114010000274521">
-          <core:xalAddress>...xAL...</core:xalAddress>
-          <core:multiPoint>...gml:MultiPoint...</core:multiPoint>
-        </core:Address>
-      </nrg3:address>
+      <!-- nrg3:address on the BuildingUnit is an xlink reference: the
+           full inline core:Address (xAL + multiPoint) lives once on the
+           parent bldg:Building via the CityGML 2.0 composition slot
+           bldg:address. EnergyADE 3.0 UML tags BuildingUnit.address as
+           relationType="association" (XSD line 1520-1526), so the
+           BuildingUnit holds a pointer, not a copy. -->
+      <nrg3:address xlink:href="#addr_0114010000274521"/>
 
       <nrg3:energyPerformanceCertificate>
         <nrg3:EnergyPerformanceCertificate gml:id="epc_0114010000274521">
@@ -640,12 +650,10 @@ For comparison, here is what a row from VBO `0114010000280857` (Hoofdkanaal WZ 3
 
   <nrg3:type codeSpace="http://bag.basisregistraties.overheid.nl/id/concept/Gebruiksdoel">woonfunctie</nrg3:type>
 
-  <nrg3:address>
-    <core:Address gml:id="addr_0114010000280857">
-      <core:xalAddress>...xAL...</core:xalAddress>
-      <core:multiPoint>...gml:MultiPoint...</core:multiPoint>
-    </core:Address>
-  </nrg3:address>
+  <!-- Same address-ownership pattern as the NTA 8800 example above: the
+       inline core:Address lives on the parent bldg:Building under
+       bldg:address; here on the BuildingUnit we hold only the xlink. -->
+  <nrg3:address xlink:href="#addr_0114010000280857"/>
 
   <nrg3:energyPerformanceCertificate>
     <nrg3:EnergyPerformanceCertificate gml:id="epc_0114010000280857">
@@ -693,12 +701,14 @@ The contrast against the NTA 8800 example is the regime asymmetry in microcosm: 
 
 The table is deliberately minimal: only geometry and a row identifier.
 
+**Output type.** Each panel polygon is emitted as one `nrg3:GenericSolarCollector` (a substitution-group member under `nrg3:AbstractSolarCollector`), **not** `nrg3:PhotovoltaicCollector`. The aerial-imagery source annotates "solar panel" footprints with no module-level metadata; we cannot tell whether a given array is photovoltaic, solar-thermal, or hybrid, so the technology-agnostic generic type is used. `nrg3:PhotovoltaicCollector` would require a `cellType` value we have no source for.
+
 | GPKG column | Type | Read | Used for |
 |---|---|---|---|
-| `fid` | INTEGER PK | ✓ | Embedded in the `nrg3:PhotovoltaicCollector/@gml:id` (`pv_{pand_id}_{fid}`) so every emitted collector is traceable back to one GPKG row. |
+| `fid` | INTEGER PK | ✓ | Embedded in the `nrg3:GenericSolarCollector/@gml:id` (`pv_{pand_id}_{fid}`) so every emitted collector is traceable back to one GPKG row. The `pv_` prefix is preserved for source-data continuity (the GeoPackage layer is named `pv_panels`); it is not a type assertion. |
 | `geom` | MULTIPOLYGON (EPSG:28992) | ✓ | Projected onto the matched LoD 2 roof plane to form the collector's `lod2MultiSurface`. |
 
-Derived PV fields (computed in-pipeline from the geometry + roof facet, not read from the GPKG):
+Derived solar-collector fields (computed in-pipeline from the geometry + roof facet, not read from the GPKG):
 
 | Emitted field | Computed from | uom |
 |---|---|---|
@@ -706,9 +716,8 @@ Derived PV fields (computed in-pipeline from the geometry + roof facet, not read
 | `nrg3:inclination` | angle between roof Newell normal and vertical | `deg` |
 | `nrg3:azimuth` | compass bearing of horizontal projection of roof normal (0° = N) | `deg`; `None` on flat roofs |
 | `nrg3:referencePoint` (single `gml:Point`) | panel centroid lifted to the roof plane + `z_offset_m` (default 0.1 m) | — |
-| `nrg3:cellType` | constant `"unknown"` (codeSpace = `CS_NRG3_CELL_TYPE`) | — |
 | `nrg3:CityObjectRelation` with `type="installedOn"` | the `gml:id` of the matched `bldg:RoofSurface` | xlink only |
-| every other `nrg3:*Collector` field (`model`, `yearOfManufacture`, `installedPower`, `nominalEfficiency`, `apertureArea`, `heatDissipation*`, `validFrom/validTo`, ...) | — | Deliberately unset: a single 2D aerial polygon carries no information about any of them. |
+| every other `nrg3:*Collector` field (`model`, `yearOfManufacture`, `installedPower`, `nominalEfficiency`, `apertureArea`, `heatDissipation*`, `validFrom/validTo`, ...) | — | Deliberately unset: a single 2D aerial polygon carries no information about any of them. `nrg3:cellType` does not exist on `GenericSolarCollectorType` at all (it is photovoltaic-specific), so there is nothing to emit. |
 
 **Coverage:** 4 389 panels in the full GPKG; the AOI bbox returns 512 panels (the remaining 3 877 fall outside the small-area extent and are clipped at load time by `load_panels_in_bbox`); of those 512, 334 project onto 168 LoD 2 roofs and 178 are skipped because they have no LoD 2 roof overlap (building classified too low to receive them, or no 3DBAG match).
 
@@ -899,7 +908,7 @@ A small number of output fields are not read from any source; they are computed 
 | `gml:Envelope` on the `CityModel` | union of every building LoD vertex + every PV panel projected vertex + every tree crown vertex. Written last so the envelope bounds everything that went into the file. |
 | `core:cityObjectMember` container wiring | dispatch by runtime type handled by `CityModel.add`. |
 | `app:Appearance` theme `"energyLabel"` | averaged EPC letter of each building's VBOs → EU palette RGB (`epc_score.label_to_rgb`). Targets every `gml:MultiSurface`, `gml:CompositeSurface`, and `gml:Polygon` under each building (the LoD 0 footprint MultiSurface, the LoD 1 CompositeSurface shell, each LoD 2 thematic surface's MultiSurface, plus every member Polygon — see [`appearance.collect_surface_target_ids`](../citygml_energy/city_builder/appearance.py)). The CompositeSurface target is what keeps LoD 1 shells coloured in viewers that resolve container-level targets; per-polygon targets keep colour applied in viewers that only resolve per-polygon `app:target` xlinks (KIT SDM_KITModelViewer family). Buildings without any matched label render grey. |
-| `app:Appearance` theme `"pvPanels"` | constant `(0.03, 0.05, 0.15)` deep blue targeting every `gml:MultiSurface` and `gml:Polygon` under every `nrg3:PhotovoltaicCollector`. |
+| `app:Appearance` theme `"pvPanels"` | constant `(0.03, 0.05, 0.15)` deep blue targeting every `gml:MultiSurface` and `gml:Polygon` under every `nrg3:GenericSolarCollector`. (Theme name retained for source-data continuity; the emitted XSD type is technology-agnostic — see §7.) |
 | `app:Appearance` theme `"vegetation"` | constant `(0.15, 0.55, 0.15)` foliage green targeting every `gml:MultiSurface` and `gml:Polygon` under every `veg:SolitaryVegetationObject`. |
 | `nrg3:CityObjectRelation` with `type="installedOn"` | the PV panel's 2D max-overlap with a specific LoD 2 `bldg:RoofSurface` (xlink only, no geometry). |
 | `nrg3:bdgBdrySurfTotalSurfaceArea` / `Inclination` / `Azimuth` on every LoD 2 BoundarySurface | computed from the polygon geometry by `_attach_planar_surface_ade_attributes`. |
@@ -908,14 +917,14 @@ A small number of output fields are not read from any source; they are computed 
 
 ## Appendix B — uom token inventory
 
-The pipeline emits the tokens below, each cross-checked against the KIT FZKViewer's bundled UoM list ([`KITModelViewer_V7.5_Build-3636/Data/UOMList.xml`](../KITModelViewer_V7.5_Build-3636/Data/UOMList.xml)):
+The pipeline emits the tokens below, each cross-checked against the KIT FZKViewer's bundled UoM list ([`KITModelViewer_V7.5.2_Build-3777/Data/UOMList.xml`](../KITModelViewer_V7.5.2_Build-3777/Data/UOMList.xml)):
 
 | Token | Used on | Matched against UOMList | Status |
 |---|---|---|---|
 | `m` | `veg:height`, `veg:trunkDiameter`, `veg:crownDiameter`, `nrg3:bdgHeight/value` | `UOM name="METRE" id="m"` | primary id ✓ |
-| `m2` | `nrg3:moduleArea` on `PhotovoltaicCollector`, `nrg3:QualifiedArea/value` on each `BuildingUnit`, `nrg3:bdgBdrySurfTotalSurfaceArea` | `UOM name="SQUARE_METRE" id="m2"` | primary id ✓ |
+| `m2` | `nrg3:moduleArea` on `GenericSolarCollector`, `nrg3:QualifiedArea/value` on each `BuildingUnit`, `nrg3:bdgBdrySurfTotalSurfaceArea` | `UOM name="SQUARE_METRE" id="m2"` | primary id ✓ |
 | `m3` | `nrg3:bdgVolume/value` on Building | `UOM name="CUBIC_METRE" id="m3"` | primary id ✓ |
-| `deg` | `nrg3:inclination`, `nrg3:azimuth` on `PhotovoltaicCollector`, `nrg3:bdgBdrySurfInclination` / `Azimuth` | `UOM name="DEGREE" id="grad"`, `altId=deg` | altId (canonical id is `grad`) ✓ |
+| `deg` | `nrg3:inclination`, `nrg3:azimuth` on `GenericSolarCollector`, `nrg3:bdgBdrySurfInclination` / `Azimuth` | `UOM name="DEGREE" id="grad"`, `altId=deg` | altId (canonical id is `grad`) ✓ |
 | `percent` | `gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie"` | `UOM name="PERCENTAGE" id="percent"`. **Do not use `%` literally**: it is a sign-glyph on UOMList, not an id. | primary id ✓ |
 | `kWh/m2/a` | `nrg3:Energy/amount` on the four NTA-8800 EP-online resources, `nrg3:EnergyPerformanceCertificate/value` on NTA 8800 certs | UOMList has `kWh/m2` (no per-annum) and `MWh/a` (no per-area), but not the composed token. | new for this project, pending FZK UOMList revision |
 | `kg/m2/a` | `nrg3:Energy/co2Equivalent` on the BENG-2 resource for NTA-8800 rows | UOMList has `kg`, `kg/m3`; no per-area-mass-per-annum. | new for this project, pending FZK UOMList revision |

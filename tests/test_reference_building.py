@@ -107,28 +107,34 @@ def test_single_building_as_city_object_member(reference_building_root):
     assert len(buildings) == 1
 
 
-def test_all_devices_attached_to_building_unit(reference_building_root):
-    """All devices live under the BuildingUnit, not the Building.
+def test_devices_split_between_building_and_building_unit(reference_building_root):
+    """PV lives under the Building; all other devices live under the BuildingUnit.
 
-    For a single-VBO Pand the canonical placement of energy devices is
-    the BuildingUnit: PV, heat pump, distribution, thermal storage, EV
-    charger, and the per-unit electrical appliances (cooktop, microwave,
-    cooker tap, coffee machine, dishwasher) all serve and meter the
-    single occupied unit. Nothing should appear at the ``bldg:Building``
-    level, which would imply a building-shared device.
+    The :class:`nrg3:PhotovoltaicCollector` is a physical-structure-level
+    feature: the panel array sits on the roof of the Pand, not inside
+    any one occupied unit, and the city-pipeline matcher attaches
+    panel-derived collectors at the Building level for the same reason
+    (see :func:`citygml_energy.city_builder.pv_panels.attach_pv_collectors_to_building`).
+    For a single-VBO Pand every other energy device serves and meters
+    the single occupied unit, so heat pump, distribution, thermal
+    storage, EV charger, and the per-unit electrical appliances
+    (cooktop, microwave, cooker tap, coffee machine, dishwasher) all
+    parent under the BuildingUnit.
     """
     unit_devices = reference_building_root.findall(
         ".//nrg3:BuildingUnit/nrg3:device", NS,
     )
-    assert len(unit_devices) == 10
+    assert len(unit_devices) == 9
 
     building_devices = reference_building_root.findall(
         ".//bldg:Building/nrg3:device", NS,
     )
-    assert building_devices == []
+    assert len(building_devices) == 1
+
+    building_device_path = ".//bldg:Building/nrg3:device"
+    assert len(reference_building_root.findall(f"{building_device_path}/nrg3:PhotovoltaicCollector", NS)) == 1
 
     unit_device_path = ".//nrg3:BuildingUnit/nrg3:device"
-    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:PhotovoltaicCollector", NS)) == 1
     assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:HeatPump", NS)) == 1
     assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:ThermalDistribution", NS)) == 1
     assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:ThermalStorageDevice", NS)) == 1
@@ -160,10 +166,16 @@ def test_singular_building_unit_attached_to_building(reference_building_root):
     """Single-VBO Pand carries exactly one ``nrg3:BuildingUnit`` under the Building.
 
     The BuildingUnit hosts the per-VBO net floor area, occupants,
-    address (when populated), ownership, and (when present) the
+    ownership, and (when present) the
     ``nrg3:EnergyPerformanceCertificate`` — mirroring the city-scale
     pipeline so a downstream consumer sees the same shape regardless
-    of authoring path.
+    of authoring path. The address itself is **not** on the
+    BuildingUnit: it lives once on the parent Building under
+    ``bldg:address`` (CityGML 2.0 composition slot) and the
+    BuildingUnit holds only an xlink reference via ``nrg3:address``
+    (Energy ADE 3.0 UML ``BuildingUnit.address`` is tagged
+    ``relationType=association``). See
+    :func:`test_address_owned_by_building_unit_xlinks_to_it`.
     """
     units = reference_building_root.findall(
         ".//bldg:Building/nrg3:buildingUnit/nrg3:BuildingUnit", NS,
@@ -174,6 +186,46 @@ def test_singular_building_unit_attached_to_building(reference_building_root):
     # ``woonfunctie`` for a residential VBO.
     type_el = unit.find("nrg3:type", NS)
     assert type_el is not None and type_el.text == "woonfunctie"
+
+
+def test_address_owned_by_building_unit_xlinks_to_it(reference_building_root):
+    """Address ownership and unit-side xlink, per Energy ADE 3.0 UML.
+
+    The ``core:Address`` lives once at Building level under the
+    CityGML 2.0 composition slot ``bldg:address`` (XSD
+    ``building.xsd`` line 78, ``[0..*]``). The ``nrg3:BuildingUnit``
+    holds only an ``xlink:href`` pointer via ``nrg3:address`` (XSD
+    line 1520-1526, ``relationType="association"``). This test
+    asserts no inline ``<core:Address>`` payload survives on a
+    ``nrg3:address`` element, and that every unit-side pointer
+    resolves to an Address actually emitted by the Building.
+    """
+    bldg_addr = reference_building_root.findall(
+        ".//bldg:Building/bldg:address/core:Address", NS,
+    )
+    assert len(bldg_addr) == 1, (
+        f"expected 1 Address at bldg:address, got {len(bldg_addr)}"
+    )
+    address_id = bldg_addr[0].get(f"{{{NS['gml']}}}id")
+    assert address_id is not None
+
+    unit_addr_inline = reference_building_root.findall(
+        ".//nrg3:BuildingUnit/nrg3:address/core:Address", NS,
+    )
+    assert unit_addr_inline == [], (
+        "nrg3:address on a BuildingUnit must NOT carry an inline core:Address "
+        "(Energy ADE 3.0 tags BuildingUnit.address as relationType=association)"
+    )
+
+    unit_addr_props = reference_building_root.findall(
+        ".//nrg3:BuildingUnit/nrg3:address", NS,
+    )
+    assert len(unit_addr_props) == 1
+    href = unit_addr_props[0].get(f"{{{NS['xlink']}}}href")
+    assert href == f"#{address_id}", (
+        f"unit address xlink:href {href!r} does not resolve to the "
+        f"Building-owned Address {address_id!r}"
+    )
 
 
 def test_zone_with_two_heated_zone_parts(reference_building_root):
@@ -197,8 +249,10 @@ def test_zone_references_its_building_unit(reference_building_root):
     ``AbstractZone`` (UML pg 10/12). Without the xlink a downstream
     consumer cannot tell which unit the thermal zone serves -- a gap
     that matters for the single-unit owner-occupier case where the
-    devices, occupants, EPC and energy resources all live under the
-    BuildingUnit while the Zone sits at Building level.
+    unit-scoped devices, occupants, EPC and energy resources all live
+    under the BuildingUnit while the Zone sits at Building level (the
+    PhotovoltaicCollector is the lone exception, parented under the
+    Building itself as a physical-structure-level device).
     """
     zone = reference_building_root.find(".//bldg:Building/nrg3:zone/nrg3:Zone", NS)
     assert zone is not None

@@ -6,8 +6,11 @@ the polygon's bounds to drive the BAG / 3DBAG fetchers and then keeps
 only those buildings whose 2D footprint actually intersects the polygon,
 so a concave drawn area trims cleanly.
 
-Accepted format: ``.geojson`` / ``.json`` — a single GeoJSON ``Feature``
-with a ``Polygon`` or ``MultiPolygon`` geometry in EPSG:28992.
+Accepted format: ``.geojson`` / ``.json`` — a GeoJSON ``Feature`` (or a
+``FeatureCollection`` containing exactly one Feature, the QGIS default
+on "Export selected features as GeoJSON") with a ``Polygon`` or
+``MultiPolygon`` geometry in EPSG:28992. Multi-feature collections are
+rejected: the build extent is a single, deliberately authored polygon.
 
 The loader keeps the dependency footprint identical to the rest of the
 city builder (``shapely`` only), with no ``fiona`` / ``pyogrio`` /
@@ -41,8 +44,9 @@ class BoundarySource:
     """Declarative pointer to a single-polygon GeoJSON boundary file.
 
     :attr:`path`: absolute or already-resolved path to the ``.geojson``
-        / ``.json`` file. The file must be a GeoJSON ``Feature`` (not a
-        ``FeatureCollection``) with a ``Polygon`` or ``MultiPolygon``
+        / ``.json`` file. The file must be a GeoJSON ``Feature`` (or a
+        ``FeatureCollection`` carrying exactly one Feature, the QGIS
+        default export shape) with a ``Polygon`` or ``MultiPolygon``
         geometry in EPSG:28992.
     """
 
@@ -52,9 +56,12 @@ class BoundarySource:
 def load_boundary_polygon(source: BoundarySource) -> BaseGeometry:
     """Return the shapely (Multi)Polygon from *source*.
 
-    Only ``.geojson`` / ``.json`` files containing a single GeoJSON
-    ``Feature`` are accepted. Raises :class:`CityBuildError` with
-    actionable detail on malformed geometry or non-EPSG:28992 SRS.
+    Only ``.geojson`` / ``.json`` files are accepted; the root must be
+    a single GeoJSON ``Feature`` or a ``FeatureCollection`` carrying
+    exactly one Feature (the QGIS default export shape — see
+    :func:`_load_from_geojson` for the unwrap rationale). Raises
+    :class:`CityBuildError` with actionable detail on malformed
+    geometry, non-EPSG:28992 SRS, or a multi-feature collection.
     """
     try:
         from shapely import wkb as shapely_wkb  # noqa: F401, import-guard
@@ -80,7 +87,19 @@ def load_boundary_polygon(source: BoundarySource) -> BaseGeometry:
 def _load_from_geojson(source: BoundarySource) -> BaseGeometry:
     """Read a single (Multi)Polygon Feature from a GeoJSON file.
 
-    The file must be a GeoJSON ``Feature`` (not a ``FeatureCollection``).
+    The file root must be a GeoJSON ``Feature`` or a
+    ``FeatureCollection`` carrying exactly one ``Feature``. The latter
+    is unwrapped to its sole member: QGIS' "Export selected features as
+    GeoJSON" emits a ``FeatureCollection`` even for a single polygon, so
+    rejecting it forces every author to hand-edit the file. The
+    single-feature wrapper carries no information beyond what the inner
+    Feature already does, so the unwrap is loss-free.
+
+    A ``FeatureCollection`` with zero or two-plus members is still
+    rejected: the build extent is a single, deliberately authored
+    polygon, and silently picking the first member of a multi-feature
+    collection would mask an authoring slip.
+
     The CRS, if present, is validated to be EPSG:28992 via URN /
     authority-code; an absent CRS is silently accepted because GeoJSON
     defaults to WGS84 but this project ships its own GeoJSON samples in
@@ -104,18 +123,9 @@ def _load_from_geojson(source: BoundarySource) -> BaseGeometry:
 
     _validate_geojson_crs(data, source_path=source.path)
 
-    kind = data.get("type")
-    if kind != "Feature":
-        # FeatureCollection (even with one member) is rejected explicitly
-        # rather than silently unwrapped: the build extent should be a
-        # single, deliberately authored polygon, and a FeatureCollection
-        # is the wrong on-disk shape regardless of cardinality.
-        raise CityBuildError(
-            f"boundary.path {source.path} must be a single GeoJSON Feature "
-            f"with a Polygon or MultiPolygon geometry, got type={kind!r}"
-        )
+    feature = _extract_single_feature(data, source_path=source.path)
 
-    geom_dict = data.get("geometry")
+    geom_dict = feature.get("geometry")
     if not geom_dict:
         raise CityBuildError(
             f"boundary feature in {source.path} has no geometry"
@@ -123,6 +133,64 @@ def _load_from_geojson(source: BoundarySource) -> BaseGeometry:
     geom = shape(geom_dict)
     return _validate_polygon_geometry(
         geom, context=f"boundary feature in {source.path}",
+    )
+
+
+def _extract_single_feature(
+    data: dict[str, Any], *, source_path: Path,
+) -> dict[str, Any]:
+    """Return the single GeoJSON ``Feature`` carried by *data*.
+
+    Accepts:
+
+    * ``{"type": "Feature", ...}`` — returned as-is.
+    * ``{"type": "FeatureCollection", "features": [<one>]}`` —
+      unwrapped to the sole member. The collection wrapper carries no
+      authoring intent beyond what the inner Feature already does, and
+      it is what QGIS' default GeoJSON export emits even for a single
+      polygon.
+
+    Anything else (a 0- or 2+-feature collection, a bare Geometry, an
+    unknown ``type``) raises :class:`CityBuildError` with a message
+    that names exactly what was wrong so an author can fix the file
+    without guessing.
+    """
+    kind = data.get("type")
+    if kind == "Feature":
+        return data
+    if kind == "FeatureCollection":
+        features = data.get("features")
+        if not isinstance(features, list):
+            raise CityBuildError(
+                f"boundary.path {source_path} is a FeatureCollection with no "
+                f"'features' array"
+            )
+        if len(features) == 0:
+            raise CityBuildError(
+                f"boundary.path {source_path} is an empty FeatureCollection; "
+                f"expected exactly one Feature"
+            )
+        if len(features) > 1:
+            raise CityBuildError(
+                f"boundary.path {source_path} is a FeatureCollection with "
+                f"{len(features)} features; expected exactly one (the build "
+                f"extent is a single, deliberately authored polygon)"
+            )
+        feature = features[0]
+        if not isinstance(feature, dict) or feature.get("type") != "Feature":
+            raise CityBuildError(
+                f"boundary.path {source_path} has a FeatureCollection whose "
+                f"sole member is not a GeoJSON Feature"
+            )
+        _LOG.debug(
+            "Unwrapped single-feature FeatureCollection in %s "
+            "(QGIS default export shape).",
+            source_path,
+        )
+        return feature
+    raise CityBuildError(
+        f"boundary.path {source_path} must be a GeoJSON Feature or a "
+        f"single-feature FeatureCollection, got type={kind!r}"
     )
 
 
@@ -166,12 +234,19 @@ def _validate_geojson_crs(data: dict[str, Any], *, source_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Shared geometry validation
+# Geometry validation
 # ---------------------------------------------------------------------------
 
 
 def _validate_polygon_geometry(geom: Any, *, context: str) -> Any:
-    """Common post-load checks shared by both readers."""
+    """Post-load sanity checks for the loaded shapely geometry.
+
+    Rejects empties and non-(Multi)Polygon types; heals
+    self-intersecting hand-drawn rings with ``buffer(0)`` so a
+    near-valid polygon does not blow up the downstream intersection
+    test. *context* prefixes error messages so the author can find the
+    offending file quickly.
+    """
     if geom.is_empty:
         raise CityBuildError(f"{context} is empty")
     if geom.geom_type not in {"Polygon", "MultiPolygon"}:

@@ -11,7 +11,7 @@ toggle them in isolation:
   buildings without a matched label, via
   :func:`epc_score.label_to_rgb`).
 * :func:`append_pv_panel_appearance` (theme ``"pvPanels"``) — paints
-  every PV collector dark blue.
+  every solar collector (``nrg3:GenericSolarCollector``) dark blue.
 * :func:`append_vegetation_appearance` (theme ``"vegetation"``) —
   paints every solitary-vegetation object foliage-green.
 
@@ -54,8 +54,8 @@ from typing import Any
 from ..bindings import (
     AppearanceMember,
     CompositeSurface,
+    GenericSolarCollector,
     MultiSurface,
-    PhotovoltaicCollector,
     Polygon,
     SolitaryVegetationObject,
 )
@@ -173,22 +173,25 @@ def append_energy_label_appearance(
 
 
 def append_pv_panel_appearance(city_model: Any) -> None:
-    """Attach an ``app:Appearance`` that paints every PV panel dark blue.
+    """Attach an ``app:Appearance`` that paints every solar panel dark blue.
 
     One ``app:X3DMaterial`` targets every ``gml:MultiSurface`` and
-    ``gml:Polygon`` found under a :class:`PhotovoltaicCollector` in the
-    model: the collector's ``lod2MultiSurface`` plus each of its
+    ``gml:Polygon`` found under a :class:`GenericSolarCollector` in
+    the model: the collector's ``lod2MultiSurface`` plus each of its
     polygons. Per-polygon targets are included for the same
     viewer-compatibility reason as the energy-label appearance (see
     :func:`collect_surface_target_ids`).
 
     The appearance lives under its own theme (``"pvPanels"``) so a
     viewer's theme switcher can toggle panels independently of the
-    energy-label painting.
+    energy-label painting. The theme name is retained for source-data
+    continuity (the GeoPackage layer is named ``pv_panels``) even
+    though the XSD type the city pipeline emits is the
+    technology-agnostic ``nrg3:GenericSolarCollector``.
 
-    A no-op when the model contains no PV collectors.
+    A no-op when the model contains no solar collectors.
     """
-    targets = _collect_per_feature_targets(city_model, PhotovoltaicCollector)
+    targets = _collect_per_feature_targets(city_model, GenericSolarCollector)
     _append_uniform_appearance(
         city_model,
         theme=PV_PANEL_THEME,
@@ -250,8 +253,8 @@ def _collect_per_feature_targets(
     Walks the underlying xsdata tree once (:func:`iter_instances` is
     cycle-safe and yields each dataclass node once); for each instance
     of *feature_cls*, descends into its subtree to pick up
-    ``gml:MultiSurface`` and ``gml:Polygon`` ids. Used by the PV
-    (:class:`PhotovoltaicCollector`) and vegetation
+    ``gml:MultiSurface`` and ``gml:Polygon`` ids. Used by the solar-panel
+    (:class:`GenericSolarCollector`) and vegetation
     (:class:`SolitaryVegetationObject`) painters; the energy-label
     painter walks the per-Building subtree via
     :func:`collect_surface_target_ids` instead because each building

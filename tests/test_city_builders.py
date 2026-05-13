@@ -486,6 +486,16 @@ def test_attach_building_units_creates_one_per_address() -> None:
     building = build_building(_parsed())
     attach_building_units_to_building(building, [_resolved("A"), _resolved("B")])
     assert len(building.building_unit) == 2
+    # Each VBO's address is owned by the Building (composition slot
+    # ``bldg:address``, CityGML 2.0); each BuildingUnit holds only an
+    # xlink reference to it (Energy ADE 3.0 UML
+    # ``BuildingUnit.address relationType=association``).
+    assert len(building.address) == 2
+    for unit_prop in building.building_unit:
+        unit = unit_prop.building_unit
+        assert unit.address[0].address is None
+        assert unit.address[0].href is not None
+        assert unit.address[0].href.startswith("#")
 
 
 def test_building_unit_without_label_omits_epc() -> None:
