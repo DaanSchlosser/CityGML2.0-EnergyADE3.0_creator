@@ -160,10 +160,9 @@ def _label_timestamp(label: EnergyLabel) -> tuple[int, int, int]:
 
     Changing this ordering can silently flip which calculation regime
     gets emitted on the BuildingUnit (NTA 8800 vs legacy NEN-7120).
-    The cross-module invariant is captured by tests in
-    ``tests/test_city_address_match.py``; see ADR-0001 for the
-    rationale on keeping label selection separate from regime-aware
-    resource emission.
+    Label selection (here) is kept separate from regime-aware resource
+    emission (in :mod:`energy_resources`); the cross-module invariant
+    is captured by tests in ``tests/test_city_address_match.py``.
     """
     reg = label.registratiedatum
     opname = label.opnamedatum

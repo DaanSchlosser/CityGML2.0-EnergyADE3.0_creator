@@ -133,10 +133,9 @@ def test_newer_label_wins_across_calculation_regimes() -> None:
 
     Captures the load-bearing chain: changing ``_label_timestamp``
     ordering would silently flip which regime's resources land on the
-    BuildingUnit. ADR-0001 keeps the selection (here) and the regime
-    classification (in :mod:`energy_resources`) in separate modules,
-    so this test is the cross-module assertion that the chain stays
-    intact.
+    BuildingUnit. Label selection (here) and regime classification
+    (in :mod:`energy_resources`) live in separate modules; this test
+    is the cross-module assertion that the chain stays intact.
     """
     legacy = _label(
         "2628CD", 42, "C",

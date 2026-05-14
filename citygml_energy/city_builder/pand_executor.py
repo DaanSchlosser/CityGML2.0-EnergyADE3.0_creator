@@ -274,11 +274,10 @@ def _build_pand_artifacts(
 
     The five-builder sequence (build_building → attach_building_units →
     apply_bag_year_metadata → apply_eponline_pand_attribution → optional
-    attach_pv_collectors) is the canonical orchestration; ADR-0002
-    explains why the builders stay individually public and why the
+    attach_pv_collectors) is the canonical orchestration. The builders
+    stay individually public so each can be tested in isolation; the
     cross-builder ordering invariants are locked by integration tests
-    in ``tests/test_city_pand_executor.py`` rather than by collapsing
-    the sequence into a single deep entry point.
+    in ``tests/test_city_pand_executor.py``.
     """
     _merge_attributes(parsed.attributes, pand)
     targets: list[str] = []

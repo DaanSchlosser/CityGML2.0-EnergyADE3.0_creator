@@ -13,8 +13,10 @@ builder with the right values, that the conditional PV branch behaves
 on both legs, and that the ``PandArtifacts`` dataclass carries the
 four named fields downstream code expects.
 
-Why an integration test instead of consolidating the five builders
-into one entry point: see ADR-0002.
+The builders stay individually public so each can be tested in
+isolation; this module locks the cross-builder ordering invariants at
+the integration level rather than collapsing the sequence into a single
+deep entry point.
 """
 
 from __future__ import annotations
