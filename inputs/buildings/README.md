@@ -2,7 +2,7 @@
 
 JSON inputs for the per-building pipeline ([`citygml_energy/generation.py`](../../citygml_energy/generation.py), entry point [`examples/create_building.py`](../../examples/create_building.py)). Each file is a hand-authored "feature collection" describing one building in full Energy ADE detail (zones, schedules, devices, layered constructions, material libraries, per-surface appearances).
 
-All files use `schema_version: 2`. The schema is at [`../../schemas/citygml_energy_input.schema.json`](../../schemas/citygml_energy_input.schema.json); see §3 of the [project README](../../README.md) for the full key reference.
+The JSON schema is at [`../../schemas/citygml_energy_input.schema.json`](../../schemas/citygml_energy_input.schema.json); see §3 of the [project README](../../README.md) for the full key reference.
 
 ## Files
 

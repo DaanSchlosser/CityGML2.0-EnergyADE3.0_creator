@@ -549,7 +549,6 @@ def test_append_vegetation_appearance_collects_surface_and_polygon_targets() -> 
 def _write_config(tmp_path: Path, extra: dict[str, Any]) -> Path:
     base = {
         "$schema": "../schemas/city_input.schema.json",
-        "schema_version": "city-1",
         "municipality": "Emmen",
         "bbox": [264400, 535580, 268720, 538940],
         "lods": [0, 1, 2],

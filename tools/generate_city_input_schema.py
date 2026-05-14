@@ -21,7 +21,6 @@ if str(REPO_ROOT) not in sys.path:
 
 from citygml_energy.city_builder.config import (
     ALLOWED_LODS,
-    SCHEMA_VERSION,
     _CBS_POSTCODE6_YEAR_MAX,
     _CBS_POSTCODE6_YEAR_MIN,
 )
@@ -40,11 +39,10 @@ def build_schema() -> dict[str, Any]:
             "tools/generate_city_input_schema.py; do not edit by hand."
         ),
         "type": "object",
-        "required": ["schema_version", "municipality", "output"],
+        "required": ["municipality", "output"],
         "additionalProperties": False,
         "properties": {
             "$schema": {"type": "string"},
-            "schema_version": {"const": SCHEMA_VERSION},
             "municipality": {
                 "type": "string",
                 "minLength": 1,

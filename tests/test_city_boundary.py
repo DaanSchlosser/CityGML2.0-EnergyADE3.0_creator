@@ -139,7 +139,6 @@ def _write_config(tmp_path: Path, **extras: object) -> Path:
     import json
 
     config = {
-        "schema_version": "city-1",
         "municipality": "Emmen",
         "output": "out.gml",
         "cache_dir": "cache",

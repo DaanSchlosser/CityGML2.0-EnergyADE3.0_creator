@@ -31,8 +31,8 @@ testing, extension, and de-facto standardisation.
 
 | Pipeline | Input | Purpose in RenoDAT |
 |---|---|---|
-| **Per-building** | Hand-authored `schema_version: 2` JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport (zones, schedules, devices, layered constructions, material libraries) for one dwelling? The [owner-occupier reference building](inputs/buildings/owner_occupier_building.json) (a single-family residence in Delft, LoD 0–3 with thermal zone parts) is the worked example. |
-| **City-scale** | `schema_version: "city-1"` config naming a Dutch municipality | Does the same data model scale to the dwelling stock? Fetches BAG + 3DBAG + EP-online (+ optional PV panels, BGT/BOR tree register, CFTree vegetation) for an entire area and assembles one GML file. |
+| **Per-building** | Hand-authored feature-collection JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport (zones, schedules, devices, layered constructions, material libraries) for one dwelling? The [owner-occupier reference building](inputs/buildings/owner_occupier_building.json) (a single-family residence in Delft, LoD 0–3 with thermal zone parts) is the worked example. |
+| **City-scale** | JSON config naming a Dutch municipality | Does the same data model scale to the dwelling stock? Fetches BAG + 3DBAG + EP-online (+ optional PV panels, BGT/BOR tree register, CFTree vegetation) for an entire area and assembles one GML file. |
 
 Both pipelines emit the same CityGML 2.0 + Energy ADE 3.0 wire format,
 validated against the same XSD set. The output:
@@ -79,7 +79,6 @@ with these top-level keys:
 
 ```jsonc
 {
-  "schema_version": 2,
   "city_model":          { "name": "...", "description": "..." },
   "coordinate_origin":   [85182.085, 446868.675, 0.105],
   "construction_mapping": {
@@ -237,7 +236,6 @@ subsequent runs are near-instant.
 ```jsonc
 {
   "$schema": "../../schemas/city_input.schema.json",
-  "schema_version": "city-1",                 // required
   "municipality": "Delft",                    // required
   "bbox": [84000, 445000, 86000, 447000],     // optional clip, EPSG:28992
   "lods": [0, 1, 2],
@@ -334,6 +332,7 @@ citygml_energy/                Core package
     ├── epc_score.py, energy_resources.py, appearance.py EPC palette, regime-aware Energy, app:Appearance
     ├── pv_panels.py, vegetation.py, tree_matching.py    Optional input loaders + nearest-neighbour join
     ├── postcode6.py            CBS Postcode6 → nrg3:UrbanFunctionArea
+    ├── _helpers.py             Shared helpers (type coercion, cache keys, gml:id sanitisation)
     ├── builders/               Per-feature builders (building, address, epc, vegetation)
     └── fetchers/               One module per remote source (BAG, 3DBAG, EP-online, BGT, Emmen BOR, CBS, PDOK)
 
@@ -353,7 +352,7 @@ tools/
 inputs/                         See inputs/README.md
 ├── buildings/                  Per-building feature-collection JSONs
 ├── stp/                        STEP geometry for the per-building JSONs
-├── cities/                     City-scale configs (schema_version: "city-1")
+├── cities/                     City-scale configs
 ├── boundaries/                 GeoJSON AOI polygons
 ├── vegetation/                 CFTree LoD 3 tree meshes (CityJSON)
 └── pv_panels/                  PV panel GeoPackage (UoG Zenodo 14860030, CC-BY-4.0)

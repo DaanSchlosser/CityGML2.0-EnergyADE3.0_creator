@@ -406,7 +406,7 @@ def city_xml(tmp_path_factory) -> str:
     tmp = tmp_path_factory.mktemp("city_invariants")
     cfg_path = tmp / "city.json"
     cfg_path.write_text(json.dumps({
-        "schema_version": "city-1", "municipality": "Delft",
+        "municipality": "Delft",
         "bbox": list(_CITY_BBOX), "lods": [0, 1, 2],
         "include_addresses": True, "include_energy_labels": False,
         "cache_dir": str(tmp / "cache"),
@@ -487,7 +487,7 @@ def test_city_pipeline_output_is_byte_deterministic(tmp_path_factory) -> None:
     tmp = tmp_path_factory.mktemp("city_det")
     cfg_path = tmp / "city.json"
     cfg_path.write_text(json.dumps({
-        "schema_version": "city-1", "municipality": "Delft",
+        "municipality": "Delft",
         "bbox": list(_CITY_BBOX), "lods": [0, 1, 2],
         "include_addresses": True, "include_energy_labels": False,
         "cache_dir": str(tmp / "cache"),

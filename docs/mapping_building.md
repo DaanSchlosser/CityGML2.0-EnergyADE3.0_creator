@@ -69,7 +69,6 @@ The list above is the set actually exercised in the canonical input. Any other E
 
 ```json
 {
-  "schema_version": 2,
   "city_model": {"name": "...", "description": "..."},
   "coordinate_origin": [x, y, z],
   "construction_mapping": {
@@ -89,7 +88,6 @@ The list above is the set actually exercised in the canonical input. Any other E
 
 | Top-level key | Required | Purpose |
 |---|---|---|
-| `schema_version` | ✓ | Currently `2`. Bump signals an incompatible authoring change. |
 | `city_model` | ✓ | Wrapper for `gml:name` and `gml:description` on the root `<core:CityModel>`. |
 | `features` | ✓ | Flat list of feature dicts. Each dict carries `type`, `id`, optional `parent` / `parent_field` / `installed_on`, and the XSD-typed attributes for that class. |
 | `coordinate_origin` | optional (default `[0,0,0]`) | Offset added to every imported STEP vertex; lets STEP files authored at the origin land in real-world RD New / NAP coordinates. |

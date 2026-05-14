@@ -134,7 +134,7 @@ def _config(tmp_path: Path, *, with_labels: bool = True) -> CityBuildConfig:
     cache = tmp_path / "cache"
     cache.mkdir(parents=True)
     source = tmp_path / "city.json"
-    source.write_text(json.dumps({"schema_version": "city-1"}), encoding="utf-8")
+    source.write_text(json.dumps({}), encoding="utf-8")
     return CityBuildConfig(
         source_path=source,
         municipality="Delft",

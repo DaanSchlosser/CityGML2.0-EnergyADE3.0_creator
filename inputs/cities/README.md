@@ -2,7 +2,7 @@
 
 JSON configs for the city-scale pipeline ([`citygml_energy/city_builder/`](../../citygml_energy/city_builder/), entry point [`examples/create_city.py`](../../examples/create_city.py)). Each file declares one Dutch municipality (or AOI within one), and the pipeline assembles a single CityGML 2.0 + EnergyADE 3.0 GML for it.
 
-All configs use `schema_version: "city-1"`. The schema is at [`../../schemas/city_input.schema.json`](../../schemas/city_input.schema.json); see §12.2 of the [project README](../../README.md) for the full key reference.
+The JSON schema is at [`../../schemas/city_input.schema.json`](../../schemas/city_input.schema.json); see §4.2 of the [project README](../../README.md) for the full key reference.
 
 ## Files
 

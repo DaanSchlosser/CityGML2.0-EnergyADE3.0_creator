@@ -192,7 +192,6 @@ def _fixture_panels() -> list[tuple[int, Polygon]]:
 
 def _write_config(tmp_path: Path, *, with_pv: bool) -> Path:
     data: dict = {
-        "schema_version": "city-1",
         "municipality": "Delft",
         "bbox": list(_BBOX),
         "lods": [0, 1, 2],
@@ -499,7 +498,6 @@ def test_config_rejects_bad_pv_panels_block(tmp_path: Path) -> None:
     source = tmp_path / "city.json"
     source.write_text(
         json.dumps({
-            "schema_version": "city-1",
             "municipality": "Delft",
             "include_energy_labels": False,
             "output": str(tmp_path / "out.gml"),
@@ -554,7 +552,6 @@ def test_pipeline_skips_pv_when_lod2_disabled(
     source = tmp_path / "city.json"
     source.write_text(
         json.dumps({
-            "schema_version": "city-1",
             "municipality": "Delft",
             "bbox": list(_BBOX),
             "lods": [0, 1],  # no LoD 2: attach must refuse

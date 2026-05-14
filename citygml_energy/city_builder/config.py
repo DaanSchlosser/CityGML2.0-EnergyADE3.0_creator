@@ -20,8 +20,6 @@ from ..namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
 
 PathLike = str | Path
 
-SCHEMA_VERSION = "city-1"
-
 
 # ``BuildContext`` is defined ahead of the per-source imports below
 # because the same per-source modules (``pv_panels``, ``vegetation``)
@@ -228,7 +226,6 @@ class CityBuildConfig:
 _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {
         "$schema",
-        "schema_version",
         "municipality",
         "bbox",
         "boundary",
@@ -293,9 +290,6 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
     unexpected = sorted(set(data) - _ALLOWED_TOP_LEVEL_KEYS)
     if unexpected:
         raise CityBuildError(f"{source}: unexpected top-level key(s): {', '.join(unexpected)}")
-
-    if data.get("schema_version") != SCHEMA_VERSION:
-        raise CityBuildError(f"{source}: schema_version must be {SCHEMA_VERSION!r}")
 
     if "$schema" in data and not isinstance(data["$schema"], str):
         raise CityBuildError(f"{source}: $schema must be a string when provided")

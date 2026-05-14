@@ -4,9 +4,9 @@ All inputs to the two pipelines live here, grouped by purpose.
 
 | Folder | Contents | Pipeline |
 |---|---|---|
-| [`buildings/`](buildings/) | Per-building feature-collection JSONs (`schema_version: 2`) | Per-building ([`examples/create_building.py`](../examples/create_building.py)) |
+| [`buildings/`](buildings/) | Per-building feature-collection JSONs | Per-building ([`examples/create_building.py`](../examples/create_building.py)) |
 | [`stp/`](stp/) | STEP geometry files referenced by the building JSONs | Per-building |
-| [`cities/`](cities/) | City-scale configs (`schema_version: "city-1"`) | City-scale ([`examples/create_city.py`](../examples/create_city.py)) |
+| [`cities/`](cities/) | City-scale configs | City-scale ([`examples/create_city.py`](../examples/create_city.py)) |
 | [`boundaries/`](boundaries/) | GeoJSON AOI polygons used as `boundary` inputs by city configs | City-scale |
 | [`pv_panels/`](pv_panels/) | PV-panel polygon dataset for Emmer-Compascuum | City-scale (optional `pv_panels` block) |
 

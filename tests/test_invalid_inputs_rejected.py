@@ -97,15 +97,6 @@ def test_unmutated_fixture_is_still_valid(
 # ---------------------------------------------------------------------------
 
 
-def test_rejects_wrong_schema_version(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
-    data = deepcopy(base_data)
-    data["schema_version"] = 1
-    with pytest.raises(InputFileError, match=r"schema_version must be 2"):
-        _build(data, base_path)
-
-
 def test_rejects_unknown_top_level_key(
     base_data: dict[str, Any], base_path: Path
 ) -> None:

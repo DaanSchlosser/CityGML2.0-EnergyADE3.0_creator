@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "city_model": {
     "description": "Owner-occupier reference building: a single-family residence in Delft used as the per-building test case for the CityGML 2.0 + EnergyADE 3.0 data model under the RenoDAT research project (TU Delft / NWO, 2025-2029). All feature-level energy attributes and metadata are populated.",
     "name": "Owner-occupier reference building"

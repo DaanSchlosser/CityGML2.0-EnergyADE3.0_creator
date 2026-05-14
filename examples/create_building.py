@@ -55,7 +55,7 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         "--input",
         type=Path,
         default=INPUT,
-        help="Feature-collection JSON input (schema_version=2).",
+        help="Feature-collection JSON input.",
     )
     parser.add_argument(
         "--output",

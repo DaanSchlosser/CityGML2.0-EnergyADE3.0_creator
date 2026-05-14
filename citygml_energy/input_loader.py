@@ -1,9 +1,9 @@
 """Load data-only feature collections into CityGML models.
 
-Supports the schema_version 2 JSON format where each feature is a flat dict
-with ``type``, ``id``, ``parent``, ``parent_field``, and xsdata field names
-as keys.  All object construction is delegated to the generic ``mapping``
-module: no feature-type-specific code lives here.
+Each feature in the input JSON is a flat dict with ``type``, ``id``,
+``parent``, ``parent_field``, and xsdata field names as keys. All object
+construction is delegated to the generic ``mapping`` module: no
+feature-type-specific code lives here.
 """
 
 from __future__ import annotations
@@ -46,7 +46,6 @@ _FEATURE_META_KEYS = frozenset({"type", "parent", "parent_field", "installed_on"
 
 _ALLOWED_TOP_LEVEL_KEYS = {
     "$schema",
-    "schema_version",
     "city_model",
     "features",
     "geometry_sources",
@@ -114,7 +113,7 @@ def validate_feature_collection(
     source: str = "input",
     base_path: PathLike | None = None,
 ) -> None:
-    """Validate the repository's JSON input format (schema_version 2)."""
+    """Validate the repository's JSON input format."""
     if not isinstance(data, dict):
         raise InputFileError(f"{source}: top-level JSON value must be an object")
 
@@ -123,9 +122,6 @@ def validate_feature_collection(
         raise InputFileError(
             f"{source}: unexpected top-level key(s): {', '.join(unexpected_top_level)}"
         )
-
-    if data.get("schema_version") != 2:
-        raise InputFileError(f"{source}: schema_version must be 2")
 
     if "$schema" in data and not isinstance(data["$schema"], str):
         raise InputFileError(f"{source}: $schema must be a string when provided")

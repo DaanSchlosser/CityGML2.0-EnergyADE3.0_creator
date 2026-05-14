@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from citygml_energy.city_builder.config import (
-    SCHEMA_VERSION,
     CityBuildError,
     load_city_config,
 )
@@ -21,7 +20,6 @@ def _write(path: Path, payload: dict) -> Path:
 
 def _valid_config(tmp_path: Path) -> dict:
     return {
-        "schema_version": SCHEMA_VERSION,
         "municipality": "Delft",
         "lods": [0, 1, 2],
         "include_addresses": True,
@@ -41,13 +39,6 @@ def test_valid_config_loads(tmp_path: Path) -> None:
     assert config.include_energy_labels is False
     assert config.cache_dir.is_absolute()
     assert config.output_path.is_absolute()
-
-
-def test_missing_schema_version_is_rejected(tmp_path: Path) -> None:
-    payload = _valid_config(tmp_path)
-    payload.pop("schema_version")
-    with pytest.raises(CityBuildError, match="schema_version"):
-        load_city_config(_write(tmp_path / "c.json", payload))
 
 
 def test_unknown_top_level_key_is_rejected(tmp_path: Path) -> None:

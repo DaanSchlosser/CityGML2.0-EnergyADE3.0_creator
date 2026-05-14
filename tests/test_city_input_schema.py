@@ -78,11 +78,6 @@ def test_generator_and_config_allowlists_agree() -> None:
     schema = build_schema()
     top = schema["properties"]
 
-    # The ``$schema`` and ``schema_version`` keys exist in the
-    # generator's top-level block but are meta-fields: they live
-    # outside ``_ALLOWED_TOP_LEVEL_KEYS`` in the loader because the
-    # loader has direct logic for them. Ignoring them here keeps the
-    # test comparing allowlists like-for-like.
     schema_top_keys = set(top.keys())
     assert schema_top_keys == _ALLOWED_TOP_LEVEL_KEYS, (
         "Top-level keys drift:\n"

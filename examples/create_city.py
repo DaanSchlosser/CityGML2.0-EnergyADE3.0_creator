@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         "--input",
         type=Path,
         default=REPO_ROOT / "inputs" / "cities" / "emmer-compascuum_small-area.json",
-        help="Path to a city-build JSON config (schema_version=city-1).",
+        help="Path to a city-build JSON config.",
     )
     parser.add_argument(
         "-v", "--verbose",

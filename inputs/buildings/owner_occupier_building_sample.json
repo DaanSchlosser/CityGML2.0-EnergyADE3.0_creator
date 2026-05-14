@@ -1,5 +1,4 @@
 {
-  "schema_version": 2,
   "city_model": {
     "description": "Shareable sample of the owner-occupier reference building. Same structural shape as inputs/buildings/owner_occupier_building.json but with placeholder values, so it can be used as a CityGML 2.0 + EnergyADE 3.0 reproducer (e.g. for KIT SDM_KITModelViewer issues #24, #25 and #26) without disclosing thesis data.",
     "name": "Owner-occupier reference building (sample)"
