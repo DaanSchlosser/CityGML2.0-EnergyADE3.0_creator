@@ -32,7 +32,7 @@ testing, extension, and de-facto standardisation.
 | Pipeline | Input | Purpose in RenoDAT |
 |---|---|---|
 | **Per-building** | Hand-authored feature-collection JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport (zones, schedules, devices, layered constructions, material libraries) for one dwelling? The [owner-occupier reference building](inputs/buildings/owner_occupier_building.json) (a single-family residence in Delft, LoD 0–3 with thermal zone parts) is the worked example. |
-| **City-scale** | JSON config naming a Dutch municipality | Does the same data model scale to the dwelling stock? Fetches BAG + 3DBAG + EP-online (+ optional PV panels, BGT/BOR tree register, CFTree vegetation) for an entire area and assembles one GML file. |
+| **City-scale** | JSON config naming a Dutch municipality | Does the same data model scale to the dwelling stock? Fetches BAG + 3DBAG + EP-online (+ optional solar panels, BGT/BOR tree register, CFTree vegetation) for an entire area and assembles one GML file. |
 
 Both pipelines emit the same CityGML 2.0 + Energy ADE 3.0 wire format,
 validated against the same XSD set. The output:
@@ -203,7 +203,7 @@ combining:
 - **EP-online** ([public.ep-online.nl](https://public.ep-online.nl)):
   the Dutch energy-label register, joined by `BAGVerblijfsobjectID`
   when present, falling back to a normalised address key.
-- **PV panels** *(optional)*: 2D roof-panel polygons from a GeoPackage,
+- **Solar panels** *(optional)*: 2D roof-panel polygons from a GeoPackage,
   projected onto LoD 2 roof surfaces as
   `nrg3:GenericSolarCollector` (technology-agnostic, because the aerial
   source has no module-level metadata).
@@ -249,7 +249,7 @@ subsequent runs are near-instant.
 }
 ```
 
-Optional `pv_panels`, `vegetation`, and `cbs_postcode6` blocks enable
+Optional `solar_panels`, `vegetation`, and `cbs_postcode6` blocks enable
 the corresponding inputs. The full schema lives at
 [schemas/city_input.schema.json](schemas/city_input.schema.json),
 generated from `CityBuildConfig` by
@@ -276,7 +276,7 @@ configs live in [inputs/cities/](inputs/cities/).
   up to four regime-aware `nrg3:Energy` resources (NTA 8800 vs legacy
   NEN-7120). The regime table lives in
   [city_builder/energy_resources.py](citygml_energy/city_builder/energy_resources.py).
-- When `pv_panels` is configured: one `nrg3:GenericSolarCollector` per
+- When `solar_panels` is configured: one `nrg3:GenericSolarCollector` per
   panel intersecting a LoD 2 roof, with an `installedOn` xlink onto
   that roof surface.
 - When `vegetation` is configured: one `veg:SolitaryVegetationObject`
@@ -330,7 +330,7 @@ citygml_energy/                Core package
     ├── cityjson_parse.py, cityjson_trees_parse.py       CityJSON tile parsers
     ├── address_key.py, address_match.py                 VBO ↔ EP-online address join
     ├── epc_score.py, energy_resources.py, appearance.py EPC palette, regime-aware Energy, app:Appearance
-    ├── pv_panels.py, vegetation.py, tree_matching.py    Optional input loaders + nearest-neighbour join
+    ├── solar_panels.py, vegetation.py, tree_matching.py    Optional input loaders + nearest-neighbour join
     ├── postcode6.py            CBS Postcode6 → nrg3:UrbanFunctionArea
     ├── _helpers.py             Shared helpers (type coercion, cache keys, gml:id sanitisation)
     ├── builders/               Per-feature builders (building, address, epc, vegetation)
@@ -355,7 +355,7 @@ inputs/                         See inputs/README.md
 ├── cities/                     City-scale configs
 ├── boundaries/                 GeoJSON AOI polygons
 ├── vegetation/                 CFTree LoD 3 tree meshes (CityJSON)
-└── pv_panels/                  PV panel GeoPackage (UoG Zenodo 14860030, CC-BY-4.0)
+└── solar_panels/                Solar panel GeoPackage (UoG Zenodo 14860030, CC-BY-4.0)
 
 schemas/
 ├── citygml_energy_input.schema.json   Generated per-building JSON schema
@@ -391,7 +391,7 @@ GML is XSD-valid either way; `tools/validate_xsd.py` never consults the
 viewer's schemas.
 
 **Symptoms without the fix:** child element names ("ZoneWallSurface 4")
-shown instead of building names; PV panels invisible; building tree
+shown instead of building names; solar panels invisible; building tree
 garbled.
 
 **Fix** (applied to your own KIT viewer install, not this repo):

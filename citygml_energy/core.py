@@ -50,11 +50,17 @@ class CityModel:
             description=Description(value=gml_description) if gml_description else None,
             name=[Name(value=gml_name)] if gml_name else [],
         )
-        # STEP layer name → gml:id of every attached boundary surface.
-        # Populated by the geometry pipeline; consumed by any step that
-        # resolves JSON-declared relations (``installed_on``, …) to their
-        # concrete CityObject targets.
-        self.surface_name_index: dict[str, str] = {}
+        # (STEP layer name, LoD level) → gml:id of every attached boundary
+        # surface. Populated by the geometry pipeline; consumed by any step
+        # that resolves JSON-declared relations (``installed_on``, …) to
+        # their concrete CityObject targets. The LoD axis is part of the
+        # key because the same STEP layer name can refer to different
+        # physical features at different LoDs (LoD 3 routinely subdivides
+        # an LoD 2 face into smaller sub-faces, and authors number the
+        # subdivisions fresh per LoD). Bare-name lookups in
+        # ``device_relations.apply_device_relations`` collapse the LoD
+        # axis by picking the highest LoD present for the name.
+        self.surface_name_index: dict[tuple[str, int], str] = {}
 
     @property
     def xsd(self) -> XsdCityModel:

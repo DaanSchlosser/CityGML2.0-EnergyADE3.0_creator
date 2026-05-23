@@ -22,7 +22,7 @@ PathLike = str | Path
 
 
 # ``BuildContext`` is defined ahead of the per-source imports below
-# because the same per-source modules (``pv_panels``, ``vegetation``)
+# because the same per-source modules (``solar_panels``, ``vegetation``)
 # re-import it via the ``builders/`` package: defining the class first
 # makes it available when those modules' import-time chains land back
 # in this module mid-load. Reordering the imports the other way around
@@ -46,7 +46,7 @@ class BuildContext:
     explicitly (e.g. ``BuildContext(srs_dimension=2)``) inherits the
     same baseline a production run starts from. Frozen +
     ``slots=True`` matches the immutability + small-payload semantics
-    of the other source dataclasses (:class:`PvPanelsSource`,
+    of the other source dataclasses (:class:`SolarPanelsSource`,
     :class:`VegetationSource`, :class:`TreeBundle`); the instance is
     cheap to share across the worker-pool boundary.
     """
@@ -72,7 +72,7 @@ class BuildContext:
 from .boundary import (
     BoundarySource,  # noqa: E402  - imported after BuildContext to break a circular import
 )
-from .pv_panels import PvPanelsSource  # noqa: E402
+from .solar_panels import SolarPanelsSource  # noqa: E402
 from .vegetation import VegetationSource  # noqa: E402
 
 
@@ -134,9 +134,9 @@ class CityBuildConfig:
         gml_id_prefix: reserved for a future disambiguation scheme when
             multiple cities are merged; the BAG identificatie is
             globally unique already so this is left as an opt-in.
-        pv_panels_source: optional external solar panel polygon
+        solar_panels_source: optional external solar panel polygon
             GeoPackage; see
-            :class:`citygml_energy.city_builder.pv_panels.PvPanelsSource`.
+            :class:`citygml_energy.city_builder.solar_panels.SolarPanelsSource`.
             When present, the pipeline attaches one
             ``nrg3:GenericSolarCollector`` per panel to the Building
             whose LoD 2 RoofSurface has the largest 2D overlap. The
@@ -168,7 +168,7 @@ class CityBuildConfig:
     city_model_name: str | None
     city_model_description: str | None
     gml_id_prefix: str
-    pv_panels_source: PvPanelsSource | None = None
+    solar_panels_source: SolarPanelsSource | None = None
     boundary_source: BoundarySource | None = None
     vegetation_source: VegetationSource | None = None
     """Optional path to a merged CFTree CityJSON file (produced by
@@ -239,14 +239,14 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
         "srs_dimension",
         "city_model",
         "gml_id_prefix",
-        "pv_panels",
+        "solar_panels",
         "vegetation",
         "cbs_postcode6",
     }
 )
 
 _ALLOWED_CITY_MODEL_KEYS: frozenset[str] = frozenset({"name", "description"})
-_ALLOWED_PV_PANELS_KEYS: frozenset[str] = frozenset({"path", "layer", "z_offset_m"})
+_ALLOWED_SOLAR_PANELS_KEYS: frozenset[str] = frozenset({"path", "layer", "z_offset_m"})
 _ALLOWED_BOUNDARY_KEYS: frozenset[str] = frozenset({"path"})
 _ALLOWED_VEGETATION_KEYS: frozenset[str] = frozenset({"path"})
 _ALLOWED_CBS_POSTCODE6_KEYS: frozenset[str] = frozenset({"year"})
@@ -370,7 +370,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
             f"{source}: gml_id_prefix {gml_id_prefix!r} is not a valid XML NCName prefix"
         )
 
-    pv_panels_source = _validate_pv_panels(data.get("pv_panels"), source=source, base_dir=base_dir)
+    solar_panels_source = _validate_solar_panels(data.get("solar_panels"), source=source, base_dir=base_dir)
     boundary_source = _validate_boundary(data.get("boundary"), source=source, base_dir=base_dir)
     vegetation_source = _validate_vegetation(
         data.get("vegetation"), source=source, base_dir=base_dir
@@ -400,7 +400,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         city_model_name=city_model.get("name"),
         city_model_description=city_model.get("description"),
         gml_id_prefix=gml_id_prefix,
-        pv_panels_source=pv_panels_source,
+        solar_panels_source=solar_panels_source,
         boundary_source=boundary_source,
         vegetation_source=vegetation_source,
         cbs_postcode6_source=cbs_postcode6_source,
@@ -444,13 +444,13 @@ def _validate_lods(value: Any, *, source: str) -> tuple[int, ...]:
     return tuple(sorted(lods))
 
 
-def _validate_pv_panels(value: Any, *, source: str, base_dir: Path) -> PvPanelsSource | None:
-    """Validate the optional ``pv_panels`` block.
+def _validate_solar_panels(value: Any, *, source: str, base_dir: Path) -> SolarPanelsSource | None:
+    """Validate the optional ``solar_panels`` block.
 
     Returns ``None`` when unset. Path is resolved relative to the
     config's directory (matching the handling of ``cache_dir`` and
     ``output``); existence and CRS are checked lazily at read time in
-    :func:`citygml_energy.city_builder.pv_panels.load_panels_in_bbox`,
+    :func:`citygml_energy.city_builder.solar_panels.load_panels_in_bbox`,
     so a config authored on a machine without the GPKG still validates.
 
     The ``layer`` field is interpolated directly into the GeoPackage
@@ -461,20 +461,20 @@ def _validate_pv_panels(value: Any, *, source: str, base_dir: Path) -> PvPanelsS
     if value is None:
         return None
     if not isinstance(value, dict):
-        raise CityBuildError(f"{source}: pv_panels must be an object when provided")
-    unexpected = sorted(set(value) - _ALLOWED_PV_PANELS_KEYS)
+        raise CityBuildError(f"{source}: solar_panels must be an object when provided")
+    unexpected = sorted(set(value) - _ALLOWED_SOLAR_PANELS_KEYS)
     if unexpected:
-        raise CityBuildError(f"{source}: unexpected pv_panels key(s): {', '.join(unexpected)}")
+        raise CityBuildError(f"{source}: unexpected solar_panels key(s): {', '.join(unexpected)}")
     path_raw = value.get("path")
     if not isinstance(path_raw, str) or not path_raw.strip():
-        raise CityBuildError(f"{source}: pv_panels.path must be a non-empty string")
+        raise CityBuildError(f"{source}: solar_panels.path must be a non-empty string")
     layer = value.get("layer")
     if not isinstance(layer, str) or not layer.strip():
-        raise CityBuildError(f"{source}: pv_panels.layer must be a non-empty string")
+        raise CityBuildError(f"{source}: solar_panels.layer must be a non-empty string")
     layer = layer.strip()
     if not _NCNAME_RE.match(layer):
         raise CityBuildError(
-            f"{source}: pv_panels.layer {layer!r} must start with a letter or underscore "
+            f"{source}: solar_panels.layer {layer!r} must start with a letter or underscore "
             f"and contain only letters, digits, underscores, dots, or hyphens "
             f"(unsafe characters would cause SQL injection via the GeoPackage query)"
         )
@@ -486,11 +486,11 @@ def _validate_pv_panels(value: Any, *, source: str, base_dir: Path) -> PvPanelsS
         z_offset_raw = value["z_offset_m"]
         if isinstance(z_offset_raw, bool) or not isinstance(z_offset_raw, (int, float)):
             raise CityBuildError(
-                f"{source}: pv_panels.z_offset_m must be a number when provided "
+                f"{source}: solar_panels.z_offset_m must be a number when provided "
                 f"(got {z_offset_raw!r})"
             )
         kwargs["z_offset_m"] = float(z_offset_raw)
-    return PvPanelsSource(**kwargs)
+    return SolarPanelsSource(**kwargs)
 
 
 def _validate_vegetation(value: Any, *, source: str, base_dir: Path) -> VegetationSource | None:

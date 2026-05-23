@@ -5,7 +5,7 @@ the function that strings together ``build_building`` →
 ``attach_building_units_to_building`` →
 ``apply_bag_year_metadata_to_building`` →
 ``apply_eponline_pand_attribution_to_building`` →
-``attach_pv_collectors_to_building`` for every Pand. Each individual
+``attach_solar_collectors_to_building`` for every Pand. Each individual
 builder has its own narrow tests in ``test_city_builders.py``; this
 file covers the **orchestration**: that the calls happen in the right
 order, that the parameter object (``BuildContext``) reaches every
@@ -157,7 +157,7 @@ def test_run_per_pand_build_threads_build_context_through_to_each_builder(
     config = config.__class__(**{**config.__dict__, "gml_id_prefix": "test_"})
     inputs_per_pand = {"PA": PandInputs(resolved=[
         ResolvedAddress(vbo=_vbo(), energy_label=None),
-    ], pv_panels=())}
+    ], solar_panels=())}
     artefacts = run_per_pand_build(
         config=config,
         panden=[_pand("PA")],
@@ -213,7 +213,7 @@ def test_run_per_pand_build_lands_orchestration_outputs_on_building(
         resolved=[
             ResolvedAddress(vbo=_vbo(), energy_label=_label_with_pand_attribution())
         ],
-        pv_panels=(),
+        solar_panels=(),
     )}
     [art] = run_per_pand_build(
         config=config,
@@ -271,8 +271,8 @@ def test_run_per_pand_build_lands_orchestration_outputs_on_building(
 def test_run_per_pand_build_skips_pv_branch_when_panels_empty(
     tmp_path: Path,
 ) -> None:
-    """``attach_pv_collectors_to_building`` is conditional on
-    ``inputs.pv_panels`` being truthy. Empty panels must not crash
+    """``attach_solar_collectors_to_building`` is conditional on
+    ``inputs.solar_panels`` being truthy. Empty panels must not crash
     (they did not in tested runs, but the conditional is part of the
     orchestration and lives here, not in a per-builder test).
     """
@@ -299,13 +299,13 @@ def test_bundle_per_pand_inputs_collapses_parallel_dicts() -> None:
     resolved = {
         "PA": [ResolvedAddress(vbo=_vbo(vbo_id="V1", pand_id="PA"), energy_label=None)],
     }
-    pv = {
+    solar = {
         "PB": [],  # present but empty list
     }
     out = bundle_per_pand_inputs(
         panden=panden,
         resolved_per_pand=resolved,
-        pv_matches_per_pand=pv,
+        solar_matches_per_pand=solar,
     )
     assert "PA" in out
     assert "PB" in out
@@ -314,9 +314,9 @@ def test_bundle_per_pand_inputs_collapses_parallel_dicts() -> None:
         "executor falls through to EMPTY_INPUTS at access time."
     )
     assert out["PA"].resolved == resolved["PA"]
-    assert out["PA"].pv_panels == ()
+    assert out["PA"].solar_panels == ()
     assert out["PB"].resolved == []
-    assert out["PB"].pv_panels == ()
+    assert out["PB"].solar_panels == ()
 
 
 @pytest.mark.parametrize(

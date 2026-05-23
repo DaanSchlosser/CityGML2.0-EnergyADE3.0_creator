@@ -6,7 +6,7 @@
 
 **Drift guard.** [`tests/test_mapping_index_in_sync.py`](../tests/test_mapping_index_in_sync.py) asserts that every module path linked in this document exists, that a curated list of cited symbols is reachable in its module, and that every enrichment helper in [`citygml_energy/city_builder/`](../citygml_energy/city_builder/) — private (`_apply_bgt_*`, `_apply_bor_*`, `_apply_cftree_*`, `_apply_eponline_*`) and public (`apply_bag_*`, `apply_eponline_*`, `build_building*`, `build_address`, `build_solitary_vegetation_object`) — is mentioned at least once below. A merge that adds a new helper or renames an existing one will fail that test until this doc is updated. Inline line-number citations are not enforced by the test and may drift; the symbol names are authoritative.
 
-**Completeness method.** Every "supply" row was obtained by parsing a real cached response (BAG, 3DBAG, EP-online, municipality, CFTree, BGT), the actual GeoPackage schema (PV panels), or a sample GeoJSON (boundary). Field names reflect what the source actually emits; the commentary notes where the source documentation uses a different name or alias. Counts come from a fresh end-to-end run on the Emmer-Compascuum small-area AOI (41.5 ha, 674 buildings, 652 trees) using [`inputs/cities/emmer-compascuum_small-area.json`](../inputs/cities/emmer-compascuum_small-area.json).
+**Completeness method.** Every "supply" row was obtained by parsing a real cached response (BAG, 3DBAG, EP-online, municipality, CFTree, BGT), the actual GeoPackage schema (solar panels), or a sample GeoJSON (boundary). Field names reflect what the source actually emits; the commentary notes where the source documentation uses a different name or alias. Counts come from a fresh end-to-end run on the Emmer-Compascuum small-area AOI (41.5 ha, 674 buildings, 652 trees) using [`inputs/cities/emmer-compascuum_small-area.json`](../inputs/cities/emmer-compascuum_small-area.json).
 
 **Snapshot vintages.** Concrete counts in this document (building / tree counts, EP-online row distributions, BGT match ratios) were recorded against the **EP-online v20260401 mutatiebestand** and the BAG / 3DBAG / BGT responses cached on **2026-04-29**. Run `tests/test_mapping_index_in_sync.py` to verify the symbol-level invariants, but expect the absolute counts to drift with each upstream republication; the *shapes* (proportions, regime distributions) are stable.
 
@@ -27,7 +27,7 @@
 
 All `codeSpace` URLs are pinned in [`citygml_energy/namespaces.py`](../citygml_energy/namespaces.py). The two `core:externalReference/informationSystem` URLs (`BGT_INFORMATION_SYSTEM_URL`, `BOR_INFORMATION_SYSTEM_URL`) are pinned in their respective fetcher modules ([`fetchers/bgt.py`](../citygml_energy/city_builder/fetchers/bgt.py), [`fetchers/emmen_bor.py`](../citygml_energy/city_builder/fetchers/emmen_bor.py)) because they are not codeSpaces. The codeSpace of a `gml:CodeType` identifies the vocabulary, not the field; off-codelist values are valid as long as the codeSpace names the vocabulary they belong to.
 
-**Output features.** Every BAG Pand becomes one `bldg:Building`; every BAG VBO becomes one `nrg3:BuildingUnit` parented to its Pand. Every CFTree reconstruction becomes one `veg:SolitaryVegetationObject`. Every PV-panel polygon becomes one `nrg3:GenericSolarCollector` parented to a Building (technology-agnostic: the aerial-imagery source has no cell-type metadata, so we deliberately do not assert `nrg3:PhotovoltaicCollector`).
+**Output features.** Every BAG Pand becomes one `bldg:Building`; every BAG VBO becomes one `nrg3:BuildingUnit` parented to its Pand. Every CFTree reconstruction becomes one `veg:SolitaryVegetationObject`. Every solar-panel polygon becomes one `nrg3:GenericSolarCollector` parented to a Building (technology-agnostic: the aerial-imagery source has no cell-type metadata, so we deliberately do not assert `nrg3:PhotovoltaicCollector`).
 
 ## At-a-glance
 
@@ -39,7 +39,7 @@ All `codeSpace` URLs are pinned in [`citygml_energy/namespaces.py`](../citygml_e
 | 4 | PDOK BAG `bag:verblijfsobject` | 14 properties + geometry | 11 + geometry | `nrg3:BuildingUnit` + `core:Address` |
 | 5 | 3DBAG CityJSON tile | 62 `Building` attributes + LoD 0/1.2/2.2 geometries | 8 attributes + 3 LoD geometries | `bldg:lod0FootPrint` + `bldg:lod1Solid` + `bldg:boundedBy/lod2MultiSurface` + `nrg3:bdgHeight` (`QualifiedHeight`, `type="maxHeightAboveGround"`) + `bldg:roofType` + `bldg:storeysAboveGround` + `nrg3:bdgVolume` |
 | 6 | EP-online `Mutatiebestand` CSV | 42 columns | 20 | `nrg3:EnergyPerformanceCertificate` + `app:Appearance` (theme `energyLabel`) + per-VBO `nrg3:QualifiedArea` (thermal-zone) + per-VBO `nrg3:Energy` resources (regime-aware) + native `nrg3:bdgType` (Pand level) + per-VBO `gen:*Attribute` classification + `nrg3:Metadata` source attribution |
-| 7 | PV panels GeoPackage | 2 columns + geometry | 2 + geometry | `nrg3:GenericSolarCollector` |
+| 7 | solar panels GeoPackage | 2 columns + geometry | 2 + geometry | `nrg3:GenericSolarCollector` |
 | 8 | CFTree `trees_lod3.city.json` | 10 attributes + LoD 3 geometry | 9 + geometry | `veg:SolitaryVegetationObject` + `veg:lod3Geometry` |
 | 9 | BGT `vegetatieobject_punt` | 23 properties + geometry | 5 + geometry | `core:externalReference` + `gen:dateAttribute` (cross-reference layer; no biological attributes) |
 | 10 | Gemeente Emmen `bor_groen_bomen_beschermd` | 11 fields | 11 | `veg:species` + `core:externalReference` + `gen:*Attribute` siblings (BOR enrichment, only used in Emmen runs) |
@@ -696,11 +696,11 @@ The contrast against the NTA 8800 example is the regime asymmetry in microcosm: 
 
 ---
 
-## 7. PV panels GeoPackage (UoG Zenodo 14860030)
+## 7. Solar panels GeoPackage (UoG Zenodo 14860030)
 
-**Schema:** [`inputs/pv_panels/pv_panels.gpkg`](../inputs/pv_panels/pv_panels.gpkg), layer `pv_panels`. The public dataset is CC-BY-4.0; the shipped extract covers Emmer-Compascuum.
-**Loader:** [`pv_panels.py::load_panels_in_bbox`](../citygml_energy/city_builder/pv_panels.py).
-**Builder:** [`pv_panels.py::attach_pv_collectors_to_building`](../citygml_energy/city_builder/pv_panels.py).
+**Schema:** [`inputs/solar_panels/solar_panels.gpkg`](../inputs/solar_panels/solar_panels.gpkg), layer `solar_panels`. The public dataset is CC-BY-4.0; the shipped extract covers Emmer-Compascuum.
+**Loader:** [`solar_panels.py::load_panels_in_bbox`](../citygml_energy/city_builder/solar_panels.py).
+**Builder:** [`solar_panels.py::attach_solar_collectors_to_building`](../citygml_energy/city_builder/solar_panels.py).
 
 The table is deliberately minimal: only geometry and a row identifier.
 
@@ -708,7 +708,7 @@ The table is deliberately minimal: only geometry and a row identifier.
 
 | GPKG column | Type | Read | Used for |
 |---|---|---|---|
-| `fid` | INTEGER PK | ✓ | Embedded in the `nrg3:GenericSolarCollector/@gml:id` (`pv_{pand_id}_{fid}`) so every emitted collector is traceable back to one GPKG row. The `pv_` prefix is preserved for source-data continuity (the GeoPackage layer is named `pv_panels`); it is not a type assertion. |
+| `fid` | INTEGER PK | ✓ | Embedded in the `nrg3:GenericSolarCollector/@gml:id` (`solar_{pand_id}_{fid}`) so every emitted collector is traceable back to one GPKG row. The `solar_` prefix is used for source-data continuity (the GeoPackage layer is named `solar_panels`); it is not a type assertion. |
 | `geom` | MULTIPOLYGON (EPSG:28992) | ✓ | Projected onto the matched LoD 2 roof plane to form the collector's `lod2MultiSurface`. |
 
 Derived solar-collector fields (computed in-pipeline from the geometry + roof facet, not read from the GPKG):
@@ -908,12 +908,12 @@ A small number of output fields are not read from any source; they are computed 
 
 | Emitted element | Computed from |
 |---|---|
-| `gml:Envelope` on the `CityModel` | union of every building LoD vertex + every PV panel projected vertex + every tree crown vertex. Written last so the envelope bounds everything that went into the file. |
+| `gml:Envelope` on the `CityModel` | union of every building LoD vertex + every solar panel projected vertex + every tree crown vertex. Written last so the envelope bounds everything that went into the file. |
 | `core:cityObjectMember` container wiring | dispatch by runtime type handled by `CityModel.add`. |
 | `app:Appearance` theme `"energyLabel"` | averaged EPC letter of each building's VBOs → EU palette RGB (`epc_score.label_to_rgb`). Targets every `gml:MultiSurface`, `gml:CompositeSurface`, and `gml:Polygon` under each building (the LoD 0 footprint MultiSurface, the LoD 1 CompositeSurface shell, each LoD 2 thematic surface's MultiSurface, plus every member Polygon — see [`appearance.collect_surface_target_ids`](../citygml_energy/city_builder/appearance.py)). The CompositeSurface target is what keeps LoD 1 shells coloured in viewers that resolve container-level targets; per-polygon targets keep colour applied in viewers that only resolve per-polygon `app:target` xlinks (KIT SDM_KITModelViewer family). Buildings without any matched label render grey. |
-| `app:Appearance` theme `"pvPanels"` | constant `(0.03, 0.05, 0.15)` deep blue targeting every `gml:MultiSurface` and `gml:Polygon` under every `nrg3:GenericSolarCollector`. (Theme name retained for source-data continuity; the emitted XSD type is technology-agnostic — see §7.) |
+| `app:Appearance` theme `"solarPanels"` | constant `(0.03, 0.05, 0.15)` deep blue targeting every `gml:MultiSurface` and `gml:Polygon` under every `nrg3:GenericSolarCollector`. (Theme name retained for source-data continuity; the emitted XSD type is technology-agnostic — see §7.) |
 | `app:Appearance` theme `"vegetation"` | constant `(0.15, 0.55, 0.15)` foliage green targeting every `gml:MultiSurface` and `gml:Polygon` under every `veg:SolitaryVegetationObject`. |
-| `nrg3:CityObjectRelation` with `type="installedOn"` | the PV panel's 2D max-overlap with a specific LoD 2 `bldg:RoofSurface` (xlink only, no geometry). |
+| `nrg3:CityObjectRelation` with `type="installedOn"` | the solar panel's 2D max-overlap with a specific LoD 2 `bldg:RoofSurface` (xlink only, no geometry). |
 | `nrg3:bdgBdrySurfTotalSurfaceArea` / `Inclination` / `Azimuth` on every LoD 2 BoundarySurface | computed from the polygon geometry by `_attach_planar_surface_ade_attributes`. |
 
 ---

@@ -368,8 +368,8 @@ def lod2_thematic_surface_gml_id(
     :func:`iter_lod2_thematic_classification` for the iteration that
     assigns the index. Stable across reruns because the source order is
     preserved by the parser. Both the building builder
-    (:func:`_attach_lod2_thematic_surfaces`) and the PV-panel matcher
-    (:mod:`citygml_energy.city_builder.pv_panels`) use this helper so
+    (:func:`_attach_lod2_thematic_surfaces`) and the solar-panel matcher
+    (:mod:`citygml_energy.city_builder.solar_panels`) use this helper so
     the ``installedOn`` xlinks emitted by the matcher resolve to the
     surfaces emitted by the builder by construction.
 
@@ -387,7 +387,7 @@ def iter_lod2_thematic_classification(
 
     This is the **single source of truth** for how LoD 2 polygons map
     to per-planar thematic surfaces. The builder consumes every yield
-    to emit a ``bldg:boundedBy`` element; the PV-panel matcher consumes
+    to emit a ``bldg:boundedBy`` element; the solar-panel matcher consumes
     the same iterator (filtered to ``RoofSurface``) to label each
     facet with the gml:id the builder will assign. Routing both sides
     through one iterator removes the implicit "two counters that must

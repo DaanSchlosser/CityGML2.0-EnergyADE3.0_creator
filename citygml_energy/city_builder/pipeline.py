@@ -29,13 +29,13 @@ from ..core import CityModel
 from ..gml_builders import build_envelope
 from . import pand_executor
 from . import postcode6 as postcode6_step
-from . import pv_panels as pv_panels_module
+from . import solar_panels as solar_panels_module
 from . import vegetation as vegetation_module
 from .address_key import address_key_from_vbo
 from .address_match import ResolvedAddress, match_addresses
 from .appearance import (
     append_energy_label_appearance,
-    append_pv_panel_appearance,
+    append_solar_panel_appearance,
     append_vegetation_appearance,
 )
 from .boundary import load_boundary_polygon
@@ -47,7 +47,7 @@ from .fetchers import municipality as muni_fetchers
 from .fetchers import threedbag
 from .http import CachedSession
 from .postcode6 import Postcode6Area
-from .pv_panels import ProjectedPanel
+from .solar_panels import ProjectedPanel
 from .vegetation import TreeBundle
 
 if TYPE_CHECKING:
@@ -170,7 +170,7 @@ def build_city_model(
             dropped,
         )
 
-    pv_matches_per_pand = _maybe_match_pv_panels(
+    solar_matches_per_pand = _maybe_match_solar_panels(
         config=config,
         bbox=bbox,
         parsed_by_id=parsed_by_id,
@@ -189,7 +189,7 @@ def build_city_model(
         panden=panden,
         parsed_by_id=parsed_by_id,
         resolved_per_pand=resolved_per_pand,
-        pv_matches_per_pand=pv_matches_per_pand,
+        solar_matches_per_pand=solar_matches_per_pand,
         tree_bundle=tree_bundle,
         postcode6_areas=postcode6_areas,
         boundary_geom=boundary_geom,
@@ -210,39 +210,39 @@ def build_city_model(
     return model
 
 
-def _maybe_match_pv_panels(
+def _maybe_match_solar_panels(
     *,
     config: CityBuildConfig,
     bbox: tuple[float, float, float, float],
     parsed_by_id: dict[str, ParsedBuilding],
 ) -> dict[str, list[ProjectedPanel]]:
-    """Load + match + project PV panels once in the main process.
+    """Load + match + project solar panels once in the main process.
 
     Empty dict when no PV source is configured, when LoD 2 is disabled
     (there is nothing to attach to), or when no panels fall inside the
     bbox.
     """
-    source = config.pv_panels_source
+    source = config.solar_panels_source
     if source is None:
         return {}
     if 2 not in config.lods:
-        _LOG.warning("pv_panels configured but LoD 2 is disabled; skipping PV attach")
+        _LOG.warning("solar_panels configured but LoD 2 is disabled; skipping solar attach")
         return {}
 
-    _LOG.info("Loading PV panels: %s (%s)", source.path.name, source.layer)
-    panels = pv_panels_module.load_panels_in_bbox(source, bbox)
+    _LOG.info("Loading solar panels: %s (%s)", source.path.name, source.layer)
+    panels = solar_panels_module.load_panels_in_bbox(source, bbox)
     if not panels:
-        _LOG.info("PV panels: 0 polygons inside bbox; skipping")
+        _LOG.info("Solar panels: 0 polygons inside bbox; skipping")
         return {}
 
-    matches, skipped = pv_panels_module.match_and_project_panels(
+    matches, skipped = solar_panels_module.match_and_project_panels(
         panels=panels,
         parsed_buildings=parsed_by_id.values(),
         z_offset_m=source.z_offset_m,
     )
     total = sum(len(v) for v in matches.values())
     _LOG.info(
-        "PV panels: %d projected onto %d buildings (%d skipped, no LoD 2 roof overlap)",
+        "Solar panels: %d projected onto %d buildings (%d skipped, no LoD 2 roof overlap)",
         total,
         len(matches),
         skipped,
@@ -567,7 +567,7 @@ def _assemble_city_model(
     panden: list[bag_fetchers.Pand],
     parsed_by_id: dict[str, ParsedBuilding],
     resolved_per_pand: dict[str, list[ResolvedAddress]],
-    pv_matches_per_pand: dict[str, list[ProjectedPanel]] | None = None,
+    solar_matches_per_pand: dict[str, list[ProjectedPanel]] | None = None,
     tree_bundle: TreeBundle | None = None,
     postcode6_areas: list[Postcode6Area] | None = None,
     boundary_geom: BaseGeometry | None = None,
@@ -592,7 +592,7 @@ def _assemble_city_model(
     inputs_per_pand = pand_executor.bundle_per_pand_inputs(
         panden=panden,
         resolved_per_pand=resolved_per_pand,
-        pv_matches_per_pand=pv_matches_per_pand or {},
+        solar_matches_per_pand=solar_matches_per_pand or {},
     )
     workers = pand_executor.assembly_worker_count(len(panden))
     build_results = pand_executor.run_per_pand_build(
@@ -619,7 +619,7 @@ def _assemble_city_model(
         building_label_pairs,
         targets_by_gml_id=targets_by_gml_id,
     )
-    append_pv_panel_appearance(model)
+    append_solar_panel_appearance(model)
 
     build_context = config.build_context()
     tree_targets = vegetation_module.attach_trees_to_model(

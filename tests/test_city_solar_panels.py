@@ -2,7 +2,7 @@
 
 Covers:
 
-* Config parsing of the optional ``pv_panels`` block.
+* Config parsing of the optional ``solar_panels`` block.
 * Full pipeline path with :func:`load_panels_in_bbox` mocked to return
   fixture shapely polygons, asserting that the emitted ``CityModel``
   carries ``nrg3:GenericSolarCollector`` features with the right
@@ -16,7 +16,7 @@ Covers:
 
 No network, no real GeoPackage: :func:`load_panels_in_bbox` is patched
 so the test exercises ``match_and_project_panels``,
-``attach_pv_collectors_to_building``, and the pipeline wiring, not
+``attach_solar_collectors_to_building``, and the pipeline wiring, not
 GPKG parsing (that path is covered by a narrower unit test).
 """
 
@@ -38,7 +38,7 @@ from citygml_energy._step import GeometryPolygon
 from citygml_energy.city_builder import build_city_model
 from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder import pipeline as pipeline_module
-from citygml_energy.city_builder import pv_panels as pv_panels_module
+from citygml_energy.city_builder import solar_panels as solar_panels_module
 from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
 from citygml_energy.city_builder.config import load_city_config
 from citygml_energy.city_builder.fetchers import (
@@ -52,11 +52,11 @@ from citygml_energy.city_builder.fetchers import (
 )
 from citygml_energy.city_builder.fetchers.bag import Pand, Verblijfsobject
 from citygml_energy.city_builder.fetchers.municipality import MunicipalityOutline
-from citygml_energy.city_builder.pv_panels import (
+from citygml_energy.city_builder.solar_panels import (
     DEFAULT_Z_OFFSET_M,
     ProjectedPanel,
-    PvPanelsSource,
-    attach_pv_collectors_to_building,
+    SolarPanelsSource,
+    attach_solar_collectors_to_building,
     match_and_project_panels,
 )
 from tools.validate_xsd import load_schema
@@ -204,9 +204,9 @@ def _write_config(tmp_path: Path, *, with_pv: bool) -> Path:
         # A non-existent path is fine: load_panels_in_bbox is mocked in
         # the integration test, and existence is checked lazily only
         # when the loader actually runs.
-        data["pv_panels"] = {
+        data["solar_panels"] = {
             "path": "panels.gpkg",
-            "layer": "pv_panels",
+            "layer": "solar_panels",
             "z_offset_m": 0.25,
         }
     source = tmp_path / "city.json"
@@ -347,7 +347,7 @@ def test_azimuth_conventions_are_compass_bearings() -> None:
     """Spot-check that normals pointing in each cardinal direction
     produce the compass bearing EnergyADE expects (0=N, 90=E, 180=S, 270=W).
     """
-    from citygml_energy.city_builder.pv_panels import _azimuth_from_normal
+    from citygml_energy.city_builder.solar_panels import _azimuth_from_normal
 
     # Horizontal roof: undefined.
     assert _azimuth_from_normal((0.0, 0.0, 1.0)) is None
@@ -389,7 +389,7 @@ def _fixture_projected_panel(
     )
 
 
-def test_attach_pv_emits_expected_xsd_structure() -> None:
+def test_attach_solar_emits_expected_xsd_structure() -> None:
     from citygml_energy.city_builder.builders import build_building
 
     parsed = _fixture_parsed_building()
@@ -399,7 +399,7 @@ def test_attach_pv_emits_expected_xsd_structure() -> None:
     )
     building = build_building(parsed, ctx)
     panel = _fixture_projected_panel()
-    attached = attach_pv_collectors_to_building(building, [panel], ctx)
+    attached = attach_solar_collectors_to_building(building, [panel], ctx)
     assert attached == 1
     assert len(building.device) == 1
     # The city pipeline emits the technology-agnostic
@@ -408,7 +408,7 @@ def test_attach_pv_emits_expected_xsd_structure() -> None:
     collector = building.device[0].generic_solar_collector
     assert collector is not None
     assert building.device[0].photovoltaic_collector is None
-    assert collector.id == f"pv_{_PAND_ID}_7"
+    assert collector.id == f"solar_{_PAND_ID}_7"
     assert collector.lod2_multi_surface is not None
     # cellType is photovoltaic-specific and does not exist on
     # GenericSolarCollectorType, so it is neither emitted nor checked.
@@ -452,7 +452,7 @@ def test_attach_omits_azimuth_on_flat_roof() -> None:
     panel = _fixture_projected_panel(
         original_fid=3, azimuth_deg=None, inclination_deg=0.0
     )
-    attach_pv_collectors_to_building(building, [panel], ctx)
+    attach_solar_collectors_to_building(building, [panel], ctx)
     collector = building.device[0].generic_solar_collector
     assert collector.azimuth is None
     assert collector.inclination.value == 0.0
@@ -468,7 +468,7 @@ def test_attach_drops_panels_when_no_lod2_roof_surface() -> None:
     # refuse to emit dangling hrefs.
     building = build_building(parsed, ctx)
     panel = _fixture_projected_panel(original_fid=1)
-    attached = attach_pv_collectors_to_building(building, [panel], ctx)
+    attached = attach_solar_collectors_to_building(building, [panel], ctx)
     assert attached == 0
     assert building.device == []
 
@@ -478,23 +478,23 @@ def test_attach_drops_panels_when_no_lod2_roof_surface() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_config_parses_pv_panels_block(tmp_path: Path) -> None:
+def test_config_parses_solar_panels_block(tmp_path: Path) -> None:
     source = _write_config(tmp_path, with_pv=True)
     config = load_city_config(source)
-    assert isinstance(config.pv_panels_source, PvPanelsSource)
-    assert config.pv_panels_source.layer == "pv_panels"
-    assert config.pv_panels_source.z_offset_m == 0.25
+    assert isinstance(config.solar_panels_source, SolarPanelsSource)
+    assert config.solar_panels_source.layer == "solar_panels"
+    assert config.solar_panels_source.z_offset_m == 0.25
     # Path is resolved relative to the config file's directory.
-    assert config.pv_panels_source.path == (tmp_path / "panels.gpkg").resolve()
+    assert config.solar_panels_source.path == (tmp_path / "panels.gpkg").resolve()
 
 
-def test_config_without_pv_panels_block(tmp_path: Path) -> None:
+def test_config_without_solar_panels_block(tmp_path: Path) -> None:
     source = _write_config(tmp_path, with_pv=False)
     config = load_city_config(source)
-    assert config.pv_panels_source is None
+    assert config.solar_panels_source is None
 
 
-def test_config_rejects_bad_pv_panels_block(tmp_path: Path) -> None:
+def test_config_rejects_bad_solar_panels_block(tmp_path: Path) -> None:
     source = tmp_path / "city.json"
     source.write_text(
         json.dumps({
@@ -502,14 +502,14 @@ def test_config_rejects_bad_pv_panels_block(tmp_path: Path) -> None:
             "include_energy_labels": False,
             "output": str(tmp_path / "out.gml"),
             "cache_dir": str(tmp_path / "cache"),
-            "pv_panels": {"layer": "x"},  # missing path
+            "solar_panels": {"layer": "x"},  # missing path
         }),
         encoding="utf-8",
     )
     (tmp_path / "cache").mkdir()
     from citygml_energy.city_builder.config import CityBuildError
 
-    with pytest.raises(CityBuildError, match=r"pv_panels\.path"):
+    with pytest.raises(CityBuildError, match=r"solar_panels\.path"):
         load_city_config(source)
 
 
@@ -518,14 +518,14 @@ def test_config_rejects_bad_pv_panels_block(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_pipeline_attaches_pv_collectors(
+def test_pipeline_attaches_solar_collectors(
     tmp_path: Path, mocked_fetchers, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = _write_config(tmp_path, with_pv=True)
     config = load_city_config(source)
 
     monkeypatch.setattr(
-        pv_panels_module,
+        solar_panels_module,
         "load_panels_in_bbox",
         lambda src, bbox: _fixture_panels(),
     )
@@ -535,7 +535,7 @@ def test_pipeline_attaches_pv_collectors(
     assert len(building.device) == 2  # the two on-roof panels only
 
     collector_ids = {d.generic_solar_collector.id for d in building.device}
-    assert collector_ids == {f"pv_{_PAND_ID}_1", f"pv_{_PAND_ID}_2"}
+    assert collector_ids == {f"solar_{_PAND_ID}_1", f"solar_{_PAND_ID}_2"}
 
     # Every solar collector points installedOn → the matched per-planar
     # RoofSurface id. The cube fixture has exactly one RoofSurface, so
@@ -559,7 +559,7 @@ def test_pipeline_skips_pv_when_lod2_disabled(
             "include_energy_labels": False,
             "cache_dir": str(tmp_path / "cache"),
             "output": str(tmp_path / "out.gml"),
-            "pv_panels": {"path": "panels.gpkg", "layer": "pv_panels"},
+            "solar_panels": {"path": "panels.gpkg", "layer": "solar_panels"},
         }),
         encoding="utf-8",
     )
@@ -567,7 +567,7 @@ def test_pipeline_skips_pv_when_lod2_disabled(
 
     config = load_city_config(source)
     monkeypatch.setattr(
-        pv_panels_module,
+        solar_panels_module,
         "load_panels_in_bbox",
         lambda src, bbox: _fixture_panels(),
     )
@@ -589,7 +589,7 @@ def test_pipeline_output_with_pv_validates_against_xsd(
     source = _write_config(tmp_path, with_pv=True)
     config = load_city_config(source)
     monkeypatch.setattr(
-        pv_panels_module,
+        solar_panels_module,
         "load_panels_in_bbox",
         lambda src, bbox: _fixture_panels(),
     )
@@ -641,7 +641,7 @@ def _make_minimal_gpkg(path: Path, polygon_coords: list[tuple[float, float]]) ->
                 table_name TEXT, column_name TEXT, geometry_type_name TEXT,
                 srs_id INTEGER, z TINYINT, m TINYINT
             );
-            CREATE TABLE pv_panels (fid INTEGER PRIMARY KEY, geom BLOB);
+            CREATE TABLE solar_panels (fid INTEGER PRIMARY KEY, geom BLOB);
             """
         )
         con.execute(
@@ -649,13 +649,13 @@ def _make_minimal_gpkg(path: Path, polygon_coords: list[tuple[float, float]]) ->
         )
         con.execute(
             "INSERT INTO gpkg_contents (table_name, data_type, srs_id) "
-            "VALUES ('pv_panels', 'features', 28992)"
+            "VALUES ('solar_panels', 'features', 28992)"
         )
         con.execute(
             "INSERT INTO gpkg_geometry_columns VALUES "
-            "('pv_panels', 'geom', 'MULTIPOLYGON', 28992, 0, 0)"
+            "('solar_panels', 'geom', 'MULTIPOLYGON', 28992, 0, 0)"
         )
-        con.execute("INSERT INTO pv_panels (fid, geom) VALUES (?, ?)", (1, gpkg_geom))
+        con.execute("INSERT INTO solar_panels (fid, geom) VALUES (?, ?)", (1, gpkg_geom))
         con.commit()
     finally:
         con.close()
@@ -667,12 +667,12 @@ def test_load_panels_in_bbox_roundtrip(tmp_path: Path) -> None:
         gpkg,
         [(100.0, 100.0), (200.0, 100.0), (200.0, 200.0), (100.0, 200.0), (100.0, 100.0)],
     )
-    source = PvPanelsSource(path=gpkg, layer="pv_panels", z_offset_m=0.1)
-    rows = pv_panels_module.load_panels_in_bbox(source, (50.0, 50.0, 300.0, 300.0))
+    source = SolarPanelsSource(path=gpkg, layer="solar_panels", z_offset_m=0.1)
+    rows = solar_panels_module.load_panels_in_bbox(source, (50.0, 50.0, 300.0, 300.0))
     assert len(rows) == 1
     assert rows[0][0] == 1
     # Outside the panel's bbox: returns nothing instead of raising.
-    rows_miss = pv_panels_module.load_panels_in_bbox(source, (1000.0, 1000.0, 2000.0, 2000.0))
+    rows_miss = solar_panels_module.load_panels_in_bbox(source, (1000.0, 1000.0, 2000.0, 2000.0))
     assert rows_miss == []
 
 
@@ -684,16 +684,16 @@ def test_load_panels_in_bbox_rejects_wrong_crs(tmp_path: Path) -> None:
     # Force the declared srs to something we don't accept.
     con = sqlite3.connect(gpkg)
     try:
-        con.execute("UPDATE gpkg_contents SET srs_id = 4326 WHERE table_name = 'pv_panels'")
+        con.execute("UPDATE gpkg_contents SET srs_id = 4326 WHERE table_name = 'solar_panels'")
         con.commit()
     finally:
         con.close()
-    source = PvPanelsSource(path=gpkg, layer="pv_panels", z_offset_m=0.1)
+    source = SolarPanelsSource(path=gpkg, layer="solar_panels", z_offset_m=0.1)
     with pytest.raises(ValueError, match="srs_id=4326"):
-        pv_panels_module.load_panels_in_bbox(source, (0.0, 0.0, 10.0, 10.0))
+        solar_panels_module.load_panels_in_bbox(source, (0.0, 0.0, 10.0, 10.0))
 
 
 def test_load_panels_missing_file_raises(tmp_path: Path) -> None:
-    source = PvPanelsSource(path=tmp_path / "nope.gpkg", layer="x", z_offset_m=0.1)
+    source = SolarPanelsSource(path=tmp_path / "nope.gpkg", layer="x", z_offset_m=0.1)
     with pytest.raises(FileNotFoundError):
-        pv_panels_module.load_panels_in_bbox(source, (0.0, 0.0, 1.0, 1.0))
+        solar_panels_module.load_panels_in_bbox(source, (0.0, 0.0, 1.0, 1.0))

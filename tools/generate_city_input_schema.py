@@ -24,7 +24,7 @@ from citygml_energy.city_builder.config import (
     _CBS_POSTCODE6_YEAR_MAX,
     _CBS_POSTCODE6_YEAR_MIN,
 )
-from citygml_energy.city_builder.pv_panels import DEFAULT_Z_OFFSET_M
+from citygml_energy.city_builder.solar_panels import DEFAULT_Z_OFFSET_M
 from citygml_energy.namespaces import DEFAULT_SRS_NAME
 
 
@@ -161,7 +161,7 @@ def build_schema() -> dict[str, Any]:
                 ),
                 "pattern": r"^(?:[A-Za-z_][A-Za-z0-9_.\-]*)?$",
             },
-            "pv_panels": {
+            "solar_panels": {
                 "type": "object",
                 "description": (
                     "Optional external solar panel polygon source. When set, "

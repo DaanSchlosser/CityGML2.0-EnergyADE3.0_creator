@@ -81,8 +81,8 @@ if TYPE_CHECKING:
 __all__ = [
     "DEFAULT_Z_OFFSET_M",
     "ProjectedPanel",
-    "PvPanelsSource",
-    "attach_pv_collectors_to_building",
+    "SolarPanelsSource",
+    "attach_solar_collectors_to_building",
     "load_panels_in_bbox",
     "match_and_project_panels",
 ]
@@ -110,9 +110,9 @@ _HORIZONTAL_EPS: float = 1e-6
 # gml:id prefix for the collectors. BAG identificaties lead with a
 # digit, so the prefix is what keeps them as valid XML NCNames. The
 # ``pv_`` prefix is retained for stability with the source dataset's
-# name ("PV panels GeoPackage"); the emitted XSD type is the
+# name ("solar panels GeoPackage"); the emitted XSD type is the
 # technology-agnostic ``nrg3:GenericSolarCollector``.
-_PV_ID_PREFIX: str = "pv_"
+_SOLAR_ID_PREFIX: str = "solar_"
 
 # Pre-built CodeType singleton. Every collector we emit shares this
 # exact value, and xsdata serialisation is read-only, so caching at
@@ -126,8 +126,8 @@ _RELATION_INSTALLED_ON: CodeType = CodeType(value="installedOn", code_space=CS_N
 
 
 @dataclass(frozen=True)
-class PvPanelsSource:
-    """Declarative pointer to an external PV panel polygon GeoPackage.
+class SolarPanelsSource:
+    """Declarative pointer to an external solar panel polygon GeoPackage.
 
     :attr:`path`: absolute or already-resolved path to the ``.gpkg``.
     :attr:`layer`: the table name inside the GPKG that holds the panel
@@ -211,7 +211,7 @@ def _strip_gpkg_header(blob: bytes) -> bytes:
 
 
 def load_panels_in_bbox(
-    source: PvPanelsSource,
+    source: SolarPanelsSource,
     bbox: tuple[float, float, float, float],
 ) -> list[tuple[int, BaseGeometry]]:
     """Load panel rows whose geometry intersects *bbox*.
@@ -227,7 +227,7 @@ def load_panels_in_bbox(
         from shapely.geometry import box as shapely_box
     except ImportError as exc:  # pragma: no cover, optional dep
         raise RuntimeError(
-            "PV panel integration needs shapely; install with: pip install -e .[city]"
+            "solar panel integration needs shapely; install with: pip install -e .[city]"
         ) from exc
 
     clip = shapely_box(*bbox)
@@ -235,7 +235,7 @@ def load_panels_in_bbox(
     try:
         con = sqlite3.connect(f"file:{source.path}?mode=ro", uri=True)
     except sqlite3.OperationalError as exc:
-        raise FileNotFoundError(f"pv_panels.path could not be opened: {source.path}") from exc
+        raise FileNotFoundError(f"solar_panels.path could not be opened: {source.path}") from exc
     try:
         _assert_gpkg_layer_is_rd_new(con, source)
         geom_col, rtree_name = _gpkg_geometry_column_and_rtree(con, source.layer)
@@ -255,7 +255,7 @@ def load_panels_in_bbox(
     return out
 
 
-def _assert_gpkg_layer_is_rd_new(con: sqlite3.Connection, source: PvPanelsSource) -> None:
+def _assert_gpkg_layer_is_rd_new(con: sqlite3.Connection, source: SolarPanelsSource) -> None:
     meta = con.execute(
         "SELECT data_type, srs_id FROM gpkg_contents WHERE table_name = ?",
         (source.layer,),
@@ -364,7 +364,7 @@ def match_and_project_panels(
         from shapely.geometry import Polygon
     except ImportError as exc:  # pragma: no cover, optional dep
         raise RuntimeError(
-            "PV panel matching needs shapely; install with: pip install -e .[city]"
+            "solar panel matching needs shapely; install with: pip install -e .[city]"
         ) from exc
 
     facets = _collect_roof_facets(parsed_buildings, Polygon)
@@ -625,7 +625,7 @@ def _inclination_from_normal(n_unit: tuple[float, float, float]) -> float:
 # ---------------------------------------------------------------------------
 
 
-def attach_pv_collectors_to_building(
+def attach_solar_collectors_to_building(
     building: Any,
     panels_for_pand: list[ProjectedPanel],
     build_context: BuildContext = BuildContext(),
@@ -642,9 +642,9 @@ def attach_pv_collectors_to_building(
 
     A collector carries:
 
-    * ``gml:id = "pv_{pand_id}_{original_fid}"`` — NCName-safe via the
+    * ``gml:id = "solar_{pand_id}_{original_fid}"`` — NCName-safe via the
       ``pv_`` prefix (BAG identificatie starts with a digit). The
-      prefix is kept for traceability to the source ("PV panels"
+      prefix is kept for traceability to the source ("solar panels"
       GeoPackage) even though the emitted XSD type is generic.
     * ``lod2MultiSurface`` — the pre-projected polygons from
       :func:`match_and_project_panels`.
@@ -694,7 +694,7 @@ def attach_pv_collectors_to_building(
             panel.roof_index,
         )
         collector = _build_solar_collector(
-            collector_gml_id=f"{_PV_ID_PREFIX}{pand_id}_{panel.original_fid}",
+            collector_gml_id=f"{_SOLAR_ID_PREFIX}{pand_id}_{panel.original_fid}",
             roof_gml_id=roof_gml_id,
             panel=panel,
             srs_name=build_context.srs_name,

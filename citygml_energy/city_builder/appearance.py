@@ -10,7 +10,7 @@ toggle them in isolation:
   ``app:X3DMaterial`` per EU-palette color (grey fallback for
   buildings without a matched label, via
   :func:`epc_score.label_to_rgb`).
-* :func:`append_pv_panel_appearance` (theme ``"pvPanels"``) — paints
+* :func:`append_solar_panel_appearance` (theme ``"solarPanels"``) — paints
   every solar collector (``nrg3:GenericSolarCollector``) dark blue.
 * :func:`append_vegetation_appearance` (theme ``"vegetation"``) —
   paints every solitary-vegetation object foliage-green.
@@ -66,12 +66,12 @@ from .epc_score import LABEL_TO_KWH, average_labels, label_to_rgb
 
 __all__ = [
     "ENERGY_LABEL_THEME",
-    "PV_PANEL_DIFFUSE_COLOR",
-    "PV_PANEL_THEME",
+    "SOLAR_PANEL_DIFFUSE_COLOR",
+    "SOLAR_PANEL_THEME",
     "VEGETATION_DIFFUSE_COLOR",
     "VEGETATION_THEME",
     "append_energy_label_appearance",
-    "append_pv_panel_appearance",
+    "append_solar_panel_appearance",
     "append_vegetation_appearance",
     "collect_surface_target_ids",
 ]
@@ -79,13 +79,13 @@ __all__ = [
 
 ENERGY_LABEL_THEME = "energyLabel"
 
-# PV-panel appearance: "very dark blue, almost black". Darker than any
+# Solar-panel appearance: "very dark blue, almost black". Darker than any
 # EPC-palette blue, still readable as blue rather than pure black.
-PV_PANEL_THEME = "pvPanels"
-PV_PANEL_DIFFUSE_COLOR: tuple[float, float, float] = (0.03, 0.05, 0.15)
+SOLAR_PANEL_THEME = "solarPanels"
+SOLAR_PANEL_DIFFUSE_COLOR: tuple[float, float, float] = (0.03, 0.05, 0.15)
 
 # Vegetation appearance: a deep foliage green that reads clearly against
-# both the EU-palette building colors and the dark-blue PV panels. The
+# both the EU-palette building colors and the dark-blue solar panels. The
 # specific RGB is chosen to match the KIT viewer's default background
 # rather than a theoretically "correct" chlorophyll reflectance, because
 # the pipeline's output is reviewed in FZKViewer / KIT SDM first.
@@ -172,7 +172,7 @@ def append_energy_label_appearance(
     city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
 
 
-def append_pv_panel_appearance(city_model: Any) -> None:
+def append_solar_panel_appearance(city_model: Any) -> None:
     """Attach an ``app:Appearance`` that paints every solar panel dark blue.
 
     One ``app:X3DMaterial`` targets every ``gml:MultiSurface`` and
@@ -182,10 +182,10 @@ def append_pv_panel_appearance(city_model: Any) -> None:
     viewer-compatibility reason as the energy-label appearance (see
     :func:`collect_surface_target_ids`).
 
-    The appearance lives under its own theme (``"pvPanels"``) so a
+    The appearance lives under its own theme (``"solarPanels"``) so a
     viewer's theme switcher can toggle panels independently of the
     energy-label painting. The theme name is retained for source-data
-    continuity (the GeoPackage layer is named ``pv_panels``) even
+    continuity (the GeoPackage layer is named ``solar_panels``) even
     though the XSD type the city pipeline emits is the
     technology-agnostic ``nrg3:GenericSolarCollector``.
 
@@ -194,8 +194,8 @@ def append_pv_panel_appearance(city_model: Any) -> None:
     targets = _collect_per_feature_targets(city_model, GenericSolarCollector)
     _append_uniform_appearance(
         city_model,
-        theme=PV_PANEL_THEME,
-        diffuse_color=PV_PANEL_DIFFUSE_COLOR,
+        theme=SOLAR_PANEL_THEME,
+        diffuse_color=SOLAR_PANEL_DIFFUSE_COLOR,
         targets=targets,
     )
 

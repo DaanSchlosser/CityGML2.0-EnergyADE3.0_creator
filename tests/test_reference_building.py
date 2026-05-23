@@ -114,7 +114,7 @@ def test_devices_split_between_building_and_building_unit(reference_building_roo
     feature: the panel array sits on the roof of the Pand, not inside
     any one occupied unit, and the city-pipeline matcher attaches
     panel-derived collectors at the Building level for the same reason
-    (see :func:`citygml_energy.city_builder.pv_panels.attach_pv_collectors_to_building`).
+    (see :func:`citygml_energy.city_builder.solar_panels.attach_solar_collectors_to_building`).
     For a single-VBO Pand every other energy device serves and meters
     the single occupied unit, so heat pump, distribution, thermal
     storage, EV charger, and the per-unit electrical appliances
@@ -552,4 +552,71 @@ def test_building_input_rejects_unresolved_installed_on():
         build_city_model_from_feature_collection(
             invalid_data,
             base_path=Path(INPUT).parent,
+        )
+
+
+def test_installed_on_object_form_pins_relation_to_specific_lod():
+    """``{name, lod}`` form pins the relation to the chosen LoD's gml:id.
+
+    The canonical input's ``installed_on: ["RoofSurface_01", "RoofSurface_02"]``
+    resolves to LoD 3 RoofSurfaces (highest-LoD-wins). Switching the entries
+    to the explicit object form with ``lod: 2`` must instead target the LoD 2
+    RoofSurfaces, even though the same names exist at LoD 3.
+    """
+    data = load_feature_collection(INPUT)
+    mutated = deepcopy(data)
+    for feature in mutated["features"]:
+        if feature.get("id") == "pv_panel_1":
+            feature["installed_on"] = [
+                {"name": "RoofSurface_01", "lod": 2},
+                {"name": "RoofSurface_02", "lod": 2},
+            ]
+            break
+    else:
+        pytest.fail("pv_panel_1 not in fixture")
+
+    model = build_city_model_from_feature_collection(
+        mutated, base_path=Path(INPUT).parent
+    )
+    root = etree.fromstring(model.to_string().encode("utf-8"))
+
+    # Collect the gml:id of every LoD 2 RoofSurface (the one that carries a
+    # bldg:lod2MultiSurface).
+    lod2_roof_ids: set[str] = set()
+    for roof in root.findall(".//bldg:boundedBy/bldg:RoofSurface", NS):
+        if roof.find("bldg:lod2MultiSurface", NS) is not None:
+            lod2_roof_ids.add(roof.get("{http://www.opengis.net/gml}id"))
+    assert len(lod2_roof_ids) >= 2, (
+        f"need at least two LoD 2 RoofSurfaces in the fixture, found {lod2_roof_ids}"
+    )
+
+    relations = root.findall(
+        ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
+    )
+    hrefs = {
+        rel.find("nrg3:relatedTo", NS)
+        .get("{http://www.w3.org/1999/xlink}href")
+        .lstrip("#")
+        for rel in relations
+    }
+    assert len(hrefs) == 2
+    assert hrefs.issubset(lod2_roof_ids), (
+        f"expected all hrefs to point at LoD 2 RoofSurfaces {lod2_roof_ids}, got {hrefs}"
+    )
+
+
+def test_installed_on_object_form_rejects_unknown_lod():
+    """``{name, lod}`` with an LoD the name does not exist at must raise."""
+    data = load_feature_collection(INPUT)
+    mutated = deepcopy(data)
+    for feature in mutated["features"]:
+        if feature.get("id") == "pv_panel_1":
+            feature["installed_on"] = [{"name": "RoofSurface_01", "lod": 9}]
+            break
+    else:
+        pytest.fail("pv_panel_1 not in fixture")
+
+    with pytest.raises(InputFileError, match=r"LoD 9"):
+        build_city_model_from_feature_collection(
+            mutated, base_path=Path(INPUT).parent
         )

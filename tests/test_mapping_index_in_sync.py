@@ -115,8 +115,8 @@ _REFERENCED_SYMBOLS: dict[str, list[str]] = {
     "citygml_energy/city_builder/energy_resources.py": [
         "attach_energy_resources_to_building_unit",
     ],
-    "citygml_energy/city_builder/pv_panels.py": [
-        "attach_pv_collectors_to_building",
+    "citygml_energy/city_builder/solar_panels.py": [
+        "attach_solar_collectors_to_building",
     ],
     "citygml_energy/city_builder/fetchers/municipality.py": [
         "fetch_municipality_outline",

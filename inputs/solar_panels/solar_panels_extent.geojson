@@ -1,6 +1,6 @@
 {
   "type": "FeatureCollection",
-  "name": "pv_panels_extent",
+  "name": "solar_panels_extent",
   "crs": {
     "type": "name",
     "properties": {
@@ -11,9 +11,9 @@
     {
       "type": "Feature",
       "properties": {
-        "id": "pv_panels_extent",
-        "description": "Bounding box of the PV-panel polygon dataset (pv_panels.gpkg) over Emmer-Compascuum. Reference / documentation only; not consumed by the pipeline.",
-        "source": "Bounds of inputs/pv_panels/pv_panels.gpkg (EPSG:28992)",
+        "id": "solar_panels_extent",
+        "description": "Bounding box of the solar-panel polygon dataset (solar_panels.gpkg) over Emmer-Compascuum. Reference / documentation only; not consumed by the pipeline.",
+        "source": "Bounds of inputs/solar_panels/solar_panels.gpkg (EPSG:28992)",
         "width_m": 4320.0,
         "height_m": 3360.0,
         "area_ha": 1451.52

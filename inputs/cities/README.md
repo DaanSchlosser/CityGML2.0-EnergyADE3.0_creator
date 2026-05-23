@@ -8,7 +8,7 @@ The JSON schema is at [`../../schemas/city_input.schema.json`](../../schemas/cit
 
 | Config | Area | Notes |
 |---|---|---|
-| `emmer-compascuum_small-area.json` | Emmer-Compascuum (~41.5 ha) | Uses every optional input: `boundary` (GeoJSON), `pv_panels`, and `vegetation` (CFTree LoD3 trees). |
+| `emmer-compascuum_small-area.json` | Emmer-Compascuum (~41.5 ha) | Uses every optional input: `boundary` (GeoJSON), `solar_panels`, and `vegetation` (CFTree LoD3 trees). |
 | `emmer-compascuum_small-area_pv-only.json` | Emmer-Compascuum (~41.5 ha) | Same boundary, just no vegetation input. |
 | `delft.json` | Delft (full municipality) | |
 | `groningen.json` | Groningen (full municipality) |  |
@@ -19,7 +19,7 @@ The JSON schema is at [`../../schemas/city_input.schema.json`](../../schemas/cit
 Relative paths inside a config are resolved against the config file's own directory (i.e. `inputs/cities/`):
 
 - `../boundaries/*.geojson` — AOI polygons in [`../boundaries/`](../boundaries/)
-- `../pv_panels/*.gpkg` — PV panel layers in [`../pv_panels/`](../pv_panels/)
+- `../solar_panels/*.gpkg` — solar panel layers in [`../solar_panels/`](../solar_panels/)
 - `../../schemas/city_input.schema.json` — JSON schema for editor autocomplete (`$schema`)
 - `../../.cache/citygml_energy_city` — cache directory at repo root
 - `../../generated/<name>.gml` — output path at repo root

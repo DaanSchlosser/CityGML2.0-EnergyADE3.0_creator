@@ -76,7 +76,7 @@ _LOG = logging.getLogger(__name__)
 class VegetationSource:
     """Declarative pointer to a merged CFTree CityJSON file.
 
-    ``slots=True`` mirrors the :class:`PvPanelsSource` pattern: these
+    ``slots=True`` mirrors the :class:`SolarPanelsSource` pattern: these
     sources are small, immutable, and shared across the city-build
     worker pool, so the per-instance dict is pure overhead.
 

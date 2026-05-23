@@ -9,7 +9,7 @@ extractor and a label string for the coverage log line.
 
 The function uses :class:`shapely.STRtree` (O(N log M)) — shapely is a
 hard requirement of the ``[city]`` extras and is also used by every
-other spatial step in the pipeline (boundary filter, PV panel match,
+other spatial step in the pipeline (boundary filter, solar panel match,
 vegetation filter), so a separate brute-force fallback would be dead
 code.
 

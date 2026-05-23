@@ -437,7 +437,7 @@ def planar_surface_attributes(
     else:
         # ``atan2(n_x, n_y)`` gives the clockwise angle from +Y (north)
         # by construction, which is exactly the compass bearing convention
-        # the existing PV pipeline uses (see ``pv_panels._azimuth_from_normal``).
+        # the existing PV pipeline uses (see ``solar_panels._azimuth_from_normal``).
         azimuth_deg = (degrees(atan2(n_x, n_y)) + 360.0) % 360.0
 
     return area_m2, azimuth_deg, inclination_deg

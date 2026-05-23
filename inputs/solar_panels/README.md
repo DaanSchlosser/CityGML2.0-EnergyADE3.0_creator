@@ -1,4 +1,4 @@
-# PV panels
+# Solar panels
 
 Solar panel polygon data for the Emmer-Compascuum test area.
 
@@ -6,12 +6,12 @@ Solar panel polygon data for the Emmer-Compascuum test area.
 
 | File | Purpose |
 |---|---|
-| `pv_panels.gpkg` (layer `pv_panels`) | The actual PV panel polygons (4 389 features) consumed by the city pipeline when a config sets a `pv_panels` block. Loader: [`pv_panels.py::load_panels_in_bbox`](../../citygml_energy/city_builder/pv_panels.py). |
-| `pv_panels_extent.geojson` | Reference / documentation polygon (single rectangle, EPSG:28992) showing the geographic extent covered by `pv_panels.gpkg`. Not consumed by the pipeline. |
+| `solar_panels.gpkg` (layer `solar_panels`) | The actual solar panel polygons (4 389 features) consumed by the city pipeline when a config sets a `solar_panels` block. Loader: [`solar_panels.py::load_panels_in_bbox`](../../citygml_energy/city_builder/solar_panels.py). |
+| `solar_panels_extent.geojson` | Reference / documentation polygon (single rectangle, EPSG:28992) showing the geographic extent covered by `solar_panels.gpkg`. Not consumed by the pipeline. |
 
 All files are EPSG:28992 (Amersfoort / RD New).
 
-## Source of `pv_panels.gpkg`
+## Source of `solar_panels.gpkg`
 
 - Zenodo: <https://zenodo.org/records/14860030> (DOI 10.5281/zenodo.14860030)
 - RUG page: <https://research.rug.nl/en/datasets/annotated-high-resolution-aerial-imagery-of-the-dutch-landscape-f/>
@@ -20,7 +20,7 @@ All files are EPSG:28992 (Amersfoort / RD New).
 
 The Zenodo record contains the polygons as a shapefile (`annotations/annotations.shp`); it has been re-exported as a GeoPackage for further processing.
 
-## How `pv_panels.gpkg` was made
+## How `solar_panels.gpkg` was made
 
 Aerial true-ortho imagery was captured in 2023 by the local government of Emmen (NL). Solar panel polygons were then annotated across 18.55 km² of that imagery using an AI pipeline.
 

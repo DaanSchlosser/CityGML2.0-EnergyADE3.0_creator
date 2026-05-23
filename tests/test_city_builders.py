@@ -219,7 +219,7 @@ def test_lod2_thematic_surface_ids_are_per_type_one_based_in_source_order() -> N
 
 
 def test_lod2_iterator_is_single_source_of_truth_for_indices() -> None:
-    """The PV-panel matcher and the building builder use one shared
+    """The solar-panel matcher and the building builder use one shared
     iterator (:func:`iter_lod2_thematic_classification`) so they cannot
     drift on the per-type 1-based index. This test pins the iterator
     contract: source order preserved, unknown semantics collapsed to

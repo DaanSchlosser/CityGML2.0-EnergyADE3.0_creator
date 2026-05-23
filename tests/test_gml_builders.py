@@ -233,9 +233,9 @@ def test_planar_attributes_returns_none_for_collinear_ring() -> None:
     assert planar_surface_attributes(poly) is None
 
 
-def test_planar_attributes_compass_bearings_match_pv_panel_convention() -> None:
-    """The new helper agrees with the PV panel's
-    :func:`citygml_energy.city_builder.pv_panels._azimuth_from_normal`
+def test_planar_attributes_compass_bearings_match_solar_panel_convention() -> None:
+    """The new helper agrees with the solar panel's
+    :func:`citygml_energy.city_builder.solar_panels._azimuth_from_normal`
     on the 0 = N, 90 = E compass convention. Spot-check a 45° west-
     facing slope: ridge at the EAST (high), low side at the WEST,
     outward normal up & west.

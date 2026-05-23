@@ -21,10 +21,10 @@ from citygml_energy._step import GeometryPolygon
 from citygml_energy.city_builder.address_match import ResolvedAddress
 from citygml_energy.city_builder.appearance import (
     ENERGY_LABEL_THEME,
-    PV_PANEL_DIFFUSE_COLOR,
-    PV_PANEL_THEME,
+    SOLAR_PANEL_DIFFUSE_COLOR,
+    SOLAR_PANEL_THEME,
     append_energy_label_appearance,
-    append_pv_panel_appearance,
+    append_solar_panel_appearance,
     collect_surface_target_ids,
 )
 from citygml_energy.city_builder.builders import (
@@ -36,9 +36,9 @@ from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.epc_score import label_to_rgb
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
-from citygml_energy.city_builder.pv_panels import (
+from citygml_energy.city_builder.solar_panels import (
     ProjectedPanel,
-    attach_pv_collectors_to_building,
+    attach_solar_collectors_to_building,
 )
 from citygml_energy.core import CityModel
 from tests._factories import make_parsed_building, make_square_polygon, make_vbo
@@ -245,11 +245,11 @@ def test_appearance_serialises_in_cityml_output() -> None:
 
 
 # ---------------------------------------------------------------------------
-# append_pv_panel_appearance
+# append_solar_panel_appearance
 # ---------------------------------------------------------------------------
 
 
-def _pv_panel(fid: int, z: float = 3.1) -> ProjectedPanel:
+def _solar_panel(fid: int, z: float = 3.1) -> ProjectedPanel:
     return ProjectedPanel(
         original_fid=fid,
         lod2_polygons=(
@@ -265,22 +265,22 @@ def _pv_panel(fid: int, z: float = 3.1) -> ProjectedPanel:
     )
 
 
-def test_pv_appearance_no_op_when_model_has_no_pv_panels() -> None:
+def test_solar_appearance_no_op_when_model_has_no_solar_panels() -> None:
     model = CityModel()
     building, _ = _build_with_labels("001", ["A"])
     model.add(building)
 
-    append_pv_panel_appearance(model)
+    append_solar_panel_appearance(model)
 
     # No PV collector under the building → no PV appearance emitted.
     assert model.xsd.appearance_member == []
 
 
-def test_pv_appearance_targets_every_pv_multisurface_and_polygon() -> None:
+def test_solar_appearance_targets_every_solar_multisurface_and_polygon() -> None:
     model = CityModel()
     building, _ = _build_with_labels("001", ["A"])
-    attach_pv_collectors_to_building(
-        building, [_pv_panel(fid=7), _pv_panel(fid=9)],
+    attach_solar_collectors_to_building(
+        building, [_solar_panel(fid=7), _solar_panel(fid=9)],
         BuildContext(
             srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
             srs_dimension=3,
@@ -288,32 +288,32 @@ def test_pv_appearance_targets_every_pv_multisurface_and_polygon() -> None:
     )
     model.add(building)
 
-    append_pv_panel_appearance(model)
+    append_solar_panel_appearance(model)
 
     [member] = model.xsd.appearance_member
     appearance = member.appearance
-    assert appearance.theme == PV_PANEL_THEME
-    assert appearance.id == f"appearance_{PV_PANEL_THEME}"
+    assert appearance.theme == SOLAR_PANEL_THEME
+    assert appearance.id == f"appearance_{SOLAR_PANEL_THEME}"
 
     [material_prop] = appearance.surface_data_member
     material = material_prop.x3_dmaterial
-    assert material.diffuse_color == list(PV_PANEL_DIFFUSE_COLOR)
+    assert material.diffuse_color == list(SOLAR_PANEL_DIFFUSE_COLOR)
     assert material.transparency is None
 
     # Two panels × (one MultiSurface id + one Polygon id each) = 4 targets.
     assert set(material.target) == {
-        "#pv_001_7_lod2",
-        "#pv_001_7_lod2_poly_1",
-        "#pv_001_9_lod2",
-        "#pv_001_9_lod2_poly_1",
+        "#solar_001_7_lod2",
+        "#solar_001_7_lod2_poly_1",
+        "#solar_001_9_lod2",
+        "#solar_001_9_lod2_poly_1",
     }
 
 
-def test_pv_appearance_coexists_with_energy_label_appearance() -> None:
+def test_solar_appearance_coexists_with_energy_label_appearance() -> None:
     model = CityModel()
     building, resolved = _build_with_labels("001", ["A"])
-    attach_pv_collectors_to_building(
-        building, [_pv_panel(fid=7)],
+    attach_solar_collectors_to_building(
+        building, [_solar_panel(fid=7)],
         BuildContext(
             srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
             srs_dimension=3,
@@ -322,7 +322,7 @@ def test_pv_appearance_coexists_with_energy_label_appearance() -> None:
     model.add(building)
 
     append_energy_label_appearance(model, [(building, resolved)])
-    append_pv_panel_appearance(model)
+    append_solar_panel_appearance(model)
 
     themes = [m.appearance.theme for m in model.xsd.appearance_member]
-    assert themes == [ENERGY_LABEL_THEME, PV_PANEL_THEME]
+    assert themes == [ENERGY_LABEL_THEME, SOLAR_PANEL_THEME]

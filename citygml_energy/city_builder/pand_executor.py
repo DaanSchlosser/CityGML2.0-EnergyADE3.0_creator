@@ -38,7 +38,7 @@ from .builders import (
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 from .config import BuildContext, CityBuildConfig
 from .fetchers import bag as bag_fetchers
-from .pv_panels import ProjectedPanel, attach_pv_collectors_to_building
+from .solar_panels import ProjectedPanel, attach_solar_collectors_to_building
 
 __all__ = [
     "EMPTY_INPUTS",
@@ -74,17 +74,17 @@ class PandInputs:
     """Everything the per-pand build needs beyond geometry + config.
 
     Bundling the parallel per-pand dicts (``resolved_per_pand`` and
-    ``pv_matches_per_pand``) under one key keeps the worker-pool job
+    ``solar_matches_per_pand``) under one key keeps the worker-pool job
     tuple flat and ready for any future "another thing per pand"
     input (indicators, schedules, …) without re-plumbing every call
     site.
     """
 
     resolved: list[ResolvedAddress]
-    pv_panels: tuple[ProjectedPanel, ...]
+    solar_panels: tuple[ProjectedPanel, ...]
 
 
-EMPTY_INPUTS = PandInputs(resolved=[], pv_panels=())
+EMPTY_INPUTS = PandInputs(resolved=[], solar_panels=())
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ def bundle_per_pand_inputs(
     *,
     panden: list[bag_fetchers.Pand],
     resolved_per_pand: dict[str, list[ResolvedAddress]],
-    pv_matches_per_pand: dict[str, list[ProjectedPanel]],
+    solar_matches_per_pand: dict[str, list[ProjectedPanel]],
 ) -> dict[str, PandInputs]:
     """Collapse the parallel per-pand dicts into a single dict of structs.
 
@@ -105,11 +105,11 @@ def bundle_per_pand_inputs(
     lookup time.
     """
     ids = {p.identificatie for p in panden}
-    ids &= set(resolved_per_pand) | set(pv_matches_per_pand)
+    ids &= set(resolved_per_pand) | set(solar_matches_per_pand)
     return {
         pid: PandInputs(
             resolved=resolved_per_pand.get(pid, []),
-            pv_panels=tuple(pv_matches_per_pand.get(pid, ())),
+            solar_panels=tuple(solar_matches_per_pand.get(pid, ())),
         )
         for pid in ids
     }
@@ -274,7 +274,7 @@ def _build_pand_artifacts(
 
     The five-builder sequence (build_building → attach_building_units →
     apply_bag_year_metadata → apply_eponline_pand_attribution → optional
-    attach_pv_collectors) is the canonical orchestration. The builders
+    attach_solar_collectors) is the canonical orchestration. The builders
     stay individually public so each can be tested in isolation; the
     cross-builder ordering invariants are locked by integration tests
     in ``tests/test_city_pand_executor.py``.
@@ -298,10 +298,10 @@ def _build_pand_artifacts(
     # build_building_unit.
     apply_bag_year_metadata_to_building(building)
     apply_eponline_pand_attribution_to_building(building, inputs.resolved)
-    if inputs.pv_panels:
-        attach_pv_collectors_to_building(
+    if inputs.solar_panels:
+        attach_solar_collectors_to_building(
             building,
-            list(inputs.pv_panels),
+            list(inputs.solar_panels),
             build_context,
         )
     coords: list[Coord3D] = []

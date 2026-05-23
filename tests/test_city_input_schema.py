@@ -27,7 +27,7 @@ import pytest
 from citygml_energy.city_builder.config import (
     _ALLOWED_BOUNDARY_KEYS,
     _ALLOWED_CITY_MODEL_KEYS,
-    _ALLOWED_PV_PANELS_KEYS,
+    _ALLOWED_SOLAR_PANELS_KEYS,
     _ALLOWED_TOP_LEVEL_KEYS,
     _ALLOWED_VEGETATION_KEYS,
 )
@@ -90,7 +90,7 @@ def test_generator_and_config_allowlists_agree() -> None:
     for name, loader_allowed in (
         ("boundary", _ALLOWED_BOUNDARY_KEYS),
         ("city_model", _ALLOWED_CITY_MODEL_KEYS),
-        ("pv_panels", _ALLOWED_PV_PANELS_KEYS),
+        ("solar_panels", _ALLOWED_SOLAR_PANELS_KEYS),
         ("vegetation", _ALLOWED_VEGETATION_KEYS),
     ):
         schema_keys = set(top[name]["properties"].keys())

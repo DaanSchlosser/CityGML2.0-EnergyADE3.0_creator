@@ -11,11 +11,11 @@
   "srs_dimension": 3,
   "city_model": {
     "name": "Emmer-Compascuum (smoke test, ~100x100 m)",
-    "description": "100 x 100 m smoke-test slice centred on BAG pand 0114100000206140 (centroid 266483.6, 536836.9 in EPSG:28992). Same pipeline as emmer_compascuum_pv.json, just a faster iteration target for testing PV panel attach + XSD validity on a handful of buildings."
+    "description": "100 x 100 m smoke-test slice centred on BAG pand 0114100000206140 (centroid 266483.6, 536836.9 in EPSG:28992). Same pipeline as emmer_compascuum_solar.json, just a faster iteration target for testing solar panel attach + XSD validity on a handful of buildings."
   },
-  "pv_panels": {
-    "path": "../inputs/pv_panels/pv_panels.gpkg",
-    "layer": "pv_panels",
+  "solar_panels": {
+    "path": "../inputs/solar_panels/solar_panels.gpkg",
+    "layer": "solar_panels",
     "z_offset_m": 0.1
   }
 }

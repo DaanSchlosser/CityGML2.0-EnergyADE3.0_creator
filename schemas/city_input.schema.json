@@ -109,7 +109,7 @@
       "description": "Optional NCName prefix prepended to every generated gml:id. Useful when merging multiple city builds into one document.",
       "pattern": "^(?:[A-Za-z_][A-Za-z0-9_.\\-]*)?$"
     },
-    "pv_panels": {
+    "solar_panels": {
       "type": "object",
       "description": "Optional external solar panel polygon source. When set, the pipeline attaches one nrg3:GenericSolarCollector per panel to the Building with the largest 2D LoD 2 roof overlap. The technology-agnostic GenericSolarCollector is emitted (rather than PhotovoltaicCollector) because the aerial-imagery source has no cell-type metadata. Geometry is stamped flat at the roof plane Z evaluated at the panel centroid plus z_offset_m.",
       "additionalProperties": false,

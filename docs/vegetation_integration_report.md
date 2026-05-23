@@ -27,7 +27,7 @@ The concrete deliverable is one GML file that XSD-validates and
 carries real-world tree locations + LoD3 crown+trunk geometry for the
 area:
 
-| Output | Buildings | Trees | PV panels | Size | Valid |
+| Output | Buildings | Trees | Solar panels | Size | Valid |
 |---|---|---|---|---|---|
 | [`generated/emmer_compascuum.gml`](../generated/emmer_compascuum.gml) | 674 | 652 | 334 | 167 MB | XSD-valid |
 
@@ -233,7 +233,7 @@ Coverage notes:
 ### 3.4 Appearance
 
 An `app:Appearance` with theme `"vegetation"` is emitted alongside
-the existing `"energyLabel"` and `"pvPanels"` themes. It carries one
+the existing `"energyLabel"` and `"solarPanels"` themes. It carries one
 `app:X3DMaterial` whose `diffuseColor` is a deep foliage green
 (`0.15 0.55 0.15`) and whose `<app:target>` list references every
 `gml:MultiSurface` and `gml:Polygon` under every
@@ -245,7 +245,7 @@ emitting both keeps the colour applied everywhere.
 
 Built by
 [`append_vegetation_appearance`](../citygml_energy/city_builder/appearance.py#L149)
-alongside the existing energy-label and PV-panel appearance steps.
+alongside the existing energy-label and solar-panel appearance steps.
 
 ### 3.5 What the XML looks like
 

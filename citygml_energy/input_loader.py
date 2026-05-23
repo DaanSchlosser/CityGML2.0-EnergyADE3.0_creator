@@ -263,8 +263,10 @@ def build_city_model_from_feature_collection(
     built: list[tuple[str | None, str | None, Any]] = []
     # Device-to-surface relations declared on feature dicts via the
     # pseudo-field ``installed_on``. Deferred until after geometry apply
-    # because the referenced surface gml:ids don't exist yet.
-    device_relations: dict[str, list[str]] = {}
+    # because the referenced surface gml:ids don't exist yet. Each entry
+    # is either a bare STEP layer name (string) or an explicit
+    # ``{"name": str, "lod": int}`` opt-in to a specific LoD.
+    device_relations: dict[str, list[Any]] = {}
 
     for index, feature in enumerate(data["features"]):
         cls = resolve_class(feature["type"])
@@ -281,14 +283,14 @@ def build_city_model_from_feature_collection(
             id_index[gml_id] = obj
             installed_on = feature.get("installed_on")
             if installed_on:
-                if not (
-                    isinstance(installed_on, list)
-                    and all(isinstance(t, str) and t for t in installed_on)
-                ):
+                if not isinstance(installed_on, list) or not installed_on:
                     raise InputFileError(
                         f"features[{index}] (id={gml_id!r}): 'installed_on' must be a "
-                        f"non-empty list of strings, got {installed_on!r}"
+                        f"non-empty list of strings or {{'name': str, 'lod': int}} "
+                        f"objects, got {installed_on!r}"
                     )
+                for entry_index, entry in enumerate(installed_on):
+                    _validate_installed_on_entry(entry, entry_index, index, gml_id)
                 device_relations[gml_id] = list(installed_on)
 
     for parent_id, parent_field, obj in built:
@@ -400,6 +402,56 @@ def _validate_feature(
             f"(must start with a letter or '_' and contain only letters, digits, "
             f"'.', '-', or '_'; no spaces or colons)"
         )
+
+
+def _validate_installed_on_entry(
+    entry: Any,
+    entry_index: int,
+    feature_index: int,
+    feature_id: str,
+) -> None:
+    """Validate one ``installed_on`` entry shape.
+
+    Accepts a non-empty string (bare STEP layer name) or an object
+    ``{"name": str, "lod": int}`` opting in to a specific LoD. Both
+    shapes are resolved later by
+    :func:`device_relations.apply_device_relations`, which validates the
+    semantic side (the name exists in the model, the LoD has a face).
+    """
+    if isinstance(entry, str):
+        if not entry:
+            raise InputFileError(
+                f"features[{feature_index}] (id={feature_id!r}): "
+                f"'installed_on'[{entry_index}] must be a non-empty string"
+            )
+        return
+    if isinstance(entry, dict):
+        extra = set(entry) - {"name", "lod"}
+        if extra:
+            raise InputFileError(
+                f"features[{feature_index}] (id={feature_id!r}): "
+                f"'installed_on'[{entry_index}] has unexpected keys "
+                f"{sorted(extra)!r}; only 'name' and 'lod' are allowed"
+            )
+        name = entry.get("name")
+        lod = entry.get("lod")
+        if not isinstance(name, str) or not name:
+            raise InputFileError(
+                f"features[{feature_index}] (id={feature_id!r}): "
+                f"'installed_on'[{entry_index}].name must be a non-empty string"
+            )
+        if not isinstance(lod, int) or isinstance(lod, bool) or lod < 0:
+            raise InputFileError(
+                f"features[{feature_index}] (id={feature_id!r}): "
+                f"'installed_on'[{entry_index}].lod must be a non-negative integer"
+            )
+        return
+    raise InputFileError(
+        f"features[{feature_index}] (id={feature_id!r}): "
+        f"'installed_on'[{entry_index}] must be a string (bare STEP layer "
+        f"name) or an object {{'name': str, 'lod': int}}; got "
+        f"{type(entry).__name__}"
+    )
 
 
 def _validate_geometry_source(

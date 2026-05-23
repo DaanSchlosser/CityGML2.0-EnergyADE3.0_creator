@@ -128,11 +128,13 @@ class _RenderContext:
     handlers, so deeply-nested helpers don't accumulate long parameter
     lists. ``feature_index`` is built up front from the existing model
     tree (``gml:id → object``), giving handlers O(1) lookups instead of
-    one DFS per target reference. ``surface_name_index`` maps the STEP
-    layer name of every attached boundary surface (e.g. ``"RoofSurface_01"``)
-    to the auto-assigned ``gml:id``. This is the bridge that lets the
-    JSON input declare relations (``installed_on``) against stable
-    author-facing names without having to know the generated id layout.
+    one DFS per target reference. ``surface_name_index`` maps the pair
+    ``(STEP layer name, LoD level)`` to the auto-assigned ``gml:id`` for
+    every attached boundary surface. The LoD axis is part of the key so
+    that the same STEP layer name (e.g. ``"RoofSurface_01"``) appearing
+    in both a LoD 2 STEP and a LoD 3 STEP does not silently overwrite;
+    callers that resolve a bare-name relation (``installed_on``) collapse
+    the LoD axis themselves by picking the highest LoD present.
     """
 
     origin: Coord3D
@@ -140,7 +142,7 @@ class _RenderContext:
     srs_dimension: int
     type_counters: dict[tuple[str, str], int]
     feature_index: dict[str, Any]
-    surface_name_index: dict[str, str]
+    surface_name_index: dict[tuple[str, int], str]
 
     def require_feature(self, gml_id: str, expected_type: type[Any]) -> Any:
         """Return the indexed feature for *gml_id*, asserting its xsdata class."""
@@ -859,10 +861,15 @@ def _attach_surface(
         surface=surface, polygons=feature.polygons, gml_id=gml_id
     )
     if register_surface_name_index:
-        # Expose STEP-name ↔ gml:id mapping on the model-wide index so JSON-
-        # declared relations (installed_on, …) can resolve against author-
-        # facing STEP layer names instead of auto-generated gml:ids.
-        ctx.surface_name_index[feature.object_name] = gml_id
+        # Expose (STEP-name, LoD) ↔ gml:id mapping on the model-wide index
+        # so JSON-declared relations (installed_on, …) can resolve against
+        # author-facing STEP layer names instead of auto-generated gml:ids.
+        # The LoD axis prevents silent overwrite when the same layer name
+        # appears at multiple LoDs (e.g. the canonical input has
+        # ``RoofSurface_01`` in both LoD 2 and LoD 3 STEPs but the two
+        # refer to different physical faces, since LoD 3 numbers
+        # sub-faces fresh and re-uses low indices).
+        ctx.surface_name_index[(feature.object_name, lod_level)] = gml_id
 
 
 def _attach_pending_openings(

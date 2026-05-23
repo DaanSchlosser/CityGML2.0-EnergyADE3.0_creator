@@ -12,7 +12,7 @@
       "type": "Feature",
       "properties": {
         "id": "emmer_compascuum_area",
-        "source": "extracted from inputs/pv_panels/grid2.gpkg fid=1 (CC-BY Daan Schlosser)",
+        "source": "extracted from inputs/solar_panels/grid2.gpkg fid=1 (CC-BY Daan Schlosser)",
         "area_ha": 41.49
       },
       "geometry": {

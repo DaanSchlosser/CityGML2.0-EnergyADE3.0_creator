@@ -301,7 +301,7 @@
       "operation_type": {"value": "produces", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
       "is_amount_normalized": false,
       "type_value": {"value": "final", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
-      "end_use": {"value": "electricalAppliances", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
+      "end_use": {"value": "gridFeedIn", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
       "energy_carrier": {"value": "electricity", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
       "source": {"value": "photovoltaicPanels", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
     },
