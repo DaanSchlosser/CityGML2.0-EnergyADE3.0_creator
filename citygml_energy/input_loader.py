@@ -42,7 +42,7 @@ PathLike = str | Path
 _NCNAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
 
 # Keys that live at the feature level, not passed to build_from_dict.
-_FEATURE_META_KEYS = frozenset({"type", "parent", "parent_field", "installed_on"})
+_FEATURE_META_KEYS = frozenset({"type", "parent", "parent_field", "related_to"})
 
 _ALLOWED_TOP_LEVEL_KEYS = {
     "$schema",
@@ -261,12 +261,20 @@ def build_city_model_from_feature_collection(
     # parent may appear after its child in the features list.
     id_index: dict[str, Any] = {}
     built: list[tuple[str | None, str | None, Any]] = []
-    # Device-to-surface relations declared on feature dicts via the
-    # pseudo-field ``installed_on``. Deferred until after geometry apply
-    # because the referenced surface gml:ids don't exist yet. Each entry
-    # is either a bare STEP layer name (string) or an explicit
-    # ``{"name": str, "lod": int}`` opt-in to a specific LoD.
-    device_relations: dict[str, list[Any]] = {}
+    # ``related_to`` entries declared on feature dicts. Each entry is
+    # ``{"relation": str, "target": str | {"name": str, "lod": int}}`` —
+    # ``relation`` names a member of the EnergyADE 3.0 RelationTypeValue
+    # codelist family (currently OtherRelationTypeValue: ``installedOn`` /
+    # ``serving`` / ``connectedTo``), and ``target`` is a STEP layer name,
+    # an LoD-pinned ``{name, lod}`` object (only for surface-targeted
+    # relations), or a plain gml:id (for feature-targeted relations).
+    # The validator dispatches on the relation's registered target_kind
+    # (see citygml_energy.device_relations.RELATION_KINDS). Deferred until
+    # after geometry apply because referenced surface gml:ids don't exist
+    # until then. Each device's parsed list is a sequence of
+    # ``(relation_name, target_ref)`` tuples in author order; output
+    # ``<nrg3:relatedTo>`` siblings preserve that order.
+    related_to_by_device: dict[str, list[tuple[str, Any]]] = {}
 
     for index, feature in enumerate(data["features"]):
         cls = resolve_class(feature["type"])
@@ -281,17 +289,11 @@ def build_city_model_from_feature_collection(
         gml_id = feature.get("id")
         if gml_id:
             id_index[gml_id] = obj
-            installed_on = feature.get("installed_on")
-            if installed_on:
-                if not isinstance(installed_on, list) or not installed_on:
-                    raise InputFileError(
-                        f"features[{index}] (id={gml_id!r}): 'installed_on' must be a "
-                        f"non-empty list of strings or {{'name': str, 'lod': int}} "
-                        f"objects, got {installed_on!r}"
-                    )
-                for entry_index, entry in enumerate(installed_on):
-                    _validate_installed_on_entry(entry, entry_index, index, gml_id)
-                device_relations[gml_id] = list(installed_on)
+            related_to = feature.get("related_to")
+            if related_to:
+                related_to_by_device[gml_id] = _parse_related_to(
+                    related_to, feature_index=index, feature_id=gml_id
+                )
 
     for parent_id, parent_field, obj in built:
         if parent_id is None:
@@ -330,13 +332,15 @@ def build_city_model_from_feature_collection(
         srs_dimension=srs_dimension,
     )
 
-    # Device-to-surface relations resolve against the surface_name_index
-    # populated during apply_geometry_sources, so they must run *after*
-    # geometry attachment. Stays on its own seam: its config-driven shape
-    # (raise on unresolved device or target) does not fit the model-walk
-    # seam used for the derived-attribute properties below.
+    # ``related_to`` entries resolve against the surface_name_index
+    # (populated during apply_geometry_sources) and the feature index,
+    # so they must run *after* geometry attachment. The dispatcher in
+    # apply_device_relations picks the resolver path per relation via
+    # RELATION_KINDS — ``installedOn`` resolves through STEP-name lookup
+    # with LoD collapse (ADR-0001); ``serving`` and other feature-typed
+    # relations resolve through the feature index only.
     try:
-        apply_device_relations(model, device_relations)
+        apply_device_relations(model, related_to_by_device)
     except ValueError as exc:
         raise InputFileError(str(exc)) from exc
 
@@ -404,54 +408,143 @@ def _validate_feature(
         )
 
 
-def _validate_installed_on_entry(
-    entry: Any,
+def _parse_related_to(
+    raw: Any,
+    *,
+    feature_index: int,
+    feature_id: str,
+) -> list[tuple[str, Any]]:
+    """Validate and unpack a feature's ``related_to`` field.
+
+    Returns a list of ``(relation_name, target_ref)`` tuples in author
+    order, ready for :func:`device_relations.apply_device_relations`.
+
+    Shape validation happens here; semantic resolution (does the target
+    name exist in the model at the requested LoD?) happens later in the
+    resolver, after geometry attachment. The split keeps shape errors
+    pre-geometry and resolution errors post-geometry, so error sources
+    are unambiguous to the author.
+
+    Per-relation target-shape rules come from
+    :data:`device_relations.RELATION_KINDS`: ``target_kind="surface"``
+    accepts a bare string (highest-LoD-wins) or an
+    ``{"name": str, "lod": int}`` object (LoD-pinned per ADR-0001);
+    ``target_kind="feature"`` accepts only a bare gml:id string.
+    """
+    # Local import to keep input_loader's static dependency surface flat
+    # and avoid a circular import: device_relations imports nothing from
+    # this module, but the registry is owned there.
+    from .device_relations import RELATION_KINDS
+
+    if not isinstance(raw, list) or not raw:
+        raise InputFileError(
+            f"features[{feature_index}] (id={feature_id!r}): 'related_to' must "
+            f"be a non-empty list of {{'relation': str, 'target': ...}} entries, "
+            f"got {raw!r}"
+        )
+
+    parsed: list[tuple[str, Any]] = []
+    for entry_index, entry in enumerate(raw):
+        if not isinstance(entry, dict):
+            raise InputFileError(
+                f"features[{feature_index}] (id={feature_id!r}): "
+                f"'related_to'[{entry_index}] must be an object "
+                f"{{'relation': str, 'target': ...}}; got {type(entry).__name__}"
+            )
+        extra = set(entry) - {"relation", "target"}
+        if extra:
+            raise InputFileError(
+                f"features[{feature_index}] (id={feature_id!r}): "
+                f"'related_to'[{entry_index}] has unexpected keys "
+                f"{sorted(extra)!r}; only 'relation' and 'target' are allowed"
+            )
+        relation = entry.get("relation")
+        target = entry.get("target")
+        if not isinstance(relation, str) or not relation:
+            raise InputFileError(
+                f"features[{feature_index}] (id={feature_id!r}): "
+                f"'related_to'[{entry_index}].relation must be a non-empty "
+                f"string naming a member of the EnergyADE 3.0 RelationTypeValue "
+                f"codelist family (e.g. 'installedOn', 'serving')"
+            )
+        if relation not in RELATION_KINDS:
+            known = ", ".join(sorted(RELATION_KINDS)) or "(no relations registered)"
+            raise InputFileError(
+                f"features[{feature_index}] (id={feature_id!r}): "
+                f"'related_to'[{entry_index}].relation = {relation!r} is not "
+                f"registered. Known relations: {known}"
+            )
+        _validate_related_to_target(
+            target,
+            target_kind=RELATION_KINDS[relation].target_kind,
+            relation=relation,
+            entry_index=entry_index,
+            feature_index=feature_index,
+            feature_id=feature_id,
+        )
+        parsed.append((relation, target))
+    return parsed
+
+
+def _validate_related_to_target(
+    target: Any,
+    *,
+    target_kind: str,
+    relation: str,
     entry_index: int,
     feature_index: int,
     feature_id: str,
 ) -> None:
-    """Validate one ``installed_on`` entry shape.
+    """Validate a ``related_to`` entry's ``target`` against its target_kind."""
+    if target_kind == "surface":
+        if isinstance(target, str):
+            if not target:
+                raise InputFileError(
+                    f"features[{feature_index}] (id={feature_id!r}): "
+                    f"'related_to'[{entry_index}].target must be a non-empty "
+                    f"string (bare STEP layer name or gml:id) or "
+                    f"{{'name': str, 'lod': int}}"
+                )
+            return
+        if isinstance(target, dict):
+            extra = set(target) - {"name", "lod"}
+            if extra:
+                raise InputFileError(
+                    f"features[{feature_index}] (id={feature_id!r}): "
+                    f"'related_to'[{entry_index}].target has unexpected keys "
+                    f"{sorted(extra)!r}; only 'name' and 'lod' are allowed in "
+                    f"the LoD-pinned object form"
+                )
+            name = target.get("name")
+            lod = target.get("lod")
+            if not isinstance(name, str) or not name:
+                raise InputFileError(
+                    f"features[{feature_index}] (id={feature_id!r}): "
+                    f"'related_to'[{entry_index}].target.name must be a "
+                    f"non-empty string"
+                )
+            if not isinstance(lod, int) or isinstance(lod, bool) or lod < 0:
+                raise InputFileError(
+                    f"features[{feature_index}] (id={feature_id!r}): "
+                    f"'related_to'[{entry_index}].target.lod must be a "
+                    f"non-negative integer"
+                )
+            return
+        raise InputFileError(
+            f"features[{feature_index}] (id={feature_id!r}): "
+            f"'related_to'[{entry_index}].target for relation {relation!r} "
+            f"must be a string or {{'name': str, 'lod': int}}; got "
+            f"{type(target).__name__}"
+        )
 
-    Accepts a non-empty string (bare STEP layer name) or an object
-    ``{"name": str, "lod": int}`` opting in to a specific LoD. Both
-    shapes are resolved later by
-    :func:`device_relations.apply_device_relations`, which validates the
-    semantic side (the name exists in the model, the LoD has a face).
-    """
-    if isinstance(entry, str):
-        if not entry:
-            raise InputFileError(
-                f"features[{feature_index}] (id={feature_id!r}): "
-                f"'installed_on'[{entry_index}] must be a non-empty string"
-            )
-        return
-    if isinstance(entry, dict):
-        extra = set(entry) - {"name", "lod"}
-        if extra:
-            raise InputFileError(
-                f"features[{feature_index}] (id={feature_id!r}): "
-                f"'installed_on'[{entry_index}] has unexpected keys "
-                f"{sorted(extra)!r}; only 'name' and 'lod' are allowed"
-            )
-        name = entry.get("name")
-        lod = entry.get("lod")
-        if not isinstance(name, str) or not name:
-            raise InputFileError(
-                f"features[{feature_index}] (id={feature_id!r}): "
-                f"'installed_on'[{entry_index}].name must be a non-empty string"
-            )
-        if not isinstance(lod, int) or isinstance(lod, bool) or lod < 0:
-            raise InputFileError(
-                f"features[{feature_index}] (id={feature_id!r}): "
-                f"'installed_on'[{entry_index}].lod must be a non-negative integer"
-            )
-        return
-    raise InputFileError(
-        f"features[{feature_index}] (id={feature_id!r}): "
-        f"'installed_on'[{entry_index}] must be a string (bare STEP layer "
-        f"name) or an object {{'name': str, 'lod': int}}; got "
-        f"{type(entry).__name__}"
-    )
+    # target_kind == "feature"
+    if not isinstance(target, str) or not target:
+        raise InputFileError(
+            f"features[{feature_index}] (id={feature_id!r}): "
+            f"'related_to'[{entry_index}].target for relation {relation!r} "
+            f"must be a non-empty gml:id string; the {{'name', 'lod'}} object "
+            f"form is only valid for surface-targeted relations"
+        )
 
 
 def _validate_geometry_source(

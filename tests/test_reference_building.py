@@ -326,25 +326,27 @@ def test_monthly_time_series_on_pv_energy(reference_building_root):
 def test_pv_has_two_installed_on_relations_from_json(reference_building_root):
     """PV panel array spans two roofs; both relations originate from the JSON.
 
-    The input's ``installed_on: ["RoofSurface_01", "RoofSurface_02"]`` is
-    resolved after geometry attachment, producing two ``CityObjectRelation``
-    entries (one xlink:href per target roof) with ``relationType="installedOn"``.
-    Geometry alone no longer drives these (every PV panel's STEP layer has
-    ``|parent=RoofSurface_02``, so a geometry-derived approach would emit
-    only one relation). The two distinct hrefs prove the JSON path is live.
+    The input's ``related_to`` field declares two installedOn entries
+    targeting ``RoofSurface_01`` and ``RoofSurface_02``. Each resolves
+    after geometry attachment, producing one ``CityObjectRelation`` with
+    ``relationType="installedOn"`` per entry. Geometry alone no longer
+    drives these (every PV panel's STEP layer has ``|parent=RoofSurface_02``,
+    so a geometry-derived approach would emit only one relation). The
+    two distinct hrefs prove the JSON path is live.
     """
     relations = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
     )
-    assert len(relations) == 2
-
-    for rel in relations:
-        rt = rel.find("nrg3:relationType", NS)
-        assert rt is not None and rt.text == "installedOn"
+    installed_on = [
+        rel
+        for rel in relations
+        if (rt := rel.find("nrg3:relationType", NS)) is not None and rt.text == "installedOn"
+    ]
+    assert len(installed_on) == 2
 
     hrefs = {
         rel.find("nrg3:relatedTo", NS).get("{http://www.w3.org/1999/xlink}href")
-        for rel in relations
+        for rel in installed_on
     }
     assert len(hrefs) == 2, f"expected two distinct href targets, got {hrefs}"
     assert all(h and h.startswith("#") for h in hrefs)
@@ -360,11 +362,48 @@ def test_pv_installed_on_resolves_to_real_roof_surfaces(reference_building_root)
         ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
     )
     for rel in relations:
+        rt = rel.find("nrg3:relationType", NS)
+        if rt is None or rt.text != "installedOn":
+            continue
         href = rel.find("nrg3:relatedTo", NS).get("{http://www.w3.org/1999/xlink}href")
         assert href.lstrip("#") in roof_ids, (
             f"installedOn href {href!r} does not resolve to any RoofSurface; "
             f"available: {sorted(roof_ids)}"
         )
+
+
+def test_pv_has_serving_xlink_to_building_unit(reference_building_root):
+    """PV panel carries a ``serving`` xlink to the BuildingUnit it powers.
+
+    Per CONTEXT.md's "Scope-based parent placement" rule, served-set
+    xlinks are emitted whenever knowable — including the single-VBO case
+    where the served set equals the whole Pand. The owner-occupier Pand
+    has exactly one VBO (id_building_unit_1), so the PV panel carries
+    one ``relatedTo`` entry with ``relationType="serving"`` pointing
+    at that BuildingUnit's gml:id.
+    """
+    building_unit_ids = {
+        bu.get("{http://www.opengis.net/gml}id")
+        for bu in reference_building_root.findall(".//nrg3:BuildingUnit", NS)
+    }
+    assert building_unit_ids, "fixture has no BuildingUnit to xlink against"
+
+    relations = reference_building_root.findall(
+        ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
+    )
+    serving = [
+        rel
+        for rel in relations
+        if (rt := rel.find("nrg3:relationType", NS)) is not None and rt.text == "serving"
+    ]
+    assert len(serving) == 1, f"expected exactly one 'serving' xlink, got {len(serving)}"
+
+    href = serving[0].find("nrg3:relatedTo", NS).get("{http://www.w3.org/1999/xlink}href")
+    assert href and href.startswith("#"), f"serving href must be a local xlink, got {href!r}"
+    assert href.lstrip("#") in building_unit_ids, (
+        f"serving href {href!r} does not resolve to any BuildingUnit; "
+        f"available: {sorted(building_unit_ids)}"
+    )
 
 
 def test_geometry_imported_from_step(reference_building_root):
@@ -534,7 +573,7 @@ def test_building_input_rejects_missing_geometry_source_file():
 
 
 def test_building_input_rejects_unresolved_installed_on():
-    """``installed_on`` referencing a nonexistent surface must fail loudly.
+    """An ``installedOn`` target naming a nonexistent surface must fail loudly.
 
     Silent no-op would let JSON typos slip past as missing relations that
     nobody notices until a downstream consumer complains.
@@ -543,7 +582,9 @@ def test_building_input_rejects_unresolved_installed_on():
     invalid_data = deepcopy(data)
     for feature in invalid_data["features"]:
         if feature.get("id") == "pv_panel_1":
-            feature["installed_on"] = ["RoofSurface_99"]
+            feature["related_to"] = [
+                {"relation": "installedOn", "target": "RoofSurface_99"}
+            ]
             break
     else:
         pytest.fail("pv_panel_1 not in fixture")
@@ -558,18 +599,21 @@ def test_building_input_rejects_unresolved_installed_on():
 def test_installed_on_object_form_pins_relation_to_specific_lod():
     """``{name, lod}`` form pins the relation to the chosen LoD's gml:id.
 
-    The canonical input's ``installed_on: ["RoofSurface_01", "RoofSurface_02"]``
-    resolves to LoD 3 RoofSurfaces (highest-LoD-wins). Switching the entries
-    to the explicit object form with ``lod: 2`` must instead target the LoD 2
-    RoofSurfaces, even though the same names exist at LoD 3.
+    The canonical input's bare-string ``installedOn`` entries resolve to
+    LoD 3 RoofSurfaces (highest-LoD-wins). Switching to the explicit
+    object form with ``lod: 2`` must instead target the LoD 2 RoofSurfaces,
+    even though the same names exist at LoD 3 (ADR-0001).
     """
     data = load_feature_collection(INPUT)
     mutated = deepcopy(data)
     for feature in mutated["features"]:
         if feature.get("id") == "pv_panel_1":
-            feature["installed_on"] = [
-                {"name": "RoofSurface_01", "lod": 2},
-                {"name": "RoofSurface_02", "lod": 2},
+            # Preserve serving + replace installedOn entries with the
+            # object form pinned to LoD 2.
+            feature["related_to"] = [
+                {"relation": "installedOn", "target": {"name": "RoofSurface_01", "lod": 2}},
+                {"relation": "installedOn", "target": {"name": "RoofSurface_02", "lod": 2}},
+                {"relation": "serving",     "target": "id_building_unit_1"},
             ]
             break
     else:
@@ -598,6 +642,7 @@ def test_installed_on_object_form_pins_relation_to_specific_lod():
         .get("{http://www.w3.org/1999/xlink}href")
         .lstrip("#")
         for rel in relations
+        if (rt := rel.find("nrg3:relationType", NS)) is not None and rt.text == "installedOn"
     }
     assert len(hrefs) == 2
     assert hrefs.issubset(lod2_roof_ids), (
@@ -611,7 +656,9 @@ def test_installed_on_object_form_rejects_unknown_lod():
     mutated = deepcopy(data)
     for feature in mutated["features"]:
         if feature.get("id") == "pv_panel_1":
-            feature["installed_on"] = [{"name": "RoofSurface_01", "lod": 9}]
+            feature["related_to"] = [
+                {"relation": "installedOn", "target": {"name": "RoofSurface_01", "lod": 9}}
+            ]
             break
     else:
         pytest.fail("pv_panel_1 not in fixture")

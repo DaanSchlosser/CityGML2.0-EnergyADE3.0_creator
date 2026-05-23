@@ -133,8 +133,9 @@ class _RenderContext:
     every attached boundary surface. The LoD axis is part of the key so
     that the same STEP layer name (e.g. ``"RoofSurface_01"``) appearing
     in both a LoD 2 STEP and a LoD 3 STEP does not silently overwrite;
-    callers that resolve a bare-name relation (``installed_on``) collapse
-    the LoD axis themselves by picking the highest LoD present.
+    callers that resolve a bare-name relation (``related_to`` entries
+    with relation ``installedOn``) collapse the LoD axis themselves by
+    picking the highest LoD present.
     """
 
     origin: Coord3D
@@ -831,8 +832,9 @@ def _attach_surface(
     """Build one boundary surface, append it to the parent's surface list.
 
     *register_surface_name_index* controls whether the STEP layer name is
-    exposed on the model-wide ``surface_name_index`` for ``installed_on``
-    resolution. Set to False for ZonePart sources: zonepart faces are an
+    exposed on the model-wide ``surface_name_index`` for surface-targeted
+    ``related_to`` resolution (relation ``installedOn``). Set to False
+    for ZonePart sources: zonepart faces are an
     internal thermal-envelope description, not the publicly-attachable
     surface vocabulary that devices physically sit on (a roof-mounted PV
     is "installedOn" the building's ``bldg:RoofSurface``, not on the
@@ -862,8 +864,9 @@ def _attach_surface(
     )
     if register_surface_name_index:
         # Expose (STEP-name, LoD) ↔ gml:id mapping on the model-wide index
-        # so JSON-declared relations (installed_on, …) can resolve against
-        # author-facing STEP layer names instead of auto-generated gml:ids.
+        # so JSON-declared related_to entries with relation 'installedOn'
+        # can resolve against author-facing STEP layer names instead of
+        # auto-generated gml:ids.
         # The LoD axis prevents silent overwrite when the same layer name
         # appears at multiple LoDs (e.g. the canonical input has
         # ``RoofSurface_01`` in both LoD 2 and LoD 3 STEPs but the two

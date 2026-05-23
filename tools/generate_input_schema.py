@@ -32,6 +32,7 @@ SCHEMA_PATH = REPO_ROOT / "schemas" / "citygml_energy_input.schema.json"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from citygml_energy.device_relations import RELATION_KINDS
 from citygml_energy.geometry import (
     GEOMETRY_SOURCE_SPECS,
     GeometrySourceSpec,
@@ -46,6 +47,99 @@ def _build_geometry_source_branches() -> list[dict[str, Any]]:
         _branch_for_spec(spec)
         for spec in sorted(GEOMETRY_SOURCE_SPECS.values(), key=lambda s: s.source_type)
     ]
+
+
+def _build_related_to_branches() -> list[dict[str, Any]]:
+    """One ``oneOf`` branch per registered :class:`RelationKind`.
+
+    The branches share the ``{"relation": str, "target": ...}`` shape but
+    differ on the ``target`` schema by ``target_kind``:
+
+    * ``surface`` accepts a bare string OR the LoD-pinned object form
+      ``{"name": str, "lod": int}`` (per ADR-0001).
+    * ``feature`` accepts a bare gml:id string only; the object form is
+      intentionally rejected because LoD has no meaning for a feature
+      reference and a typo against a STEP surface name would otherwise
+      silently resolve as ``feature``-shaped.
+
+    Sorting by codelist_value gives a deterministic schema output so
+    repeated regenerations diff cleanly.
+    """
+    branches: list[dict[str, Any]] = []
+    for relation_name in sorted(RELATION_KINDS):
+        kind = RELATION_KINDS[relation_name]
+        if kind.target_kind == "surface":
+            target_schema: dict[str, Any] = {
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": (
+                            "Bare STEP layer name (e.g. 'RoofSurface_02') or a "
+                            "gml:id present in the model. Resolves to the "
+                            "highest LoD that carries the name; falls back to "
+                            "the gml:id index when no STEP-name match is found."
+                        ),
+                    },
+                    {
+                        "type": "object",
+                        "required": ["name", "lod"],
+                        "additionalProperties": False,
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": (
+                                    "STEP layer name as it appears in the "
+                                    "LoD-specific STEP file."
+                                ),
+                            },
+                            "lod": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": (
+                                    "Pin the relation to this specific LoD's "
+                                    "representation of the named face. Use "
+                                    "when bare-name resolution "
+                                    "(highest-LoD-wins) is not what you want."
+                                ),
+                            },
+                        },
+                        "description": (
+                            "Explicit (name, LoD) pair for unambiguous "
+                            "surface targeting."
+                        ),
+                    },
+                ],
+            }
+        else:  # target_kind == "feature"
+            target_schema = {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "gml:id of the target feature. Resolved against the "
+                    "feature index only; STEP-name lookup is intentionally "
+                    "skipped so a typo against a surface name raises rather "
+                    "than emitting a nonsense xlink to a surface gml:id."
+                ),
+            }
+        branches.append({
+            "type": "object",
+            "required": ["relation", "target"],
+            "additionalProperties": False,
+            "properties": {
+                "relation": {
+                    "const": kind.codelist_value,
+                    "description": (
+                        f"{kind.codelist_value!r} from the EnergyADE 3.0 "
+                        f"RelationTypeValue codelist family. "
+                        f"Codespace: {kind.codespace}."
+                    ),
+                },
+                "target": target_schema,
+            },
+        })
+    return branches
 
 
 def _branch_for_spec(spec: GeometrySourceSpec) -> dict[str, Any]:
@@ -202,61 +296,29 @@ def build_schema() -> dict[str, Any]:
                                 "Only needed when auto-discovery is ambiguous."
                             ),
                         },
-                        "installed_on": {
+                        "related_to": {
                             "type": "array",
                             "minItems": 1,
-                            "items": {
-                                "oneOf": [
-                                    {
-                                        "type": "string",
-                                        "minLength": 1,
-                                        "description": (
-                                            "Bare STEP layer name (e.g. 'RoofSurface_02') "
-                                            "or a gml:id present in the model. Resolves "
-                                            "to the highest LoD that carries the name; "
-                                            "falls back to the gml:id index when no "
-                                            "STEP-name match is found."
-                                        ),
-                                    },
-                                    {
-                                        "type": "object",
-                                        "required": ["name", "lod"],
-                                        "additionalProperties": False,
-                                        "properties": {
-                                            "name": {
-                                                "type": "string",
-                                                "minLength": 1,
-                                                "description": (
-                                                    "STEP layer name as it appears in "
-                                                    "the LoD-specific STEP file."
-                                                ),
-                                            },
-                                            "lod": {
-                                                "type": "integer",
-                                                "minimum": 0,
-                                                "description": (
-                                                    "Pin the relation to this specific "
-                                                    "LoD's representation of the named "
-                                                    "face. Use when bare-name resolution "
-                                                    "(highest-LoD-wins) is not what you "
-                                                    "want."
-                                                ),
-                                            },
-                                        },
-                                        "description": (
-                                            "Explicit (name, LoD) pair for unambiguous "
-                                            "device-to-surface targeting."
-                                        ),
-                                    },
-                                ]
-                            },
+                            "items": {"oneOf": _build_related_to_branches()},
                             "description": (
-                                "Device-to-surface relations. Each entry is a bare STEP "
-                                "layer name (resolves to highest-LoD match, then gml:id "
-                                "fallback) or an explicit {name, lod} object (resolves "
-                                "to the exact LoD). The loader emits one "
-                                "nrg3:CityObjectRelation with relationType='installedOn' "
-                                "per entry, resolving targets after geometry apply."
+                                "CityObjectRelation entries declared on this "
+                                "feature. Mirrors the EnergyADE 3.0 UML 1:1: "
+                                "each entry is one nrg3:CityObjectRelation "
+                                "with one relationType (the 'relation' field) "
+                                "and one xlink target (the 'target' field). "
+                                "The 'relation' value names a member of the "
+                                "RelationTypeValue codelist family (currently "
+                                "'installedOn' / 'serving' from "
+                                "OtherRelationTypeValue.xml). Per-relation "
+                                "target shape varies by target_kind: "
+                                "'installedOn' (surface) accepts a bare STEP "
+                                "layer name (resolves to highest-LoD match, "
+                                "then gml:id fallback) or an explicit "
+                                "{name, lod} object (LoD-pinned per ADR-0001); "
+                                "'serving' and other feature-targeted "
+                                "relations accept only a gml:id string. Author "
+                                "order is preserved in the emitted "
+                                "<nrg3:relatedTo> siblings."
                             ),
                         },
                     },

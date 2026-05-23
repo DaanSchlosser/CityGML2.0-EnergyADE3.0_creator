@@ -461,29 +461,57 @@ def test_rejects_whitespace_only_srs_name(
 
 
 # ---------------------------------------------------------------------------
-# Cross-reference resolution (installed_on, construction_mapping)
+# Cross-reference resolution (related_to, construction_mapping)
 # ---------------------------------------------------------------------------
 
 
 def test_rejects_installed_on_referencing_nonexistent_surface(
     base_data: dict[str, Any], base_path: Path
 ) -> None:
-    """JSON typo in ``installed_on`` must be caught, not silently dropped."""
+    """JSON typo in an installedOn ``related_to`` entry must be caught."""
     data = deepcopy(base_data)
     pv = _find_feature(data, "pv_panel_1")
-    pv["installed_on"] = ["NotARealRoofSurface"]
+    pv["related_to"] = [{"relation": "installedOn", "target": "NotARealRoofSurface"}]
     with pytest.raises(InputFileError, match=r"NotARealRoofSurface"):
         _build(data, base_path)
 
 
-def test_rejects_installed_on_not_a_list(
+def test_rejects_related_to_not_a_list(
     base_data: dict[str, Any], base_path: Path
 ) -> None:
     data = deepcopy(base_data)
     pv = _find_feature(data, "pv_panel_1")
-    pv["installed_on"] = "RoofSurface_01"  # string instead of list
+    pv["related_to"] = {"relation": "installedOn", "target": "RoofSurface_01"}  # object, not list
     with pytest.raises(
-        InputFileError, match=r"'installed_on' must be a non-empty list"
+        InputFileError, match=r"'related_to' must be a non-empty list"
+    ):
+        _build(data, base_path)
+
+
+def test_rejects_unknown_relation_kind(
+    base_data: dict[str, Any], base_path: Path
+) -> None:
+    """``relation`` must name a registered RelationKind (e.g. installedOn, serving)."""
+    data = deepcopy(base_data)
+    pv = _find_feature(data, "pv_panel_1")
+    pv["related_to"] = [{"relation": "bogusRelation", "target": "RoofSurface_01"}]
+    with pytest.raises(InputFileError, match=r"bogusRelation.*not registered"):
+        _build(data, base_path)
+
+
+def test_rejects_feature_relation_with_object_target(
+    base_data: dict[str, Any], base_path: Path
+) -> None:
+    """``serving`` targets must be plain gml:id strings; the {name, lod} form
+    is intentionally rejected so a typo against a STEP surface name surfaces
+    as an error instead of resolving against the surface index."""
+    data = deepcopy(base_data)
+    pv = _find_feature(data, "pv_panel_1")
+    pv["related_to"] = [
+        {"relation": "serving", "target": {"name": "RoofSurface_01", "lod": 2}}
+    ]
+    with pytest.raises(
+        InputFileError, match=r"'related_to'\[0\]\.target for relation 'serving'"
     ):
         _build(data, base_path)
 

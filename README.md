@@ -137,7 +137,7 @@ flowchart TD
     B1["<b>Phase 1: build</b><br/>resolve_class + build_from_dict per feature"]:::stage
     B2["<b>Phase 2: attach</b><br/>parent-by-id, field auto-detection"]:::stage
     G["<b>apply_geometry_sources</b><br/>STEP → polygons → Building / ZonePart / PV"]:::stage
-    D["<b>apply_device_relations</b><br/>installed_on → nrg3:CityObjectRelation xlinks"]:::stage
+    D["<b>apply_device_relations</b><br/>related_to → nrg3:CityObjectRelation xlinks"]:::stage
     A["<b>apply_derived_attributes</b><br/>one model walk; per-ADE emitter plug-ins<br/>(layeredConstruction xlinks, bdgBdrySurf*, bdgOpn*)"]:::stage
 
     CM(["<b>CityModel</b> (xsdata)"]):::model
@@ -312,7 +312,7 @@ citygml_energy/                Core package
 ├── geometry.py                 STEP → xsdata attachment, auto-discovered taxonomy
 ├── _step.py                    ISO 10303-21 parser (xsdata-independent)
 ├── gml_builders.py             Pure GML primitive builders (µm-quantised output)
-├── device_relations.py         installed_on → nrg3:CityObjectRelation resolver
+├── device_relations.py         related_to → nrg3:CityObjectRelation resolver (RELATION_KINDS registry)
 ├── derived_attributes.py       Plug-in seam for ADE-property emitters
 ├── construction_mapping.py     Energy ADE 3.0 plug-in: layeredConstruction xlinks
 ├── boundary_attributes.py      Energy ADE 3.0 plug-in: bdgBdrySurf* / bdgOpn*

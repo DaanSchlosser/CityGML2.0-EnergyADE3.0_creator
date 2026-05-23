@@ -207,7 +207,11 @@
       "aperture_area": {"value": 55.8, "uom": "m2"},
       "nominal_efficiency": {"value": 0.164, "uom": "W/W"},
       "cell_type": {"value": "unknown", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/CellTypeValue.xml"},
-      "installed_on": ["RoofSurface_01", "RoofSurface_02"]
+      "related_to": [
+        {"relation": "installedOn", "target": "RoofSurface_01"},
+        {"relation": "installedOn", "target": "RoofSurface_02"},
+        {"relation": "serving",     "target": "id_building_unit_1"}
+      ]
     },
     {
       "type": "nrg3:HeatPump",

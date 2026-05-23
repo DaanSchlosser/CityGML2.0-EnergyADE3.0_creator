@@ -541,9 +541,20 @@ def test_pipeline_attaches_solar_collectors(
     # RoofSurface id. The cube fixture has exactly one RoofSurface, so
     # both panels resolve to ``_roofsurface_1``.
     expected_href = f"#pand_{_PAND_ID}_roofsurface_1"
+    expected_bu_href = f"#bu_{_VBO_ID}"
     for d in building.device:
-        cor = d.generic_solar_collector.related_to[0].city_object_relation
-        assert cor.related_to.href == expected_href
+        rels = d.generic_solar_collector.related_to
+        by_type = {r.city_object_relation.relation_type.value: r.city_object_relation for r in rels}
+        # The cube fixture is a single-VBO Pand, so the panels carry
+        # both an installedOn xlink to the matched roof and a serving
+        # xlink to the lone BuildingUnit (CONTEXT.md "Scope-based parent
+        # placement"). The single-VBO case is when the served set is
+        # knowable by elimination — emit it.
+        assert set(by_type) == {"installedOn", "serving"}, (
+            f"expected installedOn + serving relations, got {sorted(by_type)}"
+        )
+        assert by_type["installedOn"].related_to.href == expected_href
+        assert by_type["serving"].related_to.href == expected_bu_href
 
 
 def test_pipeline_skips_pv_when_lod2_disabled(

@@ -1,27 +1,49 @@
-"""Post-processor: emit ``nrg3:CityObjectRelation`` entries for devices.
+"""Post-processor: emit ``nrg3:CityObjectRelation`` entries on CityObjects.
 
-Resolves JSON-declared ``installed_on`` references on devices (PV
-collectors, heat pumps, etc.) into ``nrg3:CityObjectRelation`` links
-with ``relationType="installedOn"`` pointing at specific surface
-``gml:id`` values.
+Resolves JSON-declared ``related_to`` entries on feature dicts into
+``nrg3:CityObjectRelation`` links. Each entry carries an explicit
+``relation`` value (an ``OtherRelationTypeValue`` codelist member such as
+``installedOn`` or ``serving``) plus a ``target`` reference.
 
-Each ``installed_on`` entry can take one of two shapes:
+The JSON shape mirrors the EnergyADE 3.0 UML class structure 1:1: each
+CityObject composes a list of CityObjectRelation instances, each carrying
+one ``relationType`` value and one ``relatedTo`` xlink. There is no
+per-relation-type subclass at the model level (``CityObjectRelation`` was
+explicitly remodelled in EnergyADE 3.0 beta 4 to consolidate the previous
+N parallel association classes into one polymorphic class discriminated
+by ``relationType``); the input layer matches that shape.
 
-* **Bare string** like ``"RoofSurface_01"``. The resolver looks up the
-  STEP layer name in :attr:`CityModel.surface_name_index` (which is
-  keyed by ``(name, LoD)``), collapses the LoD axis by picking the
-  **highest LoD** present for that name, and falls back to the
-  gml:id-keyed feature index when no STEP-name match is found.
-* **Object form** like ``{"name": "RoofSurface_01", "lod": 2}``. The
-  resolver looks up the exact ``(name, LoD)`` pair and emits a relation
-  to that specific LoD's representation. No fallback to gml:id; the
-  object form is unambiguous and a missing match is an error.
+The driver routes each entry through the relation registry
+(:data:`RELATION_KINDS`). Each registered :class:`RelationKind` declares:
 
-The highest-LoD default is chosen because it is the dominant consumer
-intent: an analysis that wants the area or azimuth of the face a
-device sits on will want the most-detailed representation of that
-face. Authors who need to target a different LoD opt in explicitly
-via the object form.
+* its codelist value (the literal ``relation`` field value in JSON),
+* the codespace URL that names the dictionary the value lives in
+  (``OtherRelationTypeValue.xml`` for the three current values;
+  ``TopologicalRelationTypeValue.xml`` for future ``adjacentTo`` /
+  ``sharedWith``; ``TemporalRelationTypeValue.xml`` for any future
+  temporal members),
+* a target kind that selects the resolver path:
+
+  - ``"surface"`` looks up STEP layer names against
+    :attr:`CityModel.surface_name_index` (which is keyed by
+    ``(name, LoD)``), collapses the LoD axis by picking the **highest LoD**
+    present for that name, and falls back to the gml:id-keyed feature
+    index when no STEP-name match is found. The bare-string form
+    ``"RoofSurface_01"`` resolves under this path; the object form
+    ``{"name": "RoofSurface_01", "lod": 2}`` pins the relation to one
+    specific LoD's representation and does not fall back. ADR-0001
+    locks this resolution semantic.
+  - ``"feature"`` resolves only against the feature index; surface-name
+    lookup is intentionally skipped so a typo against a STEP layer name
+    raises rather than silently emitting a relation to a surface gml:id
+    when none was intended. Only the bare-string shape is accepted in
+    this mode (LoD has no meaning for a feature-id reference).
+
+The highest-LoD default on ``surface`` targets is conservative: it does
+not claim to match consumer intent in general, but minimises the risk of
+pointing at an under-specified face when the author has not authored a
+LoD signal. Authors who need a different LoD opt in explicitly via the
+object form.
 
 Unresolved references raise :class:`ValueError` loudly: silent no-op
 would let JSON typos slip through as missing relations that nobody
@@ -30,7 +52,8 @@ notices until a downstream consumer complains.
 
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from .bindings import (
     AbstractCityObjectPropertyType,
@@ -41,47 +64,100 @@ from .bindings import (
 )
 from .core import CityModel
 from .mapping import iter_instances
-from .namespaces import CS_NRG3_RELATION_TYPE
+from .namespaces import CS_NRG3_OTHER_RELATION_TYPE
 
-__all__ = ["DEFAULT_INSTALLED_ON_RELATION", "apply_device_relations"]
+__all__ = [
+    "DEFAULT_INSTALLED_ON_RELATION",
+    "RELATION_KINDS",
+    "RelationKind",
+    "TargetKind",
+    "apply_device_relations",
+]
 
+# Kept for back-compat with any caller that imports the constant; the
+# canonical source for the value is now ``RELATION_KINDS["installedOn"]``.
 DEFAULT_INSTALLED_ON_RELATION = "installedOn"
+
+TargetKind = Literal["surface", "feature"]
+
+
+@dataclass(frozen=True, slots=True)
+class RelationKind:
+    """One member of the ``RelationTypeValue`` codelist family.
+
+    :attr:`codelist_value` is the literal token written into
+    ``<nrg3:relationType>`` (and matched against the ``relation`` field of
+    each JSON ``related_to`` entry). :attr:`codespace` names the dictionary
+    the token lives in (one of ``OtherRelationTypeValue.xml``,
+    ``TopologicalRelationTypeValue.xml``, ``TemporalRelationTypeValue.xml``).
+    :attr:`target_kind` selects the resolver path; see the module docstring.
+    """
+
+    codelist_value: str
+    codespace: str
+    target_kind: TargetKind
+
+
+RELATION_KINDS: dict[str, RelationKind] = {
+    # OtherRelationTypeValue members (beta 8 populated).
+    "installedOn": RelationKind(
+        codelist_value="installedOn",
+        codespace=CS_NRG3_OTHER_RELATION_TYPE,
+        target_kind="surface",
+    ),
+    "serving": RelationKind(
+        codelist_value="serving",
+        codespace=CS_NRG3_OTHER_RELATION_TYPE,
+        target_kind="feature",
+    ),
+    # ``connectedTo`` (third OtherRelationTypeValue member) is not yet
+    # exercised by any fixture; uncomment the registry entry when a
+    # device-to-device connection (e.g. heat pump → thermal storage) is
+    # first authored. The target kind is ``feature`` because the target
+    # is another device, not a surface.
+    #
+    # TopologicalRelationTypeValue members (``adjacentTo``, ``sharedWith``)
+    # would slot in here when the pipeline starts authoring Pand-to-Pand
+    # adjacency, both with ``target_kind="feature"`` and codespace
+    # CS_NRG3_TOPOLOGICAL_RELATION_TYPE.
+}
 
 
 def apply_device_relations(
     model: CityModel,
-    device_relations: dict[str, list[Any]],
-    *,
-    relation_type: str = DEFAULT_INSTALLED_ON_RELATION,
+    related_to_by_device: dict[str, list[tuple[str, Any]]],
 ) -> None:
-    """Emit ``nrg3:CityObjectRelation`` entries from JSON-declared targets.
+    """Emit ``nrg3:CityObjectRelation`` entries from parsed ``related_to`` entries.
 
-    *device_relations* maps a device's ``gml:id`` (e.g. ``"pv_panel_1"``)
-    to a list of surface references. Each reference is either a bare
-    STEP layer name (string) or an object form ``{"name": str, "lod": int}``.
-    See the module docstring for the resolution rules.
+    *related_to_by_device* maps a device's ``gml:id`` (e.g. ``"pv_panel_1"``)
+    to a list of ``(relation_name, target_ref)`` tuples in author order.
+    ``relation_name`` must be a key in :data:`RELATION_KINDS`;
+    ``target_ref`` is the raw JSON-side reference (bare string, or
+    ``{"name": str, "lod": int}`` for surface targets).
+
+    The emitted ``<nrg3:relatedTo>`` siblings preserve the input order of
+    the source list — author order in the JSON `related_to` field maps 1:1
+    to element order in the GML output. (CityGML 2.0 + EnergyADE 3.0 do
+    not assign semantic meaning to the order; preserving it just keeps
+    diffs stable.)
 
     Unresolved references raise :class:`ValueError` to fail loudly rather
     than emit a dangling xlink:href. Devices that are themselves
     unresolved also raise, because a silent no-op here would make typos
     in the JSON invisible until someone checks the GML by hand.
-
-    The default *relation_type* is ``installedOn`` (the EnergyADE 3.0
-    codelist value for device-on-surface placement); callers needing
-    other relation semantics pass a different code.
     """
-    if not device_relations:
+    if not related_to_by_device:
         return
 
     feature_index = _index_features(model)
     surface_name_index = model.surface_name_index
 
-    for device_id, targets in device_relations.items():
+    for device_id, entries in related_to_by_device.items():
         device = feature_index.get(device_id)
         if device is None:
             raise ValueError(
                 f"apply_device_relations: device {device_id!r} not found in model; "
-                f"installed_on references an unknown feature id"
+                f"'related_to' references an unknown feature id"
             )
         if not hasattr(device, "related_to"):
             raise ValueError(
@@ -90,16 +166,27 @@ def apply_device_relations(
                 f"the XSD does not permit ADE relations on this type"
             )
 
-        for target_ref in targets:
+        for relation_name, target_ref in entries:
+            kind = RELATION_KINDS.get(relation_name)
+            if kind is None:
+                known = ", ".join(sorted(RELATION_KINDS)) or "(no relations registered)"
+                raise ValueError(
+                    f"apply_device_relations: unknown relation {relation_name!r} on "
+                    f"{device_id!r}. Known relations: {known}"
+                )
             target_gml_id = _resolve_target(
-                target_ref, surface_name_index, feature_index, device_id
+                target_ref,
+                surface_name_index,
+                feature_index,
+                device_id,
+                kind=kind,
             )
             device.related_to.append(
                 RelatedTo(
                     city_object_relation=CityObjectRelation(
                         relation_type=CodeType(
-                            value=relation_type,
-                            code_space=CS_NRG3_RELATION_TYPE,
+                            value=kind.codelist_value,
+                            code_space=kind.codespace,
                         ),
                         related_to=_make_city_object_ref(target_gml_id),
                     ),
@@ -112,15 +199,43 @@ def _resolve_target(
     surface_name_index: dict[tuple[str, int], str],
     feature_index: dict[str, Any],
     device_id: str,
+    *,
+    kind: RelationKind,
 ) -> str:
-    """Resolve one ``installed_on`` entry to a surface ``gml:id``.
+    """Resolve one relation target entry to a ``gml:id``.
 
-    Bare strings: collapse the LoD axis by picking the highest LoD
-    present for the name; fall back to the gml:id index when no
-    STEP-name match is found.
+    ``target_kind="surface"`` (e.g. ``installedOn``): bare strings collapse
+    the LoD axis by picking the highest LoD present for the name; fall
+    back to the gml:id index when no STEP-name match is found. The object
+    form ``{"name": str, "lod": int}`` looks up the exact ``(name, lod)``
+    pair; no fallback. ADR-0001 documents the rationale.
 
-    Object form: look up the exact ``(name, lod)`` pair; no fallback.
+    ``target_kind="feature"`` (e.g. ``serving``): only the bare-string
+    shape is accepted. The string is treated as a plain gml:id reference
+    and resolved against the feature index only; surface lookup is
+    intentionally skipped so a typo against a STEP surface name raises
+    rather than silently emitting an xlink to a surface gml:id.
     """
+    if kind.target_kind == "feature":
+        if not isinstance(target_ref, str):
+            raise ValueError(
+                f"apply_device_relations: 'related_to' entry for relation "
+                f"{kind.codelist_value!r} on {device_id!r} must have a gml:id "
+                f"string target; the {{'name': str, 'lod': int}} object form "
+                f"is only valid for surface-targeted relations (e.g. "
+                f"'installedOn'), got {target_ref!r}"
+            )
+        if target_ref in feature_index:
+            return target_ref
+        known_ids = ", ".join(sorted(feature_index)[:20]) or "(no indexed features)"
+        suffix = "" if len(feature_index) <= 20 else f" (+{len(feature_index) - 20} more)"
+        raise ValueError(
+            f"apply_device_relations: target {target_ref!r} for relation "
+            f"{kind.codelist_value!r} on {device_id!r} could not be resolved "
+            f"against the feature index. Known gml:ids: {known_ids}{suffix}"
+        )
+
+    # target_kind == "surface"
     if isinstance(target_ref, str):
         name = target_ref
         matches = [
@@ -135,9 +250,10 @@ def _resolve_target(
             return name
         known = _format_known_names(surface_name_index)
         raise ValueError(
-            f"apply_device_relations: target {name!r} for {device_id!r} "
-            f"could not be resolved to any attached surface or indexed "
-            f"gml:id. Known STEP surface names: {known}"
+            f"apply_device_relations: target {name!r} for relation "
+            f"{kind.codelist_value!r} on {device_id!r} could not be resolved "
+            f"to any attached surface or indexed gml:id. Known STEP surface "
+            f"names: {known}"
         )
 
     if isinstance(target_ref, dict):
@@ -145,15 +261,17 @@ def _resolve_target(
         lod = target_ref.get("lod")
         if not isinstance(name, str) or not name:
             raise ValueError(
-                f"apply_device_relations: installed_on entry {target_ref!r} on "
-                f"{device_id!r} must be {{'name': str, 'lod': int}} but 'name' "
-                f"is missing or not a non-empty string"
+                f"apply_device_relations: 'related_to' entry for relation "
+                f"{kind.codelist_value!r} on {device_id!r} has target "
+                f"{target_ref!r}; the {{'name': str, 'lod': int}} object form "
+                f"requires 'name' to be a non-empty string"
             )
         if not isinstance(lod, int) or isinstance(lod, bool) or lod < 0:
             raise ValueError(
-                f"apply_device_relations: installed_on entry {target_ref!r} on "
-                f"{device_id!r} must be {{'name': str, 'lod': int}} but 'lod' "
-                f"is missing or not a non-negative integer"
+                f"apply_device_relations: 'related_to' entry for relation "
+                f"{kind.codelist_value!r} on {device_id!r} has target "
+                f"{target_ref!r}; the {{'name': str, 'lod': int}} object form "
+                f"requires 'lod' to be a non-negative integer"
             )
         gml_id = surface_name_index.get((name, lod))
         if gml_id is not None:
@@ -164,22 +282,24 @@ def _resolve_target(
         if known_lods:
             raise ValueError(
                 f"apply_device_relations: target {{'name': {name!r}, 'lod': {lod}}} "
-                f"for {device_id!r} is not attached at LoD {lod}. The name "
-                f"resolves at LoDs {known_lods}; pin the object form to one of "
-                f"those, or drop the lod key for the highest-LoD default."
+                f"for relation {kind.codelist_value!r} on {device_id!r} is not "
+                f"attached at LoD {lod}. The name resolves at LoDs {known_lods}; "
+                f"pin the object form to one of those, or drop the lod key for "
+                f"the highest-LoD default."
             )
         known = _format_known_names(surface_name_index)
         raise ValueError(
             f"apply_device_relations: target {{'name': {name!r}, 'lod': {lod}}} "
-            f"for {device_id!r} could not be resolved; the name does not "
-            f"appear in the surface index at any LoD. Known STEP surface "
-            f"names: {known}"
+            f"for relation {kind.codelist_value!r} on {device_id!r} could not be "
+            f"resolved; the name does not appear in the surface index at any "
+            f"LoD. Known STEP surface names: {known}"
         )
 
     raise ValueError(
-        f"apply_device_relations: installed_on entry {target_ref!r} on "
-        f"{device_id!r} must be a string (bare STEP layer name) or an "
-        f"object {{'name': str, 'lod': int}}; got {type(target_ref).__name__}"
+        f"apply_device_relations: 'related_to' entry target for relation "
+        f"{kind.codelist_value!r} on {device_id!r} must be a string (bare STEP "
+        f"layer name or gml:id) or an object {{'name': str, 'lod': int}} for "
+        f"surface targets; got {type(target_ref).__name__}"
     )
 
 

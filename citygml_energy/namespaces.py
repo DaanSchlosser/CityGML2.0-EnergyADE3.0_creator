@@ -370,7 +370,16 @@ CS_NRG3_HEIGHT_TYPE = f"{_NRG3_CS}/HeightTypeValue.xml"
 CS_NRG3_OCCUPANTS_TYPE = f"{_NRG3_CS}/OccupantsTypeValue.xml"
 CS_NRG3_OWNERSHIP_TYPE = f"{_NRG3_CS}/OwnershipTypeValue.xml"
 CS_NRG3_REFERENCE_PERIOD = f"{_NRG3_CS}/ReferencePeriodValue.xml"
-CS_NRG3_RELATION_TYPE = f"{_NRG3_CS}/RelationTypeValue.xml"
+CS_NRG3_OTHER_RELATION_TYPE = f"{_NRG3_CS}/OtherRelationTypeValue.xml"
+# CityObjectRelation's relationType is a gml:CodeType drawn from one of
+# three sub-codelists (Other / Temporal / Topological) under the abstract
+# parent RelationTypeValue per the UML class diagram. OtherRelationTypeValue
+# (above) carries installedOn / connectedTo / serving in beta 8;
+# TopologicalRelationTypeValue carries adjacentTo / sharedWith; Temporal is
+# empty in beta 8. Pre-pin the topological URL so the relation registry can
+# host topological kinds without a follow-up namespaces.py edit.
+CS_NRG3_TOPOLOGICAL_RELATION_TYPE = f"{_NRG3_CS}/TopologicalRelationTypeValue.xml"
+CS_NRG3_TEMPORAL_RELATION_TYPE = f"{_NRG3_CS}/TemporalRelationTypeValue.xml"
 CS_NRG3_RESOURCE_OPERATION_TYPE = f"{_NRG3_CS}/ResourceOperationTypeValue.xml"
 CS_NRG3_SCHEDULE_TYPE = f"{_NRG3_CS}/ScheduleTypeValue.xml"
 CS_NRG3_USAGE_ZONE_TYPE = f"{_NRG3_CS}/UsageZoneTypeValue.xml"

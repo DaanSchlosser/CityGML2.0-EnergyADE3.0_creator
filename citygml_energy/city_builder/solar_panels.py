@@ -66,7 +66,7 @@ from ..bindings import (
     TypeType,
 )
 from ..gml_builders import build_multi_surface, newell_normal
-from ..namespaces import CS_NRG3_RELATION_TYPE
+from ..namespaces import CS_NRG3_OTHER_RELATION_TYPE
 from .builders._common import UOM_AREA_M2, UOM_DEGREES
 from .builders.building import (
     iter_lod2_thematic_classification,
@@ -114,10 +114,11 @@ _HORIZONTAL_EPS: float = 1e-6
 # technology-agnostic ``nrg3:GenericSolarCollector``.
 _SOLAR_ID_PREFIX: str = "solar_"
 
-# Pre-built CodeType singleton. Every collector we emit shares this
-# exact value, and xsdata serialisation is read-only, so caching at
+# Pre-built CodeType singletons. Every collector we emit shares these
+# exact values, and xsdata serialisation is read-only, so caching at
 # module scope saves a few hundred allocations on a full-town run.
-_RELATION_INSTALLED_ON: CodeType = CodeType(value="installedOn", code_space=CS_NRG3_RELATION_TYPE)
+_RELATION_INSTALLED_ON: CodeType = CodeType(value="installedOn", code_space=CS_NRG3_OTHER_RELATION_TYPE)
+_RELATION_SERVING: CodeType = CodeType(value="serving", code_space=CS_NRG3_OTHER_RELATION_TYPE)
 
 
 # ---------------------------------------------------------------------------
@@ -658,6 +659,15 @@ def attach_solar_collectors_to_building(
       the same :func:`iter_lod2_thematic_classification` iterator the
       builder consumes, so the xlink resolves to a real surface in the
       output by construction.
+    * ``relatedTo[serving] → #<building_unit_gml_id>`` — emitted **only
+      on single-VBO Pands**. The aerial-polygon source carries no
+      per-array consumer metadata, so the served set is only knowable
+      by elimination: when the Pand has exactly one VBO, the panels
+      necessarily feed that VBO. Multi-VBO Pands keep the served set
+      undocumented (no xlink) rather than guessing all-VBOs-served.
+      This matches the CONTEXT.md "Scope-based parent placement" rule:
+      always emit ``serving`` when knowable, leave it implicit when
+      genuinely unknown.
 
     Returns 0 when the building has no LoD 2 boundary surfaces (e.g.
     the run was configured with ``lods=[0, 1]``); the panels are
@@ -686,6 +696,7 @@ def attach_solar_collectors_to_building(
         return 0
 
     pand_id = building_id.removeprefix("pand_") if building_id.startswith("pand_") else building_id
+    served_bu_id = _lone_building_unit_id(building)
 
     for panel in panels_for_pand:
         roof_gml_id = lod2_thematic_surface_gml_id(
@@ -699,9 +710,37 @@ def attach_solar_collectors_to_building(
             panel=panel,
             srs_name=build_context.srs_name,
             srs_dimension=build_context.srs_dimension,
+            served_building_unit_id=served_bu_id,
         )
         building.device.append(Device(generic_solar_collector=collector))
     return len(panels_for_pand)
+
+
+def _lone_building_unit_id(building: Any) -> str | None:
+    """Return the gml:id of the building's sole BuildingUnit, or ``None``.
+
+    Returns ``None`` for the two cases where no ``serving`` xlink should
+    be emitted from the aerial-polygon panels:
+
+    * Zero BuildingUnits attached (BAG VBO lookup found no match, the
+      builder was run with no addresses, …). Nothing to point at.
+    * Two or more BuildingUnits attached. The aerial polygon dataset
+      carries no per-array consumer metadata, so the served set is
+      genuinely unknown; guessing "all VBOs" would mis-state ground
+      truth.
+
+    Only the single-VBO case unambiguously determines the served set by
+    elimination, and that is the only case where the xlink is emitted.
+    The result is cached once per :func:`attach_solar_collectors_to_building`
+    call so multiple panels on the same Pand share the lookup.
+    """
+    wrappers = getattr(building, "building_unit", None) or ()
+    if len(wrappers) != 1:
+        return None
+    only_wrapper = wrappers[0]
+    inner = getattr(only_wrapper, "building_unit", None)
+    bu_id = getattr(inner, "id", None) if inner is not None else None
+    return bu_id if isinstance(bu_id, str) and bu_id else None
 
 
 def _build_solar_collector(
@@ -711,6 +750,7 @@ def _build_solar_collector(
     panel: ProjectedPanel,
     srs_name: str,
     srs_dimension: int,
+    served_building_unit_id: str | None = None,
 ) -> GenericSolarCollector:
     """Materialise one ``nrg3:GenericSolarCollector`` from a :class:`ProjectedPanel`.
 
@@ -726,6 +766,14 @@ def _build_solar_collector(
     about any of them. ``cellType`` does not exist on
     ``GenericSolarCollector`` at all (it is photovoltaic-specific), so
     there is nothing to emit even as a sentinel.
+
+    When *served_building_unit_id* is given (the lone VBO on a
+    single-VBO Pand, see :func:`_lone_building_unit_id`), a second
+    ``relatedTo`` entry is appended with ``relationType="serving"``
+    pointing at that BuildingUnit. The xlink documents the consumption
+    side of the panel without changing the device's parent placement
+    (still the Building, per the CONTEXT.md "Scope-based parent
+    placement" rule). ``None`` skips the xlink entirely.
     """
     collector = GenericSolarCollector(
         id=collector_gml_id,
@@ -753,14 +801,26 @@ def _build_solar_collector(
         )
     )
 
-    _related_to_ref = AbstractCityObjectPropertyType(href=f"#{roof_gml_id}")
-    _related_to_ref.type_value = TypeType.SIMPLE
+    _installed_on_ref = AbstractCityObjectPropertyType(href=f"#{roof_gml_id}")
+    _installed_on_ref.type_value = TypeType.SIMPLE
     collector.related_to.append(
         RelatedTo(
             city_object_relation=CityObjectRelation(
                 relation_type=_RELATION_INSTALLED_ON,
-                related_to=_related_to_ref,
+                related_to=_installed_on_ref,
             )
         )
     )
+
+    if served_building_unit_id is not None:
+        _serving_ref = AbstractCityObjectPropertyType(href=f"#{served_building_unit_id}")
+        _serving_ref.type_value = TypeType.SIMPLE
+        collector.related_to.append(
+            RelatedTo(
+                city_object_relation=CityObjectRelation(
+                    relation_type=_RELATION_SERVING,
+                    related_to=_serving_ref,
+                )
+            )
+        )
     return collector

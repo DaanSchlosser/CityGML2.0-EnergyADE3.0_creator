@@ -969,40 +969,77 @@
             "minLength": 1,
             "description": "Explicit field name on the parent to attach to. Only needed when auto-discovery is ambiguous."
           },
-          "installed_on": {
+          "related_to": {
             "type": "array",
             "minItems": 1,
             "items": {
               "oneOf": [
                 {
-                  "type": "string",
-                  "minLength": 1,
-                  "description": "Bare STEP layer name (e.g. 'RoofSurface_02') or a gml:id present in the model. Resolves to the highest LoD that carries the name; falls back to the gml:id index when no STEP-name match is found."
+                  "type": "object",
+                  "required": [
+                    "relation",
+                    "target"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "relation": {
+                      "const": "installedOn",
+                      "description": "'installedOn' from the EnergyADE 3.0 RelationTypeValue codelist family. Codespace: http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OtherRelationTypeValue.xml."
+                    },
+                    "target": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Bare STEP layer name (e.g. 'RoofSurface_02') or a gml:id present in the model. Resolves to the highest LoD that carries the name; falls back to the gml:id index when no STEP-name match is found."
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "lod"
+                          ],
+                          "additionalProperties": false,
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "STEP layer name as it appears in the LoD-specific STEP file."
+                            },
+                            "lod": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "description": "Pin the relation to this specific LoD's representation of the named face. Use when bare-name resolution (highest-LoD-wins) is not what you want."
+                            }
+                          },
+                          "description": "Explicit (name, LoD) pair for unambiguous surface targeting."
+                        }
+                      ]
+                    }
+                  }
                 },
                 {
                   "type": "object",
                   "required": [
-                    "name",
-                    "lod"
+                    "relation",
+                    "target"
                   ],
                   "additionalProperties": false,
                   "properties": {
-                    "name": {
+                    "relation": {
+                      "const": "serving",
+                      "description": "'serving' from the EnergyADE 3.0 RelationTypeValue codelist family. Codespace: http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/OtherRelationTypeValue.xml."
+                    },
+                    "target": {
                       "type": "string",
                       "minLength": 1,
-                      "description": "STEP layer name as it appears in the LoD-specific STEP file."
-                    },
-                    "lod": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "description": "Pin the relation to this specific LoD's representation of the named face. Use when bare-name resolution (highest-LoD-wins) is not what you want."
+                      "description": "gml:id of the target feature. Resolved against the feature index only; STEP-name lookup is intentionally skipped so a typo against a surface name raises rather than emitting a nonsense xlink to a surface gml:id."
                     }
-                  },
-                  "description": "Explicit (name, LoD) pair for unambiguous device-to-surface targeting."
+                  }
                 }
               ]
             },
-            "description": "Device-to-surface relations. Each entry is a bare STEP layer name (resolves to highest-LoD match, then gml:id fallback) or an explicit {name, lod} object (resolves to the exact LoD). The loader emits one nrg3:CityObjectRelation with relationType='installedOn' per entry, resolving targets after geometry apply."
+            "description": "CityObjectRelation entries declared on this feature. Mirrors the EnergyADE 3.0 UML 1:1: each entry is one nrg3:CityObjectRelation with one relationType (the 'relation' field) and one xlink target (the 'target' field). The 'relation' value names a member of the RelationTypeValue codelist family (currently 'installedOn' / 'serving' from OtherRelationTypeValue.xml). Per-relation target shape varies by target_kind: 'installedOn' (surface) accepts a bare STEP layer name (resolves to highest-LoD match, then gml:id fallback) or an explicit {name, lod} object (LoD-pinned per ADR-0001); 'serving' and other feature-targeted relations accept only a gml:id string. Author order is preserved in the emitted <nrg3:relatedTo> siblings."
           }
         }
       }

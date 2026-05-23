@@ -52,8 +52,9 @@ class CityModel:
         )
         # (STEP layer name, LoD level) → gml:id of every attached boundary
         # surface. Populated by the geometry pipeline; consumed by any step
-        # that resolves JSON-declared relations (``installed_on``, …) to
-        # their concrete CityObject targets. The LoD axis is part of the
+        # that resolves JSON-declared surface-targeted ``related_to``
+        # entries (relation ``installedOn``) to their concrete CityObject
+        # targets. The LoD axis is part of the
         # key because the same STEP layer name can refer to different
         # physical features at different LoDs (LoD 3 routinely subdivides
         # an LoD 2 face into smaller sub-faces, and authors number the
