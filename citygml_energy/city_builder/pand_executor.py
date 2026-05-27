@@ -305,7 +305,9 @@ def _build_pand_artifacts(
             build_context,
         )
     coords: list[Coord3D] = []
-    _collect_coordinates(parsed, coords)
+    _collect_coordinates(parsed, coords, lods=build_context.lods)
+    _collect_solar_panel_coordinates(inputs.solar_panels, coords)
+    _collect_address_coordinates(inputs.resolved, coords)
     return PandArtifacts(
         building=building,
         resolved=inputs.resolved,
@@ -327,10 +329,87 @@ def _merge_attributes(parsed_attrs: dict[str, Any], pand: bag_fetchers.Pand) -> 
         parsed_attrs["status"] = pand.status
 
 
-def _collect_coordinates(parsed: ParsedBuilding, sink: list[Coord3D]) -> None:
-    for polygons in parsed.geometries.values():
-        for sp in polygons:
-            _extend_polygon_coords(sp, sink)
+def _collect_coordinates(
+    parsed: ParsedBuilding,
+    sink: list[Coord3D],
+    *,
+    lods: tuple[int, ...],
+) -> None:
+    """Append every vertex of every emitted building polygon to *sink*.
+
+    Restricted to the LoDs the user actually asked for via ``config.lods``;
+    ``parsed.geometries`` carries every LoD the 3DBAG tile contains, but
+    only the requested ones become ``gml:posList`` entries. Including
+    excluded-LoD vertices in the envelope made ``gml:boundedBy`` claim
+    Z extents that no emitted coordinate ever reached (e.g. lods=[0] runs
+    bounding the LoD 2.2 mesh's roof tips).
+
+    Mirrors the LoD 0 Z-lift the building builder applies (``builders.
+    building`` rewrites footprint Z from 3DBAG's nominal 0.001 m to
+    ``b3_h_maaiveld``). Without the mirror the envelope picks up the
+    input footprint Z, which no emitted posList ever reaches.
+    """
+    requested = {str(lod) for lod in lods}
+    h_maaiveld = _maaiveld_or_none(parsed)
+    for lod_key, polygons in parsed.geometries.items():
+        if lod_key not in requested:
+            continue
+        if lod_key == "0" and h_maaiveld is not None:
+            for sp in polygons:
+                sink.extend((x, y, h_maaiveld) for (x, y, _z) in sp.polygon.exterior)
+                for ring in sp.polygon.interiors:
+                    sink.extend((x, y, h_maaiveld) for (x, y, _z) in ring)
+        else:
+            for sp in polygons:
+                _extend_polygon_coords(sp, sink)
+
+
+def _maaiveld_or_none(parsed: ParsedBuilding) -> float | None:
+    raw = parsed.attributes.get("b3_h_maaiveld")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _collect_solar_panel_coordinates(
+    panels: tuple[ProjectedPanel, ...],
+    sink: list[Coord3D],
+) -> None:
+    """Append every projected solar-panel vertex to *sink*.
+
+    Panels are attached to the building inside this executor regardless of
+    the requested 3DBAG LoDs, so their vertices belong in the envelope too.
+    Without this the envelope clips just below the panel mounting plane
+    (panels sit at roof Z + ``z_offset_m``) and bbox queries silently drop
+    the rooftop pixel.
+    """
+    for panel in panels:
+        for poly in panel.lod2_polygons:
+            sink.extend(poly.exterior)
+            for ring in poly.interiors:
+                sink.extend(ring)
+
+
+def _collect_address_coordinates(
+    resolved: list[ResolvedAddress],
+    sink: list[Coord3D],
+) -> None:
+    """Append every BAG VBO address point to *sink*.
+
+    Addresses are emitted as ``gml:MultiPoint`` children of each
+    ``bldg:Address`` (see :mod:`builders.address`). BAG ``geometriePunt``
+    is 2D, so :func:`gml_builders.build_multi_point` pads Z to 0.0; the
+    envelope must include that Z=0 to stay a true bounding box of every
+    emitted position element.
+    """
+    for r in resolved:
+        if r.point is None:
+            continue
+        x, y = r.point
+        sink.append((x, y, 0.0))
 
 
 def _extend_polygon_coords(sp: SemanticPolygon, sink: list[Coord3D]) -> None:
