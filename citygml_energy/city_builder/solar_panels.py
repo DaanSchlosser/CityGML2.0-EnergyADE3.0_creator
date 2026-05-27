@@ -71,6 +71,7 @@ from .builders._common import UOM_AREA_M2, UOM_DEGREES
 from .builders.building import (
     iter_lod2_thematic_classification,
     lod2_thematic_surface_gml_id,
+    thematic_surface_attrs,
 )
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 from .config import BuildContext
@@ -109,15 +110,18 @@ _HORIZONTAL_EPS: float = 1e-6
 
 # gml:id prefix for the collectors. BAG identificaties lead with a
 # digit, so the prefix is what keeps them as valid XML NCNames. The
-# ``pv_`` prefix is retained for stability with the source dataset's
-# name ("solar panels GeoPackage"); the emitted XSD type is the
-# technology-agnostic ``nrg3:GenericSolarCollector``.
+# ``solar_`` prefix names the source dataset (a "solar panels"
+# GeoPackage) without committing to a cell technology — the emitted
+# XSD type is the technology-agnostic ``nrg3:GenericSolarCollector``,
+# not ``nrg3:PhotovoltaicCollector``.
 _SOLAR_ID_PREFIX: str = "solar_"
 
 # Pre-built CodeType singletons. Every collector we emit shares these
 # exact values, and xsdata serialisation is read-only, so caching at
 # module scope saves a few hundred allocations on a full-town run.
-_RELATION_INSTALLED_ON: CodeType = CodeType(value="installedOn", code_space=CS_NRG3_OTHER_RELATION_TYPE)
+_RELATION_INSTALLED_ON: CodeType = CodeType(
+    value="installedOn", code_space=CS_NRG3_OTHER_RELATION_TYPE
+)
 _RELATION_SERVING: CodeType = CodeType(value="serving", code_space=CS_NRG3_OTHER_RELATION_TYPE)
 
 
@@ -432,6 +436,12 @@ def _collect_roof_facets(
         ):
             if surf_type != "RoofSurface":
                 continue
+            # Skip facets the builder would skip too. Without this gate
+            # a panel matched to a sliver-area roof facet would carry an
+            # ``installedOn`` xlink to a ``pand_X_roofsurface_N`` gml:id
+            # that ``_attach_lod2_thematic_surfaces`` never emits.
+            if thematic_surface_attrs(sp) is None:
+                continue
             ring = sp.polygon.exterior
             if len(ring) < 3:
                 continue
@@ -644,9 +654,10 @@ def attach_solar_collectors_to_building(
     A collector carries:
 
     * ``gml:id = "solar_{pand_id}_{original_fid}"`` — NCName-safe via the
-      ``pv_`` prefix (BAG identificatie starts with a digit). The
-      prefix is kept for traceability to the source ("solar panels"
-      GeoPackage) even though the emitted XSD type is generic.
+      ``solar_`` prefix (BAG identificatie starts with a digit). The
+      prefix names the source dataset ("solar panels" GeoPackage)
+      without committing to a cell technology, which matches the
+      generic emitted XSD type.
     * ``lod2MultiSurface`` — the pre-projected polygons from
       :func:`match_and_project_panels`.
     * ``moduleArea`` (m²) — the 2D polygon area, which equals the
@@ -787,7 +798,10 @@ def _build_solar_collector(
         ),
     )
     if panel.azimuth_deg is not None:
-        collector.azimuth = AngleType(value=round(panel.azimuth_deg, 2), uom=_UOM_DEGREES)
+        # round-then-mod 360: rounding 359.998 to 2 dp would otherwise
+        # emit 360.0 and violate the [0, 360) bearing contract.
+        canonical_az = round(panel.azimuth_deg, 2) % 360.0
+        collector.azimuth = AngleType(value=canonical_az, uom=_UOM_DEGREES)
 
     rx, ry, rz = panel.reference_point
     collector.reference_point.append(

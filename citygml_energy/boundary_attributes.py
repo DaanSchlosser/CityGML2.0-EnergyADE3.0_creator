@@ -218,9 +218,13 @@ def _compute_azimuth(surf: Any, ctx: DerivedContext) -> list[Any] | None:
     _, azimuth_deg, _ = attrs
     if azimuth_deg is None:
         return None
+    # ``round`` can promote 359.998 to 360.0 and lift the value out of
+    # the [0, 360) compass-bearing range. Apply the modular reduction
+    # after rounding so the canonical 0/360 boundary stays at 0.
+    canonical = round(azimuth_deg, _DEC_ANGLE) % 360.0
     return [
         BdgBdrySurfAzimuth(
-            value=round(azimuth_deg, _DEC_ANGLE),
+            value=canonical,
             uom=_UOM_DEGREES,
         )
     ]
@@ -294,9 +298,12 @@ def _compute_opening_azimuth(
     _, azimuth_deg, _ = attrs
     if azimuth_deg is None:
         return None
+    # See ``_compute_azimuth``: round-then-mod keeps the canonical
+    # [0, 360) bearing when rounding pushes ~359.998 up to 360.0.
+    canonical = round(azimuth_deg, _DEC_ANGLE) % 360.0
     return [
         BdgOpnAzimuth(
-            value=round(azimuth_deg, _DEC_ANGLE),
+            value=canonical,
             uom=_UOM_DEGREES,
         )
     ]

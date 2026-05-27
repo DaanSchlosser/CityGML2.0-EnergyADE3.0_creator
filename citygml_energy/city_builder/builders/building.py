@@ -67,7 +67,7 @@ from ...schema_types import (
 )
 from .._helpers import safe_gml_id, to_float, to_int
 from ..address_match import ResolvedAddress
-from ..cityjson_parse import ParsedBuilding, SemanticPolygon
+from ..cityjson_parse import MIN_FACE_AREA_M2, ParsedBuilding, SemanticPolygon
 from ..config import BuildContext
 from ..energy_resources import attach_energy_resources_to_building_unit
 from ._common import (
@@ -380,6 +380,42 @@ def lod2_thematic_surface_gml_id(
     return f"{building_gml_id}_{surface_type.lower()}_{index_one_based}"
 
 
+def thematic_surface_attrs(
+    sp: SemanticPolygon,
+) -> tuple[float, float | None, float] | None:
+    """Return ``planar_surface_attributes`` for *sp*, or ``None`` if it would be skipped.
+
+    Single source of truth for "is this LoD 2 polygon emit-worthy as a
+    ``bldg:boundedBy``?". The builder
+    (:func:`_attach_lod2_thematic_surfaces`) uses this both as a gate and
+    as the source of the per-face attribute values that ride on the
+    emitted surface. Any other consumer that needs to predict the
+    builder's emission set must route through here — most importantly
+    the solar-panel matcher in
+    :func:`citygml_energy.city_builder.solar_panels._collect_roof_facets`,
+    which would otherwise index a sliver-area roof facet the builder
+    skips and emit a ``relatedTo[installedOn]`` xlink whose target
+    ``pand_X_roofsurface_N`` never exists in the output.
+
+    Polygons that fail the gate are: ``planar_surface_attributes``
+    returns ``None`` (sub-nm² Newell magnitude, geometrically degenerate)
+    or the polygon's net area (exterior minus interior rings) is below
+    :data:`MIN_FACE_AREA_M2` (3DBAG LoD 2.2 sliver artefact; see
+    ``docs/threedbag_sliver_walls.md``). The same constant is read by
+    the parser-time filter in
+    :mod:`citygml_energy.city_builder.cityjson_parse`, so a future
+    threshold bump touches both consumers in lockstep. The two checks
+    are not identical at the rare 3DBAG face with interior rings
+    (parser checks exterior-only area, ~0.07 % of faces have a hole):
+    that 5e-4 m² band is caught at build time as backup, where the
+    polygon-with-holes area is computed.
+    """
+    attrs = planar_surface_attributes(sp.polygon)
+    if attrs is None or attrs[0] < MIN_FACE_AREA_M2:
+        return None
+    return attrs
+
+
 def iter_lod2_thematic_classification(
     semantic_polygons: Iterable[SemanticPolygon],
 ) -> Iterator[tuple[str, int, SemanticPolygon]]:
@@ -457,6 +493,9 @@ def _attach_lod2_thematic_surfaces(
         return
 
     for surf_type, index, sp in iter_lod2_thematic_classification(semantic_polygons):
+        attrs = thematic_surface_attrs(sp)
+        if attrs is None:
+            continue
         xsd_name, field_name = _SURFACE_TYPES[surf_type]
         surf_cls = resolve_class(xsd_name)
         surf_id = lod2_thematic_surface_gml_id(gml_id, surf_type, index)
@@ -467,7 +506,7 @@ def _attach_lod2_thematic_surfaces(
             srs_name=srs_name,
             srs_dimension=srs_dimension,
         )
-        _attach_planar_surface_ade_attributes(surf, sp.polygon)
+        _attach_planar_surface_ade_attributes(surf, sp.polygon, attrs=attrs)
         building.bounded_by.append(wrapper_cls(**{field_name: surf}))
         if surface_targets_out is not None:
             surface_targets_out.append(f"#{surf_id}_ms")
@@ -477,6 +516,8 @@ def _attach_lod2_thematic_surfaces(
 def _attach_planar_surface_ade_attributes(
     surf: Any,
     polygon: GeometryPolygon,
+    *,
+    attrs: tuple[float, float | None, float] | None = None,
 ) -> None:
     """Populate ``nrg3:bdgBdrySurf{TotalSurfaceArea,Inclination,Azimuth}`` on *surf*.
 
@@ -504,9 +545,10 @@ def _attach_planar_surface_ade_attributes(
     geometrically attached but attribute-free rather than writing
     NaN-derived values that would propagate downstream.
     """
-    attrs = planar_surface_attributes(polygon)
     if attrs is None:
-        return
+        attrs = planar_surface_attributes(polygon)
+        if attrs is None:
+            return
     area_m2, azimuth_deg, inclination_deg = attrs
     surf.bdg_bdry_surf_total_surface_area.append(
         BdgBdrySurfTotalSurfaceArea(value=round(area_m2, 3), uom=UOM_AREA_M2)
@@ -515,8 +557,10 @@ def _attach_planar_surface_ade_attributes(
         BdgBdrySurfInclination(value=round(inclination_deg, 2), uom=UOM_DEGREES)
     )
     if azimuth_deg is not None:
+        # round-then-mod 360: see boundary_attributes._compute_azimuth.
+        canonical_az = round(azimuth_deg, 2) % 360.0
         surf.bdg_bdry_surf_azimuth.append(
-            BdgBdrySurfAzimuth(value=round(azimuth_deg, 2), uom=UOM_DEGREES)
+            BdgBdrySurfAzimuth(value=canonical_az, uom=UOM_DEGREES)
         )
 
 
