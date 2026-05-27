@@ -268,6 +268,14 @@ def _parse_semantic_faces(
         exterior = _ring_from_indices(face[0], vertices)
         if exterior is None:
             continue
+        if _polygon_3d_area(exterior) < MIN_FACE_AREA_M2:
+            _LOG.debug(
+                "Dropped sliver face: 3D area below %.0e m^2 threshold "
+                "(3DBAG LoD 2.2 wall slivers between adjacent roof facets). "
+                "See docs/threedbag_sliver_walls.md.",
+                MIN_FACE_AREA_M2,
+            )
+            continue
         interiors_raw = face[1:]
         interiors: list[list[Coord3D]] = []
         for ring in interiors_raw:
@@ -282,6 +290,38 @@ def _parse_semantic_faces(
             )
         )
     return out
+
+
+# 10 cm^2 = 1000 mm^2. Sits inside the gap between documented 3DBAG
+# LoD 2.2 wall slivers (largest observed 481 mm^2, see
+# docs/threedbag_sliver_walls.md) and any plausible real LoD 2.2 wall
+# facet (small dormer side walls start around 5 000 cm^2 = 500 000 mm^2;
+# typical walls 5-20 m^2). The chosen value is ~2x above the largest
+# measured sliver and ~500x below the smallest plausible real wall, so
+# it tolerates a future sliver in the 500-1000 mm^2 range without
+# touching the conservative-against-real-walls end of the gap. Shared
+# with the build-time guard in
+# citygml_energy.city_builder.builders.building so the two filters
+# cannot drift apart silently. Bumping this constant invalidates
+# parsed-tile pickles; the schema-version stamp in
+# citygml_energy.city_builder.fetchers.threedbag must bump in lockstep
+# (see _PARSED_TILE_SCHEMA_VERSION).
+MIN_FACE_AREA_M2: float = 1e-3
+
+
+def _polygon_3d_area(ring: list[Coord3D]) -> float:
+    """Newell's-formula 3D polygon area for a (possibly non-closed) ring."""
+    n = len(ring)
+    if n < 3:
+        return 0.0
+    nx = ny = nz = 0.0
+    for i in range(n):
+        x1, y1, z1 = ring[i]
+        x2, y2, z2 = ring[(i + 1) % n]
+        nx += (y1 - y2) * (z1 + z2)
+        ny += (z1 - z2) * (x1 + x2)
+        nz += (x1 - x2) * (y1 + y2)
+    return 0.5 * (nx * nx + ny * ny + nz * nz) ** 0.5
 
 
 def _ring_from_indices(
@@ -301,9 +341,15 @@ def _ring_from_indices(
     an invalid ``gml:LinearRing`` in the output GML, which causes strict
     viewers such as KITModelViewer to abort loading the entire file.
 
-    Rings with fewer than 3 distinct points (at millimetre precision) are
-    therefore silently dropped here so they never enter the in-memory
-    :class:`ParsedBuilding` representation and never reach GML output.
+    Dedup precision is the output grid (``citygml_energy.gml_builders.
+    _COORD_DECIMALS``, 1 µm). A coarser threshold (e.g. mm) lets vertices
+    that differ at sub-mm survive the dedup and then collapse to
+    identical strings once the µm quantiser rounds them at write time,
+    producing a degenerate ring that XSD's ``gml:LinearRingType`` doesn't
+    catch (the 4-point minimum is enforced only on ``gml:pos`` children,
+    not on ``gml:posList`` content). Matching the output grid here closes
+    that window.
+
     A DEBUG log entry is emitted for each dropped ring to aid diagnosis.
     """
     if not indices:
@@ -313,16 +359,20 @@ def _ring_from_indices(
     except IndexError:
         return None
 
-    # Guard against 3DBAG degenerate faces: duplicate vertex positions at
-    # mm precision mean the ring collapses to a point or line.
-    distinct = {(round(pt[0], 3), round(pt[1], 3), round(pt[2], 3)) for pt in ring}
+    from ..gml_builders import _COORD_DECIMALS
+
+    distinct = {
+        (round(pt[0], _COORD_DECIMALS), round(pt[1], _COORD_DECIMALS), round(pt[2], _COORD_DECIMALS))
+        for pt in ring
+    }
     if len(distinct) < 3:
         _LOG.debug(
             "Dropped degenerate ring: %d indices resolve to only %d distinct "
-            "point(s) — 3DBAG source artefact (duplicate vertex positions in "
-            "boundary array).",
+            "point(s) at output precision (10^-%d m) — 3DBAG source artefact "
+            "(duplicate or near-duplicate vertex positions in boundary array).",
             len(indices),
             len(distinct),
+            _COORD_DECIMALS,
         )
         return None
 

@@ -140,3 +140,62 @@ def test_cityjson_tile_rejects_non_cityjson() -> None:
 
     with pytest.raises(ValueError, match="CityJSON"):
         CityJSONTile.from_dict({"type": "Something else"})
+
+
+def test_degenerate_ring_at_output_precision_is_dropped() -> None:
+    """Vertices that collapse at the output µm grid must be dropped.
+
+    3DBAG triangle indices a/b/c whose raw coords differ at sub-mm scale
+    survive a mm-precision dedup but quantise to identical strings in the
+    GML — producing a 3-point degenerate ``gml:LinearRing`` that XSD does
+    not catch (the 4-point minimum is enforced on ``gml:pos`` children,
+    not on ``gml:posList`` content). Dedup must therefore run at the
+    output grid (1 µm).
+    """
+    from citygml_energy.gml_builders import _COORD_DECIMALS
+
+    sub_mum = 0.5 * 10 ** -(_COORD_DECIMALS + 1)
+    tile = {
+        "type": "CityJSON",
+        "version": "1.1",
+        "transform": {"scale": [1.0, 1.0, 1.0], "translate": [0.0, 0.0, 0.0]},
+        "metadata": {"referenceSystem": "https://www.opengis.net/def/crs/EPSG/0/28992"},
+        "vertices": [
+            [85000.0, 446000.0, 0.0],
+            [85000.0 + sub_mum, 446000.0 + sub_mum, sub_mum],
+            [85000.0 - sub_mum, 446000.0 - sub_mum, -sub_mum],
+            [85000.0 + 1.0, 446000.0, 0.0],
+            [85000.0 + 1.0, 446000.0 + 1.0, 0.0],
+            [85000.0, 446000.0 + 1.0, 0.0],
+        ],
+        "CityObjects": {
+            "P": {
+                "type": "Building",
+                "attributes": {"identificatie": "P"},
+                "children": ["P_part"],
+            },
+            "P_part": {
+                "type": "BuildingPart",
+                "parents": ["P"],
+                "geometry": [
+                    {
+                        "type": "MultiSurface",
+                        "lod": "2.2",
+                        "boundaries": [
+                            [[0, 1, 2]],
+                            [[0, 3, 4, 5]],
+                        ],
+                        "semantics": {
+                            "surfaces": [{"type": "WallSurface"}],
+                            "values": [[0, 0]],
+                        },
+                    },
+                ],
+            },
+        },
+    }
+    buildings = parse_buildings(tile)
+    polygons = buildings[0].geometries["2"]
+    rings = [p.polygon.exterior for p in polygons]
+    assert len(rings) == 1
+    assert len(rings[0]) == 4

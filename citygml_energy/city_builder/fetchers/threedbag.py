@@ -37,6 +37,19 @@ _LOG = logging.getLogger(__name__)
 # counts just add contention.
 _TILE_FETCH_MAX_WORKERS = int(os.environ.get("CITYGML_ENERGY_3DBAG_WORKERS", "6"))
 
+# Bump when the parsed-tile output shape changes in a way that older cache
+# entries would silently propagate. The content digest of the upstream ZIP
+# does not invalidate on parser-only code changes, so this stamp is the
+# parser's contribution to the cache key. Pre-stamp .pkl files (no segment
+# in the filename) are treated as a different key and naturally re-parse.
+#   v2 — 2026-05-27: ring dedup tightened from mm to µm precision
+#                    (citygml_energy.city_builder.cityjson_parse._ring_from_indices)
+#   v3 — 2026-05-27: sliver-area threshold raised from 1e-4 to 1e-3 m^2
+#                    (citygml_energy.city_builder.cityjson_parse.MIN_FACE_AREA_M2);
+#                    v2 caches still contain residual slivers in
+#                    [1e-4, 1e-3) m^2 and need a re-parse to drop them.
+_PARSED_TILE_SCHEMA_VERSION = "v3"
+
 if TYPE_CHECKING:
     from shapely.geometry.base import BaseGeometry
 
@@ -185,7 +198,10 @@ def _tile_parsed_buildings(session: CachedSession, tile: Tile) -> list[ParsedBui
     cache_path: Path | None = None
     if session.use_cache:
         safe_id = tile.tile_id.replace("/", "_")
-        cache_path = session.cache_dir / f"3dbag_parsed_{safe_id}.{content_digest}.pkl"
+        cache_path = (
+            session.cache_dir
+            / f"3dbag_parsed_{safe_id}.{content_digest}.{_PARSED_TILE_SCHEMA_VERSION}.pkl"
+        )
         cached = _try_load_parsed_tile(cache_path)
         if cached is not None:
             return cached
