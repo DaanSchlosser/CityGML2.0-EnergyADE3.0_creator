@@ -85,10 +85,7 @@ SOLAR_PANEL_THEME = "solarPanels"
 SOLAR_PANEL_DIFFUSE_COLOR: tuple[float, float, float] = (0.03, 0.05, 0.15)
 
 # Vegetation appearance: a deep foliage green that reads clearly against
-# both the EU-palette building colors and the dark-blue solar panels. The
-# specific RGB is chosen to match the KIT viewer's default background
-# rather than a theoretically "correct" chlorophyll reflectance, because
-# the pipeline's output is reviewed in FZKViewer / KIT SDM first.
+# both the EU-palette building colors and the dark-blue solar panels.
 VEGETATION_THEME = "vegetation"
 VEGETATION_DIFFUSE_COLOR: tuple[float, float, float] = (0.15, 0.55, 0.15)
 
