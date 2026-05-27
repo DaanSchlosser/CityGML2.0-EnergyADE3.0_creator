@@ -105,17 +105,19 @@ from .mapping import iter_instances
 __all__ = ["EMITTERS", "SETUPS"]
 
 
-# uom strings used on the emitted elements. Pinned to the existing
-# project conventions (no caret superscripts; m2 instead of m^2; deg
-# instead of "decimal degree"); see neighbouring writes in
-# :mod:`citygml_energy.city_builder.builders.building` for the same
-# tokens. ``kJ/K*m2`` keeps numbers human-readable (typical wall is
-# ~50–500 kJ/(K·m²), thus 4-digit numbers); J/(K·m²) would push to
-# 5-6 digits.
+# uom strings used on the emitted elements. Wire-format follows the
+# project's conventions (no caret superscripts; ``m2`` instead of
+# ``m^2``; ``deg`` instead of "decimal degree"); see neighbouring
+# writes in :mod:`citygml_energy.city_builder.builders.building` for
+# the same tokens. ``kJ/(K*m2)`` is the SI-conformant areal heat
+# capacity token (``k`` = kilo prefix, ``K`` = kelvin per BIPM SI
+# Brochure §3.1; ISO 13786 building-physics convention is identical);
+# a typical wall sits at 50–500 kJ/(K·m²), so ``J/(K·m²)`` would push
+# values to 5–6 digits.
 _UOM_AREA_M2: str = "m2"
 _UOM_DEGREES: str = "deg"
 _UOM_METRES: str = "m"
-_UOM_HEAT_CAPACITY: str = "kJ/K*m2"
+_UOM_HEAT_CAPACITY: str = "kJ/(K*m2)"
 
 # Decimal precisions: 3 dp on metric quantities (mm² / mm / kJ/(K·m²)),
 # 2 dp on angles. Coordinates entering this module were quantised to a

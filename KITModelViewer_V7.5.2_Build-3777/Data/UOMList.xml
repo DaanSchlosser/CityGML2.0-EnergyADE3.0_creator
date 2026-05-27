@@ -217,7 +217,7 @@
 	<UOM name="KILOGRAM_PER_SQUAREMETER_PER_YEAR" id="kg/m2/a" quantity="MASS_FLUX_PER_TIME" sign="kg/m²/a"/>
 	<UOM name="KILOGRAM_PER_YEAR" id="kg/a" quantity="MASS_PER_TIME" sign="kg/a"/>
 	<UOM name="MEGAJOULE_PER_YEAR" id="MJ/a" quantity="ENERGY_PER_TIME" sign="MJ/a"/>
-	<UOM name="KILOJOULE_PER_YEAR_SQUAREMETER" id="KJ/(K*m2)" quantity="UVALUE" sign="KJ/(K*m²)"/>
+	<UOM name="KILOJOULE_PER_KELVIN_SQUAREMETER" id="kJ/(K*m2)" quantity="AREAL_HEAT_CAPACITY" sign="kJ/(K·m²)"/>
 
 	<!--
 	======================================================================
