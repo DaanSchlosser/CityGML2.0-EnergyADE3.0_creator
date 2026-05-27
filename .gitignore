@@ -47,3 +47,4 @@ Desktop.ini
 .env
 /.cache
 /inputs/.cache
+/inputs/generated
