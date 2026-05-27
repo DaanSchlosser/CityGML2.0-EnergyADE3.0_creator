@@ -30,7 +30,6 @@ from ...bindings import (
     BdgType,
     CodeType,
     IntAttribute,
-    MeasureAttribute,
     MeasureType,
     Metadata1,
     Status2,
@@ -46,7 +45,7 @@ from ...namespaces import (
 )
 from ...schema_types import ENERGY_PERFORMANCE_CERTIFICATE
 from .._helpers import safe_gml_id
-from ..address_match import ResolvedAddress
+from ..address_match import ResolvedAddress, _label_timestamp
 from ..config import BuildContext
 from ..energy_resources import UOM_KWH_PER_M2_PER_A, UOM_MJ_PER_A
 from ..fetchers.eponline import EnergyLabel
@@ -237,15 +236,15 @@ def _pick_canonical_eponline_label(
     return max(candidates, key=_eponline_label_recency_key)
 
 
-def _eponline_label_recency_key(label: EnergyLabel) -> tuple[int, int, int]:
-    """Sort key: ``(registratiedatum, opnamedatum, has_reg)``."""
-    reg = label.registratiedatum
-    opname = label.opnamedatum
-    return (
-        reg.toordinal() if reg else 0,
-        opname.toordinal() if opname else 0,
-        1 if reg else 0,
-    )
+# Recency key shared with the per-VBO de-duplication step in
+# :mod:`citygml_energy.city_builder.address_match`. Routed through the
+# canonical :func:`_label_timestamp` so the per-Pand canonical pick
+# (here) and the per-VBO de-duplication cannot drift apart silently:
+# the docstring on :func:`_label_timestamp` warns that re-ordering it
+# can flip which calculation regime gets emitted on the BuildingUnit
+# (NTA 8800 vs legacy NEN-7120), and a stale local copy is exactly how
+# that warning gets accidentally violated.
+_eponline_label_recency_key = _label_timestamp
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +485,9 @@ def build_epc(
         epc.creation_date = XmlDate.from_string(label.opnamedatum.isoformat())
     if label.registratiedatum is not None:
         epc.valid_from.append(
-            ValidFrom(value=XmlDateTime.from_string(f"{label.registratiedatum.isoformat()}T00:00:00"))
+            ValidFrom(
+                value=XmlDateTime.from_string(f"{label.registratiedatum.isoformat()}T00:00:00")
+            )
         )
     if label.geldig_tot is not None:
         epc.valid_to.append(

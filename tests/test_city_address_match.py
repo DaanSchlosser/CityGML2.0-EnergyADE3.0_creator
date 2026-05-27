@@ -155,6 +155,31 @@ def test_newer_label_wins_across_calculation_regimes() -> None:
     assert resolved.calculation_regime() == "nta8800"
 
 
+def test_recency_key_is_shared_with_eponline_pand_pick() -> None:
+    """The per-VBO de-duplication and the per-Pand canonical pick must
+    use the same recency key.
+
+    Two consumers exist for the EP-online recency ordering: the per-
+    VBO de-duplication in :func:`match_addresses` (via
+    :func:`address_match._label_timestamp`) and the per-Pand canonical
+    pick in :func:`builders.epc._pick_canonical_eponline_label` (via
+    ``_eponline_label_recency_key``). If they ever diverge — e.g.
+    one weights ``opnamedatum`` differently from the other — the
+    BuildingUnit-level resources (NTA 8800 vs legacy) and the Pand-
+    level ``bdgType`` / ``yearOfConstructionEPOnline`` would silently
+    pick from different rows.
+
+    The aliasing in ``builders/epc.py`` routes both through the same
+    function object; this test locks that invariant by identity check.
+    """
+    from citygml_energy.city_builder.address_match import _label_timestamp
+    from citygml_energy.city_builder.builders.epc import (
+        _eponline_label_recency_key,
+    )
+
+    assert _eponline_label_recency_key is _label_timestamp
+
+
 def test_older_nta_loses_to_newer_legacy() -> None:
     """The mirror case: when the legacy label is newer, regime
     classification follows the timestamp-ordering, even though NTA 8800

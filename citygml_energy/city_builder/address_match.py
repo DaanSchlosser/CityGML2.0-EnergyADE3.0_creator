@@ -155,19 +155,23 @@ def _index_labels(
     return by_vbo_id, by_address_key
 
 
-def _label_timestamp(label: EnergyLabel) -> tuple[int, int, int]:
-    """Ordering key: ``(registratiedatum, opnamedatum, reg != None)``.
+def _label_timestamp(label: EnergyLabel) -> tuple[int, int]:
+    """Ordering key: ``(registratiedatum, opnamedatum)``.
 
     Changing this ordering can silently flip which calculation regime
     gets emitted on the BuildingUnit (NTA 8800 vs legacy NEN-7120).
     Label selection (here) is kept separate from regime-aware resource
     emission (in :mod:`energy_resources`); the cross-module invariant
     is captured by tests in ``tests/test_city_address_match.py``.
+
+    Missing dates collapse to ``0``, which is below every real
+    ``date.toordinal()`` (minimum is 1), so a label with reg set always
+    outranks one without on the first axis without needing a third
+    "has_reg" element.
     """
     reg = label.registratiedatum
     opname = label.opnamedatum
     return (
         reg.toordinal() if reg else 0,
         opname.toordinal() if opname else 0,
-        1 if reg else 0,
     )
