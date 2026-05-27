@@ -55258,13 +55258,6 @@ class WaterPropertyType:
 
 
 @dataclass(slots=True, kw_only=True)
-class OccupiedBy(OccupantsPropertyType):
-    class Meta:
-        name = "occupiedBy"
-        namespace = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-
-
-@dataclass(slots=True, kw_only=True)
 class BridgeRoomType(AbstractCityObjectType):
     """
     A BridgeRoom is a thematic object for modelling the closed parts inside a Bridge.
@@ -60263,14 +60256,6 @@ class AbstractBuildingType(AbstractSiteType):
         default_factory=list,
         metadata={
             "name": "buildingUnit",
-            "type": "Element",
-            "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
-        },
-    )
-    occupied_by: list[OccupiedBy] = field(
-        default_factory=list,
-        metadata={
-            "name": "occupiedBy",
             "type": "Element",
             "namespace": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
         },

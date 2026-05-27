@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Any
 
 import pytest
 
@@ -17,8 +18,6 @@ from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticP
 from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
-
-
 from tests._factories import make_parsed_building, make_square_polygon, make_vbo
 
 _square = make_square_polygon
@@ -1466,7 +1465,7 @@ def _epc_from(unit: Any) -> Any:
 def test_renewable_share_lands_as_measure_attribute_on_epc() -> None:
     """AandeelHernieuwbareEnergie → gen:measureAttribute on the EPC.
 
-    Beta8 (2026-05-06) dropped ``nrg3:AbstractFeatureWithLifeSpan`` and
+    Beta8 dropped ``nrg3:AbstractFeatureWithLifeSpan`` and
     re-rooted ``EnergyPerformanceCertificateType`` under
     ``core:AbstractCityObjectType`` directly, so the EPC now hosts the
     ``_GenericApplicationPropertyOfCityObject`` substitutions itself

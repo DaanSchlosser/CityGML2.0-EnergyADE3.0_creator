@@ -32,7 +32,7 @@ from citygml_energy.bindings import (
     MonthlyTimeSeries,
     Name,
     Occupants,
-    OccupiedBy,
+    OccupantsPropertyType,
     OpeningPropertyType2,
     PhotovoltaicCollector,
     Resource,
@@ -198,9 +198,14 @@ def test_occupants_validates(xsd_schema):
         number_of_occupants=4,
         heat_dissipation=MeasureType(value=80, uom="W"),
     )
+    unit = BuildingUnit1(
+        id="bu_1",
+        type_value=CodeType(value="apartment", code_space=CS_NRG3_BUILDING_TYPE),
+        occupied_by=[OccupantsPropertyType(occupants=occ)],
+    )
     building = Building(
         id="bldg_1",
-        occupied_by=[OccupiedBy(occupants=occ)],
+        building_unit=[BuildingUnit2(building_unit=unit)],
     )
     model = CityModel(city_object_member=[CityObjectMember(building=building)])
     _validate(model, xsd_schema)

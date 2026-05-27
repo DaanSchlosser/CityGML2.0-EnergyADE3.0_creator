@@ -837,7 +837,6 @@
               "nrg3:intervention",
               "nrg3:layeredConstruction",
               "nrg3:metadata",
-              "nrg3:occupiedBy",
               "nrg3:referencePoint",
               "nrg3:relatedTo",
               "nrg3:resource",

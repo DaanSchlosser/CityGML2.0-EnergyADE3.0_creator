@@ -219,6 +219,12 @@ CS_BUILDING_ROOFTYPE = (
 # as ``@codeSpace`` on ``nrg3:identifier`` so any consumer can
 # reconstruct the full dereferenceable BAG URL by concatenating the
 # codespace + the identificatie value.
+#
+# The scheme is intentionally ``http://`` and must stay that way: only
+# the http-scheme URLs actually dereference (HEAD on a Pand id returns
+# 200 OK), while the https-scheme equivalents return 404 on the same
+# host. Other codespaces in this file (sig3d.org, the 3DBAG docs) are
+# documented under https; BAG is the asymmetric one.
 CS_BAG_PAND = "http://bag.basisregistraties.overheid.nl/bag/id/pand/"
 CS_BAG_VERBLIJFSOBJECT = "http://bag.basisregistraties.overheid.nl/bag/id/verblijfsobject/"
 
@@ -382,5 +388,4 @@ CS_NRG3_TOPOLOGICAL_RELATION_TYPE = f"{_NRG3_CS}/TopologicalRelationTypeValue.xm
 CS_NRG3_TEMPORAL_RELATION_TYPE = f"{_NRG3_CS}/TemporalRelationTypeValue.xml"
 CS_NRG3_RESOURCE_OPERATION_TYPE = f"{_NRG3_CS}/ResourceOperationTypeValue.xml"
 CS_NRG3_SCHEDULE_TYPE = f"{_NRG3_CS}/ScheduleTypeValue.xml"
-CS_NRG3_USAGE_ZONE_TYPE = f"{_NRG3_CS}/UsageZoneTypeValue.xml"
 CS_NRG3_VOLUME_TYPE = f"{_NRG3_CS}/VolumeTypeValue.xml"
