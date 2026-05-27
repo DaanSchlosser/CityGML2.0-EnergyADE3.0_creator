@@ -370,7 +370,9 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
             f"{source}: gml_id_prefix {gml_id_prefix!r} is not a valid XML NCName prefix"
         )
 
-    solar_panels_source = _validate_solar_panels(data.get("solar_panels"), source=source, base_dir=base_dir)
+    solar_panels_source = _validate_solar_panels(
+        data.get("solar_panels"), source=source, base_dir=base_dir
+    )
     boundary_source = _validate_boundary(data.get("boundary"), source=source, base_dir=base_dir)
     vegetation_source = _validate_vegetation(
         data.get("vegetation"), source=source, base_dir=base_dir

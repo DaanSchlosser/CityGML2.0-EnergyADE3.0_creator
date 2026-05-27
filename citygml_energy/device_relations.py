@@ -307,9 +307,7 @@ def _format_known_names(surface_name_index: dict[tuple[str, int], str]) -> str:
     """Render the index as a sorted ``name@lodN`` list for error messages."""
     if not surface_name_index:
         return "(none attached yet)"
-    return ", ".join(
-        f"{name}@lod{lod}" for (name, lod) in sorted(surface_name_index)
-    )
+    return ", ".join(f"{name}@lod{lod}" for (name, lod) in sorted(surface_name_index))
 
 
 # ---------------------------------------------------------------------------
