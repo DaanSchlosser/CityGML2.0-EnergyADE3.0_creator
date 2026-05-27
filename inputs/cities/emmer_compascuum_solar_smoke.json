@@ -1,12 +1,12 @@
 {
-  "$schema": "../schemas/city_input.schema.json",
+  "$schema": "../../schemas/city_input.schema.json",
   "municipality": "Emmen",
   "bbox": [266434, 536787, 266534, 536887],
   "lods": [0, 1, 2],
   "include_addresses": true,
   "include_energy_labels": true,
-  "cache_dir": "../.cache/citygml_energy_city",
-  "output": "../generated/emmer_compascuum_pv_smoke.gml",
+  "cache_dir": "../../.cache/citygml_energy_city",
+  "output": "../../generated/emmer_compascuum_pv_smoke.gml",
   "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
   "srs_dimension": 3,
   "city_model": {
@@ -14,7 +14,7 @@
     "description": "100 x 100 m smoke-test slice centred on BAG pand 0114100000206140 (centroid 266483.6, 536836.9 in EPSG:28992). Same pipeline as emmer_compascuum_solar.json, just a faster iteration target for testing solar panel attach + XSD validity on a handful of buildings."
   },
   "solar_panels": {
-    "path": "../inputs/solar_panels/solar_panels.gpkg",
+    "path": "../solar_panels/solar_panels.gpkg",
     "layer": "solar_panels",
     "z_offset_m": 0.1
   }
