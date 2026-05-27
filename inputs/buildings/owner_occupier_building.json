@@ -41,9 +41,9 @@
         "quality_description": "Gross floor area disagrees between BAG register (122.0 m2) and the measured 3D model (119.6 m2); both values are retained as separate QualifiedArea entries so downstream tooling can pick the provenance it trusts.",
         "source": "BAG + on-site measurement survey"
       }],
-      "class_value": {"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"},
-      "function": [{"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml"}],
-      "usage": [{"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml"}],
+      "class_value": {"value": "1000", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"},
+      "function": [{"value": "1000", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml"}],
+      "usage": [{"value": "1000", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml"}],
       "year_of_construction": "2020",
       "roof_type": {"value": "1130", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml"},
       "storeys_above_ground": 3,
@@ -457,9 +457,9 @@
             "description": "Knauf Fermacell gypsum-fibre board, used as interior cladding on external walls. Datasheet thermal-conductivity figure for the 12 mm Fermacell sheet is ~0.32 W/(m·K); density ~1180 kg/m³.",
             "type_value": {"value": "gypsum"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.32, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.32, "uom": "W/(K*m)"},
             "density": {"value": 1180, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1100, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1100, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -469,9 +469,9 @@
             "description": "Interior chipboard cladding (binnenbekleding) on the warm side of the roof and ceiling assemblies. PRIME is the SKH-/FSC-certified chipboard grade specified for the rieten-dak and PV-dak interior face.",
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/(K*m)"},
             "density": {"value": 660, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1700, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1700, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -481,9 +481,9 @@
             "description": "Water-resistant chipboard (V313 grade) used as the stability sheathing (stabiliteitsplaat) on the warm side of the external wall and as the sole sheathing on internal stability walls.",
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/(K*m)"},
             "density": {"value": 660, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1700, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1700, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -493,9 +493,9 @@
             "description": "OSB3 grade oriented-strand board: load-bearing, moisture-resistant. Used at 15 mm as the rieten-dak sub-deck (under the reed) and at 18 mm with veer-en-groef as the upper-floor decks. Same material at both thicknesses; the layer's `thickness` field carries the size.",
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/(K*m)"},
             "density": {"value": 600, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1700, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1700, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -505,9 +505,9 @@
             "description": "Structural-grade vuren (spruce-pine softwood), strength class C24. Used as roof rafters (sporen 36x245 mm h.o.h. 600 mm), wall studs (stijlen 36x270 mm h.o.h. 600 mm) and floor joists (balklaag 38x285/270 mm h.o.h. 400 mm). FSC-mix certified, SKH-COC-000076.",
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/(K*m)"},
             "density": {"value": 450, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1600, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1600, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -517,9 +517,9 @@
             "description": "Wolmanit-treated softwood for nailing battens (spijkerregels 38x42 mm h.o.h. 600 mm) behind the outer cladding and for tengels (counter-battens 21x48 mm) under the PV decking. Thermal properties match plain vuren; the treatment is for moisture/biological resistance only.",
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/(K*m)"},
             "density": {"value": 450, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1600, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1600, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -529,9 +529,9 @@
             "description": "Ruwe vuren delen 22x100 mm: rough-sawn softwood boards forming the outer-most structural deck of the PV-paneled roof sections, on top of the tengels.",
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/(K*m)"},
             "density": {"value": 450, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1600, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1600, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -541,9 +541,9 @@
             "description": "Knauf Insulation Naturoll 032 glass-mineral-wool roll, declared thermal conductivity λ_D = 0.032 W/(m·K). Used as the wall insulation (120 mm + 140 mm = 260 mm total in the 270 mm stud cavity between 36x270 mm vuren stijlen) and as the inner half of the roof insulation (120 mm of the 240 mm 2x120 mm 032+035 stack between 36x245 mm vuren C24 sporen).",
             "type_value": {"value": "mineralWool"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.032, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.032, "uom": "W/(K*m)"},
             "density": {"value": 23, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 840, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 840, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -553,9 +553,9 @@
             "description": "Knauf Insulation Naturoll 035 glass-mineral-wool roll, declared thermal conductivity λ_D = 0.035 W/(m·K). Used as the outer half of the roof insulation (120 mm of the 240 mm 2x120 mm stack: 032 inside, 035 outside, per the spec's `032+035` notation).",
             "type_value": {"value": "mineralWool"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.035, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.035, "uom": "W/(K*m)"},
             "density": {"value": 23, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 840, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 840, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -565,9 +565,9 @@
             "description": "Polyethylene vapour-control foil, dampremmende laag, 0.15 mm. Air-tight and vapour-resistant; thermal contribution is negligible at this thickness but the layer is retained for audit-trail completeness against the architectural spec.",
             "type_value": {"value": "polyethylene"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.33, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.33, "uom": "W/(K*m)"},
             "density": {"value": 950, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 2300, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 2300, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -577,9 +577,9 @@
             "description": "Morgo-Vent 120: three-layer polypropylene spunbond-meltblown breather membrane on the cold side of the wall insulation. Thermally negligible; declared here for audit-trail completeness.",
             "type_value": {"value": "polypropyleneMembrane"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.40, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.40, "uom": "W/(K*m)"},
             "density": {"value": 200, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1500, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1500, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -589,9 +589,9 @@
             "description": "Morgo Top Solar: waterproof, vapour-permeable underlayment specified for the PV-paneled roof sections, between the rafter cavity and the tengels-plus-decking on the cold side. Thermally negligible.",
             "type_value": {"value": "polypropyleneMembrane"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.40, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.40, "uom": "W/(K*m)"},
             "density": {"value": 200, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1500, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1500, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -601,9 +601,9 @@
             "description": "Dutch-style reed thatch on the rieten-dak sections. Thatch is laid on top of the 15 mm OSB3 sub-deck. Typical Dutch thatch thickness ~30 cm; thermal conductivity typical for compressed reed thatch ≈0.09 W/(m·K).",
             "type_value": {"value": "thatch"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.09, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.09, "uom": "W/(K*m)"},
             "density": {"value": 190, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1400, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1400, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -613,9 +613,9 @@
             "description": "Buitenbekleding 'buiten levering DCV': the outer wall cladding is delivered separately by DCV and is not specified in the architectural drawing extract reviewed. Treated here as a generic ~22 mm timber cladding for thickness / heat-capacity bookkeeping; the actual product (timber boarding, fibre cement, composite, etc.) should be confirmed with the owner-occupier and updated in this material entry.",
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/(K*m)"},
             "density": {"value": 500, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1600, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1600, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -625,9 +625,9 @@
             "description": "Cement-based screed carrying the vloerverwarming pipework. Confirmed by the spec ('Verwarming; vloerverwarming'); thickness here (65 mm) is a typical value, not from the architectural drawing extract.",
             "type_value": {"value": "concrete"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 1.4, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 1.4, "uom": "W/(K*m)"},
             "density": {"value": 2000, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 880, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 880, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -637,9 +637,9 @@
             "description": "Low-e coated float glass, HR++ rated. Per spec: U=1.1 W/(m²·K), ZTA (g) = 0.60.",
             "type_value": {"value": "glass"},
             "is_transparent": true,
-            "thermal_conductivity": {"value": 1.0, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 1.0, "uom": "W/(K*m)"},
             "density": {"value": 2500, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 750, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 750, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -668,9 +668,9 @@
             "description": "Insulated timber door leaf, used in both front and back doors. The U-value (1.43 W/m²K voordeur, 1.64 W/m²K achterdeur) is set on the LayeredConstruction itself (frame-included); the layer is a thickness placeholder so the per-surface Thickness attribute computes.",
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.13, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.13, "uom": "W/(K*m)"},
             "density": {"value": 550, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1600, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1600, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -680,9 +680,9 @@
             "description": "Prefab prestressed kanaalplaatvloer, spanning 8 m (full house width). Drawn at 0.260 m in the CAD detail. Effective thermal conductivity and density account for the longitudinal hollow channels (void fraction typically ~40%). λ=1.2 W/(m·K) and ρ=1200 kg/m³ are representative values for hollow-core slabs; solid-concrete values (λ=1.8, ρ=2400) would overestimate both conductance and thermal mass.",
             "type_value": {"value": "concrete"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 1.2, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 1.2, "uom": "W/(K*m)"},
             "density": {"value": 1200, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 840, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 840, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -692,9 +692,9 @@
             "description": "Insulation layer below the kanaalplaatvloer slab, 0.192 m per CAD drawing. Product not specified in the architectural drawing extract; EPS is the most common choice for under-slab insulation in Dutch begane-grondvloer applications.",
             "type_value": {"value": "looseFilledInsulation"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.036, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.036, "uom": "W/(K*m)"},
             "density": {"value": 20, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1450, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1450, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -704,9 +704,9 @@
             "description": "Layer between the kanaalplaatvloer slab and the screed, drawn as a full-black 0.020 m band in the CAD floor detail. Full-black at 20 mm in Dutch structural drawings typically indicates a foam acoustic-insulation or decoupling board (ontkoppelingslaag) that prevents structure-borne sound from coupling into the screed. Exact product not specified; PE-foam or EPS-acoustic properties used.",
             "type_value": {"value": "foamInsulation"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.040, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.040, "uom": "W/(K*m)"},
             "density": {"value": 20, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1450, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1450, "uom": "J/(K*kg)"}
           }
         }
       ]

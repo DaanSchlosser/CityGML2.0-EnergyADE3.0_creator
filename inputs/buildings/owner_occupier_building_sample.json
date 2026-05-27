@@ -39,9 +39,9 @@
         "quality_description": "Sample quality description for shareable reproducer.",
         "source": "Sample source"
       }],
-      "class_value": {"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"},
-      "function": [{"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml"}],
-      "usage": [{"value": "1000", "code_space": "http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml"}],
+      "class_value": {"value": "1000", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml"},
+      "function": [{"value": "1000", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_function.xml"}],
+      "usage": [{"value": "1000", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_usage.xml"}],
       "year_of_construction": "2000",
       "roof_type": {"value": "1000", "code_space": "https://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_roofType.xml"},
       "storeys_above_ground": 2,
@@ -453,9 +453,9 @@
             "name": ["Sample material 1"],
             "type_value": {"value": "gypsum"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.10, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.10, "uom": "W/(K*m)"},
             "density": {"value": 100.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -464,9 +464,9 @@
             "name": ["Sample material 2"],
             "type_value": {"value": "mineralWool"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.20, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.20, "uom": "W/(K*m)"},
             "density": {"value": 200.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -475,9 +475,9 @@
             "name": ["Sample material 3"],
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.30, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.30, "uom": "W/(K*m)"},
             "density": {"value": 300.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -486,9 +486,9 @@
             "name": ["Sample material 4"],
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.40, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.40, "uom": "W/(K*m)"},
             "density": {"value": 400.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -497,9 +497,9 @@
             "name": ["Sample material 5"],
             "type_value": {"value": "thatch"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.50, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.50, "uom": "W/(K*m)"},
             "density": {"value": 500.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -508,9 +508,9 @@
             "name": ["Sample material 6"],
             "type_value": {"value": "concrete"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.60, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.60, "uom": "W/(K*m)"},
             "density": {"value": 600.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -519,9 +519,9 @@
             "name": ["Sample material 7"],
             "type_value": {"value": "looseFilledInsulation"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.70, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.70, "uom": "W/(K*m)"},
             "density": {"value": 700.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -530,9 +530,9 @@
             "name": ["Sample material 8"],
             "type_value": {"value": "concrete"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.80, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.80, "uom": "W/(K*m)"},
             "density": {"value": 800.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -542,9 +542,9 @@
             "description": "Sample transparent material.",
             "type_value": {"value": "glass"},
             "is_transparent": true,
-            "thermal_conductivity": {"value": 0.90, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.90, "uom": "W/(K*m)"},
             "density": {"value": 900.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         },
         {
@@ -562,9 +562,9 @@
             "name": ["Sample material 10"],
             "type_value": {"value": "wood"},
             "is_transparent": false,
-            "thermal_conductivity": {"value": 0.15, "uom": "W/K*m"},
+            "thermal_conductivity": {"value": 0.15, "uom": "W/(K*m)"},
             "density": {"value": 500.0, "uom": "kg/m3"},
-            "specific_heat_capacity": {"value": 1000.0, "uom": "J/K*kg"}
+            "specific_heat_capacity": {"value": 1000.0, "uom": "J/(K*kg)"}
           }
         }
       ]
