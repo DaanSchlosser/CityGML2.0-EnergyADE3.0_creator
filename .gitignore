@@ -46,3 +46,4 @@ Desktop.ini
 # Secrets
 .env
 /.cache
+/inputs/.cache
