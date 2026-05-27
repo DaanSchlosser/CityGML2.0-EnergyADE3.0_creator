@@ -108,3 +108,68 @@ def test_fetch_panden_cbs_code_filter(monkeypatch: pytest.MonkeyPatch) -> None:
         cbs_code="0503",
     )
     assert [p.identificatie for p in panden] == ["0503100000000001"]
+
+
+# ---------------------------------------------------------------------------
+# _is_startindex_cap_error: separates the 50-k page-cap 400 (recoverable
+# by quadrant subdivision) from any other 400 (authoring/upstream bug)
+# ---------------------------------------------------------------------------
+
+
+class _StubResponse:
+    """Minimal stand-in for ``requests.Response.content`` used by the helper."""
+
+    def __init__(self, body: str) -> None:
+        self.content = body.encode("utf-8") if isinstance(body, str) else body
+
+
+_OWS_NS = "http://www.opengis.net/ows/1.1"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        # OWS 1.1 namespace, standard PDOK shape.
+        f'<ows:ExceptionReport xmlns:ows="{_OWS_NS}">'
+        f'  <ows:Exception exceptionCode="InvalidParameterValue" locator="startIndex">'
+        f'    <ows:ExceptionText>startIndex out of range</ows:ExceptionText>'
+        f'  </ows:Exception>'
+        f'</ows:ExceptionReport>',
+        # No-namespace fallback (some PDOK error pages render namespace-less).
+        '<ExceptionReport><Exception locator="startIndex">x</Exception></ExceptionReport>',
+    ],
+)
+def test_is_startindex_cap_error_true_for_cap_400(body: str) -> None:
+    assert bag_fetchers._is_startindex_cap_error(_StubResponse(body))
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        # Different locator → different parameter is at fault.
+        f'<ows:ExceptionReport xmlns:ows="{_OWS_NS}">'
+        f'  <ows:Exception exceptionCode="InvalidParameterValue" locator="srsName">'
+        f'    <ows:ExceptionText>Unknown CRS</ows:ExceptionText>'
+        f'  </ows:Exception>'
+        f'</ows:ExceptionReport>',
+        # Body mentions startIndex in passing but does NOT name it as the locator.
+        # The substring approach would false-positive here; the @locator check correctly
+        # treats this as a non-cap 400.
+        f'<ows:ExceptionReport xmlns:ows="{_OWS_NS}">'
+        f'  <ows:Exception exceptionCode="InvalidParameterValue" locator="filter">'
+        f'    <ows:ExceptionText>filter is wrong; startIndex is fine</ows:ExceptionText>'
+        f'  </ows:Exception>'
+        f'</ows:ExceptionReport>',
+        # Non-XML body (HTML 500 page, plaintext server error).
+        "Unknown type name bag:foobar",
+        # Empty body.
+        "",
+    ],
+)
+def test_is_startindex_cap_error_false_for_other_400(body: str) -> None:
+    """Non-cap 400s must NOT trigger quadrant subdivision: a malformed
+    CRS, unknown type name, unrelated exception, empty body, or
+    non-XML response is an authoring/upstream error and re-raising
+    surfaces it immediately rather than spinning 4^6 silent retries.
+    """
+    assert not bag_fetchers._is_startindex_cap_error(_StubResponse(body))

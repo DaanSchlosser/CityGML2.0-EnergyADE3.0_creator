@@ -18,6 +18,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import requests
+
 from .._helpers import to_clean_str, to_float, to_int
 from ..http import CachedSession
 from ..pdok_wfs import DEFAULT_PAGE_SIZE, paginate_features
@@ -220,24 +222,90 @@ def _fetch_layer(
     BAG-specific concern this wrapper adds is bbox subdivision when a
     single rectangle would cross PDOK's ~50 k startIndex cap. Subdivision
     is depth-limited so a pathological layer cannot recurse forever.
+
+    PDOK enforces the 50 k cap in two ways: (a) a full bbox returns
+    exactly 50 000 features and silently truncates, which the post-walk
+    threshold below catches; (b) a request with ``startIndex >= 51000``
+    returns HTTP 400 with an OWS ExceptionReport whose body names the
+    ``startIndex`` parameter. We catch the cap variant here too and
+    recurse into quadrants — without this, a city with > 50 k panden
+    (Delft, Groningen, Zwolle) would crash on page 51 before the
+    threshold check ever ran. Any other 400 (malformed CRS, bad type
+    name, server-config error) is re-raised so an authoring or
+    upstream bug surfaces immediately rather than being masked by
+    4^6 = 4096 silent retries.
     """
-    features = paginate_features(
-        session,
-        BAG_WFS_URL,
-        type_names=layer,
-        cache_prefix=layer,
-        bbox=bbox,
-        page_size=BAG_PAGE_SIZE,
-    )
-    # PDOK silently truncates a single bbox past ~50 k features. When we
-    # hit a result that *could* have been truncated -- a full sweep that
-    # ran right up against the soft ceiling -- recurse into quadrants so
-    # the missing rows are recoverable. Subdivision is depth-limited
-    # because a degenerate input (zero-width bbox, server bug) must not
-    # recurse forever.
+    try:
+        features = paginate_features(
+            session,
+            BAG_WFS_URL,
+            type_names=layer,
+            cache_prefix=layer,
+            bbox=bbox,
+            page_size=BAG_PAGE_SIZE,
+        )
+    except requests.HTTPError as exc:
+        if (
+            exc.response is not None
+            and exc.response.status_code == 400
+            and _depth < 6
+            and _is_startindex_cap_error(exc.response)
+        ):
+            _LOGGER.info(
+                "BAG %s: PDOK 400 at startIndex cap on bbox %s; subdividing",
+                layer,
+                bbox,
+            )
+            return _subdivide(session, layer, bbox, depth=_depth + 1)
+        raise
     if len(features) >= BAG_SUBDIVIDE_THRESHOLD and _depth < 6:
         return _subdivide(session, layer, bbox, depth=_depth + 1)
     return features
+
+
+def _is_startindex_cap_error(response: requests.Response) -> bool:
+    """Return ``True`` iff *response* is a PDOK OWS ExceptionReport
+    that names ``startIndex`` as the offending parameter.
+
+    PDOK returns an OGC OWS Common ExceptionReport on 400. The cap
+    error surfaces as ``<ows:Exception exceptionCode="InvalidParameterValue"
+    locator="startIndex">…</ows:Exception>``; other 400s (bad CRS,
+    unknown type name, malformed filter) carry a different ``@locator``
+    or ``@exceptionCode``. We match on the ``@locator`` attribute of
+    any ``Exception`` element, ignoring its XML namespace so OWS 1.0,
+    1.1, and 2.0 namespace variants all resolve the same way. The
+    attribute check is intentionally stricter than a body-substring
+    sniff: a 400 whose human-readable text mentions ``startIndex`` in
+    passing (e.g. "the filter is wrong; startIndex is fine") would
+    false-positive a substring match and trigger 4^6 silent quadrant
+    retries before the underlying authoring bug surfaced.
+
+    Any response that fails to parse as XML (binary, empty, truncated)
+    is treated as "not a cap error" so the caller re-raises and the
+    upstream bug surfaces immediately rather than being masked.
+    """
+    try:
+        body = response.content
+    except AttributeError:
+        return False
+    if not body:
+        return False
+    try:
+        import lxml.etree as ET  # local import: keeps the BAG fetcher
+        # module-import-cheap for the non-error path.
+        root = ET.fromstring(
+            body, parser=ET.XMLParser(resolve_entities=False, no_network=True, load_dtd=False)
+        )
+    except ET.XMLSyntaxError:
+        return False
+    for exc in root.iter():
+        # Match any element whose local name is ``Exception``; the OWS
+        # namespace varies across versions and PDOK does not pin one.
+        if ET.QName(exc.tag).localname != "Exception":
+            continue
+        if (exc.get("locator") or "").strip() == "startIndex":
+            return True
+    return False
 
 
 def _subdivide(
