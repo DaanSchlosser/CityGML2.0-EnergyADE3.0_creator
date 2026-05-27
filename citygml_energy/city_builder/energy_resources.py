@@ -162,29 +162,35 @@ _REFERENCE_YEAR: str = "year"
 
 
 # ---------------------------------------------------------------------------
-# uom tokens introduced by this module
+# uom tokens
+#
+# Every token emitted by this module lives in the bundled KIT
+# ``UOMList.xml``. Four were FZK upstream additions (``kWh/m2/a``,
+# ``kg/m2/a``, ``MJ/a``, ``kg/a``); the remaining two (``kWh/a``,
+# ``m3/a``) were added locally in UOMList.xml v1.2 (2026-05-27) as
+# TU Delft–proposed extensions, pending upstream merge by FZK.
+# ``tools/audit_silent_bugs.py`` reads the same UOMList.xml so any
+# future drift is caught automatically.
 # ---------------------------------------------------------------------------
 
-# Per-area annual energy. NTA 8800 reports BENG metrics in kWh/m²·jaar;
-# the FZK UOMList has ``kWh/m2`` (no per-annum) and ``MWh/a`` (no per-area)
-# but not the composed token. Introduced here for NL convention; the user
-# is in contact with the FZK developers to extend UOMList.xml upstream.
+# Per-area annual energy. NTA 8800 reports BENG metrics in kWh/m²·jaar.
+# In UOMList.xml as ``KILOWATT_PER_SQUAREMETER_PER_YEAR id="kWh/m2/a"``.
 #
 # Public so :mod:`citygml_energy.city_builder.builders.epc` can populate
 # ``EnergyPerformanceCertificate.value`` with the same uom string as the
 # matching ``nrg3:Energy.amount`` resource it parallels (NTA 8800 regime).
 UOM_KWH_PER_M2_PER_A: str = "kWh/m2/a"
 
-# Per-area annual CO₂ emission (NTA 8800 convention). FZK UOMList has
-# ``kg`` but not ``kg/m2/a``. Introduced for NL convention; documented in
-# § 7 of the mapping doc.
+# Per-area annual CO₂ emission (NTA 8800 convention). In UOMList.xml as
+# ``KILOGRAM_PER_SQUAREMETER_PER_YEAR id="kg/m2/a"``. § 7 of the mapping
+# doc records the regime-aware use.
 _UOM_KG_PER_M2_PER_A: str = "kg/m2/a"
 
 # Total annual energy (legacy regime, NEN 7120 lineage). The
 # ``BerekendeEnergieverbruik`` column for legacy methods is the absolute
-# annual primary fossil energy — not a per-m² intensity. FZK UOMList has
-# ``MWh/a``; ``MJ/a`` is introduced here for the NL legacy convention.
-# § 7 of the mapping doc records this addition.
+# annual primary fossil energy — not a per-m² intensity. In UOMList.xml
+# as ``MEGAJOULE_PER_YEAR id="MJ/a"``. § 7 of the mapping doc records
+# the regime asymmetry.
 #
 # Public for the same reason as :data:`UOM_KWH_PER_M2_PER_A`: the EPC
 # builder mirrors this token on ``EnergyPerformanceCertificate.value``
@@ -192,25 +198,29 @@ _UOM_KG_PER_M2_PER_A: str = "kg/m2/a"
 UOM_MJ_PER_A: str = "MJ/a"
 
 # Total annual CO₂ emission (legacy Nader Voorschrift / ISSO branch). The
-# CO₂ column for those legacy methods is total kg/yr, not per-m².
-# Companion to ``UOM_MJ_PER_A``; § 7 of the mapping doc records the
-# addition alongside the regime asymmetry.
+# CO₂ column for those legacy methods is total kg/yr, not per-m². In
+# UOMList.xml as ``KILOGRAM_PER_YEAR id="kg/a"``. Companion to
+# ``UOM_MJ_PER_A``.
 _UOM_KG_PER_A: str = "kg/a"
 
 # Total annual natural-gas volume. Used by the CBS Postcode6
-# ``UrbanFunctionArea`` resources for ``gemiddeldGasverbruikWoning`` (per-
-# postcode average across occupied dwellings). FZK UOMList lacks ``m3/a``;
-# introduced here for the NL convention. § 12 of the mapping doc records
-# this addition alongside the postcode-aggregate semantics.
-#
-# Public so the UrbanFunctionArea builder can populate the ``amount`` slot
-# on the gas resource without reaching into a private constant.
+# ``UrbanFunctionArea`` resources for ``gemiddeldGasverbruikWoning``
+# (per-postcode average across occupied dwellings). Added to
+# UOMList.xml v1.2 as ``CUBIC_METRE_PER_YEAR`` (TU Delft proposal,
+# pending FZK upstream merge) — UOMList previously only had
+# ``m3/s`` / ``m3/h`` flow-rate forms, which don't fit an annual
+# aggregate. § 12 of the mapping doc records the postcode-aggregate
+# semantics. Public so the UrbanFunctionArea builder can populate the
+# resource ``amount`` slot without reaching into a private constant.
 UOM_M3_PER_A: str = "m3/a"
 
 # Total annual electrical energy. Used by the CBS Postcode6 electricity
-# resource alongside ``UOM_M3_PER_A``. Distinct from
-# ``UOM_KWH_PER_M2_PER_A`` (NTA 8800 per-area intensity): ``kWh/a`` is
-# the absolute annual figure CBS publishes per dwelling.
+# resource alongside ``UOM_M3_PER_A``. Added to UOMList.xml v1.2 as
+# ``KILOWATT_HOUR_PER_YEAR`` (TU Delft proposal, pending FZK upstream
+# merge) — UOMList previously had ``kWh`` (no per-time) and ``MWh/a``
+# (which would force a 1000× rescale of the CBS-published values).
+# Distinct from ``UOM_KWH_PER_M2_PER_A`` (NTA 8800 per-area intensity):
+# ``kWh/a`` is the absolute annual figure CBS publishes per dwelling.
 UOM_KWH_PER_A: str = "kWh/a"
 
 

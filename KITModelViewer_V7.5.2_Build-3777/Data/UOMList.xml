@@ -4,10 +4,10 @@
 		Unit of Measurements from Energy ADE
 	</description>
 	<date>
-		2026-05-05
+		2026-05-27
 	</date>
 	<version>
-		1.1
+		1.2
 	</version>
 	<UOM name="AMPERE" id="A" quantity="ELECTRIC_CURRENT" sign="A" description="Unit for electric current"/>
 	<UOM name="CANDELA" id="cd" quantity="LUMINOUS_INTENSITY" sign="cd" description="Unit for luminous intensity"/>
@@ -218,4 +218,51 @@
 	<UOM name="KILOGRAM_PER_YEAR" id="kg/a" quantity="MASS_PER_TIME" sign="kg/a"/>
 	<UOM name="MEGAJOULE_PER_YEAR" id="MJ/a" quantity="ENERGY_PER_TIME" sign="MJ/a"/>
 	<UOM name="KILOJOULE_PER_YEAR_SQUAREMETER" id="KJ/(K*m2)" quantity="UVALUE" sign="KJ/(K*m²)"/>
+
+	<!--
+	======================================================================
+	Additions proposed 2026-05-27
+	======================================================================
+
+	* kWh/a (KILOWATT_HOUR_PER_YEAR, ENERGY_PER_TIME):
+	    CBS Postcode6 publishes per-dwelling annual electricity consumption
+	    at kWh-scale (typical NL residential 2 000–4 000 kWh/a). UOMList
+	    already has MJ/a, MWh/a, kg/a in ENERGY_PER_TIME / MASS_PER_TIME.
+
+	* m3/a (CUBIC_METRE_PER_YEAR, VOLUME_PER_TIME):
+	    CBS Postcode6 publishes per-dwelling annual natural-gas consumption
+	    in m³/yr; the same unit fits annual water and liquid-fuel volumes.
+	    UOMList previously offered m3/s and m3/h under FLOW_RATE, but
+	    "flow rate" is the wrong semantic for an annual aggregate, there
+	    is no instantaneous flow being measured. The proposed VOLUME_PER_TIME
+	    quantity completes a three-way parallel that the existing v1.1
+	    annual entries already established:
+	          MASS_PER_TIME    : kg/a, kg/m2/a
+	          ENERGY_PER_TIME  : MJ/a, MWh/a   (and the new kWh/a)
+	          VOLUME_PER_TIME  : m3/a          (new)
+	    The same VOLUME_PER_TIME slot would also host future l/a (litres
+	    per year) and m3/m2/a (per-area-volumetric) entries cleanly.
+
+	* W/W (EFFICIENCY_RATIO, DIMENSIONLESS_NUMBER):
+	    PV module efficiency (electric W out / solar W in, typical 0.15–0.22)
+	    and heat-pump COP (heat W out / electric W in, typical 3–6) are
+	    both quoted as W/W in industry standards (IEC 61853 for PV; EN 14511
+	    and EN 14825 for heat pumps), in EnergyADE-3.0-beta8 example data,
+	    and in NL EP-online product datasheets. Collapsing to DIMENSIONLESS
+	    "-" works numerically but strips the per-input-watt provenance a
+	    downstream consumer needs to distinguish a COP from a price ratio,
+	    a packing fraction, or a count. Adding W/W as a sibling of "-"
+	    (same DIMENSIONLESS_NUMBER quantity, distinct id and sign) keeps
+	    the rendering self-documenting without changing the unit algebra.
+
+	Implementation note: the value of W/W staying its own id (rather than
+	an altId of "-") is that the viewer's Properties panel will render the
+	literal "W/W" sign, which is exactly the disambiguation the
+	per-input-watt convention exists for. If kept as an altId of "-" the
+	sign would collapse to "-" on read and the provenance would only
+	survive in the source GML, not in the viewer's UI.
+	-->
+	<UOM name="KILOWATT_HOUR_PER_YEAR" id="kWh/a" quantity="ENERGY_PER_TIME" sign="kWh/a" description="Unit for annual energy (kilowatt-hours per annum); CBS (NL) publishes per-dwelling electricity at this sub-MWh scale"/>
+	<UOM name="CUBIC_METRE_PER_YEAR" id="m3/a" quantity="VOLUME_PER_TIME" sign="m³/a" description="Unit for annual volume; CBS (NL) publishes per-dwelling natural-gas consumption in m³/yr, also fits annual water/fuel volumes. VOLUME_PER_TIME parallels the existing MASS_PER_TIME (kg/a) and ENERGY_PER_TIME (MJ/a, MWh/a) annual-aggregate quantities"/>
+	<UOM name="EFFICIENCY_RATIO" id="W/W" quantity="DIMENSIONLESS_NUMBER" sign="W/W" description="Ratio of powers: PV module efficiency (electric W out / solar W in, ~0.15–0.22) and heat-pump COP (heat W out / electric W in, ~3–6). IEC 61853, EN 14511/14825 and NL EP-online datasheets all quote in W/W. Dimensionless but preserves the per-input-watt provenance a bare '-' would strip"/>
 </UOMList>
