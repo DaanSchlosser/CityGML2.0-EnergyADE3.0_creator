@@ -8,12 +8,15 @@ end-to-end breakage.
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 
 from citygml_energy.bindings import Building, CityObjectMember, Name
 from citygml_energy.bindings import CityModel as XsdCityModel
 from citygml_energy.mapping import (
     FieldInfo,
+    build_from_dict,
     find_by_id,
     get_fields,
     iter_instances,
@@ -76,6 +79,46 @@ def test_get_fields_exposes_xml_name_and_namespace() -> None:
     year_field = fields["year_of_construction"]
     assert year_field.xml_name == "yearOfConstruction"
     assert year_field.namespace == "http://www.opengis.net/citygml/building/2.0"
+
+
+# ---------------------------------------------------------------------------
+# build_from_dict: leaf coercion
+# ---------------------------------------------------------------------------
+
+
+def test_build_from_dict_coerces_xsd_decimal_fields() -> None:
+    """``gml:TimeIntervalLengthType.value`` is xsd:decimal -> Python Decimal.
+
+    Authoring a ``nrg3:RegularTimeSeries`` from JSON puts a plain int/float
+    into ``time_interval.value``; without a Decimal coercion rule the generic
+    builder rejected it ("no conversion rule applies"), so the documented
+    RegularTimeSeries daily-series input could not actually be built. Routing
+    through ``str`` keeps the value exact (1, not 1.0000000001).
+    """
+    regular_ts = resolve_class("nrg3:RegularTimeSeries")
+    obj = build_from_dict(
+        regular_ts,
+        {
+            "start_timestamp": "2022-01-01T00:00:00",
+            "end_timestamp": "2026-01-01T00:00:00",
+            "time_interval": {"value": 1, "unit": "day"},
+            "values_list": {"value": [1.5, 2.0, 3.25], "uom": "kWh"},
+        },
+    )
+    assert obj.time_interval.value == Decimal("1")
+    assert isinstance(obj.time_interval.value, Decimal)
+    assert obj.time_interval.unit == "day"
+    assert obj.values_list.value == [1.5, 2.0, 3.25]
+
+
+def test_build_from_dict_rejects_bool_for_decimal_field() -> None:
+    """bool must not slip into a Decimal field via the int subclass path."""
+    regular_ts = resolve_class("nrg3:RegularTimeSeries")
+    with pytest.raises((TypeError, ValueError), match="bool"):
+        build_from_dict(
+            regular_ts,
+            {"time_interval": {"value": True, "unit": "day"}},
+        )
 
 
 # ---------------------------------------------------------------------------

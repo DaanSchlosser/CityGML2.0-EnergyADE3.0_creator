@@ -14,6 +14,7 @@ import types
 import typing
 import warnings
 from collections.abc import Iterator, Mapping
+from decimal import Decimal
 from functools import lru_cache
 from typing import Any, Union
 
@@ -189,7 +190,7 @@ def _coerce(target: type, raw: Any) -> Any:
         if isinstance(raw, str):
             return raw.lower() in ("true", "1", "yes")
         return bool(raw)
-    if target in (int, float) and isinstance(raw, bool):
+    if target in (int, float, Decimal) and isinstance(raw, bool):
         raise TypeError(
             f"Cannot coerce bool {raw!r} to {target.__name__}: "
             f"refusing implicit bool→numeric conversion"
@@ -225,6 +226,11 @@ def _coerce(target: type, raw: Any) -> Any:
         return float(raw)
     if target is int:
         return int(raw)
+    # xsd:decimal maps to Decimal (e.g. gml:TimeIntervalLengthType.value).
+    # Route through str so JSON floats don't carry binary-FP noise into the
+    # exact-decimal type.
+    if target is Decimal and isinstance(raw, (int, float, str)):
+        return Decimal(str(raw))
 
     # --- Dict → dataclass (recursive) ---
     if isinstance(raw, dict) and dataclasses.is_dataclass(target):

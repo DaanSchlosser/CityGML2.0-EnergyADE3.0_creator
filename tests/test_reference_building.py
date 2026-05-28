@@ -19,6 +19,7 @@ fixture do not belong here.
 """
 
 from copy import deepcopy
+from datetime import date, datetime
 from pathlib import Path
 
 import lxml.etree as etree
@@ -303,24 +304,84 @@ def test_heating_and_cooling_schedules_on_zone_parts(reference_building_root):
 
 
 def test_energy_resources_attached_to_devices(reference_building_root):
-    """Input declares 2 Energy resources: one on the EV, one on the PV."""
+    """Input declares 3 Energy resources: one on the EV, two on the PV.
+
+    The PV array carries two independent production estimates as separate
+    ``nrg3:Energy`` resources: a measured series and a simulated (NTA 8800,
+    transposed) series. Keeping them as distinct resources, rather than two
+    time series on one resource, is required because ``timeDependentAmount``
+    is single-valued and is also the cleaner provenance split (measured vs.
+    simulated).
+    """
     ev_resources = reference_building_root.findall(".//nrg3:EVChargingStation/nrg3:resource/nrg3:Energy", NS)
     assert len(ev_resources) == 1
 
     pv_resources = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector/nrg3:resource/nrg3:Energy", NS
     )
-    assert len(pv_resources) == 1
+    assert len(pv_resources) == 2
 
 
 def test_monthly_time_series_on_pv_energy(reference_building_root):
-    """The PV energy resource has a MonthlyTimeSeries for time-dependent production."""
+    """One PV energy resource has a MonthlyTimeSeries for measured production.
+
+    The other PV resource carries a daily ``RegularTimeSeries`` instead (see
+    :func:`test_simulated_daily_pv_series_is_regular_and_surpasses_measured`),
+    so the measured-monthly count stays exactly one.
+    """
     ts = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector//nrg3:Energy"
         "/nrg3:timeDependentAmount/nrg3:MonthlyTimeSeries",
         NS,
     )
     assert len(ts) == 1
+
+
+def test_simulated_daily_pv_series_is_regular_and_surpasses_measured(reference_building_root):
+    """PV carries a daily RegularTimeSeries that runs past the measured series.
+
+    Three invariants, all value-agnostic so any structurally-equivalent
+    fixture satisfies them:
+
+    1. Exactly one ``nrg3:RegularTimeSeries`` hangs off a PV ``Energy``
+       resource, at a fixed one-day ``timeInterval``.
+    2. The value count equals the number of days in ``[start, end)`` -- one
+       sample per day -- which catches a series whose timestamps and value
+       array have silently drifted out of step.
+    3. The simulated series ends after the measured ``MonthlyTimeSeries``, so
+       the predicted yield demonstrably extends beyond the metered window
+       (the point of carrying a transposed series at all).
+    """
+    series = reference_building_root.findall(
+        ".//nrg3:PhotovoltaicCollector//nrg3:Energy"
+        "/nrg3:timeDependentAmount/nrg3:RegularTimeSeries",
+        NS,
+    )
+    assert len(series) == 1
+    rts = series[0]
+
+    interval = rts.find("nrg3:timeInterval", NS)
+    assert interval is not None
+    assert interval.get("unit") == "day"
+    assert float(interval.text) == 1.0
+
+    start = datetime.fromisoformat(rts.findtext("nrg3:startTimestamp", namespaces=NS))
+    end = datetime.fromisoformat(rts.findtext("nrg3:endTimestamp", namespaces=NS))
+    values = (rts.findtext("nrg3:valuesList", namespaces=NS) or "").split()
+    assert len(values) == (end - start).days, (
+        f"RegularTimeSeries must carry one value per day in [start, end): "
+        f"{len(values)} values for a {(end - start).days}-day span"
+    )
+
+    measured_end = reference_building_root.findtext(
+        ".//nrg3:PhotovoltaicCollector//nrg3:Energy"
+        "/nrg3:timeDependentAmount/nrg3:MonthlyTimeSeries/nrg3:endDate",
+        namespaces=NS,
+    )
+    assert measured_end is not None
+    assert end.date() > date.fromisoformat(measured_end), (
+        f"simulated series end {end.date()} must fall after measured end {measured_end}"
+    )
 
 
 def test_pv_has_two_installed_on_relations_from_json(reference_building_root):

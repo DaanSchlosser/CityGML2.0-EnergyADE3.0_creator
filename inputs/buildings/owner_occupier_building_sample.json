@@ -439,6 +439,42 @@
         "uom": "kWh"
       }
     },
+    {
+      "type": "nrg3:Energy",
+      "parent": "pv_panel_1",
+      "id": "id_pv_production_simulated_1",
+      "description": "Sample simulated PV production, an independent estimate alongside the measured series for comparison.",
+      "name": ["Sample simulated PV production"],
+      "creation_date": "2000-01-07",
+      "metadata": [{
+        "author": "Sample author",
+        "acquisition_method": {"value": "simulation", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/DataAcquisitionMethodValue.xml"},
+        "source": "Sample simulated daily PV yield.",
+        "quality_description": "Sample placeholder; not metered."
+      }],
+      "operation_type": {"value": "produces", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
+      "is_amount_normalized": false,
+      "type_value": {"value": "final", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyTypeValue.xml"},
+      "end_use": {"value": "gridFeedIn", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyEndUseValue.xml"},
+      "energy_carrier": {"value": "electricity", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergyCarrierValue.xml"},
+      "source": {"value": "photovoltaicPanels", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
+    },
+    {
+      "type": "nrg3:RegularTimeSeries",
+      "parent": "id_pv_production_simulated_1",
+      "parent_field": "time_dependent_amount",
+      "id": "id_daily_ts_pv_production_simulated_1",
+      "description": "Sample daily simulated PV production, ten placeholder values ending after the measured series.",
+      "name": ["Sample RegularTimeSeries simulated PV production"],
+      "interpolation_type": "averageInSucceedingInterval",
+      "start_timestamp": "2003-07-01T00:00:00",
+      "end_timestamp": "2003-07-11T00:00:00",
+      "time_interval": {"value": 1, "unit": "day"},
+      "values_list": {
+        "value": [12.0, 18.5, 40.2, 9.3, 33.1, 44.0, 7.8, 28.6, 39.4, 15.2],
+        "uom": "kWh"
+      }
+    },
 
     {
       "type": "nrg3:MaterialLibrary",
