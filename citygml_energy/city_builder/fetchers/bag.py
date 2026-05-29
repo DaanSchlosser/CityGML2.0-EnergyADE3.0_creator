@@ -1,9 +1,15 @@
 """BAG fetchers: Pand and Verblijfsobject.
 
 Query strategy: request each layer with a bounding-box filter and
-paginate. If a page is suspiciously close to the WFS ``startIndex``
-ceiling (PDOK caps server-side at ~50 k) we subdivide the bbox into
-four quadrants and recurse.
+paginate. PDOK caps a WFS GetFeature at ``startIndex`` 50 000 (a request
+past it returns HTTP 400 with the text "It is not possible to use a
+'startindex' higher than 50.000"), so a city with more panden than that
+cannot be walked in one bbox. We ask the server how many features the
+bbox holds first (a cheap ``resultType=hits`` probe) and, when that
+exceeds the window, subdivide the bbox into four quadrants and recurse
+*before* spending a doomed deep walk. A reactive fallback still catches
+the 400 (and a near-cap page count when the probe is unavailable) so the
+walk degrades gracefully rather than crashing.
 
 The PDOK BAG WFS v2.0 exposes: ``bag:pand``, ``bag:verblijfsobject``,
 ``bag:ligplaats``, ``bag:standplaats``, ``bag:woonplaats``. There are no
@@ -22,15 +28,25 @@ import requests
 
 from .._helpers import to_clean_str, to_float, to_int
 from ..http import CachedSession
-from ..pdok_wfs import DEFAULT_PAGE_SIZE, paginate_features
+from ..pdok_wfs import DEFAULT_PAGE_SIZE, count_matched_features, paginate_features
 
 _LOGGER = logging.getLogger(__name__)
 
 BAG_WFS_URL = "https://service.pdok.nl/lv/bag/wfs/v2_0"
 BAG_PAGE_SIZE = DEFAULT_PAGE_SIZE
-# PDOK's GetFeature hard-caps around 50 000; subdivide when we cross this
-# threshold on a single bbox. Very generous so small cities never bother.
+# PDOK rejects ``startIndex`` higher than 50 000. With BAG_PAGE_SIZE=1000 the
+# deepest valid page (startIndex=50000) still reads rows 50000-50999, so up to
+# ~51 000 features are reachable; subdividing once the match count passes
+# 50 000 keeps a comfortable margin below that hard wall.
+BAG_MAX_FETCHABLE = 50_000
+# Reactive fallback only (used when the hits probe is unavailable): a completed
+# walk that returns at least this many features may have silently truncated at
+# the server window, so split and re-fetch to be safe. Generous so small cities
+# never bother.
 BAG_SUBDIVIDE_THRESHOLD = 40_000
+# Depth limit so a pathological layer cannot recurse forever: 4**6 = 4096 leaf
+# quadrants is far more than any Dutch municipality needs.
+BAG_MAX_SUBDIVIDE_DEPTH = 6
 
 
 @dataclass(frozen=True)
@@ -220,21 +236,45 @@ def _fetch_layer(
     Delegates the WFS 2.0 page walk to
     :func:`citygml_energy.city_builder.pdok_wfs.paginate_features`; the
     BAG-specific concern this wrapper adds is bbox subdivision when a
-    single rectangle would cross PDOK's ~50 k startIndex cap. Subdivision
-    is depth-limited so a pathological layer cannot recurse forever.
+    single rectangle would cross PDOK's 50 k ``startIndex`` cap.
+    Subdivision is depth-limited (:data:`BAG_MAX_SUBDIVIDE_DEPTH`) so a
+    pathological layer cannot recurse forever.
 
-    PDOK enforces the 50 k cap in two ways: (a) a full bbox returns
-    exactly 50 000 features and silently truncates, which the post-walk
-    threshold below catches; (b) a request with ``startIndex >= 51000``
-    returns HTTP 400 with an OWS ExceptionReport whose body names the
-    ``startIndex`` parameter. We catch the cap variant here too and
-    recurse into quadrants — without this, a city with > 50 k panden
-    (Delft, Groningen, Zwolle) would crash on page 51 before the
-    threshold check ever ran. Any other 400 (malformed CRS, bad type
-    name, server-config error) is re-raised so an authoring or
-    upstream bug surfaces immediately rather than being masked by
-    4^6 = 4096 silent retries.
+    The primary guard is proactive: :func:`count_matched_features` asks
+    the server (one ``resultType=hits`` round trip) how many features the
+    bbox holds, and we split *before* walking when that exceeds
+    :data:`BAG_MAX_FETCHABLE`. This is what keeps a > 50 k-pand city
+    (Delft, Groningen, Zwolle) from ever issuing the doomed
+    ``startIndex=51000`` request.
+
+    Two reactive fallbacks remain for when the hits probe is unavailable
+    or under-counts: (a) PDOK returns HTTP 400 once a page crosses the
+    cap -- its OWS ExceptionReport puts the cap message in the
+    ``ExceptionText`` (with a misleading ``locator="typename"``), which
+    :func:`_is_startindex_cap_error` recognises -- and (b) a completed
+    walk that returns at least :data:`BAG_SUBDIVIDE_THRESHOLD` features
+    may have truncated, so we split it. Any other 400 (malformed CRS, bad
+    type name, server-config error) is re-raised so an authoring or
+    upstream bug surfaces immediately rather than being masked by silent
+    retries.
     """
+    matched = count_matched_features(
+        session,
+        BAG_WFS_URL,
+        type_names=layer,
+        cache_prefix=layer,
+        bbox=bbox,
+    )
+    if matched is not None and matched > BAG_MAX_FETCHABLE and _depth < BAG_MAX_SUBDIVIDE_DEPTH:
+        _LOGGER.info(
+            "BAG %s: %d features in bbox %s exceed the %d WFS window; subdividing",
+            layer,
+            matched,
+            bbox,
+            BAG_MAX_FETCHABLE,
+        )
+        return _subdivide(session, layer, bbox, depth=_depth + 1)
+
     try:
         features = paginate_features(
             session,
@@ -248,37 +288,57 @@ def _fetch_layer(
         if (
             exc.response is not None
             and exc.response.status_code == 400
-            and _depth < 6
+            and _depth < BAG_MAX_SUBDIVIDE_DEPTH
             and _is_startindex_cap_error(exc.response)
         ):
             _LOGGER.info(
-                "BAG %s: PDOK 400 at startIndex cap on bbox %s; subdividing",
+                "BAG %s: PDOK startindex-cap 400 on bbox %s; subdividing",
                 layer,
                 bbox,
             )
             return _subdivide(session, layer, bbox, depth=_depth + 1)
         raise
-    if len(features) >= BAG_SUBDIVIDE_THRESHOLD and _depth < 6:
+
+    # Fallback when the hits probe was unavailable (``matched is None``): a
+    # walk at or above the threshold may have silently truncated at the
+    # server window, so split and re-fetch. When ``matched`` is known and
+    # under the cap the walk is complete by construction, so we trust it
+    # and skip this re-split.
+    if (
+        matched is None
+        and len(features) >= BAG_SUBDIVIDE_THRESHOLD
+        and _depth < BAG_MAX_SUBDIVIDE_DEPTH
+    ):
         return _subdivide(session, layer, bbox, depth=_depth + 1)
     return features
 
 
 def _is_startindex_cap_error(response: requests.Response) -> bool:
-    """Return ``True`` iff *response* is a PDOK OWS ExceptionReport
-    that names ``startIndex`` as the offending parameter.
+    """Return ``True`` iff *response* is PDOK's ``startIndex`` cap 400.
 
-    PDOK returns an OGC OWS Common ExceptionReport on 400. The cap
-    error surfaces as ``<ows:Exception exceptionCode="InvalidParameterValue"
-    locator="startIndex">…</ows:Exception>``; other 400s (bad CRS,
-    unknown type name, malformed filter) carry a different ``@locator``
-    or ``@exceptionCode``. We match on the ``@locator`` attribute of
-    any ``Exception`` element, ignoring its XML namespace so OWS 1.0,
-    1.1, and 2.0 namespace variants all resolve the same way. The
-    attribute check is intentionally stricter than a body-substring
-    sniff: a 400 whose human-readable text mentions ``startIndex`` in
-    passing (e.g. "the filter is wrong; startIndex is fine") would
-    false-positive a substring match and trigger 4^6 silent quadrant
-    retries before the underlying authoring bug surfaced.
+    PDOK returns an OGC OWS Common ExceptionReport on 400. The real cap
+    response is::
+
+        <ows:Exception exceptionCode="InvalidParameterValue" locator="typename">
+          <ows:ExceptionText>It is not possible to use a 'startindex'
+            higher than 50.000. …</ows:ExceptionText>
+        </ows:Exception>
+
+    so the ``@locator`` is the misleading ``"typename"``, not
+    ``"startIndex"`` -- matching on the locator alone (the original
+    implementation) missed the real error and let the 400 crash the
+    build. We recognise the cap two ways, both scoped to any element
+    whose local name is ``Exception`` (the OWS namespace varies across
+    versions and PDOK does not pin one):
+
+    * ``@locator == "startIndex"`` -- a spec-clean server, kept so a
+      future PDOK fix or another WFS still matches; or
+    * an ``InvalidParameterValue`` exception whose text names the
+      ``startindex`` *and* the "higher than" cap. Requiring both tokens
+      keeps this from false-positiving on a 400 that merely mentions
+      startIndex in passing (e.g. "the filter is wrong; startIndex is
+      fine"), which would otherwise trigger silent quadrant retries
+      before an authoring bug surfaced.
 
     Any response that fails to parse as XML (binary, empty, truncated)
     is treated as "not a cap error" so the caller re-raises and the
@@ -291,8 +351,10 @@ def _is_startindex_cap_error(response: requests.Response) -> bool:
     if not body:
         return False
     try:
-        import lxml.etree as ET  # local import: keeps the BAG fetcher
-        # module-import-cheap for the non-error path.
+        # Local import keeps the BAG fetcher module-import-cheap for the
+        # non-error path; ET is the conventional ElementTree alias.
+        import lxml.etree as ET  # noqa: N812
+
         root = ET.fromstring(
             body, parser=ET.XMLParser(resolve_entities=False, no_network=True, load_dtd=False)
         )
@@ -305,6 +367,10 @@ def _is_startindex_cap_error(response: requests.Response) -> bool:
             continue
         if (exc.get("locator") or "").strip() == "startIndex":
             return True
+        if (exc.get("exceptionCode") or "").strip() == "InvalidParameterValue":
+            text = " ".join(exc.itertext()).lower()
+            if "startindex" in text and "higher than" in text:
+                return True
     return False
 
 

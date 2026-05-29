@@ -8,10 +8,13 @@ post-fetch transform (their schema-specific deduplication and field
 extraction); the paginator owns the wire protocol.
 
 Bbox subdivision is BAG-only and lives at the BAG call site as a thin
-recursion on top of :func:`paginate_features`. CBS deliberately does not
-subdivide (~30 k features max per municipality, well below the 50 k
-startIndex cap that PDOK enforces on BAG). The municipality layer fits
-one page (~345 features nation-wide) so there is no bbox at all.
+recursion on top of :func:`paginate_features`, steered by
+:func:`count_matched_features` (a ``resultType=hits`` probe) so an
+over-cap bbox is split *before* a doomed deep walk rather than after an
+HTTP 400. CBS deliberately does not subdivide (~30 k features max per
+municipality, well below the 50 k startIndex cap that PDOK enforces on
+BAG). The municipality layer fits one page (~345 features nation-wide) so
+there is no bbox at all.
 
 Other PDOK protocols are NOT in scope: the BGT endpoint uses OGC API
 Features and Emmen-BOR uses ArcGIS REST, with different request
@@ -22,6 +25,7 @@ into "any paged HTTP GET" and lose the per-protocol structure
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from typing import Any
 
 from ._helpers import bbox_cache_key
@@ -30,6 +34,7 @@ from .http import CachedSession
 __all__ = [
     "DEFAULT_PAGE_SIZE",
     "DEFAULT_SRS_NAME",
+    "count_matched_features",
     "paginate_features",
 ]
 
@@ -106,3 +111,69 @@ def paginate_features(
         if len(batch) < page_size:
             return features
         start += page_size
+
+
+def count_matched_features(
+    session: CachedSession,
+    url: str,
+    *,
+    type_names: str,
+    cache_prefix: str,
+    bbox: Bbox | None = None,
+    srs_name: str = DEFAULT_SRS_NAME,
+    extra_params: dict[str, Any] | None = None,
+) -> int | None:
+    """Return the WFS ``numberMatched`` for *type_names* (optionally in *bbox*).
+
+    Issues a single ``resultType=hits`` GetFeature: the server replies with
+    an otherwise-empty FeatureCollection whose root element carries the
+    total match count as a ``numberMatched`` attribute. One cheap round
+    trip lets a caller decide, *before* spending a paged walk, whether the
+    result would cross the server's ``startIndex`` window (PDOK caps BAG at
+    50 000) and so needs the bbox split first.
+
+    Returns ``None`` when the count cannot be determined -- the server
+    omitted the attribute, reported ``unknown``, or the body did not parse
+    as XML -- so callers fall back to walk-and-react rather than trusting a
+    guessed number. PDOK serves the hits response as WFS XML regardless of
+    ``outputFormat``, so this parses with stdlib ElementTree and never
+    assumes GeoJSON.
+
+    Cached under ``bbox_cache_key(f"{cache_prefix}.hits", bbox)`` so a rerun
+    reuses the count without a network round trip.
+    """
+    params: dict[str, Any] = {
+        "service": "WFS",
+        "version": "2.0.0",
+        "request": "GetFeature",
+        "typeNames": type_names,
+        "srsName": srs_name,
+        "resultType": "hits",
+    }
+    if bbox is not None:
+        params["bbox"] = f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]},{srs_name}"
+    if extra_params:
+        params.update(extra_params)
+
+    cache_key = (
+        bbox_cache_key(f"{cache_prefix}.hits", bbox) if bbox is not None else f"{cache_prefix}.hits"
+    )
+    raw = session.get_bytes(url, params=params, cache_key=cache_key)
+    return _parse_number_matched(raw)
+
+
+def _parse_number_matched(raw: bytes) -> int | None:
+    """Read the ``numberMatched`` attribute off a WFS hits FeatureCollection."""
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError:
+        return None
+    value = root.get("numberMatched")
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        # GeoServer may report ``numberMatched="unknown"`` when it declines
+        # to count; treat that as "unknown" so the caller walks and reacts.
+        return None

@@ -10,15 +10,16 @@ attribute extraction) are covered by the per-fetcher test files.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, ClassVar
 
-import json
 import pytest
 
 from citygml_energy.city_builder.http import CachedSession
 from citygml_energy.city_builder.pdok_wfs import (
     DEFAULT_PAGE_SIZE,
+    count_matched_features,
     paginate_features,
 )
 
@@ -53,9 +54,7 @@ def _capturing_session(
     class _FakeSession:
         headers: ClassVar[dict[str, str]] = {}
 
-        def request(
-            self, method: str, url: str, **kwargs: Any
-        ) -> _FakeResponse:
+        def request(self, method: str, url: str, **kwargs: Any) -> _FakeResponse:
             captured.append({"method": method, "url": url, **kwargs})
             return _FakeResponse(next(calls))
 
@@ -64,13 +63,15 @@ def _capturing_session(
 
 
 def test_paginate_features_stops_on_short_page(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A page shorter than ``page_size`` ends pagination — the WFS 2.0
     'no more rows' convention. Two pages of 2 + a page of 1 = three
     features, one stop."""
     session, captured = _capturing_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[
             {"features": [_feature(1), _feature(2)]},
             {"features": [_feature(3)]},
@@ -89,12 +90,14 @@ def test_paginate_features_stops_on_short_page(
 
 
 def test_paginate_features_walks_multiple_full_pages(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When every page is exactly full, the loop keeps walking until
     the server returns a short page."""
     session, captured = _capturing_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[
             {"features": [_feature(i) for i in (1, 2)]},
             {"features": [_feature(i) for i in (3, 4)]},
@@ -102,7 +105,8 @@ def test_paginate_features_walks_multiple_full_pages(
         ],
     )
     features = paginate_features(
-        session, "https://example/wfs",
+        session,
+        "https://example/wfs",
         type_names="test:layer",
         cache_prefix="test_layer",
         bbox=(0.0, 0.0, 1.0, 1.0),
@@ -113,18 +117,21 @@ def test_paginate_features_walks_multiple_full_pages(
 
 
 def test_paginate_features_emits_wfs_query_envelope(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The query string carries the WFS 2.0 contract every PDOK
     endpoint expects: service, version, request, typeNames, GeoJSON
     output format, srsName, startIndex, count, and the bbox suffixed
     with the SRS name."""
     session, captured = _capturing_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": []}],
     )
     paginate_features(
-        session, "https://example/wfs",
+        session,
+        "https://example/wfs",
         type_names="bag:pand",
         cache_prefix="bag_pand",
         bbox=(1.0, 2.0, 3.0, 4.0),
@@ -144,18 +151,21 @@ def test_paginate_features_emits_wfs_query_envelope(
 
 
 def test_paginate_features_omits_bbox_when_unset(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The municipality fetcher walks the whole Gemeentegebied layer
     with no bbox filter. Without *bbox*, the WFS request must not
     carry a ``bbox`` key (which would otherwise be interpreted as an
     empty filter by some WFS implementations)."""
     session, captured = _capturing_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": []}],
     )
     paginate_features(
-        session, "https://example/wfs",
+        session,
+        "https://example/wfs",
         type_names="bestuurlijkegebieden:Gemeentegebied",
         cache_prefix="pdok_gemeentegebied",
     )
@@ -164,17 +174,20 @@ def test_paginate_features_omits_bbox_when_unset(
 
 
 def test_paginate_features_cache_key_depends_on_bbox_and_page(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """With *bbox* set, the cache key is derived from
     :func:`bbox_cache_key` so a re-run with the same bbox hits cache;
     consecutive pages get distinct keys so concurrent in-flight pages
     do not clobber each other on disk."""
     session = CachedSession(cache_dir=tmp_path / "cache", use_cache=True)
-    pages = iter([
-        {"features": [_feature(i) for i in range(2)]},
-        {"features": []},
-    ])
+    pages = iter(
+        [
+            {"features": [_feature(i) for i in range(2)]},
+            {"features": []},
+        ]
+    )
 
     class _FakeResponse:
         def __init__(self, payload: dict[str, Any]) -> None:
@@ -197,7 +210,8 @@ def test_paginate_features_cache_key_depends_on_bbox_and_page(
     monkeypatch.setattr(session, "_session", _FakeSession())
 
     paginate_features(
-        session, "https://example/wfs",
+        session,
+        "https://example/wfs",
         type_names="test:layer",
         cache_prefix="bag:pand",
         bbox=(1.0, 2.0, 3.0, 4.0),
@@ -210,7 +224,8 @@ def test_paginate_features_cache_key_depends_on_bbox_and_page(
 
 
 def test_paginate_features_cache_key_when_no_bbox(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Without *bbox*, the cache key collapses to
     ``f"{cache_prefix}.p{page}"`` so a layer that is the same across
@@ -240,7 +255,8 @@ def test_paginate_features_cache_key_when_no_bbox(
     monkeypatch.setattr(session, "_session", _FakeSession())
 
     paginate_features(
-        session, "https://example/wfs",
+        session,
+        "https://example/wfs",
         type_names="bestuurlijkegebieden:Gemeentegebied",
         cache_prefix="pdok_gemeentegebied",
     )
@@ -255,17 +271,20 @@ def test_paginate_features_default_page_size_matches_pdok_cap() -> None:
 
 
 def test_paginate_features_passes_extra_params(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``extra_params`` is folded into the request after the standard
     WFS keys so callers can attach CQL filters / vendor extensions
     without touching this module."""
     session, captured = _capturing_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": []}],
     )
     paginate_features(
-        session, "https://example/wfs",
+        session,
+        "https://example/wfs",
         type_names="bag:pand",
         cache_prefix="bag_pand",
         bbox=(1.0, 2.0, 3.0, 4.0),
@@ -273,3 +292,120 @@ def test_paginate_features_passes_extra_params(
     )
     [call] = captured
     assert call["params"]["cql_filter"] == "status='Pand in gebruik'"
+
+
+# ---------------------------------------------------------------------------
+# count_matched_features: the resultType=hits probe that steers BAG bbox
+# subdivision before a doomed deep walk.
+# ---------------------------------------------------------------------------
+
+
+def _xml_session(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    body: bytes,
+) -> tuple[CachedSession, list[dict[str, Any]]]:
+    """A session whose single response body is raw *body* bytes (XML),
+    capturing request kwargs so tests can assert the WFS envelope."""
+    session = CachedSession(cache_dir=tmp_path / "cache", use_cache=False)
+    captured: list[dict[str, Any]] = []
+
+    class _FakeResponse:
+        def __init__(self, payload: bytes) -> None:
+            self.status_code = 200
+            self._payload = payload
+
+        @property
+        def content(self) -> bytes:
+            return self._payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _FakeSession:
+        headers: ClassVar[dict[str, str]] = {}
+
+        def request(self, method: str, url: str, **kwargs: Any) -> _FakeResponse:
+            captured.append({"method": method, "url": url, **kwargs})
+            return _FakeResponse(body)
+
+    monkeypatch.setattr(session, "_session", _FakeSession())
+    return session, captured
+
+
+def _hits_xml(number_matched: str) -> bytes:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0" '
+        f'numberMatched="{number_matched}" numberReturned="0"/>'
+    ).encode()
+
+
+def test_count_matched_features_parses_number_matched(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The hits FeatureCollection's ``numberMatched`` attribute is the
+    total match count, and the request is a ``resultType=hits`` GetFeature
+    with the bbox suffixed by the SRS (and no GeoJSON outputFormat, since
+    PDOK serves hits as WFS XML)."""
+    session, captured = _xml_session(tmp_path, monkeypatch, _hits_xml("51234"))
+    n = count_matched_features(
+        session,
+        "https://example/wfs",
+        type_names="bag:pand",
+        cache_prefix="bag:pand",
+        bbox=(1.0, 2.0, 3.0, 4.0),
+    )
+    assert n == 51234
+    params = captured[0]["params"]
+    assert params["resultType"] == "hits"
+    assert params["request"] == "GetFeature"
+    assert params["bbox"] == "1.0,2.0,3.0,4.0,EPSG:28992"
+    assert "outputFormat" not in params
+
+
+def test_count_matched_features_none_when_unknown(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A server that reports ``numberMatched="unknown"`` yields ``None`` so
+    the caller falls back to walk-and-react rather than trusting a guess."""
+    session, _ = _xml_session(tmp_path, monkeypatch, _hits_xml("unknown"))
+    assert (
+        count_matched_features(
+            session,
+            "https://example/wfs",
+            type_names="bag:pand",
+            cache_prefix="bag:pand",
+            bbox=(1.0, 2.0, 3.0, 4.0),
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"<<< not xml >>>",  # unparseable
+        b'<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0"/>',  # attr absent
+    ],
+)
+def test_count_matched_features_none_when_uncountable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    body: bytes,
+) -> None:
+    """Non-XML bodies and a FeatureCollection without ``numberMatched`` both
+    yield ``None`` (treated as 'unknown count')."""
+    session, _ = _xml_session(tmp_path, monkeypatch, body)
+    assert (
+        count_matched_features(
+            session,
+            "https://example/wfs",
+            type_names="bag:pand",
+            cache_prefix="bag:pand",
+            bbox=(1.0, 2.0, 3.0, 4.0),
+        )
+        is None
+    )
