@@ -148,7 +148,7 @@ def test_pv_collector_validates(xsd_schema):
         number_of_devices=36,
         installed_power=MeasureType(value=9720, uom="W"),
         azimuth=AngleType(value=235.65, uom="deg"),
-        inclination=AngleType(value=44.51, uom="deg"),
+        inclination=AngleType(value=45.0, uom="deg"),
         cell_type=CodeType(value="monocrystalline", code_space=CS_NRG3_CELL_TYPE),
     )
     building = Building(

@@ -1,7 +1,7 @@
-"""Generate the daily simulated-PV series for the owner-occupier reference building.
+"""Generate the monthly simulated-PV series for the owner-occupier reference building.
 
 The series is an *independent* NTA 8800 estimate of the array's electricity
-production, written into ``id_daily_ts_pv_production_simulated_1`` so it can be
+production, written into ``id_monthly_ts_pv_production_simulated_1`` so it can be
 plotted against the metered ``id_pv_production_1`` series. It is not a metered
 quantity.
 
@@ -33,12 +33,11 @@ where
   * ``F_sh;obst`` monthly shading-reduction factor, clause 17.3   [-]
 
 NTA 8800 is a *monthly* method built on a fixed reference climate, so the
-result does not depend on the calendar year. The daily ``RegularTimeSeries``
-this tool writes is therefore the month's NTA 8800 production divided evenly
-over the days of that month: no sub-monthly weather is modelled, because the
-standard provides none. The daily values for the same month are identical
-across years, save for February in a leap year (the same monthly energy spread
-over 29 days instead of 28).
+result does not depend on the calendar year and the standard provides nothing
+below the month. This tool therefore writes one value per month into a
+``MonthlyTimeSeries``: the array's NTA 8800 production for that calendar month,
+identical from one year to the next. There is no daily series, because the
+method has no sub-monthly resolution to express.
 
 System parameters below are read off ``pv_panel_1`` in
 ``inputs/buildings/owner_occupier_building.json``.
@@ -47,10 +46,9 @@ System parameters below are read off ``pv_panel_1`` in
 from __future__ import annotations
 
 import argparse
-import calendar
 import json
 from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 from citygml_energy.generation import DEFAULT_INPUT_PATH
@@ -59,7 +57,7 @@ __all__ = [
     "PEAK_POWER_KWP",
     "main",
     "monthly_production_kwh",
-    "simulate_daily_kwh",
+    "simulate_monthly_kwh",
 ]
 
 # --- pv_panel_1 system parameters (owner_occupier_building.json) -------------
@@ -68,8 +66,10 @@ PEAK_POWER_KWP: float = 9.72
 # Compass azimuth of the array (0 deg = N, 90 = E, 180 = S, 270 = W), matching
 # table 17.2's gamma convention. 235.65 deg is roughly SW.
 AZIMUTH_DEG: float = 235.65
-# Tilt from horizontal (beta in table 17.2). 0 = flat, 90 = vertical.
-INCLINATION_DEG: float = 44.51
+# Tilt from horizontal (beta in table 17.2). 0 = flat, 90 = vertical. Set to
+# 45 deg, an exact table-17.2 node (no tilt interpolation), consolidated with
+# the colleague's NTA 8800 spreadsheet; the array's surveyed pitch is ~44.5.
+INCLINATION_DEG: float = 45.0
 
 # Yield factor f_perf, table 16.2. The roof-mounted array has a small air gap
 # behind the panels ("matig geventileerd": op of in dak gemonteerd, met een
@@ -86,12 +86,7 @@ F_SH_OBST: float = 1.00
 # Reference irradiance I_ref, clause 16.2.2 (1 kW/m2).
 I_REF_KW_M2: float = 1.0
 
-# Retained for backwards compatibility with the previous stochastic placeholder
-# generator and the CLI: the NTA 8800 method is deterministic, so the seed does
-# not affect the output.
-DEFAULT_SEED: int = 0
-
-_FEATURE_ID: str = "id_daily_ts_pv_production_simulated_1"
+_FEATURE_ID: str = "id_monthly_ts_pv_production_simulated_1"
 
 # --- table 17.1: reference length of each month, t_mi, in hours -------------
 _MONTH_LENGTH_H: tuple[int, ...] = (
@@ -229,39 +224,33 @@ def monthly_production_kwh() -> list[float]:
     return out
 
 
-def simulate_daily_kwh(dates: Sequence[date], seed: int = DEFAULT_SEED) -> list[float]:
-    """Daily PV production [kWh] for each date, one value per day.
+def simulate_monthly_kwh(start: date, end_exclusive: date) -> list[int]:
+    """PV production [kWh] for each whole calendar month in ``[start, end_exclusive)``.
 
-    Each day carries its calendar month's NTA 8800 production divided by the
-    number of days in that month. The NTA 8800 reference climate is fixed, so
-    the value depends only on the month (and, through the day count, on whether
-    February falls in a leap year). ``seed`` is accepted for backwards
-    compatibility and does not affect the deterministic result.
+    Each month carries its NTA 8800 production (formulas 16.2/16.3) rounded to
+    whole kWh. The NEN 5060 reference climate is fixed, so a given calendar
+    month is identical from one year to the next; only the day of month in
+    ``start``/``end_exclusive`` is ignored, the iteration is by year-month.
     """
     monthly = monthly_production_kwh()
-    out: list[float] = []
-    for d in dates:
-        days_in_month = calendar.monthrange(d.year, d.month)[1]
-        out.append(round(monthly[d.month - 1] / days_in_month, 1))
+    out: list[int] = []
+    year, month = start.year, start.month
+    while (year, month) < (end_exclusive.year, end_exclusive.month):
+        out.append(round(monthly[month - 1]))
+        month += 1
+        if month > 12:
+            month = 1
+            year += 1
     return out
-
-
-def _daily_dates(start: date, end_exclusive: date) -> list[date]:
-    from datetime import timedelta
-
-    days = (end_exclusive - start).days
-    return [start + timedelta(days=i) for i in range(days)]
 
 
 def _feature_span(text: str) -> tuple[date, date]:
     data = json.loads(text)
     feature = next(f for f in data["features"] if f.get("id") == _FEATURE_ID)
-    start = datetime.fromisoformat(feature["start_timestamp"]).date()
-    end = datetime.fromisoformat(feature["end_timestamp"]).date()
-    return start, end
+    return date.fromisoformat(feature["start_date"]), date.fromisoformat(feature["end_date"])
 
 
-def _patch_values_array(text: str, values: Sequence[float]) -> str:
+def _patch_values_array(text: str, values: Sequence[int]) -> str:
     """Replace only the interior of the target feature's ``values_list`` array.
 
     Deliberate text surgery (not ``json.dump``) so the curated input keeps its
@@ -272,20 +261,19 @@ def _patch_values_array(text: str, values: Sequence[float]) -> str:
     value_key = text.index('"value"', values_list)
     open_bracket = text.index("[", value_key)
     close_bracket = text.index("]", open_bracket)
-    body = ", ".join(f"{v:.1f}" for v in values)
+    body = ", ".join(f"{v}" for v in values)
     return text[: open_bracket + 1] + body + text[close_bracket:]
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT_PATH)
-    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     args = parser.parse_args(argv)
 
     raw = args.input.read_bytes()
     text = raw.decode("utf-8")
     start, end = _feature_span(text)
-    values = simulate_daily_kwh(_daily_dates(start, end), seed=args.seed)
+    values = simulate_monthly_kwh(start, end)
     patched = _patch_values_array(text, values)
     args.input.write_bytes(patched.encode("utf-8"))
 

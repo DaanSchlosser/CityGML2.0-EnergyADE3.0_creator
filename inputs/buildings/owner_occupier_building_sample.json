@@ -449,7 +449,7 @@
       "metadata": [{
         "author": "Sample author",
         "acquisition_method": {"value": "simulation", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/DataAcquisitionMethodValue.xml"},
-        "source": "Sample simulated daily PV yield.",
+        "source": "Sample simulated monthly PV yield.",
         "quality_description": "Sample placeholder; not metered."
       }],
       "operation_type": {"value": "produces", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ResourceOperationTypeValue.xml"},
@@ -460,18 +460,17 @@
       "source": {"value": "photovoltaicPanels", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/EnergySourceValue.xml"}
     },
     {
-      "type": "nrg3:RegularTimeSeries",
+      "type": "nrg3:MonthlyTimeSeries",
       "parent": "id_pv_production_simulated_1",
       "parent_field": "time_dependent_amount",
-      "id": "id_daily_ts_pv_production_simulated_1",
-      "description": "Sample daily simulated PV production, ten placeholder values ending after the measured series.",
-      "name": ["Sample RegularTimeSeries simulated PV production"],
+      "id": "id_monthly_ts_pv_production_simulated_1",
+      "description": "Sample monthly simulated PV production, six placeholder values ending after the measured series.",
+      "name": ["Sample MonthlyTimeSeries simulated PV production"],
       "interpolation_type": "averageInSucceedingInterval",
-      "start_timestamp": "2003-07-01T00:00:00",
-      "end_timestamp": "2003-07-11T00:00:00",
-      "time_interval": {"value": 1, "unit": "day"},
+      "start_date": "2003-07-01",
+      "end_date": "2004-01-01",
       "values_list": {
-        "value": [12.0, 18.5, 40.2, 9.3, 33.1, 44.0, 7.8, 28.6, 39.4, 15.2],
+        "value": [10, 20, 30, 40, 50, 60],
         "uom": "kWh"
       }
     },

@@ -323,64 +323,66 @@ def test_energy_resources_attached_to_devices(reference_building_root):
 
 
 def test_monthly_time_series_on_pv_energy(reference_building_root):
-    """One PV energy resource has a MonthlyTimeSeries for measured production.
+    """Both PV energy resources carry a MonthlyTimeSeries.
 
-    The other PV resource carries a daily ``RegularTimeSeries`` instead (see
-    :func:`test_simulated_daily_pv_series_is_regular_and_surpasses_measured`),
-    so the measured-monthly count stays exactly one.
+    NTA 8800 is a monthly method, so the simulated series is a
+    ``MonthlyTimeSeries`` just like the measured one; a daily series would
+    overstate a resolution the standard does not provide. The two are told
+    apart by ``gml:id`` (the simulated one ends in ``_simulated_1``); see
+    :func:`test_simulated_monthly_pv_series_surpasses_measured`.
     """
     ts = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector//nrg3:Energy"
         "/nrg3:timeDependentAmount/nrg3:MonthlyTimeSeries",
         NS,
     )
-    assert len(ts) == 1
+    assert len(ts) == 2
+    ids = [t.get(f"{{{NS['gml']}}}id") or "" for t in ts]
+    assert sum("simulated" in i for i in ids) == 1
+    assert sum("simulated" not in i for i in ids) == 1
 
 
-def test_simulated_daily_pv_series_is_regular_and_surpasses_measured(reference_building_root):
-    """PV carries a daily RegularTimeSeries that runs past the measured series.
+def test_simulated_monthly_pv_series_surpasses_measured(reference_building_root):
+    """The simulated PV MonthlyTimeSeries runs past the measured series.
 
     Three invariants, all value-agnostic so any structurally-equivalent
     fixture satisfies them:
 
-    1. Exactly one ``nrg3:RegularTimeSeries`` hangs off a PV ``Energy``
-       resource, at a fixed one-day ``timeInterval``.
-    2. The value count equals the number of days in ``[start, end)`` -- one
-       sample per day -- which catches a series whose timestamps and value
-       array have silently drifted out of step.
-    3. The simulated series ends after the measured ``MonthlyTimeSeries``, so
-       the predicted yield demonstrably extends beyond the metered window
-       (the point of carrying a transposed series at all).
+    1. Exactly one simulated ``nrg3:MonthlyTimeSeries`` (``gml:id`` ending in
+       ``_simulated_1``) hangs off a PV ``Energy`` resource.
+    2. Its value count equals the number of whole months in
+       ``[startDate, endDate)`` -- one sample per month -- which catches a
+       series whose dates and value array have silently drifted out of step.
+    3. It ends after the measured series, so the predicted yield demonstrably
+       extends beyond the metered window (the point of carrying it at all).
     """
     series = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector//nrg3:Energy"
-        "/nrg3:timeDependentAmount/nrg3:RegularTimeSeries",
+        "/nrg3:timeDependentAmount/nrg3:MonthlyTimeSeries"
+        "[@gml:id='id_monthly_ts_pv_production_simulated_1']",
         NS,
     )
     assert len(series) == 1
-    rts = series[0]
+    mts = series[0]
 
-    interval = rts.find("nrg3:timeInterval", NS)
-    assert interval is not None
-    assert interval.get("unit") == "day"
-    assert float(interval.text) == 1.0
-
-    start = datetime.fromisoformat(rts.findtext("nrg3:startTimestamp", namespaces=NS))
-    end = datetime.fromisoformat(rts.findtext("nrg3:endTimestamp", namespaces=NS))
-    values = (rts.findtext("nrg3:valuesList", namespaces=NS) or "").split()
-    assert len(values) == (end - start).days, (
-        f"RegularTimeSeries must carry one value per day in [start, end): "
-        f"{len(values)} values for a {(end - start).days}-day span"
+    start = date.fromisoformat(mts.findtext("nrg3:startDate", namespaces=NS))
+    end = date.fromisoformat(mts.findtext("nrg3:endDate", namespaces=NS))
+    values = (mts.findtext("nrg3:valuesList", namespaces=NS) or "").split()
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    assert len(values) == months, (
+        f"MonthlyTimeSeries must carry one value per month in [start, end): "
+        f"{len(values)} values for a {months}-month span"
     )
 
     measured_end = reference_building_root.findtext(
         ".//nrg3:PhotovoltaicCollector//nrg3:Energy"
-        "/nrg3:timeDependentAmount/nrg3:MonthlyTimeSeries/nrg3:endDate",
+        "/nrg3:timeDependentAmount/nrg3:MonthlyTimeSeries"
+        "[@gml:id='id_monthly_ts_pv_production_1']/nrg3:endDate",
         namespaces=NS,
     )
     assert measured_end is not None
-    assert end.date() > date.fromisoformat(measured_end), (
-        f"simulated series end {end.date()} must fall after measured end {measured_end}"
+    assert end > date.fromisoformat(measured_end), (
+        f"simulated series end {end} must fall after measured end {measured_end}"
     )
 
 
