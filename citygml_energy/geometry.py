@@ -96,15 +96,24 @@ _FEATURE_KIND_SURFACE = "surface"
 _FEATURE_KIND_OPENING = "opening"
 _FEATURE_KIND_SOLAR = "solar"
 
-# ZonePart STEP shells follow the same author-facing CityGML 2.0 surface
-# vocabulary as building-level shells (``WallSurface_*``, ``GroundSurface_*``,
-# ``RoofSurface_*``, etc.) so that one Rhino export convention serves both.
-# When a zonepart source is processed, names are rewritten through this map
-# before classification so the matching XSD class is the EnergyADE
-# ``Zone…Surface`` subclass that ``nrg3:zoneBoundary`` accepts. Building
-# sources pass an empty remap and continue to use the ``bldg:_BoundarySurface``
-# subclasses directly.
-_BLDG_TO_ZONE_SURFACE_NAME_REMAP: dict[str, str] = {
+# ZonePart STEP shells follow the same author-facing CityGML 2.0
+# vocabulary as building-level shells (``WallSurface_*``, ``Window_*``,
+# ``Door_*``, etc.) so that one Rhino export convention serves both.
+# When a zonepart source is processed, names are rewritten through this
+# map before classification so the matching XSD class is the EnergyADE
+# zone subclass: ``nrg3:Zone…Surface`` (which ``nrg3:zoneBoundary``
+# accepts) for boundary surfaces, and ``nrg3:ZoneWindow`` /
+# ``nrg3:ZoneDoor`` (which ``nrg3:zoneOpening`` accepts) for openings.
+# The bldg openings ``Window`` / ``Door`` belong to a building's
+# ``bldg:_BoundarySurface``; a zone boundary surface carries its openings
+# through the dedicated ``nrg3:zoneOpening`` relation with the zone
+# opening classes, so the names are promoted here. Both substitute into
+# ``bldg:_Opening``, which is why a stray ``bldg:Window`` inside the
+# inherited ``bldg:opening`` slot still validates against the XSD: the
+# remap is what keeps the zone path on the intended classes. Building
+# sources pass no remap and continue to use the ``bldg:_BoundarySurface``
+# / ``bldg:_Opening`` subclasses directly.
+_BLDG_TO_ZONE_NAME_REMAP: dict[str, str] = {
     "WallSurface": "ZoneWallSurface",
     "GroundSurface": "ZoneGroundSurface",
     "RoofSurface": "ZoneRoofSurface",
@@ -112,6 +121,8 @@ _BLDG_TO_ZONE_SURFACE_NAME_REMAP: dict[str, str] = {
     "CeilingSurface": "ZoneOuterCeilingSurface",
     "IntermediateFloorSurface": "ZoneIntermediateFloorSurface",
     "ClosureSurface": "ZoneClosureSurface",
+    "Window": "ZoneWindow",
+    "Door": "ZoneDoor",
 }
 
 
@@ -512,8 +523,9 @@ def _apply_zonepart_source(
     LoD 0/1 produce only the aggregate hull (footprint MultiSurface or
     block Solid). LoD 2/3 additionally classify each named STEP shell into
     a ``nrg3:Zone…Surface`` subclass and attach it as a ``zoneBoundary``
-    child of the ZonePart, with ``Window``/``Door`` openings punched into
-    walls. The aggregate Solid is still emitted at LoD 2/3 so viewers that
+    child of the ZonePart, with ``ZoneWindow``/``ZoneDoor`` openings
+    routed through the ``zoneOpening`` relation on the wall. The aggregate
+    Solid is still emitted at LoD 2/3 so viewers that
     only consume the hull keep working; thermal-analysis consumers iterate
     the per-face children for ``bdgBdrySurf*`` attributes.
     """
@@ -564,11 +576,14 @@ def _apply_zonepart_boundary_surfaces(
     Mirrors :func:`_apply_building_source` (LoD ≥ 2) but targets ZonePart's
     ``zone_boundary`` slot and the ``nrg3:Zone…Surface`` taxonomy. Names
     are remapped from the building-style STEP convention
-    (``WallSurface_*``) to the matching zone subclass name
-    (``ZoneWallSurface``) before classification — the convention deliberately
-    matches the building convention so one Rhino export style serves both
-    pipelines. ``Window_*`` / ``Door_*`` openings carry the same vocabulary
-    on both sides and need no remap.
+    (``WallSurface_*``, ``Window_*``, ``Door_*``) to the matching zone
+    subclass names (``ZoneWallSurface``, ``ZoneWindow``, ``ZoneDoor``)
+    before classification — the convention deliberately matches the
+    building convention so one Rhino export style serves both pipelines.
+    Openings are discovered and attached through the ``zone_opening``
+    relation (``nrg3:zoneOpening``) rather than the inherited
+    ``bldg:opening`` slot, so they land on the EnergyADE zone opening
+    classes the way the reference data encodes them.
     """
     surface_wrapper = _discover_wrapper(zone_cls, "zone_boundary")
     if surface_wrapper is None:
@@ -585,7 +600,8 @@ def _apply_zonepart_boundary_surfaces(
             surface_map,
             solar_panel_prefix="",  # ZoneParts never carry PV geometry
             pv_target_declared=False,
-            surface_name_remap=_BLDG_TO_ZONE_SURFACE_NAME_REMAP,
+            surface_name_remap=_BLDG_TO_ZONE_NAME_REMAP,
+            opening_field_name="zone_opening",
         )
         for shell in shells
     ]
@@ -608,6 +624,7 @@ def _apply_zonepart_boundary_surfaces(
         parent_id_prefix=target_zone_part_id,
         lod_level=lod_level,
         source_path=step_path,
+        opening_list_field="zone_opening",
     )
 
 
@@ -654,6 +671,7 @@ def _classify_shell(
     *,
     pv_target_declared: bool = False,
     surface_name_remap: dict[str, str] | None = None,
+    opening_field_name: str = "opening",
 ) -> _ClassifiedFeature:
     """Classify one STEP shell against the parent's surface taxonomy.
 
@@ -669,10 +687,17 @@ def _classify_shell(
 
     *surface_name_remap* rewrites a recognised shell-name prefix before the
     surface-map lookup, so a single STEP authoring vocabulary
-    (``WallSurface_*``, ``GroundSurface_*``, …) can target either the
-    ``bldg:_BoundarySurface`` taxonomy (no remap) or the EnergyADE
-    ``nrg3:Zone…Surface`` taxonomy (remap via
-    :data:`_BLDG_TO_ZONE_SURFACE_NAME_REMAP`).
+    (``WallSurface_*``, ``Window_*``, …) can target either the
+    ``bldg:_BoundarySurface`` / ``bldg:_Opening`` taxonomy (no remap) or
+    the EnergyADE ``nrg3:Zone…Surface`` / ``nrg3:ZoneWindow`` /
+    ``nrg3:ZoneDoor`` taxonomy (remap via
+    :data:`_BLDG_TO_ZONE_NAME_REMAP`).
+
+    *opening_field_name* names the relation whose property-type wrapper
+    supplies the opening taxonomy. Buildings discover openings from
+    ``bldg:opening``; zoneparts pass ``"zone_opening"`` so the discovered
+    classes are ``nrg3:ZoneWindow`` / ``nrg3:ZoneDoor`` rather than the
+    inherited ``bldg:Window`` / ``bldg:Door``.
     """
     classified_name = _strip_lod_prefix(shell.object_name)
     if surface_name_remap:
@@ -698,11 +723,12 @@ def _classify_shell(
             )
 
     # Openings: discover opening map by peeking at any surface class's
-    # ``opening`` field. All surface classes in the same wrapper share the
-    # same opening wrapper type, so we grab the first one.
+    # *opening_field_name* field (``opening`` for buildings,
+    # ``zone_opening`` for zoneparts). All surface classes in the same
+    # wrapper share the same opening wrapper type, so we grab the first one.
     for entry in surface_map.values():
         # mypy stub for ``_lru_cache_wrapper`` rejects ``type[Any]``; safe.
-        opening_wrapper = _discover_wrapper(entry.element_cls, "opening")  # type: ignore[arg-type]
+        opening_wrapper = _discover_wrapper(entry.element_cls, opening_field_name)  # type: ignore[arg-type]
         if opening_wrapper is None:
             continue
         opening_map = _discover_property_map(opening_wrapper)
@@ -882,8 +908,16 @@ def _attach_pending_openings(
     parent_id_prefix: str,
     lod_level: int,
     source_path: Path,
+    opening_list_field: str = "opening",
 ) -> None:
-    """Match each opening to a parent surface (interior-ring overlap) and attach."""
+    """Match each opening to a parent surface (interior-ring overlap) and attach.
+
+    *opening_list_field* names the relation the opening is appended to on
+    its parent surface. Buildings use ``bldg:opening`` (the default);
+    zoneparts pass ``"zone_opening"`` so a zone boundary surface carries
+    its ``nrg3:ZoneWindow`` / ``nrg3:ZoneDoor`` through the dedicated
+    ``nrg3:zoneOpening`` relation, matching the reference encoding.
+    """
     lod_field = f"lod{lod_level}_multi_surface"
     for feature in buckets.pending_openings:
         assert feature.entry is not None
@@ -908,13 +942,15 @@ def _attach_pending_openings(
             },
         )
         # mypy stub for ``_lru_cache_wrapper`` rejects ``type[Any]``; safe.
-        opening_wrapper = _discover_wrapper(type(parent_surface), "opening")  # type: ignore[arg-type]
+        opening_wrapper = _discover_wrapper(type(parent_surface), opening_list_field)  # type: ignore[arg-type]
         if opening_wrapper is None:
             raise RuntimeError(
-                f"{type(parent_surface).__name__} has no 'opening' field; "
+                f"{type(parent_surface).__name__} has no {opening_list_field!r} field; "
                 f"cannot attach {feature.entry.xsd_name}"
             )
-        parent_surface.opening.append(opening_wrapper(**{feature.entry.field_name: opening_obj}))
+        getattr(parent_surface, opening_list_field).append(
+            opening_wrapper(**{feature.entry.field_name: opening_obj})
+        )
 
 
 def _attach_solar_panels(
@@ -1008,10 +1044,12 @@ def _apply_surface_name_remap(name: str, remap: dict[str, str]) -> str:
 
     Matches whole-token only (``"WallSurface_01"`` rewrites to
     ``"ZoneWallSurface_01"`` under ``{"WallSurface": "ZoneWallSurface"}``;
-    ``"WallSurfaceish_01"`` does not match). Unknown names pass through
-    unchanged so opening shells (``Window_*``, ``Door_*``) — which use the
-    same vocabulary on building and zonepart — fall through to the
-    opening-map lookup downstream.
+    ``"WallSurfaceish_01"`` does not match). The zonepart remap also
+    promotes opening tokens (``Window_*`` to ``ZoneWindow_*``, ``Door_*``
+    to ``ZoneDoor_*``) so a zone boundary surface routes its openings to
+    the EnergyADE zone opening classes. Unknown names pass through
+    unchanged, falling through to the surface- or opening-map lookup
+    downstream.
     """
     for src, dst in remap.items():
         if name == src:

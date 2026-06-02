@@ -10,7 +10,12 @@
       "GroundSurface": "constr_ground_floor",
       "RoofSurface": "constr_reed_roof",
       "Window": "constr_window_hr",
-      "Door": "constr_back_door"
+      "Door": "constr_back_door",
+      "ZoneWallSurface": "constr_external_wall",
+      "ZoneGroundSurface": "constr_ground_floor",
+      "ZoneRoofSurface": "constr_reed_roof",
+      "ZoneWindow": "constr_window_hr",
+      "ZoneDoor": "constr_back_door"
     },
     "by_id": {
       "id_building_1_Door2_1": "constr_front_door",

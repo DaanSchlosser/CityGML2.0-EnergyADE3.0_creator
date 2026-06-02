@@ -39,7 +39,8 @@ Per-surface attributes emitted (BoundarySurface, when geometry present):
   ``specificHeatCapacity`` (e.g. ``Gas`` panes inside a window cavity)
   are excluded from the sum but **not** from ``Thickness``.
 
-Per-opening attributes emitted (Window/Door, when geometry present):
+Per-opening attributes emitted (Window/Door and the EnergyADE
+ZoneWindow/ZoneDoor, when geometry present):
 
 * ``bdgOpnArea`` (m²), ``bdgOpnInclination`` (deg), ``bdgOpnAzimuth``
   (deg): same definitions as the boundary-surface analogues, computed
@@ -57,9 +58,11 @@ surface's MultiSurface, not averaged. A ``bldg:_BoundarySurface`` is a
 planar entity per CityGML semantics; in practice the per-building STEP
 import emits one polygon per surface, so the choice does not bite.
 
-Opening / true-hole classification: the per-building geometry pipeline
-(:mod:`citygml_energy.geometry`) punches a Window/Door opening into its
-parent wall as both (a) a child element on ``parent.opening`` and (b)
+Opening / true-hole classification: the geometry pipeline
+(:mod:`citygml_energy.geometry`) punches an opening into its parent
+wall as both (a) a child element on the parent's opening relation
+(``parent.opening`` for a ``bldg:_BoundarySurface``, or
+``parent.zone_opening`` for an EnergyADE zone boundary surface) and (b)
 an interior ring on the parent polygon. Interior rings that do not
 match any child opening's exterior ring (vertex-key equality at
 0.1 mm) are treated as true geometric holes and subtracted from the
@@ -657,20 +660,38 @@ def _ring_vertex_key(
     )
 
 
+# Relations that hold inline opening features. A ``bldg:_BoundarySurface``
+# carries its windows/doors through ``bldg:opening``; an EnergyADE
+# ``nrg3:_ZoneBoundarySurface`` routes its ``ZoneWindow`` / ``ZoneDoor``
+# through the dedicated ``nrg3:zoneOpening`` relation instead, and inherits
+# the (here unused) ``opening`` slot. Both must be walked so the opaque-area
+# subtraction and opening-ring matching see every opening regardless of which
+# relation the geometry pipeline attached it to.
+_OPENING_RELATION_FIELDS: tuple[str, ...] = ("opening", "zone_opening")
+
+
 def _opening_objects(surf: Any) -> list[Any]:
-    """Walk ``surf.opening`` and return its inline opening dataclasses."""
+    """Walk *surf*'s opening relations and return their inline opening dataclasses.
+
+    Looks under both ``surf.opening`` (CityGML ``bldg:opening``) and
+    ``surf.zone_opening`` (EnergyADE ``nrg3:zoneOpening``); a surface
+    only ever populates one of the two, so the union is exactly its
+    openings. Building surfaces lack the ``zone_opening`` field entirely,
+    which the missing-field guard skips.
+    """
     out: list[Any] = []
-    properties = getattr(surf, "opening", None)
-    if not isinstance(properties, list):
-        return out
-    for prop in properties:
-        if not dataclasses.is_dataclass(prop):
+    for field_name in _OPENING_RELATION_FIELDS:
+        properties = getattr(surf, field_name, None)
+        if not isinstance(properties, list):
             continue
-        for f in dataclasses.fields(prop):
-            inner = getattr(prop, f.name, None)
-            if inner is not None and _has_bdg_opn_area(inner):
-                out.append(inner)
-                break
+        for prop in properties:
+            if not dataclasses.is_dataclass(prop):
+                continue
+            for f in dataclasses.fields(prop):
+                inner = getattr(prop, f.name, None)
+                if inner is not None and _has_bdg_opn_area(inner):
+                    out.append(inner)
+                    break
     return out
 
 
