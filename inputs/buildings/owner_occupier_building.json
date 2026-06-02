@@ -41,7 +41,7 @@
       "identifier": [{"value": "0000000000000001", "code_space": "http://bag.basisregistraties.overheid.nl/bag/id/pand/"}],
       "metadata": [{
         "author": "Daan Schlosser",
-        "acquisition_method": "measurement",
+        "acquisition_method": {"value": "measurement", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/DataAcquisitionMethodValue.xml"},
         "owner": "Han Solo",
         "quality_description": "Gross floor area disagrees between BAG register (122.0 m2) and the measured 3D model (119.6 m2); both values are retained as separate QualifiedArea entries so downstream tooling can pick the provenance it trusts.",
         "source": "BAG + on-site measurement survey"

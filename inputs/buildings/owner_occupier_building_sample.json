@@ -39,7 +39,7 @@
       "identifier": [{"value": "SAMPLE-0000000000000000", "code_space": "https://example.invalid/register"}],
       "metadata": [{
         "author": "Sample Author",
-        "acquisition_method": "measurement",
+        "acquisition_method": {"value": "measurement", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/DataAcquisitionMethodValue.xml"},
         "owner": "Sample Owner",
         "quality_description": "Sample quality description for shareable reproducer.",
         "source": "Sample source"
