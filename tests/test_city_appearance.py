@@ -119,20 +119,20 @@ def test_collect_targets_includes_lod0_lod1_and_lod2_surfaces() -> None:
     assert any("roofsurface_1_ms" in t for t in targets)
 
 
-def test_collect_targets_includes_individual_polygon_ids() -> None:
-    """Per-polygon targets are required for viewers (KIT SDM_KITModelViewer
-    among them) that ignore container-level targets under
-    ``bldg:lod0FootPrint`` / ``bldg:lod1Solid``.
+def test_collect_targets_are_container_only() -> None:
+    """Only surface-aggregate containers are targeted, never member polygons.
+
+    An appearance on a ``gml:MultiSurface`` / ``gml:CompositeSurface``
+    is valid for all of its member surfaces per the CityGML 2.0
+    Appearance model, so the color propagates to the polygons from the
+    container target. Emitting per-polygon targets is therefore
+    redundant, and the Alderaan reference data lists only containers.
     """
     building, _ = _build_with_labels("001", ["A"])
     targets = collect_surface_target_ids(building)
 
-    # Each lod0 / lod1 / thematic-ms MultiSurface carries at least one
-    # Polygon, and those polygons' gml:ids must also be in the target list.
-    assert any(t.endswith("_lod0_poly_1") for t in targets)
-    assert any("_lod1_poly_" in t for t in targets)
-    assert any("groundsurface_1_ms_poly_1" in t for t in targets)
-    assert any("roofsurface_1_ms_poly_1" in t for t in targets)
+    # No ``_poly_`` member-polygon refs: the container targets cover them.
+    assert not any("_poly_" in t for t in targets)
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +276,7 @@ def test_solar_appearance_no_op_when_model_has_no_solar_panels() -> None:
     assert model.xsd.appearance_member == []
 
 
-def test_solar_appearance_targets_every_solar_multisurface_and_polygon() -> None:
+def test_solar_appearance_targets_every_solar_multisurface() -> None:
     model = CityModel()
     building, _ = _build_with_labels("001", ["A"])
     attach_solar_collectors_to_building(
@@ -300,12 +300,11 @@ def test_solar_appearance_targets_every_solar_multisurface_and_polygon() -> None
     assert material.diffuse_color == list(SOLAR_PANEL_DIFFUSE_COLOR)
     assert material.transparency is None
 
-    # Two panels × (one MultiSurface id + one Polygon id each) = 4 targets.
+    # One MultiSurface container per panel; the color propagates to each
+    # container's member polygon, so the polygons are not targeted.
     assert set(material.target) == {
         "#solar_001_7_lod2",
-        "#solar_001_7_lod2_poly_1",
         "#solar_001_9_lod2",
-        "#solar_001_9_lod2_poly_1",
     }
 
 

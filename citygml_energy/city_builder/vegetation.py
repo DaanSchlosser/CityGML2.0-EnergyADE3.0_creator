@@ -299,13 +299,10 @@ def attach_trees_to_model(
         model.add(obj)
         if obj.lod3_geometry is not None and obj.lod3_geometry.multi_surface is not None:
             ms = obj.lod3_geometry.multi_surface
+            # Target only the MultiSurface container; the color propagates
+            # to its member polygons per the CityGML 2.0 Appearance model.
             if ms.id:
                 appearance_targets.append(f"#{ms.id}")
-            appearance_targets.extend(
-                f"#{member.polygon.id}"
-                for member in ms.surface_member
-                if member.polygon is not None and member.polygon.id
-            )
         for polygon in tree.polygons:
             coords_sink.extend(polygon.exterior)
             for hole in polygon.interiors:

@@ -21,29 +21,27 @@ material over a set of targets) and route through
 genuinely different (per-letter grouping, multiple materials) and
 constructs its appearance inline.
 
-Targeting rule (used by every theme): we target every
-``gml:MultiSurface``, ``gml:CompositeSurface`` and ``gml:Polygon`` id
-found under the relevant feature subtree. For buildings:
+Targeting rule (used by every theme): we target the outermost surface
+aggregate of each colorable geometry and let the color propagate to its
+members. The CityGML 2.0 Appearance model defines an appearance on an
+aggregate or composite geometry as valid for all of its member surfaces,
+so a single container target colors every child polygon. The EnergyADE
+3.0 Alderaan reference data follows the same convention: its
+``app:X3DMaterial`` targets list only ``MultiSurf_lodN`` containers,
+never the member polygons. For buildings:
 
-* LoD 0 → the ``gml:MultiSurface`` inside ``bldg:lod0FootPrint`` plus each
-  of its member ``gml:Polygon`` elements.
-* LoD 1 → the ``gml:CompositeSurface`` shell inside ``bldg:lod1Solid``
-  plus each of its member ``gml:Polygon`` elements.
-* LoD 2 → the ``gml:MultiSurface`` inside each thematic surface's
-  ``bldg:lod2MultiSurface`` plus each of its member ``gml:Polygon``
-  elements.
+* LoD 0 targets the ``gml:MultiSurface`` inside ``bldg:lod0FootPrint``.
+* LoD 1 targets the ``gml:CompositeSurface`` shell inside
+  ``bldg:lod1Solid``.
+* LoD 2 targets the ``gml:MultiSurface`` inside each thematic surface's
+  ``bldg:lod2MultiSurface``.
 
 The CityGML 2.0 Appearance XSD annotates ``app:target`` as accepting
-"gml:MultiSurface or descendants of gml:AbstractSurfaceType"; all three
-targeted classes satisfy that constraint. Individual ``gml:Polygon``
-targets are included in addition to the containers because some
-viewers (KIT SDM_KITModelViewer observed, and its family of viewers)
-only resolve appearance targets that point at individual polygons and
-silently skip targets that point at an enclosing ``gml:MultiSurface``
-or ``gml:CompositeSurface`` that lives directly under
-``bldg:lod0FootPrint`` or ``bldg:lod1Solid`` (i.e. outside a thematic
-boundary surface). Emitting both keeps the file readable and makes the
-color apply in every viewer observed so far.
+"gml:MultiSurface or descendants of gml:AbstractSurfaceType", and all
+targeted classes satisfy that constraint. We do not target the
+``gml:Solid`` of ``bldg:lod1Solid`` directly: a solid is not a surface
+type and so is not a valid ``app:target``, which is why the LoD 1 target
+is the solid's ``gml:CompositeSurface`` shell.
 """
 
 from __future__ import annotations
@@ -56,7 +54,6 @@ from ..bindings import (
     CompositeSurface,
     GenericSolarCollector,
     MultiSurface,
-    Polygon,
     SolitaryVegetationObject,
 )
 from ..mapping import get_fields, iter_instances, resolve_class
@@ -91,19 +88,21 @@ VEGETATION_DIFFUSE_COLOR: tuple[float, float, float] = (0.15, 0.55, 0.15)
 
 
 def collect_surface_target_ids(building: Any) -> list[str]:
-    """Return ``#<gml:id>`` references for every colorable surface under *building*.
+    """Return ``#<gml:id>`` references for every colorable surface container under *building*.
 
     Walks the xsdata tree with :func:`mapping.iter_instances` and picks
-    up every :class:`MultiSurface`, :class:`CompositeSurface`, and
-    :class:`Polygon` whose ``id`` is populated. All three are valid
-    ``app:target`` types per the CityGML 2.0 Appearance XSD, and the
-    per-polygon entries are what keeps the EPC color applied in viewers
-    that do not resolve container-level targets.
+    up every :class:`MultiSurface` and :class:`CompositeSurface` whose
+    ``id`` is populated: the LoD 0 footprint MultiSurface, the LoD 1
+    CompositeSurface shell, and each LoD 2 thematic surface's
+    MultiSurface. The color propagates from each container to its member
+    polygons per the CityGML 2.0 Appearance model, so the member
+    ``gml:Polygon`` ids are deliberately not targeted, which matches the
+    Alderaan reference data (its targets list only containers).
     """
     return [
         f"#{obj.id}"
         for obj in iter_instances(building)
-        if isinstance(obj, (MultiSurface, CompositeSurface, Polygon)) and obj.id
+        if isinstance(obj, (MultiSurface, CompositeSurface)) and obj.id
     ]
 
 
@@ -172,12 +171,11 @@ def append_energy_label_appearance(
 def append_solar_panel_appearance(city_model: Any) -> None:
     """Attach an ``app:Appearance`` that paints every solar panel dark blue.
 
-    One ``app:X3DMaterial`` targets every ``gml:MultiSurface`` and
-    ``gml:Polygon`` found under a :class:`GenericSolarCollector` in
-    the model: the collector's ``lod2MultiSurface`` plus each of its
-    polygons. Per-polygon targets are included for the same
-    viewer-compatibility reason as the energy-label appearance (see
-    :func:`collect_surface_target_ids`).
+    One ``app:X3DMaterial`` targets the ``gml:MultiSurface`` of each
+    :class:`GenericSolarCollector`'s ``lod2MultiSurface`` in the model.
+    The material propagates from that container to its member polygons
+    per the CityGML 2.0 Appearance model, so the polygons are not
+    targeted individually (see :func:`collect_surface_target_ids`).
 
     The appearance lives under its own theme (``"solarPanels"``) so a
     viewer's theme switcher can toggle panels independently of the
@@ -214,12 +212,10 @@ def append_vegetation_appearance(
     falls back to a single ``iter_instances`` walk filtered to
     :class:`SolitaryVegetationObject`.
 
-    Per-polygon targets accompany the container targets for the same
-    viewer-compatibility reason as the energy-label appearance (see
-    :func:`collect_surface_target_ids`): KIT SDM_KITModelViewer and its
-    family silently skip appearance targets that point at an enclosing
-    ``gml:MultiSurface``, so emitting both keeps the color applied in
-    every viewer observed so far.
+    Only the container ``gml:MultiSurface`` of each tree is targeted; the
+    color propagates to its member polygons per the CityGML 2.0
+    Appearance model (see :func:`collect_surface_target_ids`), matching
+    the Alderaan reference convention.
 
     The appearance lives under its own theme (``"vegetation"``) so the
     viewer's theme switcher can toggle it independently of building /
@@ -248,7 +244,9 @@ def _collect_per_feature_targets(city_model: Any, feature_cls: type) -> list[str
     Walks the underlying xsdata tree once (:func:`iter_instances` is
     cycle-safe and yields each dataclass node once); for each instance
     of *feature_cls*, descends into its subtree to pick up
-    ``gml:MultiSurface`` and ``gml:Polygon`` ids. Used by the solar-panel
+    ``gml:MultiSurface`` container ids. The color propagates from each
+    container to its member polygons, so the polygons are not targeted
+    individually. Used by the solar-panel
     (:class:`GenericSolarCollector`) and vegetation
     (:class:`SolitaryVegetationObject`) painters; the energy-label
     painter walks the per-Building subtree via
@@ -268,7 +266,7 @@ def _collect_per_feature_targets(city_model: Any, feature_cls: type) -> list[str
         targets.extend(
             f"#{sub.id}"
             for sub in iter_instances(feat)
-            if isinstance(sub, (MultiSurface, Polygon)) and sub.id
+            if isinstance(sub, MultiSurface) and sub.id
         )
     return targets
 

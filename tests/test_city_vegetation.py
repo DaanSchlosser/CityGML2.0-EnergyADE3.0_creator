@@ -513,13 +513,13 @@ def test_append_vegetation_appearance_is_noop_without_trees() -> None:
     assert model.xsd.appearance_member == []
 
 
-def test_append_vegetation_appearance_collects_surface_and_polygon_targets() -> None:
-    """Every MultiSurface *and* every member Polygon under a tree must be targeted.
+def test_append_vegetation_appearance_targets_container_only() -> None:
+    """Only the MultiSurface container of each tree is targeted.
 
-    Per-polygon targets are required because KIT SDM_KITModelViewer only
-    resolves appearance targets that point at individual polygons; emitting
-    both keeps the colour applied in every viewer the project ships a
-    workaround for.
+    An appearance on a ``gml:MultiSurface`` is valid for all of its
+    member surfaces per the CityGML 2.0 Appearance model, so the foliage
+    color propagates to the member polygons from the single container
+    target (matching the Alderaan reference convention).
     """
     tree = _parsed_tree_from_cityjson()
     obj = build_solitary_vegetation_object(tree)
@@ -534,11 +534,10 @@ def test_append_vegetation_appearance_collects_surface_and_polygon_targets() -> 
     assert len(materials) == 1
     material = materials[0].x3_dmaterial
     assert material.diffuse_color == list(VEGETATION_DIFFUSE_COLOR)
-    # 1 MultiSurface + N member Polygons. Sanity: at least 3 targets
-    # (MultiSurface itself + at least 2 triangle faces).
-    assert len(material.target) >= 3
-    # Every target is a local '#'-prefixed ref.
-    assert all(t.startswith("#") for t in material.target)
+    # Exactly one target: the tree's MultiSurface container, no polygons.
+    assert len(material.target) == 1
+    assert material.target[0].startswith("#")
+    assert "_poly_" not in material.target[0]
 
 
 # ---------------------------------------------------------------------------

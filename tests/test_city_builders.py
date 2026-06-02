@@ -421,22 +421,20 @@ def test_lod2_skipped_construction_attrs_are_not_emitted() -> None:
 
 def test_lod2_targets_collected_once_per_emitted_surface() -> None:
     """The pre-collected ``surface_targets_out`` list must enumerate
-    every emitted surface exactly once (container ms id + member poly
-    id), so the appearance builder can paint each facet without re-
-    walking the xsdata tree per building.
+    every emitted surface's container exactly once, so the appearance
+    builder can paint each facet without re-walking the xsdata tree per
+    building. Member polygons are not targeted: the color propagates to
+    them from the container per the CityGML 2.0 Appearance model.
     """
     targets: list[str] = []
     build_building(_multi_facet_parsed(), BuildContext(lods=(2,)), surface_targets_out=targets)
 
-    # 7 surfaces × (1 _ms container + 1 _poly_1 member) = 14 LoD 2 targets.
+    # 7 source polygons → 7 thematic surfaces → 7 ``_ms`` container targets.
     lod2_targets = [t for t in targets if "_ms" in t]
-    assert len(lod2_targets) == 14
-    # Half are container references, half polygons; per the convention,
-    # a polygon target is a strict suffix of its container's id.
-    container_ids = {t for t in lod2_targets if not t.endswith("_poly_1")}
-    polygon_ids = {t for t in lod2_targets if t.endswith("_poly_1")}
-    assert len(container_ids) == 7
-    assert len(polygon_ids) == 7
+    assert len(lod2_targets) == 7
+    # All are container references; no member-polygon refs are emitted.
+    assert not any(t.endswith("_poly_1") for t in lod2_targets)
+    assert len(set(lod2_targets)) == 7
 
 
 # ---------------------------------------------------------------------------
