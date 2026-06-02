@@ -6,7 +6,7 @@ Comprehensive scan for:
   H3. Element URIs that have no XSD declaration (validator silently passes).
   H4. @codeSpace URLs — list distinct values for human review.
   H5. gml:Polygon LinearRing point counts (>= 4, first == last).
-  H6. @uom tokens unknown to KIT SDM_KITModelViewer's UOMList.xml (viewer
+  H6. @uom tokens unknown to the KITModelViewer's UOMList.xml (viewer
       renders unmatched tokens as raw text instead of the unit sign).
   H7. xs:any wildcards in the schemas (one-shot, not per file).
   H8. XSD-required child elements present on a curated set of feature types.
@@ -48,7 +48,7 @@ from validate_xsd import load_schema  # noqa: E402
 # ---------------------------------------------------------------------------
 # H6 — KIT viewer UOMList.xml cross-check
 # ---------------------------------------------------------------------------
-# The KIT SDM_KITModelViewer ships a curated UOM catalog at
+# The KITModelViewer ships a curated UOM catalog at
 # Data/UOMList.xml (one <UOM> entry per unit, each with one ``id`` and 0–3
 # ``altId`` aliases). Any uom="..." attribute in our GML whose value is
 # neither an id nor an altId will render as raw text in the viewer's
@@ -59,7 +59,7 @@ KIT_VIEWER_GLOB = "KITModelViewer_V*/Data/UOMList.xml"
 
 # Every uom token emitted by this pipeline lives in the bundled
 # UOMList.xml — including the three TU Delft–proposed additions
-# (kWh/a, m3/a, W/W) the file ships with at v1.2 pending upstream FZK
+# (kWh/a, m3/a, W/W) the file ships with at v1.2 pending upstream KIT
 # merge. The audit therefore has no per-token allowlist: if H6 reports
 # a uom as unknown, it really is unknown to the catalog and either
 # wants fixing in the input or wants adding to UOMList.xml itself.
@@ -342,7 +342,7 @@ def audit(path: Path) -> int:
         else:
             print(f"  H6 @uom: OK ({n_distinct} distinct tokens, all in KIT UOMList)")
         if extensions:
-            print(f"  H6 @uom EXTENSION (pending FZK upstream) ({len(extensions)} distinct):")
+            print(f"  H6 @uom EXTENSION (pending KIT upstream) ({len(extensions)} distinct):")
             for token, n in extensions:
                 print(f"     {n:>5} × {token!r}")
 

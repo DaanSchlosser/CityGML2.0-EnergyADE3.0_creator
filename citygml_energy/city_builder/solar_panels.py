@@ -97,7 +97,7 @@ _EXPECTED_SRS_ID: int = 28992
 _UNDEFINED_SRS_IDS: frozenset[int] = frozenset({0, -1})
 
 # uom tokens are shared with the building builder via
-# :mod:`builders._common`; they pin the KIT SDM_KITModelViewer
+# :mod:`builders._common`; they pin the KITModelViewer
 # UOMList.xml @id values so the viewer's Properties panel renders the
 # unit name rather than the raw token.
 _UOM_AREA_M2: str = UOM_AREA_M2

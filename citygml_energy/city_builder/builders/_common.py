@@ -5,8 +5,8 @@ it imports xsdata-binding-aware code (:mod:`citygml_energy.mapping`),
 and the layering rule for the wider package keeps fetchers free of
 xsdata. Only the builder modules import from here.
 
-UOM tokens are pinned as constants so they match the KIT
-SDM_KITModelViewer ``Data/UOMList.xml`` ids exactly, the same convention
+UOM tokens are pinned as constants so they match the KITModelViewer
+``Data/UOMList.xml`` ids exactly, the same convention
 used in :mod:`citygml_energy.city_builder.solar_panels`. Mismatched UOM
 strings render fine but the viewer's Properties panel then displays the
 raw token instead of a translated unit name. The energy-domain tokens

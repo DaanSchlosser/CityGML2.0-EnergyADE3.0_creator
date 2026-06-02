@@ -29,7 +29,7 @@ python tools/merge_cftree_tiles.py \
     --output inputs/vegetation/emmer-compascuum_small-area_AHN6.city.json
 ```
 
-`--dedup-threshold-m` defaults to 1.0 m (centroid distance below which two reconstructions are treated as the same physical tree). The AHN4 small-area run drops 28 cross-tile duplicates at this threshold; AHN6 grid2 has zero duplicates at any threshold up to 2 m. Going wider than 1 m starts collapsing genuinely distinct neighbouring trees, so widen only if cross-tile overlap behavior in CFTree changes meaningfully.
+`--dedup-threshold-m` defaults to 1.0 m (centroid distance below which two reconstructions are treated as the same physical tree). The AHN4 small-area run drops 28 cross-tile duplicates at this threshold; AHN6 grid2 has zero duplicates at any threshold up to 2 m. Going wider than 1 m starts collapsing genuinely distinct neighbouring trees, so widen only if cross-tile overlap behaviour in CFTree changes meaningfully.
 
 ## Schema notes
 

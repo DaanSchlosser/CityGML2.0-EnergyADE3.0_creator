@@ -1,6 +1,6 @@
 # Boundary AOI polygons
 
-GeoJSON polygons used as `boundary` inputs by city-scale configs in [`../cities/`](../cities/). The city pipeline uses a boundary polygon for two things: (a) deriving the bbox that drives BAG / 3DBAG / EP-online / BGT fetches, and (b) clipping fetched buildings + trees to the (potentially concave) AOI.
+GeoJSON polygons used as `boundary` inputs by city-scale configs in [`../cities/`](../cities/). The city pipeline uses a boundary polygon for two things: (a) deriving the bbox that drives BAG / 3DBAG / EP-Online / BGT fetches, and (b) clipping fetched buildings + trees to the (potentially concave) AOI.
 
 Loader: [`citygml_energy/city_builder/boundary.py`](../../citygml_energy/city_builder/boundary.py). Only `.geojson` files are accepted. The file must be a single GeoJSON `Feature` with a `Polygon` or `MultiPolygon` geometry. CRS must be EPSG:28992.
 
@@ -8,7 +8,9 @@ Loader: [`citygml_energy/city_builder/boundary.py`](../../citygml_energy/city_bu
 
 | File | Used by | Notes |
 |---|---|---|
-| `emmer-compascuum_small-area.geojson` | [`../cities/emmer-compascuum_small-area.json`](../cities/emmer-compascuum_small-area.json), [`../cities/emmer-compascuum_small-area_pv-only.json`](../cities/emmer-compascuum_small-area_pv-only.json) | Hand-drawn concave AOI over Emmer-Compascuum. |
+| `emmer-compascuum_small-area.geojson` | [`../cities/emmer-compascuum_small-area.json`](../cities/emmer-compascuum_small-area.json), [`../cities/emmer-compascuum_small-area_solar-only.json`](../cities/emmer-compascuum_small-area_solar-only.json) | Hand-drawn concave AOI over Emmer-Compascuum. |
+| `emmer-compascuum_woonplaats.geojson` | [`../cities/emmer-compascuum.json`](../cities/emmer-compascuum.json) | Full BAG woonplaats boundary of Emmer-Compascuum. |
+| `emmer_compascuum_area.geojson` | — | Not currently referenced by any config. |
 
 ## Adding a new boundary
 

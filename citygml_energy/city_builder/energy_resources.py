@@ -165,10 +165,10 @@ _REFERENCE_YEAR: str = "year"
 # uom tokens
 #
 # Every token emitted by this module lives in the bundled KIT
-# ``UOMList.xml``. Four were FZK upstream additions (``kWh/m2/a``,
+# ``UOMList.xml``. Four were KIT upstream additions (``kWh/m2/a``,
 # ``kg/m2/a``, ``MJ/a``, ``kg/a``); the remaining two (``kWh/a``,
 # ``m3/a``) were added locally in UOMList.xml v1.2 (2026-05-27) as
-# TU Delft–proposed extensions, pending upstream merge by FZK.
+# TU Delft–proposed extensions, pending upstream merge by KIT.
 # ``tools/audit_silent_bugs.py`` reads the same UOMList.xml so any
 # future drift is caught automatically.
 # ---------------------------------------------------------------------------
@@ -207,7 +207,7 @@ _UOM_KG_PER_A: str = "kg/a"
 # ``UrbanFunctionArea`` resources for ``gemiddeldGasverbruikWoning``
 # (per-postcode average across occupied dwellings). Added to
 # UOMList.xml v1.2 as ``CUBIC_METRE_PER_YEAR`` (TU Delft proposal,
-# pending FZK upstream merge) — UOMList previously only had
+# pending KIT upstream merge) — UOMList previously only had
 # ``m3/s`` / ``m3/h`` flow-rate forms, which don't fit an annual
 # aggregate. § 12 of the mapping doc records the postcode-aggregate
 # semantics. Public so the UrbanFunctionArea builder can populate the
@@ -216,7 +216,7 @@ UOM_M3_PER_A: str = "m3/a"
 
 # Total annual electrical energy. Used by the CBS Postcode6 electricity
 # resource alongside ``UOM_M3_PER_A``. Added to UOMList.xml v1.2 as
-# ``KILOWATT_HOUR_PER_YEAR`` (TU Delft proposal, pending FZK upstream
+# ``KILOWATT_HOUR_PER_YEAR`` (TU Delft proposal, pending KIT upstream
 # merge) — UOMList previously had ``kWh`` (no per-time) and ``MWh/a``
 # (which would force a 1000× rescale of the CBS-published values).
 # Distinct from ``UOM_KWH_PER_M2_PER_A`` (NTA 8800 per-area intensity):
@@ -239,7 +239,7 @@ def attach_energy_resources_to_building_unit(
 
     * ``nta8800``: up to four resources, all in kWh/(m²·yr); CO₂ on the
       BENG-2 resource in kg/(m²·yr).
-    * ``legacy_total``: at most one resource (``final``) in MJ/yr
+    * ``legacy_total``: at most one resource (``primary``) in MJ/yr
       (total). CO₂ on the same resource in kg/yr (total) when the row
       belongs to the Nader Voorschrift / ISSO branch; the Definitief
       Energielabel branch's placeholder ``0,00`` is suppressed via

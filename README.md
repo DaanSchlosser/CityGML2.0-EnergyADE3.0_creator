@@ -1,46 +1,40 @@
 # CityGML 2.0 + Energy ADE 3.0 Creator
 
-A Python toolkit for generating standards-compliant CityGML 2.0 files
-extended with the Energy ADE 3.0 (beta8) application domain extension.
-Reads JSON inputs, attaches STEP or CityJSON geometry, and emits a
-fully XSD-validated GML file without hand-written XML.
+A Python toolkit for generating CityGML 2.0 files extended with Energy
+ADE 3.0 (beta8), CityGML's extension mechanism for energy data. The
+point is an easier authoring path: you describe the model in JSON and
+attach STEP or CityJSON geometry, and the toolkit assembles and
+serialises the Energy ADE GML so you never write the XML by hand.
 
-> **Viewing the output in KIT FZKViewer?** The viewer ships with an
+> **Viewing the output in KITModelViewer?** The viewer ships with an
 > incompatible Energy ADE 2.0 schema. See
-> [§6 KIT FZKViewer compatibility](#6-kit-fzkviewer-compatibility) for
+> [§6 KITModelViewer compatibility](#6-kitmodelviewer-compatibility) for
 > the one-time XSD swap.
 
 ---
 
 ## 1. Research context
 
-This toolkit is a contribution to
+This toolkit contributes to
 **[RenoDAT](https://3d.bk.tudelft.nl/projects/renodat/)**
 (*Accelerating building **RENO**vation and decarbonization through
-**DAT**a integration*), a TU Delft–led,
-[NWO](https://www.nwo.nl/en/projects/xqbeg97133)-funded research project
-(autumn 2025 to summer 2029) developing the data infrastructure for
-**Building Renovation Passports (BRPs)**.
-
-**The question this toolkit tests:** *Is CityGML 2.0 + Energy ADE 3.0 a
-meaningful starting point for BRPs?* Energy ADE 3.0 (beta8) was developed
-well before RenoDAT; the project is a catalyst for its real-world
-testing, extension, and de-facto standardisation.
-
-**Two pipelines, two test cases for that question:**
+**DAT**a integration*), a TU Delft-led,
+[NWO](https://www.nwo.nl/en/projects/xqbeg97133)-funded project
+(2025 to 2029) building the data infrastructure for Building Renovation
+Passports. It tests whether CityGML 2.0 + Energy ADE 3.0 (beta8,
+developed well before RenoDAT) is a workable starting point for those
+passports, through two pipelines that exercise the question on
+different inputs.
 
 | Pipeline | Input | Purpose in RenoDAT |
 |---|---|---|
-| **Per-building** | Hand-authored feature-collection JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport (zones, schedules, devices, layered constructions, material libraries) for one dwelling? The [owner-occupier reference building](inputs/buildings/owner_occupier_building.json) (a single-family residence in Delft, LoD 0–3 with thermal zone parts) is the worked example. |
-| **City-scale** | JSON config naming a Dutch municipality | Does the same data model scale to the dwelling stock? Fetches BAG + 3DBAG + EP-online (+ optional solar panels, BGT/BOR tree register, CFTree vegetation) for an entire area and assembles one GML file. |
+| **Per-building** | Hand-authored feature-collection JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport (zones, schedules, devices, layered constructions, material libraries) for one dwelling? The [owner-occupier reference building](inputs/buildings/owner_occupier_building.json) (a single-family residence in Delft, LoD0-LoD3 with thermal zone parts) is the worked example. |
+| **City-scale** | JSON config naming a Dutch municipality | Does the same data model scale to the dwelling stock? Fetches BAG + 3DBAG + EP-Online (+ optional solar panels, BGT/BOR tree register, CFTree vegetation) for an entire area and assembles one GML file. |
 
-Both pipelines emit the same CityGML 2.0 + Energy ADE 3.0 wire format,
-validated against the same XSD set. The output:
-
-- validates against the Energy ADE 3.0 beta8 XSD and the CityGML 2.0 +
-  GML 3.1.1 XSD set,
-- renders correctly in KIT FZKViewer (after the §6 XSD swap),
-- carries real-world coordinates in EPSG:28992 (RD) + EPSG:5109 (NAP).
+Both pipelines emit the same wire format, so a consumer reads one
+schema no matter which pipeline produced the file. The output renders
+in KITModelViewer after the §6 XSD swap and carries real-world
+coordinates in EPSG:28992 (RD) + EPSG:5109 (NAP).
 
 ---
 
@@ -64,9 +58,9 @@ python -m pytest -q
 ```
 
 Custom paths are supported via `--input` / `--output`. The city-scale
-pipeline needs the `city` extras and an EP-online API key in `.env` if
+pipeline needs the `city` extras and an EP-Online API key in `.env` if
 energy labels are requested (see §4). Optional extras: `city-fast`
-adds `polars` for faster EP-online CSV filtering. All declared in
+adds `polars` for faster EP-Online CSV filtering. All declared in
 [pyproject.toml](pyproject.toml).
 
 ---
@@ -104,7 +98,7 @@ with these top-level keys:
   attach to the field on the parent whose type matches; if more than
   one field qualifies, `parent_field` disambiguates.
 - **`geometry_sources`** lists STEP files to import.
-  `step-building-lod{0..4}` drives building geometry (LoD 2/3 emit
+  `step-building-lod{0..4}` drives building geometry (LoD2/LoD3 emit
   per-face thematic surfaces and openings, and accept an optional
   `target_pv_id`); `step-zonepart-lod{0..3}` does the same for
   ZoneParts. STEP layer names (`WallSurface_04`, `RoofSurface_02`,
@@ -155,7 +149,7 @@ flowchart TD
     classDef output fill:#e6f6e6,stroke:#4a8a4a,color:#1a3a1a;
 ```
 
-Every stage runs offline. No FME, no schema downloads, no XML templates.
+Every stage runs offline. No schema downloads, no XML templates.
 
 ### 3.2 Design notes
 
@@ -183,8 +177,8 @@ Every stage runs offline. No FME, no schema downloads, no XML templates.
   `construction_mapping.py` (layeredConstruction xlinks) and
   `boundary_attributes.py` (`bdgBdrySurf*` / `bdgOpn*` area,
   inclination, azimuth, thickness, heat capacity).
-- **Offline everything.** The repository ships every XSD it needs;
-  validation, binding regeneration, and tests run without network
+- **Ships its own schemas.** The repository ships every XSD it needs,
+  so validation, binding regeneration, and tests run without network
   access.
 
 ---
@@ -199,15 +193,15 @@ combining:
 - **BAG** (PDOK WFS): authoritative `bag:pand` outlines and
   `bag:verblijfsobject` units with embedded address fields.
 - **3DBAG** ([data.3dbag.nl](https://data.3dbag.nl)): per-Pand
-  LoD 0 / 1 / 2 CityJSON tiles.
-- **EP-online** ([public.ep-online.nl](https://public.ep-online.nl)):
+  LoD0/LoD1/LoD2 CityJSON tiles.
+- **EP-Online** ([public.ep-online.nl](https://public.ep-online.nl)):
   the Dutch energy-label register, joined by `BAGVerblijfsobjectID`
   when present, falling back to a normalised address key.
 - **Solar panels** *(optional)*: 2D roof-panel polygons from a GeoPackage,
-  projected onto LoD 2 roof surfaces as
+  projected onto LoD2 roof surfaces as
   `nrg3:GenericSolarCollector` (technology-agnostic, because the aerial
   source has no module-level metadata).
-- **Trees** *(optional)*: per-tree LoD 3 crown + trunk meshes from
+- **Trees** *(optional)*: per-tree LoD3 crown + trunk meshes from
   [CFTree](https://github.com/NoahAlting/CFTree), optionally enriched
   with **BGT** (authoritative-register cross-reference) and **Emmen BOR**
   (species + planting year). Full rationale in
@@ -226,10 +220,10 @@ python examples/create_city.py --input inputs/cities/emmer-compascuum_small-area
 The default config (~41.5 ha Emmer-Compascuum AOI) doubles as the
 canonical smoke test.
 
-**EP-online API key.** Set `EP_ONLINE_API_KEY` in `.env` at the project
+**EP-Online API key.** Set `EP_ONLINE_API_KEY` in `.env` at the project
 root (git-ignored). Without it, set `include_energy_labels: false`.
-The first run fills `cache_dir` with BAG/3DBAG/EP-online responses;
-subsequent runs are near-instant.
+The first run fills `cache_dir` with BAG/3DBAG/EP-Online responses;
+subsequent runs read from cache instead of refetching.
 
 ### 4.2 Config
 
@@ -261,7 +255,7 @@ configs live in [inputs/cities/](inputs/cities/).
 
 - `bldg:Building` (`gml:id = "pand_<identificatie>"`) with
   `yearOfConstruction` from 3DBAG.
-- `lod0FootPrint`, `lod1Solid`, and per-planar-polygon LoD 2
+- `lod0FootPrint`, `lod1Solid`, and per-planar-polygon LoD2
   `bldg:boundedBy` surfaces (`GroundSurface` / `WallSurface` /
   `RoofSurface`), each carrying a single-polygon `lod2MultiSurface` and
   the three Energy ADE 3.0 per-surface descriptors derivable from
@@ -272,25 +266,21 @@ configs live in [inputs/cities/](inputs/cities/).
   number + postcode + woonplaats + suffixes), with each
   `nrg3:BuildingUnit` xlink-referencing its own address.
 - One `nrg3:BuildingUnit` per VBO (`gml:id = "bu_<vbo_identificatie>"`)
-  with `nrg3:energyPerformanceCertificate` (when EP-online matched) and
+  with `nrg3:energyPerformanceCertificate` (when EP-Online matched) and
   up to four regime-aware `nrg3:Energy` resources (NTA 8800 vs legacy
   NEN-7120). The regime table lives in
   [city_builder/energy_resources.py](citygml_energy/city_builder/energy_resources.py).
 - When `solar_panels` is configured: one `nrg3:GenericSolarCollector` per
-  panel intersecting a LoD 2 roof, with an `installedOn` xlink onto
+  panel intersecting a LoD2 roof, with an `installedOn` xlink onto
   that roof surface.
 - When `vegetation` is configured: one `veg:SolitaryVegetationObject`
-  per CFTree mesh with LoD 3 geometry and CFTree / BGT / BOR
+  per CFTree mesh with LoD3 geometry and CFTree / BGT / BOR
   morphometrics.
 - When `include_energy_labels` is enabled: a single
   `app:Appearance` colouring every building's surfaces by the averaged
   EPC label of its BuildingUnits (EU energy-label palette; buildings
   with no match render grey). Separate themes are emitted for PV
   panels and vegetation when configured.
-
-Everything validates against the bundled XSD set;
-`tests/test_city_pipeline.py` asserts that end-to-end with fully-mocked
-fetchers.
 
 ### 4.4 Performance and further reading
 
@@ -344,9 +334,12 @@ tools/
 ├── generate_bindings.py            Regenerate bindings.py from XSD
 ├── generate_input_schema.py        Regenerate per-building JSON schema
 ├── generate_city_input_schema.py   Regenerate city-scale JSON schema
+├── generate_pv_simulation.py       Compute NTA 8800 monthly PV-yield series
 ├── validate_xsd.py                 Offline XSD validation
 ├── create_anonymised_sample.py     Produce the shareable sanitised sample input
 ├── merge_cftree_tiles.py           Merge CFTree CityJSON tile exports
+├── audit_extra.py                  Audit generated GML: non-positive quantities, out-of-range angles, ADE hooks
+├── audit_silent_bugs.py            Audit for silent data-loss bugs
 └── bench.py                        Benchmarking utilities
 
 inputs/                         See inputs/README.md
@@ -367,44 +360,30 @@ Energy_ADE-3.0beta8/            Authoritative Energy ADE 3.0 beta8 XSD + Alderaa
 
 tests/                          Per-building, city-scale, and infra tests
 docs/
+├── adr/                        Architecture decision records (0001-0003)
 ├── mapping_building.md         Per-building BAG / EP-online field-to-XSD mapping notes
 ├── mapping_city.md             City-scale data-source mapping + design notes
+├── kitmodelviewer.md           One-time Energy ADE 3.0 schema swap for the KIT viewer
+├── threedbag_sliver_walls.md   3DBAG near-zero-area wall handling
 └── vegetation_integration_report.md   CFTree + BGT + BOR analysis
 
 generated/                      Pipeline output (git-ignored)
 ```
 
-> The KIT FZKViewer install directory
+> The KITModelViewer install directory
 > (`KITModelViewer_V7.5.2_Build-3777/`) may sit next to this repo for
 > the §6 fix but is git-ignored and not part of the project.
 
 ---
 
-## 6. KIT FZKViewer compatibility
+## 6. KITModelViewer compatibility
 
-The KIT FZKViewer ships with an Energy ADE **2.0** schema
-(`EnergyADE-local.xsd`, namespace
-`http://www.sig3d.org/citygml/2.0/energy/2.0`). GML files using Energy
-ADE **3.0** (`http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0`)
-will not display correctly until you replace that schema. The generated
-GML is XSD-valid either way; `tools/validate_xsd.py` never consults the
-viewer's schemas.
-
-**Symptoms without the fix:** child element names ("ZoneWallSurface 4")
-shown instead of building names; solar panels invisible; building tree
-garbled.
-
-**Fix** (applied to your own KIT viewer install, not this repo):
-
-1. Copy
-   [Energy_ADE-3.0beta8/xsd/Energy_ADE_3.0_beta8.xsd](Energy_ADE-3.0beta8/xsd/Energy_ADE_3.0_beta8.xsd)
-   to `<KITModelViewer>/GMLSchemata/CityGML_2_0/CityGML/EnergyADE-local.xsd`.
-2. In the copied file, replace each online `<import>` `schemaLocation`
-   URL with the local relative path. All
-   `http://schemas.opengis.net/citygml/.../<name>.xsd` URLs map to
-   `<name>.xsd` in the same directory, except:
-   - `http://schemas.opengis.net/gml/3.1.1/base/gml.xsd` → `../3.1.1/base/gml.xsd`
-3. Restart the KIT FZKViewer and reload the GML file.
+The KITModelViewer ships with an Energy ADE **2.0** schema, so GML files
+using Energy ADE **3.0** will not display correctly until you swap in the
+3.0 schema. The generated GML is XSD-valid either way; the swap only
+touches your own viewer install, not this repo. The one-time procedure
+(plus the symptoms it fixes) is in
+[docs/kitmodelviewer.md](docs/kitmodelviewer.md).
 
 ---
 
@@ -445,7 +424,7 @@ concern:
 ## 8. Supported feature types
 
 The owner-occupier reference input exercises the following types,
-round-tripped through the loader and validated against the XSD:
+round-tripped through the loader:
 
 - `bldg:Building`, `nrg3:BuildingUnit`, `core:Address`
 - `nrg3:EnergyPerformanceCertificate`

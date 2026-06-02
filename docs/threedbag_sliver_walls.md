@@ -1,4 +1,4 @@
-# 3DBAG LoD 2.2 sliver wall surfaces — observation and reproducer
+# 3DBAG LoD2.2 sliver wall surfaces: observation and reproducer
 
 Short report for the 3DBAG team on a roof-mesh reconstruction artefact
 that survives into our CityGML 2.0 + Energy ADE 3.0 output. Not a
@@ -7,13 +7,13 @@ reconstruction pipeline could filter these out at source.
 
 ## What we see
 
-In every city-pipeline run that emits LoD 2.2 walls, a handful of
+In every city-pipeline run that emits LoD2.2 walls, a handful of
 `bldg:WallSurface` features come out with a `<nrg3:bdgBdrySurfTotalSurfaceArea>`
 of `0.0 m²` after rounding to mm². Inspecting the underlying
 `gml:posList`, each one is a 4-point ring with:
 
-* a 3D surface area in the **`0.000001–0.0005` m²** range
-  (`1–500 mm²` — i.e. 1 mm² to ~5 cm²),
+* a 3D surface area in the **`0.000001-0.0005` m²** range
+  (`1-500 mm²`, i.e. 1 mm² to ~5 cm²),
 * a Z extent of **1 mm to 49 mm** between the lowest and highest vertex.
 
 In other words: tall, paper-thin wall quads sitting between two
@@ -23,28 +23,29 @@ the building.
 
 The pipeline already drops fully-collapsed rings (those whose vertex
 indices resolve to fewer than three distinct points at 1 µm precision,
-see [`cityjson_parse._ring_from_indices`](../citygml_energy/city_builder/cityjson_parse.py#L287)).
+see [`cityjson_parse._ring_from_indices`](../citygml_energy/city_builder/cityjson_parse.py#L327)).
 Slivers with three or four distinct points but area below 1000 mm²
 are still geometrically valid, so they pass through and reach the
 output unless the sliver-area filter described below removes them.
 
 ## Reproducer
 
-Tile cache used: 3DBAG release fetched on **2026-05-27** through
-`https://data.3dbag.nl/cityjson/v20240228/tiles/...` (the version
-string our [`threedbag` fetcher](../citygml_energy/city_builder/fetchers/threedbag.py)
-pins, persisted under `.cache/citygml_energy_city/3dbag_*.bin`).
+Tile cache used: 3DBAG release fetched on **2026-05-27**. The
+[`threedbag` fetcher](../citygml_energy/city_builder/fetchers/threedbag.py)
+reads the tile index from `https://data.3dbag.nl/latest/tile_index.fgb`
+and downloads each intersecting tile from the `cj_download` URL carried
+on its index feature; parsed tiles are cached under
+`.cache/citygml_energy_city/`.
 
 ```powershell
 # 1. Drop the parsed-tile cache so the pre-filter slivers are re-evaluated
 #    against the current MIN_FACE_AREA_M2 threshold, then rebuild the
-#    small-area Emmer-Compascuum and Delft smoke runs.
+#    small-area Emmer-Compascuum run.
 Remove-Item -Force .cache/citygml_energy_city/3dbag_parsed_*.pkl
-python -m citygml_energy.city_builder inputs/cities/emmer-compascuum_small-area.json
-python -m citygml_energy.city_builder inputs/cities/delft_smoke.json
+python examples/create_city.py --input inputs/cities/emmer-compascuum_small-area.json
 
 # 2. Audit the outputs for zero-area boundary surfaces.
-python tools/audit_extra.py generated/emmer-compascuum_small-area.gml generated/delft_smoke.gml
+python tools/audit_extra.py generated/emmer-compascuum_small-area.gml
 # Post-fix expected: 0 findings (parse-time filter at MIN_FACE_AREA_M2=1e-3 m²
 # drops every documented sliver below). Pre-fix (parse threshold 1e-4 m²)
 # this was ~20 'zero_quantity' findings under bdgBdrySurfTotalSurfaceArea
@@ -89,7 +90,7 @@ The same pattern shows up at much larger volume in the Delft and
 Groningen full-municipality runs.
 
 The wall index `_n` is the 1-based position of the wall polygon in
-the LoD 2.2 boundary list our parser emits, so a 3DBAG-side
+the LoD2.2 boundary list our parser emits, so a 3DBAG-side
 inspection can address the same face by walking the
 `Solid → Shell → Surface` boundary array in the order the CityJSON
 tile presents.
@@ -132,22 +133,22 @@ Two upstream filters would each remove the class:
 Independent of any upstream change, the parser at
 [`cityjson_parse._parse_semantic_faces`](../citygml_energy/city_builder/cityjson_parse.py#L259)
 drops sliver faces in addition to fully-degenerate rings. The
-threshold is **10 cm² (`MIN_FACE_AREA_M2 = 1e-3` m²)** — about `2x`
+threshold is **10 cm² (`MIN_FACE_AREA_M2 = 1e-3` m²)**, about `2x`
 above the largest observed sliver (`0.000481 m² ≈ 481 mm²`) and
-`~500x` below the smallest plausible real LoD 2.2 wall facet (small
+`~500x` below the smallest plausible real LoD2.2 wall facet (small
 dormer side walls start around `0.5 m² = 5 000 cm²`; typical walls
 `5-20 m²`). The chosen value sits at the conservative-against-
 slivers end of the gap, so an unmeasured sliver up to ~1000 mm² is
 still caught while the `500x` margin against real walls keeps false
 positives off the table. The
 constant is also re-used as the build-time gate inside
-[`builders.building.thematic_surface_attrs`](../citygml_energy/city_builder/builders/building.py#L383),
+[`builders.building.thematic_surface_attrs`](../citygml_energy/city_builder/builders/building.py#L380),
 so the parse-time filter and the boundedBy/solar-panel matcher gate
 share a single source of truth and cannot drift apart.
 
 The threshold was raised to its current value on 2026-05-27 after an
 empirical sweep of cached 3DBAG tiles showed 26 documented slivers
-sitting in the previous `[1e-4, 5e-4]` m² band — above the earlier
+sitting in the previous `[1e-4, 5e-4]` m² band, above the earlier
 `1e-4` parse threshold and only caught by the build-time `round(area,
 3) <= 0` guard. Unifying the two threshold magnitudes at `1e-3` m²
 turns the parse-time filter into the load-bearing one and reduces the

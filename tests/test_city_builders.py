@@ -1471,7 +1471,7 @@ def test_renewable_share_lands_as_measure_attribute_on_epc() -> None:
     property of the certificate, not of the surrounding BuildingUnit,
     so it belongs on the EPC.
 
-    uom is ``percent`` (matching FZK UOMList id at line 182), not ``%``
+    uom is ``percent`` (matching KIT UOMList id at line 182), not ``%``
     (which is the sign-glyph and not a uom id).
     """
     from citygml_energy.city_builder.builders import build_building_unit

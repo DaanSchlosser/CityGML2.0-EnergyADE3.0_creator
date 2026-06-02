@@ -1,4 +1,4 @@
-# CityGML 2.0 + EnergyADE 3.0 Creator
+# CityGML 2.0 + Energy ADE 3.0 Creator
 
 Two pipelines (per-building, city-scale) that emit CityGML 2.0 + Energy ADE 3.0 documents from Dutch building-stock data. This glossary fixes the vocabulary used across the codebase, the mapping docs, and the thesis text. Mapping decisions live in [docs/adr/](./docs/adr/); per-field tables live in [docs/mapping_building.md](./docs/mapping_building.md) and [docs/mapping_city.md](./docs/mapping_city.md).
 
@@ -11,7 +11,7 @@ The BAG cadastral object for a contiguous building footprint at the structural l
 _Avoid_: structure, complex (use Pand when reasoning at the BAG level).
 
 **VBO**:
-*Verblijfsobject*, the BAG legal usable-area unit inside a Pand (one dwelling, one shop, one office suite). One VBO carries one address and at most one EP-online certificate. Mapped one-to-one to an `nrg3:BuildingUnit`.
+*Verblijfsobject*, the BAG legal usable-area unit inside a Pand (one dwelling, one shop, one office suite). One VBO carries one address and at most one EP-Online certificate. Mapped one-to-one to an `nrg3:BuildingUnit`.
 _Avoid_: unit, dwelling, apartment, occupant (use VBO when speaking BAG-natively).
 
 ### GML features
@@ -24,29 +24,100 @@ _Avoid_: structure, Pand (use Building when naming the GML feature; use Pand whe
 The `nrg3:BuildingUnit` feature. Always represents one VBO in this project.
 _Avoid_: unit, occupant unit (use BuildingUnit when naming the GML feature).
 
+### Qualified quantities
+
+**Qualified attribute**:
+An `nrg3:Qualified…` wrapper (`QualifiedArea`, `QualifiedVolume`, `QualifiedHeight`) carrying one value together with its `type` and its source. When a quantity has diverging sources, each source is kept as its own qualified entry rather than reconciled into one number. The owner-occupier Building emits both the BAG gross floor area (122 m²) and the measured-model area (119.6 m²) as parallel `bdgArea` entries, so a downstream consumer picks the provenance it trusts.
+_Avoid_: collapsing the sources into a single "the" area, height, or volume.
+
+### Thermal zoning
+
+**Zone**:
+The `nrg3:Zone` feature: the conditioned (heated or cooled) volume of a Building, composing one or more ZoneParts. Unconditioned spaces such as an unheated attic are excluded from the Zone. Parents to the `bldg:Building` through the `nrg3:zone` hook.
+_Avoid_: thermal zone (the Energy ADE 2.0 class name, dropped in 3.0), room.
+
+**ZonePart**:
+The `nrg3:ZonePart` feature: a thermal sub-unit of a Zone with homogeneous thermal behaviour, carrying its own `heatingSchedule` / `coolingSchedule`, its own `nrg3:zoneBoundary` surfaces, and its LoD hull geometry. How a Zone is divided into ZoneParts is an author's modelling choice (per room, per room type, per storey, per setpoint regime, and so on); the owner-occupier building uses one ZonePart per storey because the two storeys run different setpoints. Parents to a `nrg3:Zone`.
+_Avoid_: room, storey, subzone (a ZonePart maps to whatever granularity the author chooses; do not assume one storey or one room).
+
+**Zone boundary surface**:
+A surface on a ZonePart's `nrg3:zoneBoundary`, one of the `nrg3:Zone…Surface` subclasses (`nrg3:ZoneWallSurface`, `nrg3:ZoneRoofSurface`, `nrg3:ZoneGroundSurface`, `nrg3:ZoneIntermediateFloorSurface`, and the rest). It is the thermal boundary of the ZonePart and carries the `nrg3:layeredConstruction` xlink and the `bdgBdrySurf*` attributes. It describes the same physical fabric as the architectural `bldg:_BoundarySurface` shell, but is a separate feature with no xlink between the two.
+_Avoid_: the bare names `WallSurface` / `RoofSurface` without a `bldg:` or `nrg3:` prefix.
+
+**Zone opening**:
+An opening on a zone boundary surface, attached through the `nrg3:zoneOpening` relation: `nrg3:ZoneWindow` or `nrg3:ZoneDoor`. The zone-side counterpart of the building-shell `bldg:Window` / `bldg:Door`, which ride the inherited `bldg:opening` slot. See ADR-0002 for why zone openings use `nrg3:zoneOpening` rather than `bldg:opening`.
+_Avoid_: the bare names `Window` / `Door` without a `bldg:` or `nrg3:` prefix.
+
 ### Device scope
 
 **Per-unit device**:
 An energy-related device that belongs to exactly one VBO, either by physical containment (an induction cooktop in a VBO kitchen, an in-unit smart meter, an in-unit DHW buffer) or by documented functional ownership (a per-VBO EV charger in a private parking spot, even if physically outside the Pand footprint). Under the [Scope-based parent placement](#scope-based-parent-placement) rule, parents to that `nrg3:BuildingUnit`. Served scope and belongs-to scope coincide for per-unit devices.
 
 **Collective device**:
-An energy-related device that belongs to the whole Pand, either by physical attachment to Building-level structure (a rooftop solar array bolted to the roof, a central boiler in a shared basement, a façade-mounted solar thermal collector) or by serving more than one VBO (a riser-fed central boiler, a communal EV charger in a parking garage, a collective ground-source heat pump). Under the [Scope-based parent placement](#scope-based-parent-placement) rule, parents to the `bldg:Building`. When the served set is known — including the single-VBO and full-Pand cases — document it via `nrg3:relatedTo / CityObjectRelation` xlinks (codelist member `serving` from `OtherRelationTypeValue.xml`) to the covered BuildingUnits. The served-set xlinks are always emitted when knowable, even when the served set equals the whole Pand: the redundancy is intentional so a downstream consumer never has to derive the consumption side from the Pand → VBO composition.
+An energy-related device that belongs to the whole Pand, either by physical attachment to Building-level structure (a rooftop solar array bolted to the roof, a central boiler in a shared basement, a façade-mounted solar thermal collector) or by serving more than one VBO (a riser-fed central boiler, a communal EV charger in a parking garage, a collective ground-source heat pump). Under the [Scope-based parent placement](#scope-based-parent-placement) rule, parents to the `bldg:Building`. When the served set is known (including the single-VBO and full-Pand cases), document it via `nrg3:relatedTo / CityObjectRelation` xlinks (codelist member `serving` from `OtherRelationTypeValue.xml`) to the covered BuildingUnits. The served-set xlinks are always emitted when knowable, even when the served set equals the whole Pand: the redundancy is intentional so a downstream consumer never has to derive the consumption side from the Pand → VBO composition.
 
 ### Device relations
 
 **CityObjectRelation**:
-The `nrg3:CityObjectRelation` complex type from EnergyADE 3.0: one polymorphic association class carrying a `relationType` (a `gml:CodeType` value drawn from the `RelationTypeValue` codelist family) and one xlink-only `relatedTo` reference to another CityObject. The UML class diagram defines `CityObjectRelation` once, with no per-relation-type subclasses — beta 4 explicitly remodelled the previous N parallel association classes (`installedOn` was its own association before then) into this one polymorphic class. Every CityObject composes a 0..* list of these via the `_GenericApplicationPropertyOfCityObject` ADE hook.
+The `nrg3:CityObjectRelation` complex type from Energy ADE 3.0: one polymorphic association class carrying a `relationType` (a `gml:CodeType` value drawn from the `RelationTypeValue` codelist family) and one xlink-only `relatedTo` reference to another CityObject. The UML class diagram defines `CityObjectRelation` once, with no per-relation-type subclasses; beta 4 explicitly remodelled the previous N parallel association classes (`installedOn` was its own association before then) into this one polymorphic class. Every CityObject composes a 0..* list of these via the `_GenericApplicationPropertyOfCityObject` ADE hook.
 
 **Relation kind**:
 One member of the `RelationTypeValue` codelist family registered in [`device_relations.RELATION_KINDS`](citygml_energy/device_relations.py). Each kind declares its codelist value (e.g. `installedOn`, `serving`, future `connectedTo`), its codespace URL (`OtherRelationTypeValue.xml`, `TopologicalRelationTypeValue.xml`, or `TemporalRelationTypeValue.xml`), and its target-lookup discipline (`surface` for STEP-name + LoD resolution per ADR-0001; `feature` for plain gml:id resolution). Adding a relation kind is one entry in the registry; the loader, schema generator, and applier pick it up automatically.
 
 **`related_to` entry**:
-One item in a feature's `related_to` JSON list, shaped `{"relation": str, "target": str | {"name": str, "lod": int}}`. The `relation` field is the [Relation kind](#device-relations) name; the `target` field shape depends on that kind's lookup discipline. Mirrors the EnergyADE 3.0 UML 1:1 — each entry becomes one `<nrg3:relatedTo><nrg3:CityObjectRelation>` element in the output GML, preserving author order. Replaces the legacy parallel `installed_on` / `serves` fields, which were a pre-beta-4 authoring shortcut that diverged from the consolidated UML model.
+One item in a feature's `related_to` JSON list, shaped `{"relation": str, "target": str | {"name": str, "lod": int}}`. The `relation` field is the [Relation kind](#device-relations) name; the `target` field shape depends on that kind's lookup discipline. Mirrors the Energy ADE 3.0 UML 1:1: each entry becomes one `<nrg3:relatedTo><nrg3:CityObjectRelation>` element in the output GML, preserving author order. Replaces the legacy parallel `installed_on` / `serves` fields, which were a pre-beta-4 authoring shortcut that diverged from the consolidated UML model.
 
-### Registers
+### Energy and resources
 
-**EP-online**:
-The Dutch national register of energy-performance certificates. One certificate per VBO under NTA 8800; older regimes (NEN 7120, ISSO 82.3) used different units and per-Pand aggregation rules. See [[reference_eponline_dates_and_regimes]] for the regime-aware mapping. Per the [Scope-based parent placement](#scope-based-parent-placement) rule, an EP-online certificate parents to the `nrg3:BuildingUnit` (per-VBO regimes) or to the `bldg:Building` (per-Pand regimes).
+**Resource**:
+An `nrg3:AbstractResource`: a quantified flow of energy or matter attached to any CityObject through the `nrg3:resource` hook, carrying an `operationType` (flow direction), an amount (a scalar `amount` with a `referencePeriod`, or a `timeDependentAmount` time series), and normalisation flags. `nrg3:Energy` is the only member this project uses; `nrg3:Water`, `nrg3:Waste`, `nrg3:Food`, and `nrg3:ConstructionMaterial` are siblings on the same base.
+_Avoid_: using "Energy" for the abstraction (Energy is one Resource kind).
+
+**Energy**:
+The `nrg3:Energy` Resource: one quantified energy flow on a Building, BuildingUnit, Zone, or device. Its quantity is either a scalar `amount` (with `year` and `referencePeriod`, as the EV charging figure is) or a `timeDependentAmount` time series (as the house-consumption and PV-production series are). An Energy with `operationType=demands` is the consuming side, and this project records metered consumption there because Energy ADE 3.0 has no separate `consumes`; an Energy with `operationType=produces` is the generating side.
+_Avoid_: consumption / production / demand as standalone features (they are `operationType` directions of one Energy resource), meter, reading.
+
+**Time series**:
+The periodic profile backing a Resource's amount, attached through `time_dependent_amount`: `nrg3:MonthlyTimeSeries` (calendar-month buckets, used here), or `RegularTimeSeries` / `IrregularTimeSeries` and their typical-value and file variants. There is no `DailyTimeSeries`; daily data is a `RegularTimeSeries` with `timeInterval=P1D`.
+_Avoid_: series, profile, curve (use Time series for the GML feature).
+
+**Energy code axes** (orthogonal):
+Five independent code axes qualify an Energy resource, and conflating them is the common error. `operationType` is the flow direction (`demands` / `produces`). `type` is the accounting basis (`final` / `primary` / `net`). `endUse` is the purpose the energy serves (`spaceHeating`, `mobility`, and so on). `energyCarrier` is the physical medium (`electricity`, `naturalGas`, and so on). `source` is where the flow originates (`powerGrid`, `photovoltaicPanels`, and so on). A rooftop PV feed-in is `produces` / `final` / `gridFeedIn` / `electricity` / `photovoltaicPanels`: each axis answers a different question. Codelist members are tabulated in [docs/mapping_building.md](docs/mapping_building.md) § 7.
+
+**Acquisition method**:
+The `nrg3:Metadata` / `acquisitionMethod` code recording how a value was obtained (`measurement`, `simulation`, `calibratedSimulation`, `estimation`, and the rest of `DataAcquisitionMethodValue.xml`). Set once at Building level as the document's default provenance; an individual Resource overrides it with its own `nrg3:Metadata` only where it differs, so the simulated PV production carries `simulation` while the metered series rely on the building-level `measurement`.
+_Avoid_: provenance, source (here `source` is the energy-origin axis, a different concept).
+
+### City pipeline
+
+**3DBAG**:
+The national LoD2 building-geometry product (BAG footprints extruded against AHN height), the geometry source for the city-scale pipeline. Distinct from **BAG**, the cadastral register behind Pand and VBO: 3DBAG supplies the shape, BAG supplies the identity and the legal units.
+_Avoid_: using BAG and 3DBAG interchangeably.
+
+**woonplaats**:
+The BAG residential-place unit (a named town or settlement). The unit of one city-scale build: a single run covers one woonplaats.
+_Avoid_: municipality (a gemeente can hold several woonplaatsen), city.
+
+**Tree**:
+The `veg:SolitaryVegetationObject` feature the city pipeline emits from the CFTree point dataset, optionally enriched with a species from the BOR register. "Tree" is the colloquial name for it.
+_Avoid_: the bare `SolitaryVegetationObject` in prose without noting it is the tree feature; plant.
+
+**Aerial PV polygon**:
+A rooftop photovoltaic panel detected from aerial imagery in the city pipeline, emitted as an `nrg3:GenericSolarCollector` (technology-agnostic, because the aerial source carries no module-level metadata) with geometry but no per-array consumer metadata. A `serving` xlink is emitted only when the Pand has exactly one BuildingUnit, where the served set is fixed by elimination; for a zero-VBO or multi-VBO Pand the served set is genuinely unknown, so no `serving` xlink is emitted, unlike the per-building [Collective device](#device-scope) case where the served set is documented.
+_Avoid_: solar panel (use Aerial PV polygon for the city-detected feature).
+
+### Registers and standards
+
+**EP-Online**:
+The Dutch national register of energy-performance certificates. One certificate per VBO under NTA 8800; older regimes (NEN 7120, ISSO 82.3) used different units and per-Pand aggregation rules. See [[reference_eponline_dates_and_regimes]] for the regime-aware mapping. Per the [Scope-based parent placement](#scope-based-parent-placement) rule, an EP-Online certificate parents to the `nrg3:BuildingUnit` (per-VBO regimes) or to the `bldg:Building` (per-Pand regimes).
+
+**BOR**:
+The municipal *Beheer Openbare Ruimte* register of public-space objects (the city pipeline uses Emmen's) that supplies a verified tree species, joined to a CFTree point by nearest match. A register like EP-Online, used to enrich a [Tree](#city-pipeline)'s `veg:species`.
+_Avoid_: BGT (a separate topographic register), "tree register" (name it BOR).
+
+**NTA 8800**:
+The current Dutch method for determining a building's energy performance, in force since 2021. It fixes the units and aggregation of the EP-Online certificate (one per VBO, `final` energy in kWh/m²·yr) and the reference-climate PV-yield calculation behind the simulated production series. Older regimes (NEN 7120, ISSO 82.3) used different units and per-Pand aggregation; see [[reference_eponline_dates_and_regimes]].
+_Avoid_: BENG (the new-build norm built on NTA 8800, not the method itself), energy label (the label is the certificate's output grade).
 
 ## Conventions
 
@@ -62,16 +133,22 @@ The same ordering applies to non-device features by analogy. An EPC parents to w
 
 The signal ordering matters when the signals disagree. A rooftop PV array on a Pand with one VBO has physical attachment at the Building (signal 2 → Building) and energy attribution at the BuildingUnit (signal 3 → BuildingUnit); signal 2 wins, the PV array parents to the Building. A private EV charger physically mounted on a parking-spot post outside the Pand footprint has documented ownership by one VBO (signal 1 → BuildingUnit) and physical position outside the Building (signal 2 → ambiguous); signal 1 wins, the charger parents to the BuildingUnit.
 
-When the served set is known — including the single-VBO and full-Pand cases — emit `nrg3:relatedTo / CityObjectRelation` xlinks (relation type `serving` from `OtherRelationTypeValue.xml`) from the device to each covered BuildingUnit. The served-set xlinks are always emitted when knowable, even when the served set equals the whole Pand: the redundancy is intentional so a downstream consumer never has to derive the consumption side from the Pand → VBO composition. When the served set is unknown (e.g. the city-pipeline aerial-polygon panels, which carry no per-array consumer metadata), no `serving` xlink is emitted.
+When the served set is known (including the single-VBO and full-Pand cases), emit `nrg3:relatedTo / CityObjectRelation` xlinks (relation type `serving` from `OtherRelationTypeValue.xml`) from the device to each covered BuildingUnit. The served-set xlinks are always emitted when knowable, even when the served set equals the whole Pand: the redundancy is intentional so a downstream consumer never has to derive the consumption side from the Pand → VBO composition. When the served set is unknown (e.g. the city-pipeline aerial-polygon panels, which carry no per-array consumer metadata), no `serving` xlink is emitted.
 
 The signal-ordered rule is a generalisation of Giorgio Agugiaro's guidance during the 2026-05-13 owner-occupier review, where PV was moved from BuildingUnit to Building because "it is a hardware that belongs to the whole building." Physical attachment was the load-bearing signal there; energy attribution and served scope are documented orthogonally via `relatedTo` xlinks.
+
+### Building-shell and zone-boundary families
+
+The pipeline emits two parallel descriptions of the same physical fabric: the architectural shell as `bldg:_BoundarySurface` subclasses with `bldg:Window` / `bldg:Door` openings (from `step-building` geometry), and the thermal envelope as `nrg3:Zone…Surface` subclasses with `nrg3:ZoneWindow` / `nrg3:ZoneDoor` openings (from `step-zonepart` geometry). Both are intentional and both are always emitted; they carry no xlink to each other. The Energy ADE 3.0 revision has no separate `ThermalBoundary` class, so the `nrg3:Zone…Surface` is the thermal boundary: it carries the `nrg3:layeredConstruction` xlink (which holds the assembly U-value and the layer build-up) and the `bdgBdrySurf*` attributes (thickness, heat capacity, areas). The Alderaan reference attaches a `nrg3:layeredConstruction` to every zone boundary surface and zone opening.
+
+A thermal consumer reads the `nrg3:Zone…` family; a geometric or visualisation consumer reads the `bldg:` shell. Both families carry the `bdgBdrySurf*` and `bdgOpn*` area attributes, so a consumer must pick one family before summing areas or heat capacity, otherwise it double-counts the envelope. Always disambiguate the two families by namespace prefix in prose (`bldg:WallSurface` versus `nrg3:ZoneWallSurface`); the bare names are reserved for code tokens.
 
 ## Example dialogue
 
 > **Developer:** A new dataset has a 12-VBO apartment block with a single central gas boiler in the basement, individual induction cooktops in each kitchen, a rooftop PV array, and one whole-building EPC issued in 2018 under an older regime. Where does each feature land?
 >
-> **Domain expert:** Walk the signal-ordered rule device by device. The induction cooktops are physically contained inside each VBO's kitchen (signal 2), so they parent to their respective BuildingUnits. The central boiler is in a shared basement — Building-level structure (signal 2) — so it parents to the Building; if the source tells you it serves ten of the twelve VBOs (two are on electric DHW), emit `relatedTo[serving]` xlinks to those ten BuildingUnits. The rooftop PV array is bolted to the roof (signal 2 → Building), so it parents to the Building regardless of how its electricity is consumed; the consumer side gets its own `relatedTo[serving]` xlinks when known. The 2018 whole-building EPC describes the whole Pand, so it parents to the Building, not to any one BuildingUnit; if the same Pand later gets per-VBO NTA 8800 certs, those parent to the BuildingUnits instead.
+> **Domain expert:** Walk the signal-ordered rule device by device. The induction cooktops are physically contained inside each VBO's kitchen (signal 2), so they parent to their respective BuildingUnits. The central boiler is in a shared basement (Building-level structure, signal 2), so it parents to the Building; if the source tells you it serves ten of the twelve VBOs (two are on electric DHW), emit `relatedTo[serving]` xlinks to those ten BuildingUnits. The rooftop PV array is bolted to the roof (signal 2 → Building), so it parents to the Building regardless of how its electricity is consumed; the consumer side gets its own `relatedTo[serving]` xlinks when known. The 2018 whole-building EPC describes the whole Pand, so it parents to the Building, not to any one BuildingUnit; if the same Pand later gets per-VBO NTA 8800 certs, those parent to the BuildingUnits instead.
 >
 > **Developer:** And if every VBO is served by the central boiler?
 >
-> **Domain expert:** Emit the `relatedTo[serving]` xlinks to all twelve BuildingUnits anyway. The redundancy is intentional — a downstream consumer should never have to fall back on the Pand → VBO composition to know which units the device serves. The same applies to a PV array on a single-VBO Pand: parent the array to the Building, emit one `relatedTo[serving]` xlink to the lone BuildingUnit.
+> **Domain expert:** Emit the `relatedTo[serving]` xlinks to all twelve BuildingUnits anyway. The redundancy is intentional: a downstream consumer should never have to fall back on the Pand → VBO composition to know which units the device serves. The same applies to a PV array on a single-VBO Pand: parent the array to the Building, emit one `relatedTo[serving]` xlink to the lone BuildingUnit.

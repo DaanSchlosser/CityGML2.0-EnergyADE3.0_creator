@@ -38,10 +38,9 @@ from citygml_energy.city_builder import build_city_gml_file
 def _configure_logging(verbosity: int) -> None:
     """Route package progress messages to stderr at the requested level.
 
-    ``-v`` shows pipeline INFO (the old ``[city-builder]`` progress
-    lines); ``-vv`` drops to DEBUG and includes fetcher / HTTP retry
-    detail. Default (no flag) keeps only WARNING+ so piped use stays
-    quiet.
+    Default (no flag) shows pipeline INFO (the ``[city-builder]``
+    progress lines); ``-v`` drops to DEBUG and includes fetcher / HTTP
+    retry detail.
     """
     level = logging.WARNING if verbosity <= 0 else (
         logging.INFO if verbosity == 1 else logging.DEBUG
@@ -65,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "-v", "--verbose",
         action="count", default=1,
-        help="Increase log verbosity (default: INFO; -vv: DEBUG).",
+        help="Increase log verbosity (default: INFO; -v: DEBUG).",
     )
     args = parser.parse_args(argv)
     _configure_logging(args.verbose)

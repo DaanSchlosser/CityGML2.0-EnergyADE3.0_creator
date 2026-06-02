@@ -413,7 +413,7 @@ def test_attach_solar_emits_expected_xsd_structure() -> None:
     # cellType is photovoltaic-specific and does not exist on
     # GenericSolarCollectorType, so it is neither emitted nor checked.
 
-    # uom tokens match the KIT SDM_KITModelViewer UOMList.xml primary ids
+    # uom tokens match the KITModelViewer UOMList.xml primary ids
     # (m2 for SQUARE_METRE) and altIds (deg for DEGREE). An earlier version
     # of this test asserted "m^2" / "decimal degrees" which matched neither
     # the UoM XML nor the code — the viewer accepts only the canonical

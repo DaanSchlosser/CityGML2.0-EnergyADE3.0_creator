@@ -161,7 +161,7 @@ def build_building(
     # authoritative ``CS_BAG_PAND`` codespace). Repeating the same 16-digit
     # number on ``gml:name`` would duplicate the identifier under a slot
     # the spec reserves for a *human-readable* label, and downstream
-    # viewers (FZK FZKViewer) would then surface the BAG number where the
+    # viewers (KITModelViewer) would then show the BAG number where the
     # user expects an address. Leaving ``gml:name`` empty is honest about
     # the fact that BAG carries no per-Pand human-readable label — only
     # per-VBO addresses (which land on ``bldg:Building/bldg:address``,

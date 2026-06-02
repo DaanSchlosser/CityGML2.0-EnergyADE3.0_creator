@@ -70,26 +70,26 @@ only" policy that excluded the OSM and Bomenstichting sources.
 |---|---|---|---|---|
 | 1 | **CFTree** ([NoahAlting/CFTree](https://github.com/NoahAlting/CFTree)) | LoD3 watertight crown + trunk triangle meshes, per-tree morphometrics (height, DBH, crown width, porosity, r50) | GPL-3.0 (the tool; outputs are derivatives of AHN, which is open government data) | External preprocessor in a WSL conda env; outputs consumed as `trees_lod3.city.json` tiles |
 | 2 | **AHN4** (Actueel Hoogtebestand Nederland, 2020 flight) | Raw LiDAR point cloud at ~10 points/m²; input to CFTree | CC-0 | Downloaded per tile via CFTree's `get_data` stage from the TU Delft GeoTiles mirror (`https://geotiles.citg.tudelft.nl/AHN4_T/<kaartblad>_<subtile>.LAZ`) |
-| 3 | **BGT / IMGeo 2.2** `vegetatieobject_punt` (plus_type `boom`) | Authoritative per-tree point register maintained by municipalities / provinces / water boards. No semantic attributes (no species, no leaf class, no planting year, no dimensions) — only an authoritative handle + registry metadata. | CC-0 (PDOK) | PDOK OGC API Features: `https://api.pdok.nl/lv/bgt/ogc/v1/collections/vegetatieobject_punt/items?bbox=…&bbox-crs=EPSG::28992`. Pagination via `rel="next"` links. Cached in the pipeline's `CachedSession`. |
+| 3 | **BGT / IMGeo 2.2** `vegetatieobject_punt` (plus_type `boom`) | Authoritative per-tree point register maintained by municipalities / provinces / water boards. No semantic attributes (no species, no leaf class, no planting year, no dimensions), only an authoritative handle plus registry metadata. | CC-0 (PDOK) | PDOK OGC API Features: `https://api.pdok.nl/lv/bgt/ogc/v1/collections/vegetatieobject_punt/items?bbox=…&bbox-crs=EPSG::28992`. Pagination via `rel="next"` links. Cached in the pipeline's `CachedSession`. |
 | 4 | **Gemeente Emmen `bor_groen_bomen_beschermd`** | Per-tree register of trees registered under Emmen's public-space management (~58 k records: 57 503 `Bijzondere boom` + 466 `Monumentale boom`). Carries Latin and Dutch species name, planting year, height and trunk-diameter classes, protection status, growth form, and ecological standplaats. ~26 % of records have a populated species, ~93 % have a planting year. | Free use with attribution (per the layer's `licenseInfo` field; "Bij het overnemen van (delen van) de kaart, moet de bron worden vermeld") | ArcGIS REST FeatureServer query: `https://services3.arcgis.com/YaBq8GMTp0Kh437n/arcgis/rest/services/bor_groen_bomen_beschermd/FeatureServer/0/query?geometry=…&inSR=28992&outSR=28992&f=json`. Bbox-filtered, paged via `resultOffset`, cached by the same `CachedSession`. |
 
-### 2.1 AHN5 / AHN6 availability — why AHN4 is the current input
+### 2.1 AHN5 / AHN6 availability: why AHN4 is the current input
 
 The Emmer-Compascuum bbox (EPSG:28992 `[264400, 535580, 268720,
 538940]`) is in the north-east of the Netherlands. That matters,
 because the three most recent AHN flights cover the country in phases:
 
-* **AHN4** (2020, complete nationwide) — **available and open**:
+* **AHN4** (2020, complete nationwide), **available and open**:
   `https://basisdata.nl/hwh-ahn/ahn4/01_LAZ/C_<kaartblad>.LAZ` and
   mirrored per sub-tile at the TU Delft GeoTiles service. This is the
   only input that runs CFTree end-to-end today.
-* **AHN5** (2023 flight) — **does not cover NE Netherlands**. Verified
+* **AHN5** (2023 flight), **does not cover NE Netherlands**. Verified
   against the `EllipsisDrive_index` layer of
   `https://basisdata.nl/hwh-ahn/AUX/bladwijzer.gpkg`: all four
   kaartbladen intersecting Emmer-Compascuum (`18AZ1`, `18AZ2`, `18CN1`,
   `18CN2`) have `AHN5_LAZ = NaN`. Put differently: AHN5 was flown
   mostly in the west + centre of the country.
-* **AHN6** (2025 flight) — **scheduled and inventoried, but not yet
+* **AHN6** (2025 flight), **scheduled and inventoried, but not yet
   publicly downloadable for this bbox**. The `bladwijzer_AHN6.gpkg`
   published on `basisdata.nl/hwh-ahn/AUX/` does list 20 1×1 km tiles
   over Emmer-Compascuum (all `jaar=2025`, `perceel=3`), but
@@ -116,12 +116,12 @@ role tag inside the CityObject) and a flat attribute dict with keys:
 
 | CFTree attribute | Unit | Meaning |
 |---|---|---|
-| `gtid` | — | Global tree id, stable across re-runs |
-| `tile_id` | — | Source AHN sub-tile |
+| `gtid` | - | Global tree id, stable across re-runs |
+| `tile_id` | - | Source AHN sub-tile |
 | `crown_width_m` | m | Diameter of the circle equal-area to the crown convex hull |
 | `crown_median_z` | m (NAP) | Median elevation of the crown alpha-wrap vertices |
 | `crown_r50_m` | m | Median nearest-neighbour distance (LAI proxy) |
-| `crown_porosity` | — | Voxel-derived porosity ∈ [0, 1] |
+| `crown_porosity` | - | Voxel-derived porosity ∈ [0, 1] |
 | `trunk_H_m` | m | Total tree height (DTM base → crown median Z) |
 | `trunk_DBH_m` | m | Diameter at breast height (allometric estimate) |
 | `trunk_radius_m` | m | Trunk radius at DBH |
@@ -160,13 +160,13 @@ within 4 m of its crown centroid, the builder attaches:
 | BGT field | CityGML field | Notes |
 |---|---|---|
 | `lokaal_id` | `core:externalReference/externalObject/uri` | Written as the dereferenceable PDOK OGC-API-Features URL (`.../vegetatieobject_punt/items/<lokaal_id>`) so a consumer can `GET` it back as GeoJSON. The raw handle is the URL's final path segment. |
-| Presence in BGT | presence of the `externalReference` element | Acts as a "known to BGT" flag without a dedicated boolean attribute — trees without a BGT match simply omit the reference. |
+| Presence in BGT | presence of the `externalReference` element | Acts as a "known to BGT" flag without a dedicated boolean attribute; trees without a BGT match simply omit the reference. |
 | `creation_date` | `gen:dateAttribute name="bgtCreationDate"` | Explicitly **not** `core:creationDate`, which in CityGML means "when this CityObject record was created in the dataset" rather than "when the real-world feature was first registered in an external system". Using `creationDate` here would mis-signal dataset lifecycle to any downstream tool that keys on it. |
 
 The 4 m match radius balances BGT's nominal 0.3 m class-D positional
-accuracy against CFTree's crown-centroid-to-trunk offset (1–3 m on a
+accuracy against CFTree's crown-centroid-to-trunk offset (1-3 m on a
 one-sided canopy). Tuned against the small-area run: 225 of 652 CFTree
-trees got a BGT match — a coverage figure that roughly tracks
+trees got a BGT match, a coverage figure that roughly tracks
 public-space vs garden-space in the AOI, since BGT only records
 publicly-maintained trees.
 
@@ -186,7 +186,7 @@ the BGT cross-reference, so a tree may carry zero, one, or both
 `maxOccurs="unbounded"` on `core:AbstractCityObjectType`).
 
 The CityGML 2.0 vegetation module exposes four typed `gml:CodeType`
-slots — `class`, `function`, `usage`, and `species` — but they have
+slots (`class`, `function`, `usage`, and `species`), but they have
 specific intents (per SIG3D convention): `class` distinguishes
 tree-vs-shrub-vs-hedge, `function` and `usage` describe horticultural
 roles ("shade tree", "street tree", "production forest"), and
@@ -200,8 +200,8 @@ they go into `gen:stringAttribute` siblings instead.
 
 | Emmen field | CityGML field | Notes |
 |---|---|---|
-| `boom_id` | `core:externalReference/externalObject/uri` | Dereferenceable ArcGIS REST query URL keyed on `boom_id` (Emmen's stable internal id), not on `OBJECTID` (volatile across server-side rebuilds). `informationSystem` is the public Erfgoed page (`https://gemeente.emmen.nl/erfgoed`) for the same reason BGT uses the PDOK catalog page rather than the API endpoint. |
-| `soortnaam` (Latin, e.g. `Quercus palustris`) | `veg:species` (`gml:CodeType`) | The textbook fit: a Latin binomial is exactly what `species` is for. `codeSpace` points at the Emmen FeatureServer URL because that is where the exact name string was sourced — a botanical authority (GBIF, ITIS) would mislead about provenance. |
+| `boom_id` | `core:externalReference/externalObject/uri` | Dereferenceable ArcGIS REST query URL keyed on `boom_id` (Emmen's stable internal id), not on `OBJECTID` (volatile across server-side rebuilds). `informationSystem` is the public Erfgoed page (`https://gemeente.emmen.nl/erfgoed`) for the same reason BGT uses the PDOK catalogue page rather than the API endpoint. |
+| `soortnaam` (Latin, e.g. `Quercus palustris`) | `veg:species` (`gml:CodeType`) | The textbook fit: a Latin binomial is exactly what `species` is for. `codeSpace` points at the Emmen FeatureServer URL because that is where the exact name string was sourced; a botanical authority (GBIF, ITIS) would mislead about provenance. |
 | `soortnaam_ned` (Dutch common name) | `gen:stringAttribute name="speciesCommonName"` | `veg:species` is single-valued and already carries the Latin name; no native vernacular-name slot exists. |
 | `jaarvanaanleg` | `gen:intAttribute name="plantingYear"` | `core:creationDate` is reserved for record-lifecycle semantics (§4.1 #1), and `xs:date` would force a fake month and day on a year-only source. |
 | `boomhoogteklasseactueel` (e.g. `"18 tot 24 m."`) | `gen:stringAttribute name="heightClass"` | Categorical band, not a measurement. CFTree already populates `veg:height` from a precise value, so this is an audit-trail sibling rather than a competing slot. |
@@ -235,16 +235,16 @@ Coverage notes:
 An `app:Appearance` with theme `"vegetation"` is emitted alongside
 the existing `"energyLabel"` and `"solarPanels"` themes. It carries one
 `app:X3DMaterial` whose `diffuseColor` is a deep foliage green
-(`0.15 0.55 0.15`) and whose `<app:target>` list references every
-`gml:MultiSurface` and `gml:Polygon` under every
-`veg:SolitaryVegetationObject` in the city model. Per-polygon
-targets accompany the container targets to match the KIT
-SDM_KITModelViewer family's requirement: those viewers silently skip
-appearance targets that point at a container `gml:MultiSurface`, so
-emitting both keeps the colour applied everywhere.
+(`0.15 0.55 0.15`) and whose `<app:target>` list references the
+`gml:MultiSurface` container of every `veg:SolitaryVegetationObject` in
+the city model. Member polygons are not targeted: an appearance on a
+`gml:MultiSurface` is valid for all of its member surfaces per the
+CityGML 2.0 Appearance model, so the colour propagates to the polygons
+from the container target. This matches the Alderaan reference data,
+whose `app:target` list holds only container ids.
 
 Built by
-[`append_vegetation_appearance`](../citygml_energy/city_builder/appearance.py#L149)
+[`append_vegetation_appearance`](../citygml_energy/city_builder/appearance.py#L198)
 alongside the existing energy-label and solar-panel appearance steps.
 
 ### 3.5 What the XML looks like
@@ -323,10 +323,10 @@ shape from §3.1.
 
 ## 4. Is the data model complete?
 
-### 4.1 CityGML 2.0 vegetation module — adequate, with two genuine gaps
+### 4.1 CityGML 2.0 vegetation module: adequate, with two genuine gaps
 
-The core of a tree — a point (or solid) location, total height, trunk
-and crown diameter, species — is natively represented. Everything
+The core of a tree (a point or solid location, total height, trunk
+and crown diameter, species) is natively represented. Everything
 CFTree measures morphologically goes into a native field, and Emmen's
 BOR enrichment populates `veg:species` for the subset of trees the
 register covers (§3.3). That is the right answer in the sense that
@@ -351,7 +351,7 @@ Two attributes we have but cannot express natively:
    created in the dataset", not "when the tree was planted". Using
    `creationDate` for the planting year would silently mis-label the
    data. The pipeline therefore writes BOR's `jaarvanaanleg` as
-   `gen:intAttribute name="plantingYear"` (§3.3) — a documented
+   `gen:intAttribute name="plantingYear"` (§3.3), a documented
    workaround rather than a native solution.
 2. **Leaf type and leaf cycle.** `class` / `function` are CodeType
    fields, which means they can carry anything behind a codeSpace, but
@@ -393,7 +393,7 @@ were kept:
   Emmer-Compascuum small-area AOI found 20 `natural=tree` nodes in the
   bbox. 11 of the 652 CFTree trees got matched by proximity (1-5 m),
   but **every matched OSM node had only the `natural=tree` tag and
-  no others** — no species, no leaf_type, no leaf_cycle, no
+  no others**: no species, no leaf_type, no leaf_cycle, no
   start_date. The "enrichment" contributed nothing beyond a
   cross-reference link to the OSM node id, while OSM is also outside
   the project's "Dutch government data only" policy. Removed.
@@ -404,8 +404,8 @@ were kept:
   the project's policy even where it does carry useful attributes.
   Removed.
 * **BGT `vegetatieobject_punt` (kept as cross-reference, §3.2).**
-  Dutch government data, but the IMGeo 2.2 catalog documents the
-  schema as carrying only `bgt-type` + `plus-type` — no species,
+  Dutch government data, but the IMGeo 2.2 catalogue documents the
+  schema as carrying only `bgt-type` plus `plus-type`: no species,
   no leaf class, no planting year, no dimensions. A BGT join cannot
   add any attribute CFTree does not already have. It does carry
   three non-attribute signals that add information: an authoritative
@@ -426,25 +426,25 @@ were kept:
   remaining BOR fields land in `gen:*Attribute` siblings rather
   than the typed `veg:class` / `veg:function` / `veg:usage` slots,
   because protection regime is a legal status and growth form is
-  a canopy descriptor — neither matches the horticultural intent
-  of those typed slots (§3.3 reasoning). Coverage is partial —
-  about 26 % of records have a populated species and ~93 % have a
-  planting year — and the layer is Emmen-specific, both of which
+  a canopy descriptor, neither of which matches the horticultural intent
+  of those typed slots (§3.3 reasoning). Coverage is partial (about
+  26 % of records have a populated species and ~93 % have a
+  planting year) and the layer is Emmen-specific, both of which
   are honest limitations rather than bugs in the integration: every
   enriched CityGML element reflects exactly what Emmen's authority
   registered.
 
 The BOR matcher is a direct call to the generic
 [`tree_matching.match_nearest_within`](../citygml_energy/city_builder/tree_matching.py)
-from `pipeline._maybe_match_trees_to_bor`, with `register_label="Emmen BOR"`.
+from `vegetation._match_to_bor`, with `register_label="Emmen BOR"`.
 There is no longer a BOR-specific wrapper module: the previous
-`tree_enrichment.py` shim added no leverage over the inline call,
+`tree_enrichment.py` shim added no benefit over the inline call,
 so it was removed. The git history preserves the previous "intentionally
 empty" comment, so a contributor following the trail of "tree enrichment"
 back through the log lands first on the active matcher and then on
 the rationale for what was dropped.
 
-### 4.4 Energy ADE 3.0 — silent on vegetation
+### 4.4 Energy ADE 3.0: silent on vegetation
 
 The Energy ADE 3.0 beta 8 schema set, as bundled in
 [`Energy_ADE-3.0beta8/`](../Energy_ADE-3.0beta8/), does not extend
@@ -453,9 +453,9 @@ building units, zones, devices, constructions, and schedules.
 
 This is **not a gap per se**: vegetation does not produce or consume
 energy inside the Energy ADE model. Tree effects that Energy ADE
-*could* plausibly care about — external shading, evapotranspiration,
-microclimate forcing on an adjacent building's heating/cooling demand
-— are currently handled in Energy ADE via
+*could* plausibly care about (external shading, evapotranspiration,
+microclimate forcing on an adjacent building's heating/cooling demand)
+are currently handled in Energy ADE via
 `nrg3:BoundarySurface`-level transmittance and the WeatherData section,
 not via vegetation-aware modelling. Noting this as a deliberate scope
 decision, not a bug, feels right.
@@ -478,7 +478,7 @@ cases:
    `trunkBase`-as-`gml:Point`. That converts all of
    section 3.1's `gen:doubleAttribute` rows into typed fields with
    schema-level documentation, and makes them discoverable by any
-   schema-driven tooling (xsdata, FME, KIT SDM).
+   schema-driven tooling (xsdata, FME, KITModelViewer).
 2. **Register a `plantingYear` generic attribute convention.** Until
    a native `plantingYear` exists in a vegetation ADE, pinning the
    attribute name + semantics to a documented codeSpace in the
@@ -518,7 +518,7 @@ The pipeline, end-to-end, on a fresh WSL Ubuntu 24.04 machine:
    `https://geotiles.citg.tudelft.nl/AHN5_T`, which does not exist
    (see §2.1). Patched to `AHN4_T`.
 7. Drop the Emmer-Compascuum AOI polygon in
-   `CFTree/cases/emmer_compascuum/case_area.geojson` — derived from
+   `CFTree/cases/emmer_compascuum/case_area.geojson`, derived from
    the `grids.gpkg` bbox `[264400, 535580, 268720, 538940]` in
    EPSG:28992.
 8. `python CFTree/main.py --case emmer_compascuum --n-cores 8 --overwrite`.
@@ -553,11 +553,13 @@ share.
   are out of scope under the current "Dutch government data only"
   policy. The `tree_enrichment.py` module that previously held the
   scaffold for those sources was first repurposed for BOR and then
-  removed when the BOR-specific wrapper proved to add no leverage
+  removed when the BOR-specific wrapper proved to add nothing
   over an inline call to `tree_matching.match_nearest_within`.
-* **Boundary polygon format.** Both GeoPackage (`.gpkg` + layer + fid)
-  and GeoJSON (`.geojson`, single feature) are accepted by
-  [`BoundarySource`](../citygml_energy/city_builder/boundary.py).
+* **Boundary polygon format.** Only single-feature GeoJSON
+  (`.geojson` / `.json`) is accepted by
+  [`BoundarySource`](../citygml_energy/city_builder/boundary.py);
+  `load_boundary_polygon` raises `CityBuildError` on any other
+  extension, and `BoundarySource` carries only a `path` (no layer / fid).
   The canonical default is
   [`inputs/boundaries/emmer-compascuum_small-area.geojson`](../inputs/boundaries/emmer-compascuum_small-area.geojson)
   (~2 KB, EPSG:28992, MultiPolygon).
