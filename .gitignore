@@ -40,7 +40,7 @@ Desktop.ini
 !/KITModelViewer_V7.5.2_Build-3777/GMLSchemata/CityGML_2_0/CityGML/EnergyADE-local.xsd
 /generated
 
-# Claude Code
+# Local agent tooling
 .claude/
 
 # Secrets
