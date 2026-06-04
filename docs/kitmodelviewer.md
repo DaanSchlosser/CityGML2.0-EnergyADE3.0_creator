@@ -1,5 +1,9 @@
 # KITModelViewer compatibility
 
+Get the viewer from KIT IAI (a free, separate download, not bundled here):
+https://www.iai.kit.edu/english/1266_4808.php. The KITModelViewer is KIT's
+CityGML and IFC viewer, the successor to the FZKViewer.
+
 The KITModelViewer ships with an Energy ADE **2.0** schema
 (`EnergyADE-local.xsd`, namespace
 `http://www.sig3d.org/citygml/2.0/energy/2.0`). GML files using Energy

@@ -28,7 +28,10 @@ from citygml_energy.city_builder.http import CachedSession
 
 
 def _municipality_feature(
-    name: str, *, code: str = "GM0503", bbox: tuple[float, float, float, float] | None = None,
+    name: str,
+    *,
+    code: str = "GM0503",
+    bbox: tuple[float, float, float, float] | None = None,
 ) -> dict[str, Any]:
     """Build a minimal PDOK-shaped municipality feature for testing."""
     if bbox is None:
@@ -40,15 +43,23 @@ def _municipality_feature(
         "properties": {"naam": name, "code": code},
         "geometry": {
             "type": "Polygon",
-            "coordinates": [[
-                [minx, miny], [maxx, miny], [maxx, maxy], [minx, maxy], [minx, miny],
-            ]],
+            "coordinates": [
+                [
+                    [minx, miny],
+                    [maxx, miny],
+                    [maxx, maxy],
+                    [minx, maxy],
+                    [minx, miny],
+                ]
+            ],
         },
     }
 
 
 def _make_session(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pages: list[dict[str, Any]],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pages: list[dict[str, Any]],
 ) -> CachedSession:
     session = CachedSession(cache_dir=tmp_path / "cache", use_cache=False)
     calls = iter(pages)
@@ -81,10 +92,12 @@ def _make_session(
 
 
 def test_fetch_municipality_outline_matches_case_insensitively(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session = _make_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": [_municipality_feature("Delft")]}],
     )
     outline = fetch_municipality_outline(session, name="DELFT")
@@ -97,14 +110,13 @@ def test_fetch_municipality_outline_matches_case_insensitively(
 
 
 def test_fetch_municipality_outline_walks_pages_until_match(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A non-leading municipality name shouldn't fail just because it
     happens to live past the first 1000-row page."""
     full_page = {
-        "features": [
-            _municipality_feature(f"Gemeente_{i}") for i in range(MUNICIPALITY_PAGE_SIZE)
-        ],
+        "features": [_municipality_feature(f"Gemeente_{i}") for i in range(MUNICIPALITY_PAGE_SIZE)],
     }
     target_page = {"features": [_municipality_feature("Emmen", code="GM0114")]}
     session = _make_session(tmp_path, monkeypatch, pages=[full_page, target_page])
@@ -115,12 +127,14 @@ def test_fetch_municipality_outline_walks_pages_until_match(
 
 
 def test_fetch_municipality_outline_raises_when_not_found(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The caller cannot proceed without an outline; a missing name
     must surface as a :class:`ValueError`, not an empty result."""
     session = _make_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": [_municipality_feature("Delft")]}],
     )
     with pytest.raises(ValueError, match="not found"):
@@ -128,7 +142,8 @@ def test_fetch_municipality_outline_raises_when_not_found(
 
 
 def test_fetch_municipality_outline_raises_on_empty_first_page(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An empty WFS response is treated as a hard miss, same as a
     non-matching populated response."""
@@ -138,13 +153,15 @@ def test_fetch_municipality_outline_raises_on_empty_first_page(
 
 
 def test_fetch_municipality_outline_normalises_cbs_code_variants(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """PDOK has shipped both ``"GM0503"`` and bare ``"0503"`` as the
     code field across vintages; both should reduce to ``"0503"``."""
     for raw_code, expected in (("GM0503", "0503"), ("0503", "0503")):
         session = _make_session(
-            tmp_path, monkeypatch,
+            tmp_path,
+            monkeypatch,
             pages=[{"features": [_municipality_feature("Delft", code=raw_code)]}],
         )
         outline = fetch_municipality_outline(session, name="Delft")

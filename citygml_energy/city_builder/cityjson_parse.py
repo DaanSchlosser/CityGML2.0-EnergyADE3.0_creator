@@ -24,9 +24,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-_LOG = logging.getLogger(__name__)
-
 from .._step import Coord3D, GeometryPolygon
+
+_LOG = logging.getLogger(__name__)
 
 _LOD_ALIAS: dict[str, str] = {
     "0": "0",
@@ -362,7 +362,11 @@ def _ring_from_indices(
     from ..gml_builders import _COORD_DECIMALS
 
     distinct = {
-        (round(pt[0], _COORD_DECIMALS), round(pt[1], _COORD_DECIMALS), round(pt[2], _COORD_DECIMALS))
+        (
+            round(pt[0], _COORD_DECIMALS),
+            round(pt[1], _COORD_DECIMALS),
+            round(pt[2], _COORD_DECIMALS),
+        )
         for pt in ring
     }
     if len(distinct) < 3:

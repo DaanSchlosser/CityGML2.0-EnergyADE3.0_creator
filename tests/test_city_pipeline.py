@@ -51,8 +51,14 @@ _square = make_square_polygon
 
 def _cube_shell() -> list[SemanticPolygon]:
     p = [
-        (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0),
-        (0.0, 0.0, 3.0), (1.0, 0.0, 3.0), (1.0, 1.0, 3.0), (0.0, 1.0, 3.0),
+        (0.0, 0.0, 0.0),
+        (1.0, 0.0, 0.0),
+        (1.0, 1.0, 0.0),
+        (0.0, 1.0, 0.0),
+        (0.0, 0.0, 3.0),
+        (1.0, 0.0, 3.0),
+        (1.0, 1.0, 3.0),
+        (0.0, 1.0, 3.0),
     ]
     faces_and_types = [
         ([p[0], p[3], p[2], p[1]], "GroundSurface"),
@@ -91,13 +97,15 @@ def _fixture_outline() -> MunicipalityOutline:
             "type": "Feature",
             "geometry": {
                 "type": "Polygon",
-                "coordinates": [[
-                    [84000.0, 445000.0],
-                    [86000.0, 445000.0],
-                    [86000.0, 447000.0],
-                    [84000.0, 447000.0],
-                    [84000.0, 445000.0],
-                ]],
+                "coordinates": [
+                    [
+                        [84000.0, 445000.0],
+                        [86000.0, 445000.0],
+                        [86000.0, 447000.0],
+                        [84000.0, 447000.0],
+                        [84000.0, 445000.0],
+                    ]
+                ],
             },
         },
         bbox=(84000.0, 445000.0, 86000.0, 447000.0),
@@ -165,11 +173,13 @@ def mocked_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         lambda session, *, name: _fixture_outline(),
     )
     monkeypatch.setattr(
-        bag_fetchers, "fetch_panden",
+        bag_fetchers,
+        "fetch_panden",
         lambda session, *, bbox, cbs_code=None: [_fixture_pand()],
     )
     monkeypatch.setattr(
-        bag_fetchers, "fetch_verblijfsobjecten",
+        bag_fetchers,
+        "fetch_verblijfsobjecten",
         lambda session, *, bbox, cbs_code=None: [_fixture_vbo()],
     )
     monkeypatch.setattr(
@@ -237,9 +247,7 @@ def test_pipeline_builds_and_serialises(tmp_path: Path, mocked_pipeline) -> None
     assert locality_names and locality_names[0].content == ["Delft"]
 
 
-def test_pipeline_output_validates_against_xsd(
-    tmp_path: Path, mocked_pipeline
-) -> None:
+def test_pipeline_output_validates_against_xsd(tmp_path: Path, mocked_pipeline) -> None:
     config = _config(tmp_path, with_labels=True)
     model = build_city_model(config)
     xml = model.to_string()
@@ -248,9 +256,7 @@ def test_pipeline_output_validates_against_xsd(
     schema.assertValid(root)
 
 
-def test_pipeline_omits_units_when_addresses_disabled(
-    tmp_path: Path, mocked_pipeline
-) -> None:
+def test_pipeline_omits_units_when_addresses_disabled(tmp_path: Path, mocked_pipeline) -> None:
     config = _config(tmp_path, with_labels=False)
     config = CityBuildConfig(
         source_path=config.source_path,

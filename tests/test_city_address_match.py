@@ -138,12 +138,16 @@ def test_newer_label_wins_across_calculation_regimes() -> None:
     is the cross-module assertion that the chain stays intact.
     """
     legacy = _label(
-        "2628CD", 42, "C",
+        "2628CD",
+        42,
+        "C",
         registratie=date(2018, 1, 1),
         berekeningstype="Definitief Energielabel",
     )
     nta = _label(
-        "2628CD", 42, "A",
+        "2628CD",
+        42,
+        "A",
         registratie=date(2024, 6, 1),
         berekeningstype="NTA 8800:2024",
     )
@@ -187,12 +191,16 @@ def test_older_nta_loses_to_newer_legacy() -> None:
     over another; freshness is the only tie-breaker.
     """
     nta = _label(
-        "2628CD", 42, "A",
+        "2628CD",
+        42,
+        "A",
         registratie=date(2018, 1, 1),
         berekeningstype="NTA 8800:2020",
     )
     legacy = _label(
-        "2628CD", 42, "G",
+        "2628CD",
+        42,
+        "G",
         registratie=date(2024, 6, 1),
         berekeningstype="Nader Voorschrift",
     )
@@ -215,18 +223,23 @@ def test_vbo_id_match_wins_over_address_key_match() -> None:
     """
     vbo = _vbo("V1", "P1", postcode="2628CD", huisnummer=42)
     label_by_id = _label(
-        "2628CD", 42, "B",
+        "2628CD",
+        42,
+        "B",
         registratie=date(2018, 1, 1),
         bag_verblijfsobject_id="V1",
         berekeningstype="NTA 8800:2018",
     )
     label_by_key_only = _label(
-        "2628CD", 42, "F",
+        "2628CD",
+        42,
+        "F",
         registratie=date(2024, 1, 1),
         berekeningstype="Nader Voorschrift",
     )
     grouped = match_addresses(
-        vbos=[vbo], energy_labels=[label_by_id, label_by_key_only],
+        vbos=[vbo],
+        energy_labels=[label_by_id, label_by_key_only],
     )
     resolved = grouped["P1"][0].energy_label
     assert resolved is not None
@@ -247,10 +260,14 @@ def test_two_vbos_in_one_pand_can_carry_different_regimes() -> None:
         _vbo("V2", "P1", postcode="2628CD", huisnummer=43),
     ]
     labels = [
-        _label("2628CD", 42, "A", registratie=date(2024, 1, 1),
-               berekeningstype="NTA 8800:2024"),
-        _label("2628CD", 43, "G", registratie=date(2018, 1, 1),
-               berekeningstype="Definitief Energielabel"),
+        _label("2628CD", 42, "A", registratie=date(2024, 1, 1), berekeningstype="NTA 8800:2024"),
+        _label(
+            "2628CD",
+            43,
+            "G",
+            registratie=date(2018, 1, 1),
+            berekeningstype="Definitief Energielabel",
+        ),
     ]
     grouped = match_addresses(vbos=vbos, energy_labels=labels)
     by_huisnummer = {r.huisnummer: r for r in grouped["P1"]}

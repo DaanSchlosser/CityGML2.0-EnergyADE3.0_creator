@@ -55,8 +55,14 @@ def test_property_map_covers_core_boundary_surfaces() -> None:
     xsd_names = set(entries)
     # Every bldg:boundedBy member CityGML defines must be discovered.
     expected_bldg = {
-        "WallSurface", "RoofSurface", "GroundSurface", "CeilingSurface",
-        "FloorSurface", "OuterCeilingSurface", "OuterFloorSurface", "ClosureSurface",
+        "WallSurface",
+        "RoofSurface",
+        "GroundSurface",
+        "CeilingSurface",
+        "FloorSurface",
+        "OuterCeilingSurface",
+        "OuterFloorSurface",
+        "ClosureSurface",
     }
     missing = expected_bldg - xsd_names
     assert not missing, f"auto-discovery lost bldg surfaces: {sorted(missing)}"

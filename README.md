@@ -1,5 +1,9 @@
 # CityGML 2.0 + Energy ADE 3.0 Creator
 
+[![CI](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/actions/workflows/ci.yml/badge.svg)](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](pyproject.toml)
+
 A Python toolkit for generating CityGML 2.0 files extended with Energy
 ADE 3.0 (beta8), CityGML's extension mechanism for energy data. The
 point is an easier authoring path: you describe the model in JSON and
@@ -40,27 +44,47 @@ coordinates in EPSG:28992 (RD) + EPSG:5109 (NAP).
 
 ## 2. Quick start
 
+The toolchain is pinned for reproducibility: the Python version is fixed
+in [.python-version](.python-version) (3.12) and the full dependency graph
+is locked in [uv.lock](uv.lock), so [uv](https://docs.astral.sh/uv/)
+recreates the exact environment this toolkit was developed and tested
+against. CI runs the same steps on every push.
+
 ```powershell
-# one-time setup (Python 3.12+)
+# one-time setup with uv (fetches Python 3.12 if needed, installs from uv.lock)
+uv sync --all-extras
+
+# per-building: generate the GML file for the reference building
+uv run python examples/create_building.py
+
+# validate the output offline against the bundled XSDs
+uv run python tools/validate_xsd.py generated/owner_occupier_building.gml
+
+# run the test suite
+uv run pytest -q
+```
+
+<details>
+<summary>Prefer a plain venv + pip (Python 3.12+)?</summary>
+
+```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev]"            # add ,city,city-fast for the city pipeline
 
-# per-building: generate the GML file for the reference building
 python examples/create_building.py
-
-# validate the output offline against the bundled XSDs
 python tools/validate_xsd.py generated/owner_occupier_building.gml
-
-# run the test suite
 python -m pytest -q
 ```
 
+</details>
+
 Custom paths are supported via `--input` / `--output`. The city-scale
 pipeline needs the `city` extras and an EP-Online API key in `.env` if
-energy labels are requested (see §4). Optional extras: `city-fast`
-adds `polars` for faster EP-Online CSV filtering. All declared in
+energy labels are requested (see §4); `uv sync --all-extras` already
+includes them. The optional `city-fast` extra adds `polars` for faster
+EP-Online CSV filtering. All extras are declared in
 [pyproject.toml](pyproject.toml).
 
 ---
@@ -356,7 +380,7 @@ schemas/
 └── namespace_prefixes.json            Hand-maintained URI → prefix map
 
 xsd/                            CityGML 2.0 + GML 3.1.1 + xLink + xAL (offline copies)
-Energy_ADE-3.0beta8/            Authoritative Energy ADE 3.0 beta8 XSD + Alderaan reference
+Energy_ADE-3.0beta8/            Energy ADE 3.0 beta8 XSD + Alderaan reference (Apache-2.0; see PROVENANCE.md)
 
 tests/                          Per-building, city-scale, and infra tests
 docs/
@@ -368,6 +392,13 @@ docs/
 └── vegetation_integration_report.md   CFTree + BGT + BOR analysis
 
 generated/                      Pipeline output (git-ignored)
+
+.github/workflows/ci.yml        CI: ruff + ruff format + mypy + pytest (uv-based)
+CITATION.cff                    Citation metadata (CFF 1.2.0)
+LICENSE                         MIT licence for the toolkit
+pyproject.toml                  Metadata, dependencies, ruff / mypy / pytest config
+uv.lock                         Locked dependency graph
+.python-version                 Pinned interpreter (3.12)
 ```
 
 > The KITModelViewer install directory
@@ -378,11 +409,16 @@ generated/                      Pipeline output (git-ignored)
 
 ## 6. KITModelViewer compatibility
 
-The KITModelViewer ships with an Energy ADE **2.0** schema, so GML files
-using Energy ADE **3.0** will not display correctly until you swap in the
-3.0 schema. The generated GML is XSD-valid either way; the swap only
-touches your own viewer install, not this repo. The one-time procedure
-(plus the symptoms it fixes) is in
+The [KITModelViewer](https://www.iai.kit.edu/english/1266_4808.php) (KIT
+IAI's CityGML and IFC viewer, successor to the FZKViewer) is a separate,
+free download from KIT and is **not** bundled in this repository. Get it
+from the KIT IAI page above, then apply the one-time schema swap below.
+
+The viewer ships with an Energy ADE **2.0** schema, so GML files using
+Energy ADE **3.0** will not display correctly until you swap in the 3.0
+schema. The generated GML is XSD-valid either way; the swap only touches
+your own viewer install, not this repo. The one-time procedure (plus the
+symptoms it fixes) is in
 [docs/kitmodelviewer.md](docs/kitmodelviewer.md).
 
 ---
@@ -439,3 +475,43 @@ round-tripped through the loader:
 Any other class defined in `bindings.py` can be added to the input
 without code changes; the loader resolves it dynamically by
 `prefix:ElementName`.
+
+---
+
+## 9. Reproducibility and environment
+
+- **Pinned toolchain.** [.python-version](.python-version) fixes Python 3.12
+  and [uv.lock](uv.lock) locks every transitive dependency, so `uv sync`
+  rebuilds the tested environment exactly.
+- **Continuous integration.**
+  [.github/workflows/ci.yml](.github/workflows/ci.yml) runs `ruff check`,
+  `ruff format --check`, `mypy`, and the full `pytest` suite on every push
+  and pull request.
+- **Offline validation.** `tools/validate_xsd.py` validates output against
+  the CityGML 2.0 + GML 3.1.1 schemas in [xsd/](xsd/) and the Energy ADE 3.0
+  beta8 schema in [Energy_ADE-3.0beta8/](Energy_ADE-3.0beta8/), with no
+  network access.
+- **Sample data.** The owner-occupier reference building ships as a sanitised
+  JSON + STEP fixture (see
+  [inputs/buildings/README.md](inputs/buildings/README.md)).
+
+---
+
+## 10. Licence and citation
+
+This toolkit is released under the **MIT License** (see [LICENSE](LICENSE)).
+
+Bundled third-party components keep their own licences:
+
+- [Energy_ADE-3.0beta8/](Energy_ADE-3.0beta8/) is the CityGML Energy ADE 3.0
+  (beta 8) schema set by Dr. Giorgio Agugiaro (TU Delft), redistributed
+  unmodified under the **Apache License 2.0** (see
+  [Energy_ADE-3.0beta8/LICENSE](Energy_ADE-3.0beta8/LICENSE) and
+  [Energy_ADE-3.0beta8/PROVENANCE.md](Energy_ADE-3.0beta8/PROVENANCE.md)).
+- The two tracked files under `KITModelViewer_V7.5.2_Build-3777/` are the
+  Energy ADE 3.0 upgrade for the KIT viewer (see §6); the viewer itself is a
+  separate KIT download and is not part of this repository.
+
+To cite the software, use the metadata in [CITATION.cff](CITATION.cff) (GitHub
+renders a "Cite this repository" button from it). A persistent DOI will be
+added once a tagged release is archived.

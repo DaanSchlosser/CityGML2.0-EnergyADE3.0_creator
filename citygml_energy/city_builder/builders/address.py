@@ -244,7 +244,7 @@ def _build_locality(
     )
     thoroughfare_numbers = [
         thoroughfare_number_cls(
-            number_type="Single",  # type: ignore[arg-type]
+            number_type="Single",
             content=[flat_number_text],
         )
     ]

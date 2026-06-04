@@ -31,7 +31,6 @@ from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticP
 from citygml_energy.city_builder.config import CityBuildError, load_city_config
 from citygml_energy.city_builder.pipeline import filter_buildings_by_boundary
 
-
 # ---------------------------------------------------------------------------
 # load_boundary_polygon
 # ---------------------------------------------------------------------------
@@ -64,9 +63,7 @@ def test_load_boundary_polygon_heals_concave_self_intersecting_ring(tmp_path: Pa
 # ---------------------------------------------------------------------------
 
 
-def _lod0_footprint(
-    pand_id: str, coords: list[tuple[float, float]]
-) -> ParsedBuilding:
+def _lod0_footprint(pand_id: str, coords: list[tuple[float, float]]) -> ParsedBuilding:
     """Build a ParsedBuilding with a single LoD 0 footprint at z=0."""
     return ParsedBuilding(
         pand_id=pand_id,
@@ -92,23 +89,21 @@ def testfilter_buildings_by_boundary_keeps_overlapping_drops_disjoint() -> None:
     c_shape = Polygon(
         [(0, 0), (10, 0), (10, 3), (6, 3), (6, 7), (10, 7), (10, 10), (0, 10), (0, 0)]
     )
-    inside = _lod0_footprint(
-        "inside_1", [(1, 1), (2, 1), (2, 2), (1, 2), (1, 1)]
-    )
+    inside = _lod0_footprint("inside_1", [(1, 1), (2, 1), (2, 2), (1, 2), (1, 1)])
     straddling = _lod0_footprint(
         # Half in the C's left arm, half sticking into the notch.
-        "straddle_1", [(5, 4), (7, 4), (7, 6), (5, 6), (5, 4)]
+        "straddle_1",
+        [(5, 4), (7, 4), (7, 6), (5, 6), (5, 4)],
     )
     in_notch = _lod0_footprint(
         # Fully inside the notch → outside the boundary.
-        "notch_1", [(7, 4), (8, 4), (8, 5), (7, 5), (7, 4)]
+        "notch_1",
+        [(7, 4), (8, 4), (8, 5), (7, 5), (7, 4)],
     )
     outside = _lod0_footprint(
         "far_away_1", [(100, 100), (101, 100), (101, 101), (100, 101), (100, 100)]
     )
-    parsed_by_id = {
-        pb.pand_id: pb for pb in (inside, straddling, in_notch, outside)
-    }
+    parsed_by_id = {pb.pand_id: pb for pb in (inside, straddling, in_notch, outside)}
     kept = filter_buildings_by_boundary(parsed_by_id, c_shape)
     # Any-overlap semantics: inside + straddling are kept; notch + far are dropped.
     assert set(kept) == {"inside_1", "straddle_1"}
@@ -266,7 +261,8 @@ def test_load_boundary_from_geojson_rejects_non_rd_crs(tmp_path: Path) -> None:
     """A WGS84-tagged GeoJSON must not silently misalign with RD-based 3DBAG data."""
     path = tmp_path / "area.geojson"
     _write_geojson(
-        path, [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)],
+        path,
+        [(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)],
         crs="urn:ogc:def:crs:EPSG::4326",
     )
     with pytest.raises(ValueError, match="EPSG:28992"):

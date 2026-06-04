@@ -102,8 +102,14 @@ def _unit_cube_polygons() -> list[GeometryPolygon]:
     """Six square faces of the unit cube, all CCW when viewed from outside."""
     # Corners of the unit cube.
     p = [
-        (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0),  # bottom
-        (0.0, 0.0, 1.0), (1.0, 0.0, 1.0), (1.0, 1.0, 1.0), (0.0, 1.0, 1.0),  # top
+        (0.0, 0.0, 0.0),
+        (1.0, 0.0, 0.0),
+        (1.0, 1.0, 0.0),
+        (0.0, 1.0, 0.0),  # bottom
+        (0.0, 0.0, 1.0),
+        (1.0, 0.0, 1.0),
+        (1.0, 1.0, 1.0),
+        (0.0, 1.0, 1.0),  # top
     ]
     return [
         GeometryPolygon(exterior=[p[0], p[3], p[2], p[1]]),  # bottom (-z, CCW from below)
@@ -151,7 +157,9 @@ def test_planar_attributes_flat_horizontal_roof_has_zero_inclination_and_no_azim
     straight up: inclination 0°, azimuth undefined.
     """
     poly = _quad([(0.0, 0.0, 3.0), (1.0, 0.0, 3.0), (1.0, 1.0, 3.0), (0.0, 1.0, 3.0)])
-    area, azimuth, inclination = planar_surface_attributes(poly)
+    attrs = planar_surface_attributes(poly)
+    assert attrs is not None
+    area, azimuth, inclination = attrs
     assert area == pytest.approx(1.0, abs=1e-9)
     assert inclination == pytest.approx(0.0, abs=1e-9)
     assert azimuth is None  # horizontal surface → omit nrg3:bdgBdrySurfAzimuth
@@ -164,7 +172,9 @@ def test_planar_attributes_ground_surface_has_inclination_180_and_no_azimuth() -
     """
     # Same square, reversed winding → Newell normal flips to (0, 0, -1).
     poly = _quad([(0.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0), (1.0, 0.0, 0.0)])
-    area, azimuth, inclination = planar_surface_attributes(poly)
+    attrs = planar_surface_attributes(poly)
+    assert attrs is not None
+    area, azimuth, inclination = attrs
     assert area == pytest.approx(1.0, abs=1e-9)
     assert inclination == pytest.approx(180.0, abs=1e-9)
     assert azimuth is None
@@ -183,7 +193,9 @@ def test_planar_attributes_vertical_wall_has_inclination_90_and_compass_azimuth(
     # 1 m wide, 3 m tall wall on the y=0 plane facing -Y.
     # Winding chosen so Newell(p) = (0, -3, 0) → outward = south.
     poly = _quad([(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 3.0), (0.0, 0.0, 3.0)])
-    area, azimuth, inclination = planar_surface_attributes(poly)
+    attrs = planar_surface_attributes(poly)
+    assert attrs is not None
+    area, azimuth, inclination = attrs
     assert area == pytest.approx(3.0, abs=1e-9)
     assert inclination == pytest.approx(90.0, abs=1e-9)
     assert azimuth is not None
@@ -196,9 +208,11 @@ def test_planar_attributes_45deg_south_facing_roof() -> None:
     facing south.
     """
     poly = _quad([(0.0, 0.0, 3.0), (1.0, 0.0, 3.0), (1.0, 1.0, 4.0), (0.0, 1.0, 4.0)])
-    area, azimuth, inclination = planar_surface_attributes(poly)
+    attrs = planar_surface_attributes(poly)
+    assert attrs is not None
+    area, azimuth, inclination = attrs
     # Sloped facet's true area: 1 m × √2 m = √2 m².
-    assert area == pytest.approx(2 ** 0.5, abs=1e-9)
+    assert area == pytest.approx(2**0.5, abs=1e-9)
     assert inclination == pytest.approx(45.0, abs=1e-9)
     assert azimuth is not None
     assert azimuth == pytest.approx(180.0, abs=1e-9)
@@ -220,7 +234,9 @@ def test_planar_attributes_subtracts_interior_ring_area() -> None:
             [(4.0, 4.0, 3.0), (4.0, 5.0, 3.0), (5.0, 5.0, 3.0), (5.0, 4.0, 3.0)],
         ],
     )
-    area, _azimuth, _inclination = planar_surface_attributes(polygon)
+    attrs = planar_surface_attributes(polygon)
+    assert attrs is not None
+    area, _azimuth, _inclination = attrs
     assert area == pytest.approx(99.0, abs=1e-9)
 
 
@@ -243,7 +259,9 @@ def test_planar_attributes_compass_bearings_match_solar_panel_convention() -> No
     # Vertices wound so Newell normal = (-1, 0, 1) → up and west.
     # Low side: x=0, z=3. High side: x=1, z=4.
     poly = _quad([(0.0, 0.0, 3.0), (1.0, 0.0, 4.0), (1.0, 1.0, 4.0), (0.0, 1.0, 3.0)])
-    _area, azimuth, inclination = planar_surface_attributes(poly)
+    attrs = planar_surface_attributes(poly)
+    assert attrs is not None
+    _area, azimuth, inclination = attrs
     assert inclination == pytest.approx(45.0, abs=1e-9)
     assert azimuth == pytest.approx(270.0, abs=1e-9)
 

@@ -62,10 +62,7 @@ def _module_paths_referenced_in_doc(text: str) -> set[Path]:
 def test_every_module_path_in_index_exists() -> None:
     text = _load_index_text()
     missing = sorted(p for p in _module_paths_referenced_in_doc(text) if not p.exists())
-    assert not missing, (
-        "docs/mapping_city.md references modules that no "
-        f"longer exist: {missing}"
-    )
+    assert not missing, f"docs/mapping_city.md references modules that no longer exist: {missing}"
 
 
 _REFERENCED_SYMBOLS: dict[str, list[str]] = {
@@ -130,7 +127,8 @@ _REFERENCED_SYMBOLS: dict[str, list[str]] = {
     sorted(_REFERENCED_SYMBOLS.items()),
 )
 def test_referenced_symbols_exist_in_module(
-    module_path: str, symbols: list[str],
+    module_path: str,
+    symbols: list[str],
 ) -> None:
     """Each symbol the index cites must be reachable in its module.
 
@@ -145,10 +143,7 @@ def test_referenced_symbols_exist_in_module(
     module_dotted = module_path[: -len(".py")].replace("/", ".")
     module = importlib.import_module(module_dotted)
     missing = [s for s in symbols if not hasattr(module, s)]
-    assert not missing, (
-        f"Index cites symbols that are no longer in {module_path}: "
-        f"{missing}"
-    )
+    assert not missing, f"Index cites symbols that are no longer in {module_path}: {missing}"
 
 
 # ---------------------------------------------------------------------------

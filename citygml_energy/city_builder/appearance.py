@@ -264,9 +264,7 @@ def _collect_per_feature_targets(city_model: Any, feature_cls: type) -> list[str
         if not isinstance(feat, feature_cls):
             continue
         targets.extend(
-            f"#{sub.id}"
-            for sub in iter_instances(feat)
-            if isinstance(sub, MultiSurface) and sub.id
+            f"#{sub.id}" for sub in iter_instances(feat) if isinstance(sub, MultiSurface) and sub.id
         )
     return targets
 

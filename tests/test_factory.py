@@ -114,9 +114,7 @@ def _validate(city_model: CityModel, xsd_schema) -> None:
         "feature(s) declared in the CityModel never made it into the "
         f"serialized XML: {sorted(missing)}"
     )
-    assert expected_ids, (
-        "test fixture built an empty CityModel; _validate would pass vacuously"
-    )
+    assert expected_ids, "test fixture built an empty CityModel; _validate would pass vacuously"
 
 
 # ---------------------------------------------------------------------------

@@ -61,7 +61,7 @@ def test_fetch_panden_dedupes_repeated_identificatie(
         lambda session, layer, *, bbox: raw,
     )
     panden = bag_fetchers.fetch_panden(
-        session=None,  # type: ignore[arg-type]
+        session=None,
         bbox=(0.0, 0.0, 1.0, 1.0),
         cbs_code="0503",
     )
@@ -85,7 +85,7 @@ def test_fetch_verblijfsobjecten_dedupes_repeated_identificatie(
         lambda session, layer, *, bbox: raw,
     )
     vbos = bag_fetchers.fetch_verblijfsobjecten(
-        session=None,  # type: ignore[arg-type]
+        session=None,
         bbox=(0.0, 0.0, 1.0, 1.0),
         cbs_code="0503",
     )
@@ -104,7 +104,7 @@ def test_fetch_panden_cbs_code_filter(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda session, layer, *, bbox: raw,
     )
     panden = bag_fetchers.fetch_panden(
-        session=None,  # type: ignore[arg-type]
+        session=None,
         bbox=(0.0, 0.0, 1.0, 1.0),
         cbs_code="0503",
     )
@@ -201,7 +201,7 @@ def test_fetch_layer_subdivides_before_walking_when_count_over_window(
     BEFORE any page walk, so the full bbox is never paginated."""
     monkeypatch.setattr(bag_fetchers, "BAG_MAX_FETCHABLE", 50)
 
-    def fake_count(session, url, *, type_names, cache_prefix, bbox):  # type: ignore[no-untyped-def]
+    def fake_count(session, url, *, type_names, cache_prefix, bbox):
         # Use bbox area as a stand-in count: the root is over the window,
         # each quadrant comfortably under it.
         minx, miny, maxx, maxy = bbox
@@ -209,7 +209,7 @@ def test_fetch_layer_subdivides_before_walking_when_count_over_window(
 
     walked: list[tuple[float, float, float, float]] = []
 
-    def fake_paginate(session, url, *, type_names, cache_prefix, bbox, page_size):  # type: ignore[no-untyped-def]
+    def fake_paginate(session, url, *, type_names, cache_prefix, bbox, page_size):
         walked.append(bbox)
         return [{"properties": {"identificatie": f"id-{bbox}"}}]
 
@@ -217,8 +217,7 @@ def test_fetch_layer_subdivides_before_walking_when_count_over_window(
     monkeypatch.setattr(bag_fetchers, "paginate_features", fake_paginate)
 
     root = (0.0, 0.0, 10.0, 10.0)  # area 100 > 50 -> subdivide
-    out = bag_fetchers._fetch_layer(None, "bag:pand", bbox=root)  # type: ignore[arg-type]
-
+    out = bag_fetchers._fetch_layer(None, "bag:pand", bbox=root)
     assert root not in walked  # the over-cap bbox is never walked
     assert len(walked) == 4  # exactly the four quadrants (each area 25 <= 50)
     assert len(out) == 4
@@ -236,14 +235,13 @@ def test_fetch_layer_walks_directly_when_count_under_window(
     )
     walked: list[tuple[float, float, float, float]] = []
 
-    def fake_paginate(session, url, *, type_names, cache_prefix, bbox, page_size):  # type: ignore[no-untyped-def]
+    def fake_paginate(session, url, *, type_names, cache_prefix, bbox, page_size):
         walked.append(bbox)
         return [{"properties": {"identificatie": "x"}}]
 
     monkeypatch.setattr(bag_fetchers, "paginate_features", fake_paginate)
     bbox = (0.0, 0.0, 1.0, 1.0)
-    out = bag_fetchers._fetch_layer(None, "bag:pand", bbox=bbox)  # type: ignore[arg-type]
-
+    out = bag_fetchers._fetch_layer(None, "bag:pand", bbox=bbox)
     assert walked == [bbox]
     assert len(out) == 1
 
@@ -260,13 +258,12 @@ def test_fetch_layer_reactive_fallback_when_count_unavailable(
         lambda session, url, *, type_names, cache_prefix, bbox: None,
     )
 
-    def fake_paginate(session, url, *, type_names, cache_prefix, bbox, page_size):  # type: ignore[no-untyped-def]
+    def fake_paginate(session, url, *, type_names, cache_prefix, bbox, page_size):
         # The root walk hits the threshold (2); each quadrant returns one.
         count = 2 if (bbox[2] - bbox[0]) >= 10 else 1
         return [{"properties": {"identificatie": f"a-{bbox}-{i}"}} for i in range(count)]
 
     monkeypatch.setattr(bag_fetchers, "paginate_features", fake_paginate)
-    out = bag_fetchers._fetch_layer(None, "bag:pand", bbox=(0.0, 0.0, 10.0, 10.0))  # type: ignore[arg-type]
-
+    out = bag_fetchers._fetch_layer(None, "bag:pand", bbox=(0.0, 0.0, 10.0, 10.0))
     # Root walk (2 == threshold, count unknown) -> subdivide; 4 quadrants x 1.
     assert len(out) == 4

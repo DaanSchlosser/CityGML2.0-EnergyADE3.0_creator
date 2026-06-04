@@ -114,7 +114,8 @@ def test_nfa_lives_on_the_building_unit_not_the_building(building):
         NS,
     )
     nfa_entries = [
-        a for a in unit_nfa
+        a
+        for a in unit_nfa
         if (t := a.find("nrg3:type", NS)) is not None and t.text == "netFloorArea"
     ]
     assert len(nfa_entries) == 1

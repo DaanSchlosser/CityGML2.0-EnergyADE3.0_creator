@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -42,6 +43,9 @@ from tests._factories import (
     make_parsed_building,
     make_vbo,
 )
+
+if TYPE_CHECKING:
+    from citygml_energy.city_builder.solar_panels import ProjectedPanel
 
 # ---------------------------------------------------------------------------
 # Local fixtures (file-specific defaults; construction logic lives in _factories)
@@ -155,9 +159,14 @@ def test_run_per_pand_build_threads_build_context_through_to_each_builder(
     """
     config = _config(tmp_path)
     config = config.__class__(**{**config.__dict__, "gml_id_prefix": "test_"})
-    inputs_per_pand = {"PA": PandInputs(resolved=[
-        ResolvedAddress(vbo=_vbo(), energy_label=None),
-    ], solar_panels=())}
+    inputs_per_pand = {
+        "PA": PandInputs(
+            resolved=[
+                ResolvedAddress(vbo=_vbo(), energy_label=None),
+            ],
+            solar_panels=(),
+        )
+    }
     artefacts = run_per_pand_build(
         config=config,
         panden=[_pand("PA")],
@@ -173,8 +182,7 @@ def test_run_per_pand_build_threads_build_context_through_to_each_builder(
     # BuildingUnit was attached (so attach_building_units_to_building
     # got the prefix and the address ran through).
     assert building.building_unit, (
-        "BuildingUnit was not attached — attach_building_units_to_building "
-        "did not run."
+        "BuildingUnit was not attached — attach_building_units_to_building did not run."
     )
     [bu_wrapper] = building.building_unit
     inner = bu_wrapper.building_unit
@@ -209,12 +217,12 @@ def test_run_per_pand_build_lands_orchestration_outputs_on_building(
     out one of these expectations and fail this test.
     """
     config = _config(tmp_path)
-    inputs_per_pand = {"PA": PandInputs(
-        resolved=[
-            ResolvedAddress(vbo=_vbo(), energy_label=_label_with_pand_attribution())
-        ],
-        solar_panels=(),
-    )}
+    inputs_per_pand = {
+        "PA": PandInputs(
+            resolved=[ResolvedAddress(vbo=_vbo(), energy_label=_label_with_pand_attribution())],
+            solar_panels=(),
+        )
+    }
     [art] = run_per_pand_build(
         config=config,
         panden=[_pand("PA", bouwjaar=1985)],
@@ -232,8 +240,7 @@ def test_run_per_pand_build_lands_orchestration_outputs_on_building(
     # attach_building_units_to_building: at least one BuildingUnit
     # was attached to building.building_unit.
     assert building.building_unit, (
-        "BuildingUnit was not attached — "
-        "attach_building_units_to_building did not run."
+        "BuildingUnit was not attached — attach_building_units_to_building did not run."
     )
 
     # apply_bag_year_metadata_to_building: at least one Metadata block
@@ -248,8 +255,7 @@ def test_run_per_pand_build_lands_orchestration_outputs_on_building(
     # named "yearOfConstructionEPOnline" landed on building.int_attribute,
     # AND a BdgType landed on building.bdg_type.
     yoc_attrs = [
-        a for a in building.int_attribute
-        if getattr(a, "name", "") == "yearOfConstructionEPOnline"
+        a for a in building.int_attribute if getattr(a, "name", "") == "yearOfConstructionEPOnline"
     ]
     assert len(yoc_attrs) == 1, (
         "yearOfConstructionEPOnline did not land on the Building — "
@@ -299,7 +305,7 @@ def test_bundle_per_pand_inputs_collapses_parallel_dicts() -> None:
     resolved = {
         "PA": [ResolvedAddress(vbo=_vbo(vbo_id="V1", pand_id="PA"), energy_label=None)],
     }
-    solar = {
+    solar: dict[str, list[ProjectedPanel]] = {
         "PB": [],  # present but empty list
     }
     out = bundle_per_pand_inputs(

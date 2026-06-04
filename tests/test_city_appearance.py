@@ -31,7 +31,7 @@ from citygml_energy.city_builder.builders import (
     attach_building_units_to_building,
     build_building,
 )
-from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
+from citygml_energy.city_builder.cityjson_parse import ParsedBuilding
 from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.epc_score import label_to_rgb
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
@@ -90,10 +90,7 @@ def _resolved(identificatie: str, huisnummer: int, klasse: str | None) -> Resolv
 def _build_with_labels(pand_id: str, labels: list[str | None]) -> tuple:
     parsed = _parsed(pand_id)
     building = build_building(parsed)
-    resolved = [
-        _resolved(f"vbo_{pand_id}_{i}", 42 + i, klasse)
-        for i, klasse in enumerate(labels)
-    ]
+    resolved = [_resolved(f"vbo_{pand_id}_{i}", 42 + i, klasse) for i, klasse in enumerate(labels)]
     attach_building_units_to_building(building, resolved)
     return building, resolved
 
@@ -280,7 +277,8 @@ def test_solar_appearance_targets_every_solar_multisurface() -> None:
     model = CityModel()
     building, _ = _build_with_labels("001", ["A"])
     attach_solar_collectors_to_building(
-        building, [_solar_panel(fid=7), _solar_panel(fid=9)],
+        building,
+        [_solar_panel(fid=7), _solar_panel(fid=9)],
         BuildContext(
             srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
             srs_dimension=3,
@@ -312,7 +310,8 @@ def test_solar_appearance_coexists_with_energy_label_appearance() -> None:
     model = CityModel()
     building, resolved = _build_with_labels("001", ["A"])
     attach_solar_collectors_to_building(
-        building, [_solar_panel(fid=7)],
+        building,
+        [_solar_panel(fid=7)],
         BuildContext(
             srs_name="urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
             srs_dimension=3,

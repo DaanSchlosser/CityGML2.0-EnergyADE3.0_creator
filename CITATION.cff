@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "CityGML 2.0 + Energy ADE 3.0 Creator"
+abstract: >-
+  A Python toolkit that generates CityGML 2.0 files extended with Energy ADE
+  3.0 (beta 8) from flat JSON input plus STEP or CityJSON geometry. It runs a
+  per-building pipeline and a city-scale pipeline that both emit the same wire
+  format, developed for building renovation passports within the RenoDAT
+  project at Delft University of Technology.
+type: software
+authors:
+  - family-names: Schlosser
+    given-names: Daan
+    affiliation: "Delft University of Technology"
+    email: daan.schlosser@gmail.com
+version: "0.5.0"
+date-released: "2026-06-03"
+license: MIT
+repository-code: "https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator"
+keywords:
+  - CityGML
+  - Energy ADE
+  - building renovation passport
+  - RenoDAT
+  - GML
+  - 3D city model
+  - energy data
+# After archiving a tagged release on Zenodo (or the TU Delft 4TU.ResearchData
+# repository), record the DOI here so this entry resolves to a persistent,
+# citable version:
+# doi: 10.5281/zenodo.XXXXXXX
+# identifiers:
+#   - type: doi
+#     value: 10.5281/zenodo.XXXXXXX
+#     description: "Archived release on Zenodo"

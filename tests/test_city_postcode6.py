@@ -41,10 +41,7 @@ from shapely.geometry import Polygon as ShapelyPolygon
 
 from citygml_energy._step import GeometryPolygon
 from citygml_energy.bindings import (
-    CityObjectGroupMemberType,
     Energy,
-    IntAttribute,
-    Metadata1,
     UrbanFunctionArea,
 )
 from citygml_energy.city_builder.config import BuildContext
@@ -65,14 +62,15 @@ from tests._factories import (
 )
 from tools.validate_xsd import load_schema
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
 def _square_ring(
-    cx: float, cy: float, half: float = 5.0,
+    cx: float,
+    cy: float,
+    half: float = 5.0,
 ) -> list[tuple[float, float, float]]:
     """Closed CCW square ring centred at ``(cx, cy)`` with side ``2 * half``."""
     return [
@@ -195,7 +193,9 @@ def test_normalise_postcode_rejects_malformed_values() -> None:
 
 @pytest.mark.parametrize("sentinel", [-99995, -99997, -99999])
 def test_fetch_preserves_energy_sentinels_verbatim(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sentinel: int,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sentinel: int,
 ) -> None:
     """Energy fields must survive into ``Postcode6Area`` as the raw CBS
     integer so the value can ride into ``nrg3:Energy/amount`` later.
@@ -203,7 +203,8 @@ def test_fetch_preserves_energy_sentinels_verbatim(
     (-99997) from deferred-publication (-99995) from real measurement.
     """
     session = make_session_with_pages(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": [_wfs_feature(gas=sentinel, elec=sentinel)]}],
     )
     [area] = fetch_postcode6_areas(session, bbox=(0, 0, 100000, 500000), year=2024)
@@ -213,18 +214,19 @@ def test_fetch_preserves_energy_sentinels_verbatim(
 
 @pytest.mark.parametrize("sentinel", [-99995, -99997, -99999])
 def test_fetch_folds_dwelling_count_sentinels_to_none(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sentinel: int,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sentinel: int,
 ) -> None:
     """A negative dwelling count is physically incoherent; the fetcher
     folds the entire CBS sentinel block to ``None`` so the downstream
     ``gen:intAttribute`` is omitted rather than carrying garbage."""
     session = make_session_with_pages(
-        tmp_path, monkeypatch,
-        pages=[{
-            "features": [
-                _wfs_feature(aantal_woningen=sentinel, aantal_niet_bewoond=sentinel)
-            ]
-        }],
+        tmp_path,
+        monkeypatch,
+        pages=[
+            {"features": [_wfs_feature(aantal_woningen=sentinel, aantal_niet_bewoond=sentinel)]}
+        ],
     )
     [area] = fetch_postcode6_areas(session, bbox=(0, 0, 100000, 500000), year=2024)
     assert area.aantal_woningen is None
@@ -232,13 +234,15 @@ def test_fetch_folds_dwelling_count_sentinels_to_none(
 
 
 def test_fetch_treats_null_as_absent_for_energy(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``null`` (genuinely absent in the WFS) folds to ``None`` so the
     downstream builder skips the resource emission. Distinct from
     sentinels above, which are *present* values that ride through."""
     session = make_session_with_pages(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": [_wfs_feature(gas=None, elec=None)]}],
     )
     [area] = fetch_postcode6_areas(session, bbox=(0, 0, 100000, 500000), year=2024)
@@ -247,10 +251,12 @@ def test_fetch_treats_null_as_absent_for_energy(
 
 
 def test_fetch_round_trips_real_positive_measurement(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session = make_session_with_pages(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": [_wfs_feature(gas=1100, elec=2950)]}],
     )
     [area] = fetch_postcode6_areas(session, bbox=(0, 0, 100000, 500000), year=2024)
@@ -264,19 +270,23 @@ def test_fetch_round_trips_real_positive_measurement(
 
 
 def test_fetch_dedupes_repeated_postcode(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """PDOK has been observed to ship the same feature twice when a
     postcode straddles a tile boundary in their internal index. First
     occurrence wins, mirroring the BAG fetcher's dedup contract."""
     session = make_session_with_pages(
-        tmp_path, monkeypatch,
-        pages=[{
-            "features": [
-                _wfs_feature(postcode="2628CD", gas=900),
-                _wfs_feature(postcode="2628CD", gas=999),  # duplicate
-            ]
-        }],
+        tmp_path,
+        monkeypatch,
+        pages=[
+            {
+                "features": [
+                    _wfs_feature(postcode="2628CD", gas=900),
+                    _wfs_feature(postcode="2628CD", gas=999),  # duplicate
+                ]
+            }
+        ],
     )
     areas = fetch_postcode6_areas(session, bbox=(0, 0, 100000, 500000), year=2024)
     assert len(areas) == 1
@@ -284,42 +294,51 @@ def test_fetch_dedupes_repeated_postcode(
 
 
 def test_fetch_skips_features_without_polygon(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session = make_session_with_pages(
-        tmp_path, monkeypatch,
-        pages=[{
-            "features": [
-                _wfs_feature(postcode="2628CD", geometry=_NO_GEOMETRY),
-                _wfs_feature(postcode="2628CE"),
-            ]
-        }],
+        tmp_path,
+        monkeypatch,
+        pages=[
+            {
+                "features": [
+                    _wfs_feature(postcode="2628CD", geometry=_NO_GEOMETRY),
+                    _wfs_feature(postcode="2628CE"),
+                ]
+            }
+        ],
     )
     areas = fetch_postcode6_areas(session, bbox=(0, 0, 100000, 500000), year=2024)
     assert [a.postcode for a in areas] == ["2628CE"]
 
 
 def test_fetch_drops_unsupported_geometry_types(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A LineString or Point geometry can't back an UrbanFunctionArea;
     drop the feature rather than synthesising a degenerate polygon."""
     bad_geom = {"type": "LineString", "coordinates": [[0, 0], [1, 1]]}
     session = make_session_with_pages(
-        tmp_path, monkeypatch,
-        pages=[{
-            "features": [
-                _wfs_feature(postcode="2628CD", geometry=bad_geom),
-                _wfs_feature(postcode="2628CE"),
-            ]
-        }],
+        tmp_path,
+        monkeypatch,
+        pages=[
+            {
+                "features": [
+                    _wfs_feature(postcode="2628CD", geometry=bad_geom),
+                    _wfs_feature(postcode="2628CE"),
+                ]
+            }
+        ],
     )
     areas = fetch_postcode6_areas(session, bbox=(0, 0, 100000, 500000), year=2024)
     assert [a.postcode for a in areas] == ["2628CE"]
 
 
 def test_fetch_handles_multipolygon(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A fragmented postcode (mainland + island sliver) ships as
     MultiPolygon; both rings must materialise as separate
@@ -332,7 +351,8 @@ def test_fetch_handles_multipolygon(
         ],
     }
     session = make_session_with_pages(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": [_wfs_feature(postcode="2628CD", geometry=multi)]}],
     )
     [area] = fetch_postcode6_areas(session, bbox=(0, 0, 100000, 500000), year=2024)
@@ -345,7 +365,8 @@ def test_fetch_handles_multipolygon(
 
 
 def test_safely_fetch_returns_empty_on_request_exception(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A PDOK outage degrades to ``[]`` so the rest of the build proceeds —
     CBS Postcode6 is opportunistic enrichment, not a hard dependency."""
@@ -360,7 +381,9 @@ def test_safely_fetch_returns_empty_on_request_exception(
     monkeypatch.setattr(cbs, "fetch_postcode6_areas", _explode)
     session = make_session_with_pages(tmp_path, monkeypatch, pages=[])
     out = safely_fetch_postcode6_areas(
-        session, source=CbsPostcode6Source(year=2024), bbox=(0, 0, 1, 1),
+        session,
+        source=CbsPostcode6Source(year=2024),
+        bbox=(0, 0, 1, 1),
     )
     assert out == []
 
@@ -407,7 +430,7 @@ def test_attach_emits_one_urban_function_area_per_input() -> None:
         if m.urban_function_area is not None
     ]
     assert len(ufas) == 2
-    assert sorted(u.id for u in ufas) == ["pc6_2628CD", "pc6_2628CE"]
+    assert sorted(u.id for u in ufas if u.id is not None) == ["pc6_2628CD", "pc6_2628CE"]
 
 
 def test_attach_carries_postcode_name_and_type() -> None:
@@ -536,9 +559,9 @@ def test_attach_emits_metadata_block_when_any_cbs_value_present() -> None:
     [member] = model.xsd.city_object_member
     assert len(member.urban_function_area.metadata) == 1
     md = member.urban_function_area.metadata[0]
-    assert "CBS" in md.source
+    assert md.source is not None and "CBS" in md.source
     # Quality description spells out the sentinel meanings.
-    assert "-99997" in md.quality_description
+    assert md.quality_description is not None and "-99997" in md.quality_description
 
 
 def test_attach_omits_metadata_when_no_cbs_data_present() -> None:
@@ -593,9 +616,9 @@ def test_attach_clips_areas_outside_boundary_polygon() -> None:
         coords_sink=[],
     )
     ids = sorted(
-        m.urban_function_area.id
+        ufa.id
         for m in model.xsd.city_object_member
-        if m.urban_function_area is not None
+        if (ufa := m.urban_function_area) is not None and ufa.id is not None
     )
     assert ids == ["pc6_INSIDE"]
 
@@ -607,7 +630,10 @@ def test_attach_clips_areas_outside_boundary_polygon() -> None:
 
 def _building_inside_postcode(pand_id: str, cx: float, cy: float):
     """ParsedBuilding whose LoD 0 footprint centres at ``(cx, cy)``."""
-    poly_at = lambda z: GeometryPolygon(exterior=_square_ring(cx, cy, 0.5))
+
+    def poly_at(z: float) -> GeometryPolygon:
+        return GeometryPolygon(exterior=_square_ring(cx, cy, 0.5))
+
     poly_lod0 = make_square_polygon(0.0, "GroundSurface")
     # Replace the canonical [0,1] square with one centred at (cx, cy).
     poly_lod0 = type(poly_lod0)(polygon=poly_at(0.0), surface_type="GroundSurface")

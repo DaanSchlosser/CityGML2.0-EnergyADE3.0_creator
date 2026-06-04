@@ -90,7 +90,18 @@ _FEATURE_ID: str = "id_monthly_ts_pv_production_simulated_1"
 
 # --- table 17.1: reference length of each month, t_mi, in hours -------------
 _MONTH_LENGTH_H: tuple[int, ...] = (
-    744, 672, 744, 720, 744, 720, 744, 744, 720, 744, 720, 744,
+    744,
+    672,
+    744,
+    720,
+    744,
+    720,
+    744,
+    744,
+    720,
+    744,
+    720,
+    744,
 )
 
 # --- table 17.2: monthly mean total irradiation I_sol;mi, in W/m2 -----------
@@ -100,11 +111,33 @@ _MONTH_LENGTH_H: tuple[int, ...] = (
 # Orientation keys are compass degrees: 0 = N, 45 = NE, 90 = E, 135 = SE,
 # 180 = S, 225 = SW, 270 = W, 315 = NW (table prints N as 360).
 _ISOL_HORIZONTAL: tuple[float, ...] = (
-    28.0, 49.3, 96.6, 160.5, 197.0, 209.3, 191.0, 177.2, 123.9, 73.2, 34.3, 21.0,
+    28.0,
+    49.3,
+    96.6,
+    160.5,
+    197.0,
+    209.3,
+    191.0,
+    177.2,
+    123.9,
+    73.2,
+    34.3,
+    21.0,
 )
 # beta = 180 deg (downward-facing); single orientation-independent column.
 _ISOL_DOWNWARD: tuple[float, ...] = (
-    5.6, 9.8, 19.3, 32.1, 39.3, 41.8, 38.2, 35.3, 24.7, 14.6, 6.9, 4.2,
+    5.6,
+    9.8,
+    19.3,
+    32.1,
+    39.3,
+    41.8,
+    38.2,
+    35.3,
+    24.7,
+    14.6,
+    6.9,
+    4.2,
 )
 _ISOL_TILT: dict[int, dict[int, tuple[float, ...]]] = {
     30: {
@@ -218,7 +251,9 @@ def monthly_production_kwh() -> list[float]:
     """
     out: list[float] = []
     for m in range(12):
-        e_sol = _isol_w_m2(AZIMUTH_DEG, INCLINATION_DEG, m) * _MONTH_LENGTH_H[m] * F_SH_OBST / 1000.0
+        e_sol = (
+            _isol_w_m2(AZIMUTH_DEG, INCLINATION_DEG, m) * _MONTH_LENGTH_H[m] * F_SH_OBST / 1000.0
+        )
         e_month = e_sol * PEAK_POWER_KWP * F_PERF * C_SHADING * F_PRAC / I_REF_KW_M2
         out.append(e_month)
     return out

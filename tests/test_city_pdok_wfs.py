@@ -232,7 +232,8 @@ def test_paginate_features_cache_key_when_no_bbox(
     runs (e.g. the national Gemeentegebied layer) shares one cache
     entry per page regardless of what the caller is searching for."""
     session = CachedSession(cache_dir=tmp_path / "cache", use_cache=True)
-    pages = iter([{"features": []}])
+    page_data: list[dict[str, Any]] = [{"features": []}]
+    pages = iter(page_data)
 
     class _FakeResponse:
         def __init__(self, payload: dict[str, Any]) -> None:

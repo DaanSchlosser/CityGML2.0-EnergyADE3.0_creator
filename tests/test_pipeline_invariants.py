@@ -138,9 +138,7 @@ def test_same_input_produces_byte_identical_output(input_path: Path) -> None:
     """
     xml_a = generate_city_model(input_path).to_string()
     xml_b = generate_city_model(input_path).to_string()
-    assert xml_a == xml_b, (
-        "pipeline output diverged between two runs on the same input"
-    )
+    assert xml_a == xml_b, "pipeline output diverged between two runs on the same input"
 
 
 # ---------------------------------------------------------------------------
@@ -165,9 +163,7 @@ def _iter_coord_tokens(root):
 
 def test_no_scientific_notation_anywhere_in_coordinates(root) -> None:
     for token in _iter_coord_tokens(root):
-        assert _FIXED_POINT_RE.match(token), (
-            f"coordinate token not in fixed-point form: {token!r}"
-        )
+        assert _FIXED_POINT_RE.match(token), f"coordinate token not in fixed-point form: {token!r}"
 
 
 def test_coordinate_precision_is_at_most_six_decimal_places(root) -> None:
@@ -222,17 +218,13 @@ def test_xml_special_characters_in_text_fields_are_escaped() -> None:
     base = load_feature_collection(_SAMPLE_INPUT if _SAMPLE_INPUT.exists() else INPUT)
     data = deepcopy(base)
     building = data["features"][0]
-    building["description"] = "Smith & Co. <tag>, quoted \"thing\""
+    building["description"] = 'Smith & Co. <tag>, quoted "thing"'
     building["name"] = ["A & B"]
 
-    xml = build_city_model_from_feature_collection(
-        data, base_path=INPUT.parent
-    ).to_string()
+    xml = build_city_model_from_feature_collection(data, base_path=INPUT.parent).to_string()
 
     # Raw special chars must not appear in element bodies.
-    assert "Smith & Co" not in xml, (
-        "raw ampersand survived into output -- XML escaping is broken"
-    )
+    assert "Smith & Co" not in xml, "raw ampersand survived into output -- XML escaping is broken"
     assert "<tag>" not in xml, (
         "raw angle brackets survived into output -- structural injection risk"
     )
@@ -259,17 +251,12 @@ def test_unicode_text_survives_round_trip() -> None:
     marker = "Zuidooststraat éë αβ"
     data["features"][0]["description"] = marker
 
-    xml = build_city_model_from_feature_collection(
-        data, base_path=INPUT.parent
-    ).to_string()
+    xml = build_city_model_from_feature_collection(data, base_path=INPUT.parent).to_string()
 
     root = etree.fromstring(xml.encode("utf-8"))
-    descriptions = root.findall(
-        ".//{http://www.opengis.net/gml}description"
-    )
+    descriptions = root.findall(".//{http://www.opengis.net/gml}description")
     assert any(el.text == marker for el in descriptions), (
-        f"unicode marker lost through pipeline; outputs were: "
-        f"{[el.text for el in descriptions]}"
+        f"unicode marker lost through pipeline; outputs were: {[el.text for el in descriptions]}"
     )
 
 
@@ -310,8 +297,14 @@ def _city_cube_shell():
     # coordinates, not by integer values that happen to quantise cleanly.
     ox, oy = 85000.12, 446000.56
     p = [
-        (ox, oy, 0.0), (ox + 1.0, oy, 0.0), (ox + 1.0, oy + 1.0, 0.0), (ox, oy + 1.0, 0.0),
-        (ox, oy, 3.0), (ox + 1.0, oy, 3.0), (ox + 1.0, oy + 1.0, 3.0), (ox, oy + 1.0, 3.0),
+        (ox, oy, 0.0),
+        (ox + 1.0, oy, 0.0),
+        (ox + 1.0, oy + 1.0, 0.0),
+        (ox, oy + 1.0, 0.0),
+        (ox, oy, 3.0),
+        (ox + 1.0, oy, 3.0),
+        (ox + 1.0, oy + 1.0, 3.0),
+        (ox, oy + 1.0, 3.0),
     ]
     faces = [
         ([p[0], p[3], p[2], p[1]], "GroundSurface"),
@@ -322,8 +315,7 @@ def _city_cube_shell():
         ([p[3], p[0], p[4], p[7]], "WallSurface"),
     ]
     return [
-        SemanticPolygon(polygon=GeometryPolygon(exterior=v), surface_type=st)
-        for v, st in faces
+        SemanticPolygon(polygon=GeometryPolygon(exterior=v), surface_type=st) for v, st in faces
     ]
 
 
@@ -373,31 +365,42 @@ def city_xml(tmp_path_factory) -> str:
     from citygml_energy.city_builder.fetchers.municipality import MunicipalityOutline
 
     pand = Pand(
-        identificatie=_CITY_PAND_ID, bouwjaar=1985, status=None, properties={},
+        identificatie=_CITY_PAND_ID,
+        bouwjaar=1985,
+        status=None,
+        properties={},
     )
     vbo = Verblijfsobject(
         identificatie=_CITY_VBO_ID,
         pand_identificatie=_CITY_PAND_ID,
         gebruiksdoel=["woonfunctie"],
-        oppervlakte=85.0, status=None,
-        postcode="2628CD", huisnummer=42, huisletter=None, toevoeging=None,
+        oppervlakte=85.0,
+        status=None,
+        postcode="2628CD",
+        huisnummer=42,
+        huisletter=None,
+        toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
         woonplaats=None,
-        point=(85000.0, 446500.0), properties={},
+        point=(85000.0, 446500.0),
+        properties={},
     )
     outline = MunicipalityOutline(
-        name="Delft", cbs_code="0503",
+        name="Delft",
+        cbs_code="0503",
         feature={
             "type": "Feature",
             "geometry": {
                 "type": "Polygon",
-                "coordinates": [[
-                    [_CITY_BBOX[0], _CITY_BBOX[1]],
-                    [_CITY_BBOX[2], _CITY_BBOX[1]],
-                    [_CITY_BBOX[2], _CITY_BBOX[3]],
-                    [_CITY_BBOX[0], _CITY_BBOX[3]],
-                    [_CITY_BBOX[0], _CITY_BBOX[1]],
-                ]],
+                "coordinates": [
+                    [
+                        [_CITY_BBOX[0], _CITY_BBOX[1]],
+                        [_CITY_BBOX[2], _CITY_BBOX[1]],
+                        [_CITY_BBOX[2], _CITY_BBOX[3]],
+                        [_CITY_BBOX[0], _CITY_BBOX[3]],
+                        [_CITY_BBOX[0], _CITY_BBOX[1]],
+                    ]
+                ],
             },
         },
         bbox=_CITY_BBOX,
@@ -405,13 +408,19 @@ def city_xml(tmp_path_factory) -> str:
 
     tmp = tmp_path_factory.mktemp("city_invariants")
     cfg_path = tmp / "city.json"
-    cfg_path.write_text(json.dumps({
-        "municipality": "Delft",
-        "bbox": list(_CITY_BBOX), "lods": [0, 1, 2],
-        "include_addresses": True, "include_energy_labels": False,
-        "cache_dir": str(tmp / "cache"),
-        "output": str(tmp / "out.gml"),
-    }))
+    cfg_path.write_text(
+        json.dumps(
+            {
+                "municipality": "Delft",
+                "bbox": list(_CITY_BBOX),
+                "lods": [0, 1, 2],
+                "include_addresses": True,
+                "include_energy_labels": False,
+                "cache_dir": str(tmp / "cache"),
+                "output": str(tmp / "out.gml"),
+            }
+        )
+    )
     (tmp / "cache").mkdir()
     config = load_city_config(cfg_path)
 
@@ -421,7 +430,8 @@ def city_xml(tmp_path_factory) -> str:
         mock.patch.object(bag_fetchers, "fetch_verblijfsobjecten", return_value=[vbo]),
         mock.patch.object(ep_fetchers, "fetch_energy_labels", return_value=[]),
         mock.patch.object(
-            pipeline_module, "_fetch_parsed_buildings",
+            pipeline_module,
+            "_fetch_parsed_buildings",
             return_value=[_city_fixture_parsed_building()],
         ),
     ):
@@ -459,26 +469,36 @@ def test_city_pipeline_output_is_byte_deterministic(tmp_path_factory) -> None:
 
     pand = Pand(identificatie=_CITY_PAND_ID, bouwjaar=1985, status=None, properties={})
     vbo = Verblijfsobject(
-        identificatie=_CITY_VBO_ID, pand_identificatie=_CITY_PAND_ID,
-        gebruiksdoel=["woonfunctie"], oppervlakte=85.0, status=None,
-        postcode="2628CD", huisnummer=42, huisletter=None, toevoeging=None,
+        identificatie=_CITY_VBO_ID,
+        pand_identificatie=_CITY_PAND_ID,
+        gebruiksdoel=["woonfunctie"],
+        oppervlakte=85.0,
+        status=None,
+        postcode="2628CD",
+        huisnummer=42,
+        huisletter=None,
+        toevoeging=None,
         openbare_ruimte_naam="Mekelweg",
         woonplaats=None,
-        point=(85000.0, 446500.0), properties={},
+        point=(85000.0, 446500.0),
+        properties={},
     )
     outline = MunicipalityOutline(
-        name="Delft", cbs_code="0503",
+        name="Delft",
+        cbs_code="0503",
         feature={
             "type": "Feature",
             "geometry": {
                 "type": "Polygon",
-                "coordinates": [[
-                    [_CITY_BBOX[0], _CITY_BBOX[1]],
-                    [_CITY_BBOX[2], _CITY_BBOX[1]],
-                    [_CITY_BBOX[2], _CITY_BBOX[3]],
-                    [_CITY_BBOX[0], _CITY_BBOX[3]],
-                    [_CITY_BBOX[0], _CITY_BBOX[1]],
-                ]],
+                "coordinates": [
+                    [
+                        [_CITY_BBOX[0], _CITY_BBOX[1]],
+                        [_CITY_BBOX[2], _CITY_BBOX[1]],
+                        [_CITY_BBOX[2], _CITY_BBOX[3]],
+                        [_CITY_BBOX[0], _CITY_BBOX[3]],
+                        [_CITY_BBOX[0], _CITY_BBOX[1]],
+                    ]
+                ],
             },
         },
         bbox=_CITY_BBOX,
@@ -486,13 +506,19 @@ def test_city_pipeline_output_is_byte_deterministic(tmp_path_factory) -> None:
 
     tmp = tmp_path_factory.mktemp("city_det")
     cfg_path = tmp / "city.json"
-    cfg_path.write_text(json.dumps({
-        "municipality": "Delft",
-        "bbox": list(_CITY_BBOX), "lods": [0, 1, 2],
-        "include_addresses": True, "include_energy_labels": False,
-        "cache_dir": str(tmp / "cache"),
-        "output": str(tmp / "out.gml"),
-    }))
+    cfg_path.write_text(
+        json.dumps(
+            {
+                "municipality": "Delft",
+                "bbox": list(_CITY_BBOX),
+                "lods": [0, 1, 2],
+                "include_addresses": True,
+                "include_energy_labels": False,
+                "cache_dir": str(tmp / "cache"),
+                "output": str(tmp / "out.gml"),
+            }
+        )
+    )
     (tmp / "cache").mkdir()
     config = load_city_config(cfg_path)
 
@@ -502,16 +528,15 @@ def test_city_pipeline_output_is_byte_deterministic(tmp_path_factory) -> None:
         mock.patch.object(bag_fetchers, "fetch_verblijfsobjecten", return_value=[vbo]),
         mock.patch.object(ep_fetchers, "fetch_energy_labels", return_value=[]),
         mock.patch.object(
-            pipeline_module, "_fetch_parsed_buildings",
+            pipeline_module,
+            "_fetch_parsed_buildings",
             return_value=[_city_fixture_parsed_building()],
         ),
     ):
         xml_a = build_city_model(config).to_string()
         xml_b = build_city_model(config).to_string()
 
-    assert xml_a == xml_b, (
-        "city pipeline output diverged between two runs on the same input"
-    )
+    assert xml_a == xml_b, "city pipeline output diverged between two runs on the same input"
 
 
 def test_city_pipeline_uses_fixed_point_coordinates(city_root) -> None:
@@ -581,13 +606,15 @@ def test_city_pipeline_bag_identifiers_carry_correct_codespaces(city_root) -> No
     tagged with the authoritative linked-data codespaces. If the
     codespace drops out or diverges from the Kadaster URL base, any
     downstream consumer that dereferences the identifier silently breaks."""
-    identifiers = city_root.findall(".//{http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0}identifier")
+    identifiers = city_root.findall(
+        ".//{http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0}identifier"
+    )
     assert identifiers, "city output contains no nrg3:identifier elements"
 
     code_spaces = {el.get("codeSpace") for el in identifiers}
-    assert any(
-        cs and cs.endswith("/bag/id/pand/") for cs in code_spaces
-    ), f"BAG Pand codespace missing; saw {code_spaces}"
-    assert any(
-        cs and cs.endswith("/bag/id/verblijfsobject/") for cs in code_spaces
-    ), f"BAG VBO codespace missing; saw {code_spaces}"
+    assert any(cs and cs.endswith("/bag/id/pand/") for cs in code_spaces), (
+        f"BAG Pand codespace missing; saw {code_spaces}"
+    )
+    assert any(cs and cs.endswith("/bag/id/verblijfsobject/") for cs in code_spaces), (
+        f"BAG VBO codespace missing; saw {code_spaces}"
+    )

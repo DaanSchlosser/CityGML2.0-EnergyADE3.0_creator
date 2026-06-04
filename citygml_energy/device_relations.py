@@ -257,9 +257,9 @@ def _resolve_target(
         )
 
     if isinstance(target_ref, dict):
-        name = target_ref.get("name")
+        raw_name = target_ref.get("name")
         lod = target_ref.get("lod")
-        if not isinstance(name, str) or not name:
+        if not isinstance(raw_name, str) or not raw_name:
             raise ValueError(
                 f"apply_device_relations: 'related_to' entry for relation "
                 f"{kind.codelist_value!r} on {device_id!r} has target "
@@ -273,6 +273,7 @@ def _resolve_target(
                 f"{target_ref!r}; the {{'name': str, 'lod': int}} object form "
                 f"requires 'lod' to be a non-negative integer"
             )
+        name = raw_name
         gml_id = surface_name_index.get((name, lod))
         if gml_id is not None:
             return gml_id

@@ -24,9 +24,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, ClassVar
-
-import pytest
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from citygml_energy._step import GeometryPolygon
 from citygml_energy.city_builder.address_match import ResolvedAddress
@@ -35,6 +33,9 @@ from citygml_energy.city_builder.cityjson_trees_parse import ParsedTree
 from citygml_energy.city_builder.fetchers.bag import Pand, Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
 from citygml_energy.city_builder.http import CachedSession
+
+if TYPE_CHECKING:
+    import pytest
 
 __all__ = [
     "make_pand",
@@ -53,7 +54,8 @@ __all__ = [
 
 
 def make_square_polygon(
-    z: float = 0.0, surface_type: str | None = None,
+    z: float = 0.0,
+    surface_type: str | None = None,
 ) -> SemanticPolygon:
     """Return a unit square at elevation *z*, optionally semantically typed.
 
@@ -246,9 +248,7 @@ def make_session_with_pages(
     class _FakeSession:
         headers: ClassVar[dict[str, str]] = {}
 
-        def request(
-            self, method: str, url: str, **kwargs: Any
-        ) -> _FakeResponse:
+        def request(self, method: str, url: str, **kwargs: Any) -> _FakeResponse:
             return _FakeResponse(next(calls))
 
     monkeypatch.setattr(session, "_session", _FakeSession())

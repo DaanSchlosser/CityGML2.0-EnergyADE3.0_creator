@@ -45,8 +45,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Pull the existing parser so the merge step uses the exact same
 # dequantization rules the runtime loader does.
-from citygml_energy._step import GeometryPolygon  # noqa: E402
-from citygml_energy.city_builder.cityjson_trees_parse import (  # noqa: E402
+from citygml_energy._step import GeometryPolygon
+from citygml_energy.city_builder.cityjson_trees_parse import (
     ParsedTree,
     parse_cftree_tile_file,
 )
@@ -65,17 +65,13 @@ def _load_boundary(path: Path) -> Any:
 
     data = json.loads(path.read_text(encoding="utf-8"))
     if data.get("type") != "Feature":
-        raise ValueError(
-            f"{path} must be a GeoJSON Feature; got type={data.get('type')!r}"
-        )
+        raise ValueError(f"{path} must be a GeoJSON Feature; got type={data.get('type')!r}")
     geom_dict = data.get("geometry")
     if not geom_dict:
         raise ValueError(f"{path} has no geometry")
     geom = shape(geom_dict)
     if geom.geom_type not in {"Polygon", "MultiPolygon"}:
-        raise ValueError(
-            f"{path} must be (Multi)Polygon; got {geom.geom_type!r}"
-        )
+        raise ValueError(f"{path} must be (Multi)Polygon; got {geom.geom_type!r}")
     if not geom.is_valid:
         geom = geom.buffer(0)
     return geom
@@ -92,15 +88,12 @@ def _clip_to_boundary(trees: list[ParsedTree], boundary: Any) -> list[ParsedTree
     from shapely.geometry import Point
 
     prepare(boundary)
-    return [
-        tree
-        for tree in trees
-        if boundary.contains(Point(tree.centroid[0], tree.centroid[1]))
-    ]
+    return [tree for tree in trees if boundary.contains(Point(tree.centroid[0], tree.centroid[1]))]
 
 
 def _dedupe_by_centroid(
-    trees: list[ParsedTree], threshold_m: float,
+    trees: list[ParsedTree],
+    threshold_m: float,
 ) -> list[ParsedTree]:
     """Greedy spatial dedup: cluster by centroid, keep most-detailed tree.
 
@@ -113,7 +106,9 @@ def _dedupe_by_centroid(
     """
     if not trees:
         return []
-    sorted_trees = sorted(trees, key=lambda t: (-len(t.polygons), int(t.gtid) if t.gtid.isdigit() else t.gtid))
+    sorted_trees = sorted(
+        trees, key=lambda t: (-len(t.polygons), int(t.gtid) if t.gtid.isdigit() else t.gtid)
+    )
 
     bucket_size = max(threshold_m, 0.001)
     threshold_sq = threshold_m * threshold_m
@@ -155,7 +150,11 @@ def _flatten_vertices(polygons: list[GeometryPolygon]) -> list[tuple[float, floa
     for poly in polygons:
         # GeometryPolygon stores rings with first==last (GML convention);
         # drop the closing duplicate before re-encoding to CityJSON.
-        ext = poly.exterior[:-1] if len(poly.exterior) >= 2 and poly.exterior[0] == poly.exterior[-1] else list(poly.exterior)
+        ext = (
+            poly.exterior[:-1]
+            if len(poly.exterior) >= 2 and poly.exterior[0] == poly.exterior[-1]
+            else list(poly.exterior)
+        )
         out.extend(ext)
         for ring in poly.interiors:
             ints = ring[:-1] if len(ring) >= 2 and ring[0] == ring[-1] else list(ring)
@@ -226,7 +225,11 @@ def _write_merged_cityjson(
         # surface = [exterior_ring, *interior_rings].
         shell: list[list[list[int]]] = []
         for poly in tree.polygons:
-            ext_pts = poly.exterior[:-1] if len(poly.exterior) >= 2 and poly.exterior[0] == poly.exterior[-1] else list(poly.exterior)
+            ext_pts = (
+                poly.exterior[:-1]
+                if len(poly.exterior) >= 2 and poly.exterior[0] == poly.exterior[-1]
+                else list(poly.exterior)
+            )
             ext_indices = [add_vertex(pt) for pt in ext_pts]
             surface: list[list[int]] = [ext_indices]
             for ring in poly.interiors:
@@ -271,8 +274,12 @@ def _write_merged_cityjson(
         "metadata": {
             "referenceSystem": "https://www.opengis.net/def/crs/EPSG/0/28992",
             "geographicalExtent": [
-                min(abs_xs), min(abs_ys), min(abs_zs),
-                max(abs_xs), max(abs_ys), max(abs_zs),
+                min(abs_xs),
+                min(abs_ys),
+                min(abs_zs),
+                max(abs_xs),
+                max(abs_ys),
+                max(abs_zs),
             ],
             "presentLoDs": [3.0],
             "title": f"CFTree merged + clipped + deduped ({case_label})",
@@ -301,9 +308,7 @@ def _gather_tile_files(case_dir: Path, filename: str) -> list[Path]:
     """Find every ``tiles/*/<filename>`` under *case_dir*."""
     tiles_dir = case_dir / "tiles"
     if not tiles_dir.is_dir():
-        raise FileNotFoundError(
-            f"{case_dir} has no 'tiles' subdirectory; is this a CFTree case?"
-        )
+        raise FileNotFoundError(f"{case_dir} has no 'tiles' subdirectory; is this a CFTree case?")
     return sorted(tiles_dir.glob(f"*/{filename}"))
 
 
@@ -312,23 +317,32 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument(
-        "--case-dir", required=True, type=Path,
+        "--case-dir",
+        required=True,
+        type=Path,
         help="CFTree case directory (contains tiles/<tile_id>/...)",
     )
     parser.add_argument(
-        "--boundary", required=True, type=Path,
+        "--boundary",
+        required=True,
+        type=Path,
         help="Single-Feature GeoJSON polygon in EPSG:28992",
     )
     parser.add_argument(
-        "--output", required=True, type=Path,
+        "--output",
+        required=True,
+        type=Path,
         help="Destination .city.json path",
     )
     parser.add_argument(
-        "--tree-filename", default="trees_lod3.city.json",
+        "--tree-filename",
+        default="trees_lod3.city.json",
         help="Filename to read in each tile dir (default: %(default)s)",
     )
     parser.add_argument(
-        "--dedup-threshold-m", type=float, default=1.0,
+        "--dedup-threshold-m",
+        type=float,
+        default=1.0,
         help="2D centroid distance below which two trees are duplicates (default: %(default)s)",
     )
     args = parser.parse_args(argv)
@@ -354,11 +368,14 @@ def main(argv: list[str] | None = None) -> int:
     deduped = _dedupe_by_centroid(clipped, threshold_m=args.dedup_threshold_m)
     _LOG.info(
         "After dedup (threshold=%.2f m): %d / %d trees",
-        args.dedup_threshold_m, len(deduped), len(clipped),
+        args.dedup_threshold_m,
+        len(deduped),
+        len(clipped),
     )
 
     _write_merged_cityjson(
-        deduped, args.output,
+        deduped,
+        args.output,
         case_label=args.case_dir.name,
         boundary_label=args.boundary.name,
     )

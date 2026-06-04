@@ -556,9 +556,7 @@ def _attach_planar_surface_ade_attributes(
     if azimuth_deg is not None:
         # round-then-mod 360: see boundary_attributes._compute_azimuth.
         canonical_az = round(azimuth_deg, 2) % 360.0
-        surf.bdg_bdry_surf_azimuth.append(
-            BdgBdrySurfAzimuth(value=canonical_az, uom=UOM_DEGREES)
-        )
+        surf.bdg_bdry_surf_azimuth.append(BdgBdrySurfAzimuth(value=canonical_az, uom=UOM_DEGREES))
 
 
 # ---------------------------------------------------------------------------

@@ -172,11 +172,7 @@ def test_lod2_emits_one_thematic_surface_per_polygon() -> None:
     # invariant that lets the matcher's roof_index unambiguously address
     # one specific facet.
     for wrapper in building.bounded_by:
-        surf = (
-            wrapper.ground_surface
-            or wrapper.wall_surface
-            or wrapper.roof_surface
-        )
+        surf = wrapper.ground_surface or wrapper.wall_surface or wrapper.roof_surface
         assert surf is not None
         members = surf.lod2_multi_surface.multi_surface.surface_member
         assert len(members) == 1
@@ -231,9 +227,7 @@ def test_lod2_iterator_is_single_source_of_truth_for_indices() -> None:
     polygons = _multi_facet_parsed().geometries["2"]
     # Materialise the iterator into a list of (type, index) pairs so the
     # ordering is observable without re-iterating.
-    type_index_pairs = [
-        (t, i) for t, i, _sp in iter_lod2_thematic_classification(polygons)
-    ]
+    type_index_pairs = [(t, i) for t, i, _sp in iter_lod2_thematic_classification(polygons)]
     assert type_index_pairs == [
         ("GroundSurface", 1),
         ("WallSurface", 1),
@@ -252,7 +246,11 @@ def _ade_attrs(surf: object) -> tuple[float | None, float | None, float | None]:
     (substitution-group remnant) but our builder emits ``maxOccurs=1``,
     so we read element 0 when present.
     """
-    area = surf.bdg_bdry_surf_total_surface_area[0].value if surf.bdg_bdry_surf_total_surface_area else None
+    area = (
+        surf.bdg_bdry_surf_total_surface_area[0].value
+        if surf.bdg_bdry_surf_total_surface_area
+        else None
+    )
     incl = surf.bdg_bdry_surf_inclination[0].value if surf.bdg_bdry_surf_inclination else None
     azim = surf.bdg_bdry_surf_azimuth[0].value if surf.bdg_bdry_surf_azimuth else None
     return area, incl, azim
@@ -355,7 +353,7 @@ def test_lod2_sloped_roof_emits_azimuth_and_45_degree_inclination() -> None:
     [roof] = _surfaces_by_kind(building)["roof"]
     area, incl, azim = _ade_attrs(roof)
     # √2 m² for a 1×1 horizontal projection on a 45° slope.
-    assert area == pytest.approx(round(2 ** 0.5, 3), abs=1e-9)
+    assert area == pytest.approx(round(2**0.5, 3), abs=1e-9)
     assert incl == pytest.approx(45.0, abs=1e-9)
     assert azim == pytest.approx(180.0, abs=1e-9)
     # uom tokens — must match KIT UOMList.xml entries.
@@ -662,9 +660,12 @@ def test_building_omits_bdg_height_when_roof_below_maaiveld() -> None:
     """Defensive: a corrupt tile where roof < ground must not produce
     a negative height. The builder skips the field instead.
     """
-    building = build_building(_parsed_with_3dbag_attrs(
-        b3_h_maaiveld=10.0, b3_h_dak_max=8.0,
-    ))
+    building = build_building(
+        _parsed_with_3dbag_attrs(
+            b3_h_maaiveld=10.0,
+            b3_h_dak_max=8.0,
+        )
+    )
     assert building.bdg_height == []
 
 
@@ -864,10 +865,7 @@ def test_epc_value_from_berekendeenergieverbruik_legacy_uses_mj_per_a() -> None:
     nrg3:Energy.amount resource synchronised.
     """
     epc = _epc_from_label(
-        berekeningstype=(
-            "Rekenmethodiek Definitief Energielabel, "
-            "versie 1.2, 16 september 2014"
-        ),
+        berekeningstype=("Rekenmethodiek Definitief Energielabel, versie 1.2, 16 september 2014"),
         berekende_energieverbruik=293361.52,
     )
     assert epc.value is not None
@@ -916,9 +914,7 @@ def test_epc_value_skipped_when_berekendeenergieverbruik_missing() -> None:
     ],
     ids=["zero", "negative"],
 )
-def test_building_unit_rejects_non_positive_oppervlakte(
-    oppervlakte: float, reason: str
-) -> None:
+def test_building_unit_rejects_non_positive_oppervlakte(oppervlakte: float, reason: str) -> None:
     """Guarded by ``> 0`` in the builder; this lock-down confirms ``>= 0``
     would be wrong."""
     resolved = _resolved()
@@ -932,20 +928,21 @@ def test_building_unit_rejects_non_positive_oppervlakte(
 @pytest.mark.parametrize(
     ("maaiveld", "dak_max"),
     [
-        (5.0, 5.0),    # zero-height building: impossible, must drop
-        (10.0, 8.0),   # roof below ground: also drop
+        (5.0, 5.0),  # zero-height building: impossible, must drop
+        (10.0, 8.0),  # roof below ground: also drop
     ],
     ids=["equal", "roof_below_ground"],
 )
-def test_building_omits_bdg_height_for_degenerate_geometry(
-    maaiveld: float, dak_max: float
-) -> None:
+def test_building_omits_bdg_height_for_degenerate_geometry(maaiveld: float, dak_max: float) -> None:
     """The strict ``>`` guard in the builder drops both zero-height and
     inverted-roof cases; ``>=`` would emit a zero-height entry which
     is misleading."""
-    building = build_building(_parsed_with_3dbag_attrs(
-        b3_h_maaiveld=maaiveld, b3_h_dak_max=dak_max,
-    ))
+    building = build_building(
+        _parsed_with_3dbag_attrs(
+            b3_h_maaiveld=maaiveld,
+            b3_h_dak_max=dak_max,
+        )
+    )
     assert building.bdg_height == []
 
 
@@ -966,9 +963,7 @@ def test_building_omits_bdg_height_for_degenerate_geometry(
         "non_integer_bouwlagen_drops_storeys",
     ],
 )
-def test_3dbag_attributes_reject_boundary_values(
-    field: str, value, attr: str, expected
-) -> None:
+def test_3dbag_attributes_reject_boundary_values(field: str, value, attr: str, expected) -> None:
     """Each (field, value) pair exercises one boundary guard in
     ``_apply_building_attributes``: empty strings, zeros, negatives, and
     non-coercible values must never surface in the output."""
@@ -1068,9 +1063,7 @@ def test_bouwjaar_does_not_land_on_building_unit() -> None:
     label = _label_with(bouwjaar=1955)
     unit = build_building_unit(_resolved_with(label))
 
-    assert all(
-        a.name != "yearOfConstructionEPOnline" for a in unit.int_attribute
-    )
+    assert all(a.name != "yearOfConstructionEPOnline" for a in unit.int_attribute)
 
 
 def test_building_unit_carries_eponline_source_metadata_when_classified() -> None:
@@ -1087,9 +1080,7 @@ def test_building_unit_carries_eponline_source_metadata_when_classified() -> Non
     label = _label_with(gebouwsubtype="rijwoning-tussen")
     unit = build_building_unit(_resolved_with(label))
 
-    metadata_blocks = [
-        m for m in unit.metadata if "EP-online" in (m.source or "")
-    ]
+    metadata_blocks = [m for m in unit.metadata if "EP-online" in (m.source or "")]
     assert len(metadata_blocks) == 1
     quality = metadata_blocks[0].quality_description or ""
     assert "bdgSubtypeEPOnline" in quality
@@ -1113,9 +1104,7 @@ def test_building_unit_metadata_emitted_for_renewable_share_alone() -> None:
     label = _label_with(aandeel_hernieuwbare_energie=42.0)
     unit = build_building_unit(_resolved_with(label))
 
-    eponline_metas = [
-        m for m in unit.metadata if "EP-online" in (m.source or "")
-    ]
+    eponline_metas = [m for m in unit.metadata if "EP-online" in (m.source or "")]
     assert len(eponline_metas) == 1
 
 
@@ -1142,9 +1131,7 @@ def test_building_unit_metadata_omitted_when_no_eponline_emissions() -> None:
     )
     unit = build_building_unit(_resolved_with(label))
 
-    eponline_metas = [
-        m for m in unit.metadata if "EP-online" in (m.source or "")
-    ]
+    eponline_metas = [m for m in unit.metadata if "EP-online" in (m.source or "")]
     assert eponline_metas == []
 
 
@@ -1229,9 +1216,7 @@ def test_apply_eponline_year_emits_int_attribute_on_building() -> None:
     label = _label_with(bouwjaar=1986)
     apply_eponline_pand_attribution_to_building(building, [_resolved_with(label)])
 
-    int_attrs = [
-        a for a in building.int_attribute if a.name == "yearOfConstructionEPOnline"
-    ]
+    int_attrs = [a for a in building.int_attribute if a.name == "yearOfConstructionEPOnline"]
     assert len(int_attrs) == 1
     assert int_attrs[0].value == 1986
 
@@ -1277,9 +1262,7 @@ def test_apply_eponline_pand_attribution_emits_one_shared_metadata_block() -> No
     apply_bag_year_metadata_to_building(building)
     apply_eponline_pand_attribution_to_building(building, [_resolved_with(label)])
 
-    eponline_metas = [
-        m for m in building.metadata if "EP-online" in (m.source or "")
-    ]
+    eponline_metas = [m for m in building.metadata if "EP-online" in (m.source or "")]
     assert len(eponline_metas) == 1
     quality = eponline_metas[0].quality_description or ""
     assert "yearOfConstructionEPOnline" in quality
@@ -1305,9 +1288,7 @@ def test_apply_eponline_year_picks_most_recent_registratiedatum() -> None:
         building, [_resolved_with(older), _resolved_with(newer)]
     )
 
-    int_attrs = [
-        a for a in building.int_attribute if a.name == "yearOfConstructionEPOnline"
-    ]
+    int_attrs = [a for a in building.int_attribute if a.name == "yearOfConstructionEPOnline"]
     assert int_attrs[0].value == 1955  # newer wins
 
 
@@ -1341,9 +1322,7 @@ def test_apply_eponline_bdg_type_picks_most_recent_with_value() -> None:
 
     assert len(building.bdg_type) == 1
     assert building.bdg_type[0].value == "Vrijstaande woning"
-    int_attrs = [
-        a for a in building.int_attribute if a.name == "yearOfConstructionEPOnline"
-    ]
+    int_attrs = [a for a in building.int_attribute if a.name == "yearOfConstructionEPOnline"]
     assert int_attrs[0].value == 1986
 
 
@@ -1362,9 +1341,7 @@ def test_apply_eponline_pand_attribution_no_op_when_no_pand_level_fields() -> No
     label = _label_with(bouwjaar=None, gebouwtype=None, gebouwsubtype="rijwoning-tussen")
     apply_eponline_pand_attribution_to_building(building, [_resolved_with(label)])
 
-    assert all(
-        a.name != "yearOfConstructionEPOnline" for a in building.int_attribute
-    )
+    assert all(a.name != "yearOfConstructionEPOnline" for a in building.int_attribute)
     assert building.bdg_type == []
     assert all("EP-online" not in (m.source or "") for m in building.metadata)
 
@@ -1378,9 +1355,7 @@ def test_apply_eponline_pand_attribution_no_op_when_no_labels() -> None:
     building = build_building(_parsed())
     apply_eponline_pand_attribution_to_building(building, [_resolved_with(None)])
 
-    assert all(
-        a.name != "yearOfConstructionEPOnline" for a in building.int_attribute
-    )
+    assert all(a.name != "yearOfConstructionEPOnline" for a in building.int_attribute)
     assert building.bdg_type == []
 
 
@@ -1409,10 +1384,7 @@ def test_certification_method_concatenates_soortopname_and_berekeningstype() -> 
     )
     epc = build_epc(resolved)
     assert epc is not None
-    assert (
-        epc.certification_method
-        == "Detailopname / NTA 8800:2024 (detailopname woningbouw)"
-    )
+    assert epc.certification_method == "Detailopname / NTA 8800:2024 (detailopname woningbouw)"
 
 
 def test_certification_method_only_berekeningstype() -> None:
@@ -1479,18 +1451,12 @@ def test_renewable_share_lands_as_measure_attribute_on_epc() -> None:
     resolved = _resolved_with_label(aandeel_hernieuwbare_energie=42.0)
     unit = build_building_unit(resolved)
     epc = _epc_from(unit)
-    measures = [
-        a for a in epc.measure_attribute
-        if a.name == "epOnlineAandeelHernieuwbareEnergie"
-    ]
+    measures = [a for a in epc.measure_attribute if a.name == "epOnlineAandeelHernieuwbareEnergie"]
     assert len(measures) == 1
     assert measures[0].value.uom == "percent"
     assert measures[0].value.value == 42.0
     # And not on the BuildingUnit anymore.
-    assert all(
-        a.name != "epOnlineAandeelHernieuwbareEnergie"
-        for a in unit.measure_attribute
-    )
+    assert all(a.name != "epOnlineAandeelHernieuwbareEnergie" for a in unit.measure_attribute)
 
 
 def test_renewable_share_omitted_when_label_has_none() -> None:
@@ -1500,10 +1466,7 @@ def test_renewable_share_omitted_when_label_has_none() -> None:
     resolved = _resolved_with_label(aandeel_hernieuwbare_energie=None)
     unit = build_building_unit(resolved)
     epc = _epc_from(unit)
-    assert all(
-        a.name != "epOnlineAandeelHernieuwbareEnergie"
-        for a in epc.measure_attribute
-    )
+    assert all(a.name != "epOnlineAandeelHernieuwbareEnergie" for a in epc.measure_attribute)
 
 
 def test_renewable_share_zero_is_emitted() -> None:
@@ -1513,9 +1476,6 @@ def test_renewable_share_zero_is_emitted() -> None:
     resolved = _resolved_with_label(aandeel_hernieuwbare_energie=0.0)
     unit = build_building_unit(resolved)
     epc = _epc_from(unit)
-    measures = [
-        a for a in epc.measure_attribute
-        if a.name == "epOnlineAandeelHernieuwbareEnergie"
-    ]
+    measures = [a for a in epc.measure_attribute if a.name == "epOnlineAandeelHernieuwbareEnergie"]
     assert len(measures) == 1
     assert measures[0].value.value == 0.0

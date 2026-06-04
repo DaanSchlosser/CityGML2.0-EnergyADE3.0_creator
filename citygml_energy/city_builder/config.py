@@ -69,8 +69,8 @@ class BuildContext:
         )
 
 
-from .boundary import (
-    BoundarySource,  # noqa: E402  - imported after BuildContext to break a circular import
+from .boundary import (  # noqa: E402
+    BoundarySource,
 )
 from .solar_panels import SolarPanelsSource  # noqa: E402
 from .vegetation import VegetationSource  # noqa: E402

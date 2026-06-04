@@ -52,7 +52,10 @@ def _compute_layered_construction(
     ``layered_construction``, and instantiating the wrong wrapper would
     serialise to wrong XML rather than fail.
     """
-    info = get_fields(type(obj)).get("layered_construction")
+    # ``get_fields`` is ``functools.lru_cache``-wrapped; the typeshed stub types
+    # the wrapper's arguments as ``Hashable`` and rejects ``type[Any]`` (``obj``
+    # is intentionally ``Any``), though the class object is hashable at runtime.
+    info = get_fields(type(obj)).get("layered_construction")  # type: ignore[arg-type]
     if info is None or not info.is_list:
         return None
     if info.inner_type is not _layered_construction_ref_cls():

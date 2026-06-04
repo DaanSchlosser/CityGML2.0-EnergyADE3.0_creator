@@ -43,7 +43,9 @@ _MINIMAL_CITYJSON = {
 
 
 def _make_session(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, payload: bytes,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    payload: bytes,
 ) -> CachedSession:
     session = CachedSession(cache_dir=tmp_path / "cache", use_cache=False)
 
@@ -103,7 +105,8 @@ def test_decompress_if_gzipped_does_not_misinterpret_short_payload() -> None:
 
 
 def test_fetch_tile_cityjson_returns_parsed_dict_for_plain_json(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     payload = json.dumps(_MINIMAL_CITYJSON).encode("utf-8")
     session = _make_session(tmp_path, monkeypatch, payload)
@@ -118,7 +121,8 @@ def test_fetch_tile_cityjson_returns_parsed_dict_for_plain_json(
 
 
 def test_fetch_tile_cityjson_decompresses_gzipped_payload(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     payload = json.dumps(_MINIMAL_CITYJSON).encode("utf-8")
     session = _make_session(tmp_path, monkeypatch, gzip.compress(payload))
@@ -137,7 +141,8 @@ def test_fetch_tile_cityjson_decompresses_gzipped_payload(
 
 
 def test_tile_cache_key_replaces_slashes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """3DBAG tile ids contain forward slashes (``"9/200/300"``); naive
     use as a filename component breaks on Windows. The fetcher

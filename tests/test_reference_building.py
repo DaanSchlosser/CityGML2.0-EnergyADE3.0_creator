@@ -19,7 +19,7 @@ fixture do not belong here.
 """
 
 from copy import deepcopy
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 import lxml.etree as etree
@@ -123,24 +123,44 @@ def test_devices_split_between_building_and_building_unit(reference_building_roo
     parent under the BuildingUnit.
     """
     unit_devices = reference_building_root.findall(
-        ".//nrg3:BuildingUnit/nrg3:device", NS,
+        ".//nrg3:BuildingUnit/nrg3:device",
+        NS,
     )
     assert len(unit_devices) == 9
 
     building_devices = reference_building_root.findall(
-        ".//bldg:Building/nrg3:device", NS,
+        ".//bldg:Building/nrg3:device",
+        NS,
     )
     assert len(building_devices) == 1
 
     building_device_path = ".//bldg:Building/nrg3:device"
-    assert len(reference_building_root.findall(f"{building_device_path}/nrg3:PhotovoltaicCollector", NS)) == 1
+    assert (
+        len(
+            reference_building_root.findall(
+                f"{building_device_path}/nrg3:PhotovoltaicCollector", NS
+            )
+        )
+        == 1
+    )
 
     unit_device_path = ".//nrg3:BuildingUnit/nrg3:device"
     assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:HeatPump", NS)) == 1
-    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:ThermalDistribution", NS)) == 1
-    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:ThermalStorageDevice", NS)) == 1
-    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:EVChargingStation", NS)) == 1
-    assert len(reference_building_root.findall(f"{unit_device_path}/nrg3:GenericElectricalDevice", NS)) == 5
+    assert (
+        len(reference_building_root.findall(f"{unit_device_path}/nrg3:ThermalDistribution", NS))
+        == 1
+    )
+    assert (
+        len(reference_building_root.findall(f"{unit_device_path}/nrg3:ThermalStorageDevice", NS))
+        == 1
+    )
+    assert (
+        len(reference_building_root.findall(f"{unit_device_path}/nrg3:EVChargingStation", NS)) == 1
+    )
+    assert (
+        len(reference_building_root.findall(f"{unit_device_path}/nrg3:GenericElectricalDevice", NS))
+        == 5
+    )
 
 
 def test_occupants_attached_to_building_unit(reference_building_root):
@@ -153,12 +173,14 @@ def test_occupants_attached_to_building_unit(reference_building_root):
     can carry its own ``Occupants`` record.
     """
     occupants = reference_building_root.findall(
-        ".//nrg3:BuildingUnit/nrg3:occupiedBy/nrg3:Occupants", NS,
+        ".//nrg3:BuildingUnit/nrg3:occupiedBy/nrg3:Occupants",
+        NS,
     )
     assert len(occupants) == 1
     # And nothing on the Building itself (would be a duplicate).
     occupants_on_bldg = reference_building_root.findall(
-        ".//bldg:Building/nrg3:occupiedBy/nrg3:Occupants", NS,
+        ".//bldg:Building/nrg3:occupiedBy/nrg3:Occupants",
+        NS,
     )
     assert occupants_on_bldg == []
 
@@ -179,7 +201,8 @@ def test_singular_building_unit_attached_to_building(reference_building_root):
     :func:`test_address_owned_by_building_unit_xlinks_to_it`.
     """
     units = reference_building_root.findall(
-        ".//bldg:Building/nrg3:buildingUnit/nrg3:BuildingUnit", NS,
+        ".//bldg:Building/nrg3:buildingUnit/nrg3:BuildingUnit",
+        NS,
     )
     assert len(units) == 1
     unit = units[0]
@@ -202,16 +225,16 @@ def test_address_owned_by_building_unit_xlinks_to_it(reference_building_root):
     resolves to an Address actually emitted by the Building.
     """
     bldg_addr = reference_building_root.findall(
-        ".//bldg:Building/bldg:address/core:Address", NS,
+        ".//bldg:Building/bldg:address/core:Address",
+        NS,
     )
-    assert len(bldg_addr) == 1, (
-        f"expected 1 Address at bldg:address, got {len(bldg_addr)}"
-    )
+    assert len(bldg_addr) == 1, f"expected 1 Address at bldg:address, got {len(bldg_addr)}"
     address_id = bldg_addr[0].get(f"{{{NS['gml']}}}id")
     assert address_id is not None
 
     unit_addr_inline = reference_building_root.findall(
-        ".//nrg3:BuildingUnit/nrg3:address/core:Address", NS,
+        ".//nrg3:BuildingUnit/nrg3:address/core:Address",
+        NS,
     )
     assert unit_addr_inline == [], (
         "nrg3:address on a BuildingUnit must NOT carry an inline core:Address "
@@ -219,7 +242,8 @@ def test_address_owned_by_building_unit_xlinks_to_it(reference_building_root):
     )
 
     unit_addr_props = reference_building_root.findall(
-        ".//nrg3:BuildingUnit/nrg3:address", NS,
+        ".//nrg3:BuildingUnit/nrg3:address",
+        NS,
     )
     assert len(unit_addr_props) == 1
     href = unit_addr_props[0].get(f"{{{NS['xlink']}}}href")
@@ -265,7 +289,8 @@ def test_zone_references_its_building_unit(reference_building_root):
 
     target_id = href[1:]
     unit = reference_building_root.find(
-        f".//nrg3:BuildingUnit[@gml:id='{target_id}']", NS,
+        f".//nrg3:BuildingUnit[@gml:id='{target_id}']",
+        NS,
     )
     assert unit is not None, f"Zone buildingUnit xlink points at missing id {target_id!r}"
 
@@ -313,7 +338,9 @@ def test_energy_resources_attached_to_devices(reference_building_root):
     is single-valued and is also the cleaner provenance split (measured vs.
     simulated).
     """
-    ev_resources = reference_building_root.findall(".//nrg3:EVChargingStation/nrg3:resource/nrg3:Energy", NS)
+    ev_resources = reference_building_root.findall(
+        ".//nrg3:EVChargingStation/nrg3:resource/nrg3:Energy", NS
+    )
     assert len(ev_resources) == 1
 
     pv_resources = reference_building_root.findall(
@@ -569,9 +596,7 @@ def test_geometry_elements_have_srs(reference_building_root):
     cannot pass vacuously when the count regresses to zero.
     """
     multi_surfaces = reference_building_root.findall(".//gml:MultiSurface", NS)
-    bounded_surfaces = reference_building_root.findall(
-        ".//bldg:Building/bldg:boundedBy/*", NS
-    )
+    bounded_surfaces = reference_building_root.findall(".//bldg:Building/bldg:boundedBy/*", NS)
     assert len(multi_surfaces) >= len(bounded_surfaces), (
         f"expected >= {len(bounded_surfaces)} MultiSurface elements "
         f"(one per boundary surface), got {len(multi_surfaces)}"
@@ -590,14 +615,10 @@ def test_coordinates_are_fixed_point_decimals(reference_building_root):
     """
     for pos_list in reference_building_root.findall(".//gml:posList", NS):
         for token in (pos_list.text or "").split():
-            assert "e" not in token.lower(), (
-                f"Coordinate emitted in scientific notation: {token!r}"
-            )
+            assert "e" not in token.lower(), f"Coordinate emitted in scientific notation: {token!r}"
     for pos in reference_building_root.findall(".//gml:pos", NS):
         for token in (pos.text or "").split():
-            assert "e" not in token.lower(), (
-                f"Coordinate emitted in scientific notation: {token!r}"
-            )
+            assert "e" not in token.lower(), f"Coordinate emitted in scientific notation: {token!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -645,9 +666,7 @@ def test_building_input_rejects_unresolved_installed_on():
     invalid_data = deepcopy(data)
     for feature in invalid_data["features"]:
         if feature.get("id") == "pv_panel_1":
-            feature["related_to"] = [
-                {"relation": "installedOn", "target": "RoofSurface_99"}
-            ]
+            feature["related_to"] = [{"relation": "installedOn", "target": "RoofSurface_99"}]
             break
     else:
         pytest.fail("pv_panel_1 not in fixture")
@@ -676,15 +695,13 @@ def test_installed_on_object_form_pins_relation_to_specific_lod():
             feature["related_to"] = [
                 {"relation": "installedOn", "target": {"name": "RoofSurface_01", "lod": 2}},
                 {"relation": "installedOn", "target": {"name": "RoofSurface_02", "lod": 2}},
-                {"relation": "serving",     "target": "id_building_unit_1"},
+                {"relation": "serving", "target": "id_building_unit_1"},
             ]
             break
     else:
         pytest.fail("pv_panel_1 not in fixture")
 
-    model = build_city_model_from_feature_collection(
-        mutated, base_path=Path(INPUT).parent
-    )
+    model = build_city_model_from_feature_collection(mutated, base_path=Path(INPUT).parent)
     root = etree.fromstring(model.to_string().encode("utf-8"))
 
     # Collect the gml:id of every LoD 2 RoofSurface (the one that carries a
@@ -701,9 +718,7 @@ def test_installed_on_object_form_pins_relation_to_specific_lod():
         ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
     )
     hrefs = {
-        rel.find("nrg3:relatedTo", NS)
-        .get("{http://www.w3.org/1999/xlink}href")
-        .lstrip("#")
+        rel.find("nrg3:relatedTo", NS).get("{http://www.w3.org/1999/xlink}href").lstrip("#")
         for rel in relations
         if (rt := rel.find("nrg3:relationType", NS)) is not None and rt.text == "installedOn"
     }
@@ -727,6 +742,4 @@ def test_installed_on_object_form_rejects_unknown_lod():
         pytest.fail("pv_panel_1 not in fixture")
 
     with pytest.raises(InputFileError, match=r"LoD 9"):
-        build_city_model_from_feature_collection(
-            mutated, base_path=Path(INPUT).parent
-        )
+        build_city_model_from_feature_collection(mutated, base_path=Path(INPUT).parent)

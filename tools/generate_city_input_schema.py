@@ -20,9 +20,9 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from citygml_energy.city_builder.config import (
-    ALLOWED_LODS,
     _CBS_POSTCODE6_YEAR_MAX,
     _CBS_POSTCODE6_YEAR_MIN,
+    ALLOWED_LODS,
 )
 from citygml_energy.city_builder.solar_panels import DEFAULT_Z_OFFSET_M
 from citygml_energy.namespaces import DEFAULT_SRS_NAME

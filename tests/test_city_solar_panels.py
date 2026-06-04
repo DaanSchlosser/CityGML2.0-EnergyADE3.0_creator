@@ -36,11 +36,10 @@ from shapely.geometry import Polygon
 
 from citygml_energy._step import GeometryPolygon
 from citygml_energy.city_builder import build_city_model
-from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder import pipeline as pipeline_module
 from citygml_energy.city_builder import solar_panels as solar_panels_module
 from citygml_energy.city_builder.cityjson_parse import ParsedBuilding, SemanticPolygon
-from citygml_energy.city_builder.config import load_city_config
+from citygml_energy.city_builder.config import BuildContext, load_city_config
 from citygml_energy.city_builder.fetchers import (
     bag as bag_fetchers,
 )
@@ -95,8 +94,7 @@ def _cube_shell_at(origin_x: float, origin_y: float) -> list[SemanticPolygon]:
         ([p[3], p[0], p[4], p[7]], "WallSurface"),
     ]
     return [
-        SemanticPolygon(polygon=GeometryPolygon(exterior=v), surface_type=st)
-        for v, st in faces
+        SemanticPolygon(polygon=GeometryPolygon(exterior=v), surface_type=st) for v, st in faces
     ]
 
 
@@ -122,13 +120,15 @@ def _fixture_outline() -> MunicipalityOutline:
             "type": "Feature",
             "geometry": {
                 "type": "Polygon",
-                "coordinates": [[
-                    [_BBOX[0], _BBOX[1]],
-                    [_BBOX[2], _BBOX[1]],
-                    [_BBOX[2], _BBOX[3]],
-                    [_BBOX[0], _BBOX[3]],
-                    [_BBOX[0], _BBOX[1]],
-                ]],
+                "coordinates": [
+                    [
+                        [_BBOX[0], _BBOX[1]],
+                        [_BBOX[2], _BBOX[1]],
+                        [_BBOX[2], _BBOX[3]],
+                        [_BBOX[0], _BBOX[3]],
+                        [_BBOX[0], _BBOX[1]],
+                    ]
+                ],
             },
         },
         bbox=_BBOX,
@@ -159,27 +159,33 @@ def _fixture_vbo() -> Verblijfsobject:
 
 # Two panels over the cube roof (area 0.36 m² and 0.04 m²) and one
 # completely outside the bbox of the building (should be skipped).
-_PANEL_ON_ROOF_1 = Polygon([
-    (85000.2, 446000.2),
-    (85000.8, 446000.2),
-    (85000.8, 446000.8),
-    (85000.2, 446000.8),
-    (85000.2, 446000.2),
-])
-_PANEL_ON_ROOF_2 = Polygon([
-    (85000.4, 446000.4),
-    (85000.6, 446000.4),
-    (85000.6, 446000.6),
-    (85000.4, 446000.6),
-    (85000.4, 446000.4),
-])
-_PANEL_OFF_ROOF = Polygon([
-    (85500.0, 446500.0),
-    (85500.5, 446500.0),
-    (85500.5, 446500.5),
-    (85500.0, 446500.5),
-    (85500.0, 446500.0),
-])
+_PANEL_ON_ROOF_1 = Polygon(
+    [
+        (85000.2, 446000.2),
+        (85000.8, 446000.2),
+        (85000.8, 446000.8),
+        (85000.2, 446000.8),
+        (85000.2, 446000.2),
+    ]
+)
+_PANEL_ON_ROOF_2 = Polygon(
+    [
+        (85000.4, 446000.4),
+        (85000.6, 446000.4),
+        (85000.6, 446000.6),
+        (85000.4, 446000.6),
+        (85000.4, 446000.4),
+    ]
+)
+_PANEL_OFF_ROOF = Polygon(
+    [
+        (85500.0, 446500.0),
+        (85500.5, 446500.0),
+        (85500.5, 446500.5),
+        (85500.0, 446500.5),
+        (85500.0, 446500.0),
+    ]
+)
 
 
 def _fixture_panels() -> list[tuple[int, Polygon]]:
@@ -338,8 +344,8 @@ def test_match_and_project_sloped_roof_sets_azimuth_and_inclination_and_lifts_wi
     _rx, ry, rz = p.reference_point
     # Inverse of the offset: undoing the shift should place the point
     # back on the roof plane (z = 3 + y).
-    y_on_roof = ry + DEFAULT_Z_OFFSET_M / (2 ** 0.5)  # normal_y = -1/√2
-    z_on_roof = rz - DEFAULT_Z_OFFSET_M / (2 ** 0.5)
+    y_on_roof = ry + DEFAULT_Z_OFFSET_M / (2**0.5)  # normal_y = -1/√2
+    z_on_roof = rz - DEFAULT_Z_OFFSET_M / (2**0.5)
     assert z_on_roof == pytest.approx(3.0 + y_on_roof, abs=1e-9)
 
 
@@ -449,9 +455,7 @@ def test_attach_omits_azimuth_on_flat_roof() -> None:
 
     ctx = BuildContext(srs_name="x", srs_dimension=3)
     building = build_building(_fixture_parsed_building(), ctx)
-    panel = _fixture_projected_panel(
-        original_fid=3, azimuth_deg=None, inclination_deg=0.0
-    )
+    panel = _fixture_projected_panel(original_fid=3, azimuth_deg=None, inclination_deg=0.0)
     attach_solar_collectors_to_building(building, [panel], ctx)
     collector = building.device[0].generic_solar_collector
     assert collector.azimuth is None
@@ -497,13 +501,15 @@ def test_config_without_solar_panels_block(tmp_path: Path) -> None:
 def test_config_rejects_bad_solar_panels_block(tmp_path: Path) -> None:
     source = tmp_path / "city.json"
     source.write_text(
-        json.dumps({
-            "municipality": "Delft",
-            "include_energy_labels": False,
-            "output": str(tmp_path / "out.gml"),
-            "cache_dir": str(tmp_path / "cache"),
-            "solar_panels": {"layer": "x"},  # missing path
-        }),
+        json.dumps(
+            {
+                "municipality": "Delft",
+                "include_energy_labels": False,
+                "output": str(tmp_path / "out.gml"),
+                "cache_dir": str(tmp_path / "cache"),
+                "solar_panels": {"layer": "x"},  # missing path
+            }
+        ),
         encoding="utf-8",
     )
     (tmp_path / "cache").mkdir()
@@ -562,16 +568,18 @@ def test_pipeline_skips_pv_when_lod2_disabled(
 ) -> None:
     source = tmp_path / "city.json"
     source.write_text(
-        json.dumps({
-            "municipality": "Delft",
-            "bbox": list(_BBOX),
-            "lods": [0, 1],  # no LoD 2: attach must refuse
-            "include_addresses": True,
-            "include_energy_labels": False,
-            "cache_dir": str(tmp_path / "cache"),
-            "output": str(tmp_path / "out.gml"),
-            "solar_panels": {"path": "panels.gpkg", "layer": "solar_panels"},
-        }),
+        json.dumps(
+            {
+                "municipality": "Delft",
+                "bbox": list(_BBOX),
+                "lods": [0, 1],  # no LoD 2: attach must refuse
+                "include_addresses": True,
+                "include_energy_labels": False,
+                "cache_dir": str(tmp_path / "cache"),
+                "output": str(tmp_path / "out.gml"),
+                "solar_panels": {"path": "panels.gpkg", "layer": "solar_panels"},
+            }
+        ),
         encoding="utf-8",
     )
     (tmp_path / "cache").mkdir(parents=True, exist_ok=True)
@@ -689,9 +697,7 @@ def test_load_panels_in_bbox_roundtrip(tmp_path: Path) -> None:
 
 def test_load_panels_in_bbox_rejects_wrong_crs(tmp_path: Path) -> None:
     gpkg = tmp_path / "panels.gpkg"
-    _make_minimal_gpkg(
-        gpkg, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)]
-    )
+    _make_minimal_gpkg(gpkg, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)])
     # Force the declared srs to something we don't accept.
     con = sqlite3.connect(gpkg)
     try:

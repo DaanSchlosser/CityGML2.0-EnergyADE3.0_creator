@@ -37,8 +37,10 @@ def _minimal_tile() -> dict:
                     "identificatie": "0503100000000001",
                     "oorspronkelijkbouwjaar": 1985,
                 },
-                "children": ["NL.IMBAG.Pand.0503100000000001_part_lod0",
-                             "NL.IMBAG.Pand.0503100000000001_part_lod2"],
+                "children": [
+                    "NL.IMBAG.Pand.0503100000000001_part_lod0",
+                    "NL.IMBAG.Pand.0503100000000001_part_lod2",
+                ],
             },
             "NL.IMBAG.Pand.0503100000000001_part_lod0": {
                 "type": "BuildingPart",
@@ -61,14 +63,16 @@ def _minimal_tile() -> dict:
                         "type": "Solid",
                         "lod": "2.2",
                         # Shell with 6 square faces forming a unit cube 1x1x3.
-                        "boundaries": [[
-                            [[0, 3, 2, 1]],  # bottom  → GroundSurface
-                            [[4, 5, 6, 7]],  # top     → RoofSurface
-                            [[0, 1, 5, 4]],  # front   → WallSurface
-                            [[1, 2, 6, 5]],  # right   → WallSurface
-                            [[2, 3, 7, 6]],  # back    → WallSurface
-                            [[3, 0, 4, 7]],  # left    → WallSurface
-                        ]],
+                        "boundaries": [
+                            [
+                                [[0, 3, 2, 1]],  # bottom  → GroundSurface
+                                [[4, 5, 6, 7]],  # top     → RoofSurface
+                                [[0, 1, 5, 4]],  # front   → WallSurface
+                                [[1, 2, 6, 5]],  # right   → WallSurface
+                                [[2, 3, 7, 6]],  # back    → WallSurface
+                                [[3, 0, 4, 7]],  # left    → WallSurface
+                            ]
+                        ],
                         "semantics": {
                             "surfaces": [
                                 {"type": "GroundSurface"},

@@ -51,13 +51,13 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-# En-dash is intentional typography in docstrings/comments (numeric ranges, parenthetical
-# clauses). Whitelist it so RUF002/RUF003 do not flag correct Unicode usage.
 # En-dash (–) is intentional typography in docstrings/comments (numeric
-# ranges, parenthetical clauses). Multiplication sign (×) is correct math
-# notation in dimensions like "3×4 grid" or "10×10 metres". Whitelisting
-# both stops RUF001/002/003 from flagging correct Unicode usage.
-allowed-confusables = ["–", "×"]
+# ranges, parenthetical clauses), the multiplication sign (×) is correct
+# math notation in dimensions like "3×4 grid" or "10×10 metres", and the
+# minus sign (−) is correct math notation in formulae like "Total − Σ
+# child_opening". Whitelisting them stops RUF001/002/003 from flagging
+# correct Unicode usage.
+allowed-confusables = ["–", "×", "−"]
 
 select = [
     "F",      # pyflakes
@@ -89,6 +89,13 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["citygml_energy"]
+
+# BuildContext is a frozen, slotted dataclass (city_builder/config.py), so
+# constructing it as a default argument carries no mutable-default footgun.
+# Tell B008 to treat it as immutable, allowing the builder signatures that
+# take ``ctx: BuildContext = BuildContext()``.
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["citygml_energy.city_builder.config.BuildContext"]
 
 # ── Pyright / Pylance ───────────────────────────────────────────────────
 # All top-level pyright settings go in the ``[tool.pyright]`` table below;
@@ -191,6 +198,16 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = "tests.*"
 disable_error_code = ["union-attr", "attr-defined", "arg-type"]
+
+# audit_silent_bugs.py is an lxml-heavy diagnostic script: it walks parsed GML
+# where ``Element.find`` returns ``_Element | None`` and ``QName`` round-trips
+# through ``str``. The Optional-narrowing noise outweighs the signal for a
+# read-only audit that only ever runs against already-valid documents, so this
+# one tool is type-checked leniently. The shipped ``citygml_energy`` package is
+# not relaxed this way.
+[[tool.mypy.overrides]]
+module = "tools.audit_silent_bugs"
+ignore_errors = true
 
 # ── Pytest ──────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]

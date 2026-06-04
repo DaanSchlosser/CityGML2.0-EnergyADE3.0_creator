@@ -42,8 +42,8 @@ def _configure_logging(verbosity: int) -> None:
     progress lines); ``-v`` drops to DEBUG and includes fetcher / HTTP
     retry detail.
     """
-    level = logging.WARNING if verbosity <= 0 else (
-        logging.INFO if verbosity == 1 else logging.DEBUG
+    level = (
+        logging.WARNING if verbosity <= 0 else (logging.INFO if verbosity == 1 else logging.DEBUG)
     )
     logging.basicConfig(
         level=level,
@@ -62,8 +62,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Path to a city-build JSON config.",
     )
     parser.add_argument(
-        "-v", "--verbose",
-        action="count", default=1,
+        "-v",
+        "--verbose",
+        action="count",
+        default=1,
         help="Increase log verbosity (default: INFO; -v: DEBUG).",
     )
     args = parser.parse_args(argv)

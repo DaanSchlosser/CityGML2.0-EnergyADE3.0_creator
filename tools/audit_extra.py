@@ -2,11 +2,14 @@
 
 Run: python tools/audit_extra.py generated/*.gml
 """
+
 from __future__ import annotations
+
 import sys
-from collections import Counter, defaultdict
+from collections import defaultdict
 from pathlib import Path
-import lxml.etree as ET
+
+import lxml.etree as ET  # noqa: N812
 
 NRG3 = "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
 GML = "http://www.opengis.net/gml"
@@ -18,42 +21,78 @@ XLINK = "http://www.w3.org/1999/xlink"
 # Derived from Energy_ADE_3.0_beta8.xsd by enumerating every <xs:element>
 # with substitutionGroup="core:_GenericApplicationPropertyOfCityObject".
 NRG3_CITYOBJECT_HOOKS = {
-    "device", "identifier", "indicator", "intervention",
-    "layeredConstruction", "metadata", "referencePoint", "relatedTo",
-    "resource", "sensorData", "status", "utilityNetworkConnection",
-    "validFrom", "validTo",
+    "device",
+    "identifier",
+    "indicator",
+    "intervention",
+    "layeredConstruction",
+    "metadata",
+    "referencePoint",
+    "relatedTo",
+    "resource",
+    "sensorData",
+    "status",
+    "utilityNetworkConnection",
+    "validFrom",
+    "validTo",
 }
 # nrg3 elements that substitute bldg:_GenericApplicationPropertyOfAbstractBuilding.
 # Same derivation. ``zone``, ``buildingUnit`` and ``energyPerformanceCertificate``
 # live here (not under the CityObject hook) because the XSD attaches them to
 # AbstractBuildingType, not AbstractCityObjectType.
 NRG3_BUILDING_HOOKS = {
-    "bdgArea", "bdgAtticThermalStatus", "bdgBasementThermalStatus",
-    "bdgConstructionWeight", "bdgHeight", "bdgIsProtected",
-    "bdgNumberOfBuildingUnits", "bdgOwnerName", "bdgOwnershipType",
-    "bdgType", "bdgVolume", "buildingUnit",
-    "energyPerformanceCertificate", "zone",
+    "bdgArea",
+    "bdgAtticThermalStatus",
+    "bdgBasementThermalStatus",
+    "bdgConstructionWeight",
+    "bdgHeight",
+    "bdgIsProtected",
+    "bdgNumberOfBuildingUnits",
+    "bdgOwnerName",
+    "bdgOwnershipType",
+    "bdgType",
+    "bdgVolume",
+    "buildingUnit",
+    "energyPerformanceCertificate",
+    "zone",
 }
 # nrg3 elements that substitute bldg:_GenericApplicationPropertyOfBoundarySurface
 NRG3_BNDSURF_HOOKS = {
-    "bdgBdrySurfAdditionalThermalBridgeUValue", "bdgBdrySurfIsShared",
-    "bdgBdrySurfThickness", "bdgBdrySurfTotalSurfaceArea",
-    "bdgBdrySurfOpaqueSurfaceArea", "bdgBdrySurfHeatCapacity",
-    "bdgBdrySurfAzimuth", "bdgBdrySurfInclination",
-    "bdgBdrySurfGroundViewFactor", "bdgBdrySurfSkyViewFactor",
+    "bdgBdrySurfAdditionalThermalBridgeUValue",
+    "bdgBdrySurfIsShared",
+    "bdgBdrySurfThickness",
+    "bdgBdrySurfTotalSurfaceArea",
+    "bdgBdrySurfOpaqueSurfaceArea",
+    "bdgBdrySurfHeatCapacity",
+    "bdgBdrySurfAzimuth",
+    "bdgBdrySurfInclination",
+    "bdgBdrySurfGroundViewFactor",
+    "bdgBdrySurfSkyViewFactor",
 }
 # nrg3 elements that substitute bldg:_GenericApplicationPropertyOfOpening
 NRG3_OPENING_HOOKS = {
-    "bdgOpnArea", "bdgOpnInclination", "bdgOpnAzimuth",
-    "bdgOpnGroundViewFactor", "bdgOpnSkyViewFactor",
+    "bdgOpnArea",
+    "bdgOpnInclination",
+    "bdgOpnAzimuth",
+    "bdgOpnGroundViewFactor",
+    "bdgOpnSkyViewFactor",
 }
 
 POSITIVE_QUANTITIES = {
-    "bdgBdrySurfTotalSurfaceArea", "bdgBdrySurfOpaqueSurfaceArea",
-    "bdgBdrySurfThickness", "bdgBdrySurfHeatCapacity",
-    "bdgOpnArea", "moduleArea", "apertureArea", "installedPower",
-    "numberOfDevices", "storeysAboveGround", "storeysBelowGround",
-    "bdgArea", "bdgVolume", "bdgHeight",
+    "bdgBdrySurfTotalSurfaceArea",
+    "bdgBdrySurfOpaqueSurfaceArea",
+    "bdgBdrySurfThickness",
+    "bdgBdrySurfHeatCapacity",
+    "bdgOpnArea",
+    "moduleArea",
+    "apertureArea",
+    "installedPower",
+    "numberOfDevices",
+    "storeysAboveGround",
+    "storeysBelowGround",
+    "bdgArea",
+    "bdgVolume",
+    "bdgHeight",
 }
 
 ANGLE_360 = {"bdgBdrySurfAzimuth", "bdgOpnAzimuth", "azimuth"}
@@ -67,39 +106,41 @@ def audit(path: Path) -> dict:
 
     findings: dict[str, list] = defaultdict(list)
 
-    # Build a quick parent map so we can spot misplaced hooks
-    parent = {c: p for p in root.iter() for c in p}
-
     # 1. Polygon order: ADE-hook substituting CityObject hook must appear
     #    before BoundarySurface lod*MultiSurface in a BoundarySurface.
-    for bs_tag in ("GroundSurface", "WallSurface", "RoofSurface", "ClosureSurface", "OuterCeilingSurface", "OuterFloorSurface"):
+    for bs_tag in (
+        "GroundSurface",
+        "WallSurface",
+        "RoofSurface",
+        "ClosureSurface",
+        "OuterCeilingSurface",
+        "OuterFloorSurface",
+    ):
         for bs in root.iter(f"{{{BLDG}}}{bs_tag}"):
             saw_lod = False
-            saw_bndsurf_hook = False
-            saw_opening = False
             for child in bs:
                 ln = ET.QName(child.tag).localname
                 ns = ET.QName(child.tag).namespace
                 if ln in ("lod2MultiSurface", "lod3MultiSurface", "lod4MultiSurface"):
                     saw_lod = True
                 elif ln == "opening":
-                    saw_opening = True
                     if not saw_lod:
                         # opening BEFORE lod*MultiSurface is invalid per XSD
                         findings["opening_before_lod"].append(
-                            (path.name, bs.get(f"{{{GML}}}id"), child.sourceline))
+                            (path.name, bs.get(f"{{{GML}}}id"), child.sourceline)
+                        )
                 elif ns == NRG3:
                     if ln in NRG3_CITYOBJECT_HOOKS:
                         # CityObject hook MUST precede lod* (which is BoundarySurface seq)
                         if saw_lod:
                             findings["cityobj_hook_after_boundary"].append(
-                                (path.name, bs.get(f"{{{GML}}}id"), ln, child.sourceline))
-                    elif ln in NRG3_BNDSURF_HOOKS:
-                        saw_bndsurf_hook = True
-                        # BoundarySurface hook MUST follow lod*MultiSurface and opening
-                        if not saw_lod:
-                            findings["bndsurf_hook_before_lod"].append(
-                                (path.name, bs.get(f"{{{GML}}}id"), ln, child.sourceline))
+                                (path.name, bs.get(f"{{{GML}}}id"), ln, child.sourceline)
+                            )
+                    # BoundarySurface hook MUST follow lod*MultiSurface and opening
+                    elif ln in NRG3_BNDSURF_HOOKS and not saw_lod:
+                        findings["bndsurf_hook_before_lod"].append(
+                            (path.name, bs.get(f"{{{GML}}}id"), ln, child.sourceline)
+                        )
 
     # 2. Check Building ADE-hook ordering: bdg* (building hooks) must be in
     #    bldg:AbstractBuildingType's hook slot, which is AFTER consistsOfBuildingPart
@@ -109,21 +150,46 @@ def audit(path: Path) -> dict:
             ln = ET.QName(child.tag).localname
             ns = ET.QName(child.tag).namespace
             if ns == BLDG and ln in (
-                "class", "function", "usage", "yearOfConstruction", "yearOfDemolition",
-                "roofType", "measuredHeight", "storeysAboveGround", "storeysBelowGround",
-                "storeyHeightsAboveGround", "storeyHeightsBelowGround", "lod0FootPrint",
-                "lod0RoofEdge", "lod1Solid", "lod1MultiSurface", "lod2Solid", "lod2MultiSurface",
-                "lod3Solid", "lod3MultiSurface", "lod4Solid", "lod4MultiSurface",
-                "lod1TerrainIntersection", "lod2TerrainIntersection", "lod3TerrainIntersection",
-                "lod4TerrainIntersection", "lod2MultiCurve", "lod3MultiCurve", "lod4MultiCurve",
-                "outerBuildingInstallation", "interiorBuildingInstallation", "boundedBy",
-                "interiorRoom", "consistsOfBuildingPart", "address",
+                "class",
+                "function",
+                "usage",
+                "yearOfConstruction",
+                "yearOfDemolition",
+                "roofType",
+                "measuredHeight",
+                "storeysAboveGround",
+                "storeysBelowGround",
+                "storeyHeightsAboveGround",
+                "storeyHeightsBelowGround",
+                "lod0FootPrint",
+                "lod0RoofEdge",
+                "lod1Solid",
+                "lod1MultiSurface",
+                "lod2Solid",
+                "lod2MultiSurface",
+                "lod3Solid",
+                "lod3MultiSurface",
+                "lod4Solid",
+                "lod4MultiSurface",
+                "lod1TerrainIntersection",
+                "lod2TerrainIntersection",
+                "lod3TerrainIntersection",
+                "lod4TerrainIntersection",
+                "lod2MultiCurve",
+                "lod3MultiCurve",
+                "lod4MultiCurve",
+                "outerBuildingInstallation",
+                "interiorBuildingInstallation",
+                "boundedBy",
+                "interiorRoom",
+                "consistsOfBuildingPart",
+                "address",
             ):
                 saw_bldg_specific = True
-            elif ns == NRG3 and ln in NRG3_CITYOBJECT_HOOKS:
-                if saw_bldg_specific:
-                    findings["cityobj_hook_after_bldg_field"].append(
-                        (path.name, b.get(f"{{{GML}}}id"), ln, child.sourceline))
+            elif ns == NRG3 and ln in NRG3_CITYOBJECT_HOOKS and saw_bldg_specific:
+                findings["cityobj_hook_after_bldg_field"].append(
+                    (path.name, b.get(f"{{{GML}}}id"), ln, child.sourceline)
+                )
 
     # 3. Positive-quantity sanity
     for el in root.iter():
@@ -132,11 +198,9 @@ def audit(path: Path) -> dict:
             try:
                 v = float(el.text.strip())
                 if v < 0:
-                    findings["negative_quantity"].append(
-                        (path.name, ln, v, el.sourceline))
+                    findings["negative_quantity"].append((path.name, ln, v, el.sourceline))
                 if v == 0 and ln not in ("storeysBelowGround",):
-                    findings["zero_quantity"].append(
-                        (path.name, ln, v, el.sourceline))
+                    findings["zero_quantity"].append((path.name, ln, v, el.sourceline))
             except ValueError:
                 pass
 
@@ -151,18 +215,18 @@ def audit(path: Path) -> dict:
             continue
         if ln in ANGLE_360:
             if v < 0 or v >= 360:
-                findings["azimuth_out_of_range"].append(
-                    (path.name, ln, v, el.sourceline))
-        elif ln in ANGLE_180:
-            if v < 0 or v > 180:
-                findings["inclination_out_of_range"].append(
-                    (path.name, ln, v, el.sourceline))
+                findings["azimuth_out_of_range"].append((path.name, ln, v, el.sourceline))
+        elif ln in ANGLE_180 and (v < 0 or v > 180):
+            findings["inclination_out_of_range"].append((path.name, ln, v, el.sourceline))
 
     # 5. Empty elements (whitespace-only text, no children, no xlink)
     for el in root.iter():
-        if (el.text is None or not el.text.strip()) and len(el) == 0 \
-                and not el.get(f"{{{XLINK}}}href") \
-                and not el.attrib:
+        if (
+            (el.text is None or not el.text.strip())
+            and len(el) == 0
+            and not el.get(f"{{{XLINK}}}href")
+            and not el.attrib
+        ):
             ln = ET.QName(el.tag).localname
             if ln in ("CityModel",):
                 continue
@@ -172,7 +236,8 @@ def audit(path: Path) -> dict:
     for el in root.iter():
         if el.get(f"{{{XLINK}}}href") and el.text and el.text.strip():
             findings["xlink_plus_text"].append(
-                (path.name, ET.QName(el.tag).localname, el.sourceline))
+                (path.name, ET.QName(el.tag).localname, el.sourceline)
+            )
 
     # 7. Polygon orientation check (CCW for exterior in projected coords): hard, skip for now
 
@@ -187,8 +252,7 @@ def audit(path: Path) -> dict:
     for el in root.iter(f"{{{NRG3}}}bdgBdrySurfHeatCapacity"):
         u = el.get("uom") or ""
         if u not in expected_hc_uom:
-            findings["heatcap_uom_drift"].append(
-                (path.name, u, el.sourceline))
+            findings["heatcap_uom_drift"].append((path.name, u, el.sourceline))
 
     # 10. EPC type/status uom: the EPC values are codes, not uoms; check the codeSpace
     #    has /energy/3.0/<Name>Value.xml (flat) not /codelists/

@@ -43,7 +43,7 @@ import lxml.etree as etree
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tools"))
-from validate_xsd import load_schema  # noqa: E402
+from validate_xsd import load_schema
 
 # ---------------------------------------------------------------------------
 # H6 — KIT viewer UOMList.xml cross-check
@@ -89,6 +89,7 @@ def _uomlist_known_tokens() -> frozenset[str] | None:
                 tokens.add(text)
     return frozenset(tokens)
 
+
 NS = {
     "core": "http://www.opengis.net/citygml/2.0",
     "bldg": "http://www.opengis.net/citygml/building/2.0",
@@ -103,16 +104,37 @@ NS = {
 
 UML_MAX1 = {
     f"{{{NS['nrg3']}}}{n}"
-    for n in (
-        "identifier status validFrom validTo layeredConstruction referencePoint "
-        "bdgOwnerName bdgOwnershipType bdgNumberOfBuildingUnits bdgAtticThermalStatus "
-        "bdgBasementThermalStatus bdgConstructionWeight bdgIsProtected bdgType "
-        "bdgBdrySurfAdditionalThermalBridgeUValue bdgBdrySurfIsShared bdgBdrySurfThickness "
-        "bdgBdrySurfTotalSurfaceArea bdgBdrySurfOpaqueSurfaceArea bdgBdrySurfHeatCapacity "
-        "bdgBdrySurfAzimuth bdgBdrySurfInclination bdgBdrySurfGroundViewFactor "
-        "bdgBdrySurfSkyViewFactor "
-        "bdgOpnArea bdgOpnInclination bdgOpnAzimuth bdgOpnGroundViewFactor bdgOpnSkyViewFactor"
-    ).split()
+    for n in [
+        "identifier",
+        "status",
+        "validFrom",
+        "validTo",
+        "layeredConstruction",
+        "referencePoint",
+        "bdgOwnerName",
+        "bdgOwnershipType",
+        "bdgNumberOfBuildingUnits",
+        "bdgAtticThermalStatus",
+        "bdgBasementThermalStatus",
+        "bdgConstructionWeight",
+        "bdgIsProtected",
+        "bdgType",
+        "bdgBdrySurfAdditionalThermalBridgeUValue",
+        "bdgBdrySurfIsShared",
+        "bdgBdrySurfThickness",
+        "bdgBdrySurfTotalSurfaceArea",
+        "bdgBdrySurfOpaqueSurfaceArea",
+        "bdgBdrySurfHeatCapacity",
+        "bdgBdrySurfAzimuth",
+        "bdgBdrySurfInclination",
+        "bdgBdrySurfGroundViewFactor",
+        "bdgBdrySurfSkyViewFactor",
+        "bdgOpnArea",
+        "bdgOpnInclination",
+        "bdgOpnAzimuth",
+        "bdgOpnGroundViewFactor",
+        "bdgOpnSkyViewFactor",
+    ]
 }
 
 # The XSD declares two element names that both end up wired as "Metadata":
@@ -160,11 +182,13 @@ H9_FORBIDDEN_TARGET_NS: frozenset[str] = frozenset({NS["gml"]})
 # citygml_energy/city_builder/solar_panels.py docstrings). The check is
 # narrowly scoped to that relation/feature pair to keep false positives at
 # zero; broader "installedOn must be a CityObject" is already covered by H9.
-H10_SOLAR_COLLECTOR_TAGS: frozenset[str] = frozenset({
-    f"{{{NS['nrg3']}}}GenericSolarCollector",
-    f"{{{NS['nrg3']}}}PhotovoltaicCollector",
-    f"{{{NS['nrg3']}}}SolarThermalCollector",
-})
+H10_SOLAR_COLLECTOR_TAGS: frozenset[str] = frozenset(
+    {
+        f"{{{NS['nrg3']}}}GenericSolarCollector",
+        f"{{{NS['nrg3']}}}PhotovoltaicCollector",
+        f"{{{NS['nrg3']}}}SolarThermalCollector",
+    }
+)
 H10_EXPECTED_INSTALLED_ON_TAG: str = f"{{{NS['bldg']}}}RoofSurface"
 
 
@@ -357,15 +381,11 @@ def audit(path: Path) -> int:
             # ``parent.iterchildren()`` would also yield comment / PI nodes
             # whose .tag is a cyfunction and would crash QName(); filter
             # to real element nodes (callable .tag rules them out).
-            present = {
-                etree.QName(c.tag).localname
-                for c in parent
-                if isinstance(c.tag, str)
-            }
+            present = {etree.QName(c.tag).localname for c in parent if isinstance(c.tag, str)}
             gml_id = parent.get(GML_ID) or "(no gml:id)"
-            for needed in required:
-                if needed not in present:
-                    h8_violations.append((f"{local}", gml_id, needed))
+            h8_violations.extend(
+                (f"{local}", gml_id, needed) for needed in required if needed not in present
+            )
     if h8_violations:
         errors += len(h8_violations)
         print(f"  H8 MISSING required children ({len(h8_violations)}):")
@@ -446,14 +466,21 @@ def audit(path: Path) -> int:
                 continue
             if target.tag != H10_EXPECTED_INSTALLED_ON_TAG:
                 h10_violations.append(
-                    (coll_id, etree.QName(collector.tag).localname, target_id,
-                     target.tag, rel.sourceline or 0)
+                    (
+                        coll_id,
+                        etree.QName(collector.tag).localname,
+                        target_id,
+                        target.tag,
+                        rel.sourceline or 0,
+                    )
                 )
     if h10_violations:
         errors += len(h10_violations)
         print(f"  H10 solar collector installedOn -> wrong target type ({len(h10_violations)}):")
         for cid, ctag, tid, ttag, ln in h10_violations[:10]:
-            print(f"     line {ln}: <{ctag} gml:id={cid!r}> installedOn -> #{tid} ({ttag}); expected bldg:RoofSurface")
+            print(
+                f"     line {ln}: <{ctag} gml:id={cid!r}> installedOn -> #{tid} ({ttag}); expected bldg:RoofSurface"
+            )
         if len(h10_violations) > 10:
             print(f"     ... and {len(h10_violations) - 10} more")
     else:
@@ -466,7 +493,9 @@ def audit(path: Path) -> int:
         counts = Counter(c.tag for c in elem)
         for qname in UML_MAX1:
             if counts.get(qname, 0) > 1:
-                uml_viols[f"{etree.QName(qname).localname} under {etree.QName(elem.tag).localname}"] += 1
+                uml_viols[
+                    f"{etree.QName(qname).localname} under {etree.QName(elem.tag).localname}"
+                ] += 1
         lowercase_metadata_hits += counts.get(LOWERCASE_METADATA_HOOK, 0)
     if uml_viols:
         errors += sum(uml_viols.values())
@@ -509,14 +538,10 @@ def audit(path: Path) -> int:
                 continue
             v_srs = elem.get("srsName")
             if v_srs is not None and v_srs != env_srs:
-                srs_viols.append(
-                    (etree.QName(elem.tag).localname, v_srs, elem.sourceline or 0)
-                )
+                srs_viols.append((etree.QName(elem.tag).localname, v_srs, elem.sourceline or 0))
             v_dim = elem.get("srsDimension")
             if env_dim is not None and v_dim is not None and v_dim != env_dim:
-                dim_viols.append(
-                    (etree.QName(elem.tag).localname, v_dim, elem.sourceline or 0)
-                )
+                dim_viols.append((etree.QName(elem.tag).localname, v_dim, elem.sourceline or 0))
         n_viol = len(srs_viols) + len(dim_viols)
         if n_viol:
             errors += n_viol
@@ -567,17 +592,35 @@ def audit(path: Path) -> int:
         # Source: Energy_ADE_3.0_beta8.xsd lines 547+ (AbstractResource) and 2047+ (Energy).
         (NS["nrg3"], "Energy"): (
             # core:AbstractCityObject base sequence
-            "creationDate", "terminationDate", "externalReference",
-            "generalizesTo", "relativeToTerrain", "relativeToWater",
+            "creationDate",
+            "terminationDate",
+            "externalReference",
+            "generalizesTo",
+            "relativeToTerrain",
+            "relativeToWater",
             # AbstractResourceType
-            "operationType", "referencePeriod", "amount", "year",
-            "isAmountNormalized", "normalizationValue", "normalizationParameter",
-            "expense", "revenue", "co2Equivalent",
-            "timeDependentAmount", "timeDependentExpense", "timeDependentRevenue",
+            "operationType",
+            "referencePeriod",
+            "amount",
+            "year",
+            "isAmountNormalized",
+            "normalizationValue",
+            "normalizationParameter",
+            "expense",
+            "revenue",
+            "co2Equivalent",
+            "timeDependentAmount",
+            "timeDependentExpense",
+            "timeDependentRevenue",
             "amountBasedOn",
             # EnergyType
-            "type", "endUse", "energyCarrier",
-            "maximumLoad", "maximumLoadTime", "maximumLoadDay", "maximumLoadMonth",
+            "type",
+            "endUse",
+            "energyCarrier",
+            "maximumLoad",
+            "maximumLoadTime",
+            "maximumLoadDay",
+            "maximumLoadMonth",
             "source",
         ),
     }
@@ -598,9 +641,7 @@ def audit(path: Path) -> int:
                 if r is None:
                     continue
                 if r < last_rank:
-                    h12_viols.append(
-                        (local, gml_id, ln, last_name, child.sourceline or 0)
-                    )
+                    h12_viols.append((local, gml_id, ln, last_name, child.sourceline or 0))
                     break
                 last_rank = r
                 last_name = ln

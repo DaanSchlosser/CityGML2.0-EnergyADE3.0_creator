@@ -197,9 +197,17 @@ def test_parse_cftree_tile_preserves_attributes_verbatim() -> None:
     t = parse_cftree_tile(data)[0]
     # Every key CFTree writes today is preserved.
     for key in (
-        "gtid", "tile_id", "crown_width_m", "crown_median_z",
-        "crown_r50_m", "crown_porosity", "trunk_H_m", "trunk_DBH_m",
-        "trunk_radius_m", "trunk_base_height_m", "custom_future_key",
+        "gtid",
+        "tile_id",
+        "crown_width_m",
+        "crown_median_z",
+        "crown_r50_m",
+        "crown_porosity",
+        "trunk_H_m",
+        "trunk_DBH_m",
+        "trunk_radius_m",
+        "trunk_base_height_m",
+        "custom_future_key",
     ):
         assert key in t.attributes
 
@@ -208,7 +216,9 @@ def test_parse_cftree_tile_skips_non_vegetation_objects() -> None:
     """A CityObject of an unexpected type must not be parsed as a tree."""
     data = _cftree_cityjson()
     data["CityObjects"]["Terrain_1"] = {
-        "type": "TINRelief", "geometry": [], "attributes": {},
+        "type": "TINRelief",
+        "geometry": [],
+        "attributes": {},
     }
     trees = parse_cftree_tile(data)
     assert len(trees) == 1
@@ -244,7 +254,9 @@ def _multi_tree_cityjson(gtids: list[int]) -> dict[str, Any]:
     bbox tests can target individual trees deterministically.
     """
     scale = 0.001
-    point_blocks: list[tuple[int, list[tuple[float, float, float]], list[tuple[float, float, float]]]] = []
+    point_blocks: list[
+        tuple[int, list[tuple[float, float, float]], list[tuple[float, float, float]]]
+    ] = []
     for i, gtid in enumerate(gtids):
         ox = i * 5.0
         crown = [
@@ -270,11 +282,15 @@ def _multi_tree_cityjson(gtids: list[int]) -> dict[str, Any]:
         crown_idx = []
         for x, y, z in crown:
             crown_idx.append(len(vertices))
-            vertices.append([round((x - tx) / scale), round((y - ty) / scale), round((z - tz) / scale)])
+            vertices.append(
+                [round((x - tx) / scale), round((y - ty) / scale), round((z - tz) / scale)]
+            )
         trunk_idx = []
         for x, y, z in trunk:
             trunk_idx.append(len(vertices))
-            vertices.append([round((x - tx) / scale), round((y - ty) / scale), round((z - tz) / scale)])
+            vertices.append(
+                [round((x - tx) / scale), round((y - ty) / scale), round((z - tz) / scale)]
+            )
         city_objects[f"T_{gtid}"] = {
             "type": "SolitaryVegetationObject",
             "geometry": [
@@ -361,10 +377,16 @@ def test_load_trees_in_bbox_empty_when_source_missing(tmp_path: Path) -> None:
 def test_filter_trees_by_boundary_centroid_in_polygon() -> None:
     """Centroid-in-polygon filter mirrors the building filter's intent for a point."""
     tree_in = ParsedTree(
-        gtid="1", centroid=(5.0, 5.0, 0.0), polygons=[], attributes={},
+        gtid="1",
+        centroid=(5.0, 5.0, 0.0),
+        polygons=[],
+        attributes={},
     )
     tree_out = ParsedTree(
-        gtid="2", centroid=(20.0, 5.0, 0.0), polygons=[], attributes={},
+        gtid="2",
+        centroid=(20.0, 5.0, 0.0),
+        polygons=[],
+        attributes={},
     )
     poly = ShapelyPolygon([(0, 0), (10, 0), (10, 10), (0, 10), (0, 0)])
     kept = filter_trees_by_boundary([tree_in, tree_out], poly)
@@ -383,7 +405,8 @@ def _parsed_tree_from_cityjson(**kwargs: Any) -> ParsedTree:
 def test_build_tree_populates_native_length_fields() -> None:
     tree = _parsed_tree_from_cityjson()
     obj = build_solitary_vegetation_object(
-        tree, BuildContext(srs_name="urn:ogc:def:crs,crs:EPSG::28992", srs_dimension=3),
+        tree,
+        BuildContext(srs_name="urn:ogc:def:crs,crs:EPSG::28992", srs_dimension=3),
     )
     assert isinstance(obj, SolitaryVegetationObject)
     assert obj.id == "tree_1"
@@ -429,11 +452,13 @@ def test_build_tree_skips_nan_and_inf_values() -> None:
     """``NaN`` means CFTree could not compute the metric; it must not serialize."""
     import math
 
-    tree = _parsed_tree_from_cityjson(attributes={
-        "trunk_H_m": math.nan,
-        "crown_porosity": math.inf,
-        "crown_width_m": None,  # explicit missing
-    })
+    tree = _parsed_tree_from_cityjson(
+        attributes={
+            "trunk_H_m": math.nan,
+            "crown_porosity": math.inf,
+            "crown_width_m": None,  # explicit missing
+        }
+    )
     obj = build_solitary_vegetation_object(tree)
     # NaN height means the native field stays unset; same for missing crown width.
     assert obj.height is None
@@ -563,7 +588,8 @@ def _write_config(tmp_path: Path, extra: dict[str, Any]) -> Path:
 
 def test_config_accepts_vegetation_block(tmp_path: Path) -> None:
     cfg = _write_config(
-        tmp_path, {"vegetation": {"path": "./trees.city.json"}},
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json"}},
     )
     loaded = load_city_config(cfg)
     assert loaded.vegetation_source is not None
@@ -578,9 +604,12 @@ def test_config_rejects_non_cityjson_vegetation_path(tmp_path: Path) -> None:
 
 
 def test_config_rejects_unknown_vegetation_key(tmp_path: Path) -> None:
-    cfg = _write_config(tmp_path, {
-        "vegetation": {"path": "./trees.city.json", "bogus": "x"},
-    })
+    cfg = _write_config(
+        tmp_path,
+        {
+            "vegetation": {"path": "./trees.city.json", "bogus": "x"},
+        },
+    )
     with pytest.raises(CityBuildError, match="unexpected vegetation key"):
         load_city_config(cfg)
 

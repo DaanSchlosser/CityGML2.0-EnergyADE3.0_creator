@@ -745,7 +745,7 @@ def _lone_building_unit_id(building: Any) -> str | None:
     The result is cached once per :func:`attach_solar_collectors_to_building`
     call so multiple panels on the same Pand share the lookup.
     """
-    wrappers = getattr(building, "building_unit", None) or ()
+    wrappers = getattr(building, "building_unit", None) or []
     if len(wrappers) != 1:
         return None
     only_wrapper = wrappers[0]

@@ -74,6 +74,7 @@ def _patch_bindings(output_file: Path) -> int:
     output_file.write_text(patched, encoding="utf-8")
     return n
 
+
 from lxml import etree
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -106,9 +107,11 @@ _SCHEMA_LOCATION_RE = re.compile(r'schemaLocation="([^"]+)"')
 # cased by every XML toolchain, so leaving the ``<xs:import>`` pointing at
 # the canonical URL is correct: xsdata's builtin resolver picks it up and
 # no network call happens.
-_BOOTSTRAP_URLS: frozenset[str] = frozenset({
-    "http://www.w3.org/2001/xml.xsd",
-})
+_BOOTSTRAP_URLS: frozenset[str] = frozenset(
+    {
+        "http://www.w3.org/2001/xml.xsd",
+    }
+)
 
 # XML-Schema element names used when walking imports/includes.
 _XS_NS = "http://www.w3.org/2001/XMLSchema"
@@ -342,7 +345,9 @@ def main() -> int:
 
     if result.returncode == 0:
         n = _patch_bindings(output_file)
-        print(f"Post-generation patch: stripped xlink:type='simple' default from {n} property-wrapper field(s).")
+        print(
+            f"Post-generation patch: stripped xlink:type='simple' default from {n} property-wrapper field(s)."
+        )
 
     return result.returncode
 

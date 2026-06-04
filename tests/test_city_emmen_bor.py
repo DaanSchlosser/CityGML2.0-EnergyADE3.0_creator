@@ -21,7 +21,6 @@ ArcGIS REST responses, matching the ``test_city_bgt.py`` pattern.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, ClassVar
@@ -38,8 +37,8 @@ from citygml_energy.bindings import (
     StringAttribute,
 )
 from citygml_energy.city_builder.builders import build_solitary_vegetation_object
-from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.cityjson_trees_parse import ParsedTree
+from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.fetchers.bgt import BgtTree
 from citygml_energy.city_builder.fetchers.emmen_bor import (
     BOR_INFORMATION_SYSTEM_URL,
@@ -55,8 +54,6 @@ from citygml_energy.city_builder.tree_matching import (
 from citygml_energy.core import CityModel
 from citygml_energy.gml_builders import build_envelope
 from citygml_energy.namespaces import CS_EMMEN_BOR_TREES
-
-
 from tests._factories import make_parsed_tree, make_session_with_pages
 
 
@@ -73,7 +70,8 @@ def match_trees_to_bor(
     bodies short for the ~4 calls below.
     """
     return match_nearest_within(
-        trees, bor_trees,
+        trees,
+        bor_trees,
         candidate_xy=lambda b: (b.x_rd, b.y_rd),
         radius_m=radius_m,
         register_label="Emmen BOR",
@@ -152,14 +150,18 @@ def _bor(boom_id: str, x: float, y: float, **overrides: Any) -> BorTree:
 
 
 def test_fetch_bor_trees_parses_arcgis_attribute_dict(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session = _make_session(
-        tmp_path, monkeypatch,
-        pages=[{
-            "features": [_bor_feature(1, 264100.0, 537800.0)],
-            "exceededTransferLimit": False,
-        }],
+        tmp_path,
+        monkeypatch,
+        pages=[
+            {
+                "features": [_bor_feature(1, 264100.0, 537800.0)],
+                "exceededTransferLimit": False,
+            }
+        ],
     )
     trees = fetch_bor_trees(session, bbox=(264000, 537700, 264200, 537900))
     assert len(trees) == 1
@@ -174,7 +176,8 @@ def test_fetch_bor_trees_parses_arcgis_attribute_dict(
 
 
 def test_fetch_bor_trees_drops_records_without_boom_id(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A record without a stable ``boom_id`` cannot be cross-referenced;
     it must not produce a ``BorTree`` so downstream consumers never see
@@ -182,26 +185,31 @@ def test_fetch_bor_trees_drops_records_without_boom_id(
     feat = _bor_feature(0, 1, 2)
     feat["attributes"]["boom_id"] = None
     session = _make_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": [feat], "exceededTransferLimit": False}],
     )
     assert fetch_bor_trees(session, bbox=(0, 0, 10, 10)) == []
 
 
 def test_fetch_bor_trees_normalises_empty_string_and_none_placeholders(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Emmen sometimes ships ``""`` and ``"None"`` for unpopulated cells.
     Both must collapse to Python ``None`` so the GML output stays clean.
     """
     feat = _bor_feature(
-        7, 1, 2,
+        7,
+        1,
+        2,
         soortnaam="",
         soortnaam_ned="None",
         beschermingsstatus_detail=None,
     )
     session = _make_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": [feat], "exceededTransferLimit": False}],
     )
     trees = fetch_bor_trees(session, bbox=(0, 0, 10, 10))
@@ -213,16 +221,14 @@ def test_fetch_bor_trees_normalises_empty_string_and_none_placeholders(
 
 
 def test_fetch_bor_trees_follows_resultoffset_pagination(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """ArcGIS REST signals further pages via ``exceededTransferLimit``
     plus the same-sized page count. The fetcher must walk both pages.
     """
     page1 = {
-        "features": [
-            _bor_feature(i, float(i), 0.0, soortnaam=f"sp_{i}")
-            for i in range(2000)
-        ],
+        "features": [_bor_feature(i, float(i), 0.0, soortnaam=f"sp_{i}") for i in range(2000)],
         "exceededTransferLimit": True,
     }
     page2 = {
@@ -236,7 +242,8 @@ def test_fetch_bor_trees_follows_resultoffset_pagination(
 
 
 def test_fetch_bor_trees_degrades_gracefully_on_http_error(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Network or parse errors return ``[]``: the BOR enrichment is
     opportunistic and must not abort a city build when Emmen's tenant
@@ -249,6 +256,7 @@ def test_fetch_bor_trees_degrades_gracefully_on_http_error(
 
         def request(self, method: str, url: str, **kwargs: Any) -> Any:
             import requests as _r
+
             raise _r.ConnectionError("simulated")
 
     monkeypatch.setattr(session, "_session", _BoomSession())
@@ -298,14 +306,11 @@ def test_match_empty_inputs_return_empty_dict() -> None:
 def _tree_with_polygons() -> ParsedTree:
     from citygml_energy._step import GeometryPolygon
 
-    p1 = GeometryPolygon(
-        exterior=[(0, 0, 0), (1, 0, 0), (0.5, 1, 0), (0, 0, 0)]
-    )
-    p2 = GeometryPolygon(
-        exterior=[(0, 0, 0), (0.5, 1, 0), (0.5, 0.5, 1), (0, 0, 0)]
-    )
+    p1 = GeometryPolygon(exterior=[(0, 0, 0), (1, 0, 0), (0.5, 1, 0), (0, 0, 0)])
+    p2 = GeometryPolygon(exterior=[(0, 0, 0), (0.5, 1, 0), (0.5, 0.5, 1), (0, 0, 0)])
     return ParsedTree(
-        gtid="42", centroid=(0.3, 0.3, 0.3),
+        gtid="42",
+        centroid=(0.3, 0.3, 0.3),
         polygons=[p1, p2],
         attributes={"trunk_H_m": 10.0, "crown_width_m": 5.0},
     )
@@ -334,11 +339,7 @@ def test_build_tree_writes_native_species_from_bor() -> None:
 def test_build_tree_writes_planting_year_as_int_attribute() -> None:
     tree = _tree_with_polygons()
     obj = build_solitary_vegetation_object(tree, bor_match=_bor("x", 0.3, 0.3))
-    ints = {
-        a.name: a.value
-        for a in obj.int_attribute
-        if isinstance(a, IntAttribute)
-    }
+    ints = {a.name: a.value for a in obj.int_attribute if isinstance(a, IntAttribute)}
     assert ints.get("plantingYear") == 1960
 
 
@@ -349,11 +350,7 @@ def test_build_tree_writes_protection_and_growth_form_as_string_attributes() -> 
     """
     tree = _tree_with_polygons()
     obj = build_solitary_vegetation_object(tree, bor_match=_bor("x", 0.3, 0.3))
-    strings = {
-        a.name: a.value
-        for a in obj.string_attribute
-        if isinstance(a, StringAttribute)
-    }
+    strings = {a.name: a.value for a in obj.string_attribute if isinstance(a, StringAttribute)}
     assert strings["speciesCommonName"] == "Moeraseik"
     assert strings["heightClass"] == "18 tot 24 m."
     assert strings["trunkDiameterClass"] == "0,5 tot 0,75 m."
@@ -370,7 +367,9 @@ def test_build_tree_omits_slots_for_missing_bor_fields() -> None:
     """
     tree = _tree_with_polygons()
     bor = _bor(
-        "x", 0.3, 0.3,
+        "x",
+        0.3,
+        0.3,
         species_latin=None,
         growth_form=None,
         protection_status=None,
@@ -417,11 +416,16 @@ def test_build_tree_with_both_bgt_and_bor_emits_two_external_references() -> Non
     """
     tree = _tree_with_polygons()
     bgt = BgtTree(
-        lokaal_id="G0114.abc", x_rd=0.3, y_rd=0.3,
-        creation_date=None, bronhouder="G0114",
+        lokaal_id="G0114.abc",
+        x_rd=0.3,
+        y_rd=0.3,
+        creation_date=None,
+        bronhouder="G0114",
     )
     obj = build_solitary_vegetation_object(
-        tree, bgt_match=bgt, bor_match=_bor("25649", 0.3, 0.3),
+        tree,
+        bgt_match=bgt,
+        bor_match=_bor("25649", 0.3, 0.3),
     )
     info_systems = [r.information_system for r in obj.external_reference]
     assert len(info_systems) == 2

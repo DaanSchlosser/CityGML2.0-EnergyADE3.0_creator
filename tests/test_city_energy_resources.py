@@ -18,10 +18,10 @@ from datetime import date
 from citygml_energy.city_builder.address_match import ResolvedAddress
 from citygml_energy.city_builder.builders import build_building_unit
 from citygml_energy.city_builder.energy_resources import (
-    UOM_KWH_PER_M2_PER_A,
-    UOM_MJ_PER_A,
     _UOM_KG_PER_A,
     _UOM_KG_PER_M2_PER_A,
+    UOM_KWH_PER_M2_PER_A,
+    UOM_MJ_PER_A,
     attach_energy_resources_to_building_unit,
 )
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
@@ -92,8 +92,7 @@ def test_thermal_zone_area_attaches_alongside_bag_oppervlakte() -> None:
     assert any("EP-online" in s for s in sources)
 
     ep_qa = next(
-        qap.qualified_area for qap in unit.area
-        if "EP-online" in (qap.qualified_area.source or "")
+        qap.qualified_area for qap in unit.area if "EP-online" in (qap.qualified_area.source or "")
     )
     assert ep_qa.value.value == 112.5
     assert ep_qa.value.uom == "m2"
@@ -121,10 +120,7 @@ def test_thermal_zone_area_skipped_for_zero_or_negative() -> None:
     for bad in (0.0, -10.0):
         label = _label(gebruiksoppervlakte_thermische_zone=bad)
         unit = build_building_unit(_resolved(label))
-        ep_areas = [
-            qap for qap in unit.area
-            if "EP-online" in (qap.qualified_area.source or "")
-        ]
+        ep_areas = [qap for qap in unit.area if "EP-online" in (qap.qualified_area.source or "")]
         assert ep_areas == [], f"area={bad} should not emit an EP-online QualifiedArea"
 
 
@@ -184,7 +180,8 @@ def test_energiebehoefte_has_the_expected_envelope() -> None:
     unit = build_building_unit(_resolved(label))
 
     energies = [
-        r.energy for r in unit.resource
+        r.energy
+        for r in unit.resource
         if r.energy is not None and "Energiebehoefte" in _desc(r.energy)
     ]
     assert len(energies) == 1
@@ -213,7 +210,8 @@ def test_co2_equivalent_rides_on_primary_energy_only() -> None:
     unit = build_building_unit(_resolved(label))
 
     primary = next(
-        r.energy for r in unit.resource
+        r.energy
+        for r in unit.resource
         if r.energy is not None and r.energy.type_value.value == "primary"
     )
     assert primary.co2_equivalent is not None
@@ -221,7 +219,8 @@ def test_co2_equivalent_rides_on_primary_energy_only() -> None:
     assert primary.co2_equivalent.uom == _UOM_KG_PER_M2_PER_A
 
     net = next(
-        r.energy for r in unit.resource
+        r.energy
+        for r in unit.resource
         if r.energy is not None and r.energy.type_value.value == "net"
     )
     assert net.co2_equivalent is None
@@ -246,7 +245,8 @@ def test_warmtebehoefte_distinguished_from_energiebehoefte_via_description_and_e
     unit = build_building_unit(_resolved(label))
 
     netenergies = [
-        r.energy for r in unit.resource
+        r.energy
+        for r in unit.resource
         if r.energy is not None and r.energy.type_value.value == "net"
     ]
     assert len(netenergies) == 2
@@ -287,7 +287,8 @@ def test_nta8800_normalization_value_is_omitted_regardless_of_thermal_zone_area(
     unit = build_building_unit(_resolved(label))
 
     e = next(
-        r.energy for r in unit.resource
+        r.energy
+        for r in unit.resource
         if r.energy is not None and "Energiebehoefte" in _desc(r.energy)
     )
     assert e.is_amount_normalized is True
@@ -314,9 +315,7 @@ def test_nta8800_co2_only_does_not_emit_degenerate_energy() -> None:
     unit = build_building_unit(_resolved(label))
 
     energies = [r.energy for r in unit.resource if r.energy is not None]
-    assert energies == [], (
-        "A CO₂-only NTA 8800 label must not emit any Energy resource"
-    )
+    assert energies == [], "A CO₂-only NTA 8800 label must not emit any Energy resource"
 
 
 # ---------------------------------------------------------------------------
@@ -341,10 +340,7 @@ def test_legacy_definitief_energielabel_emits_one_primary_mj_resource_no_co2() -
     :mod:`citygml_energy.city_builder.energy_resources`'s docstring.
     """
     label = _label(
-        berekeningstype=(
-            "Rekenmethodiek Definitief Energielabel, "
-            "versie 1.2, 16 september 2014"
-        ),
+        berekeningstype=("Rekenmethodiek Definitief Energielabel, versie 1.2, 16 september 2014"),
         gebruiksoppervlakte_thermische_zone=None,
         energiebehoefte=None,
         warmtebehoefte=None,
@@ -405,10 +401,7 @@ def test_legacy_no_verbruik_emits_nothing() -> None:
     energy value there is no carrier for the CO₂.
     """
     label = _label(
-        berekeningstype=(
-            "Rekenmethodiek Definitief Energielabel, "
-            "versie 1.2, 16 september 2014"
-        ),
+        berekeningstype=("Rekenmethodiek Definitief Energielabel, versie 1.2, 16 september 2014"),
         berekende_energieverbruik=None,
         berekende_co2_emissie=0.0,
     )

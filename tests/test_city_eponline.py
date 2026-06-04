@@ -17,9 +17,7 @@ def _csv(*rows: str) -> str:
 
 
 def test_parses_complete_row() -> None:
-    labels = parse_csv(_csv(
-        "2628CD;42;;;;A++;20230514;20230501;20331231"
-    ))
+    labels = parse_csv(_csv("2628CD;42;;;;A++;20230514;20230501;20331231"))
     assert len(labels) == 1
     label = labels[0]
     assert label.postcode == "2628CD"
@@ -34,46 +32,34 @@ def test_parses_complete_row() -> None:
 
 
 def test_parses_bag_vbo_id() -> None:
-    labels = parse_csv(_csv(
-        "2628CD;42;;;0503010000000001;A;20240101;;"
-    ))
+    labels = parse_csv(_csv("2628CD;42;;;0503010000000001;A;20240101;;"))
     assert labels[0].bag_verblijfsobject_id == "0503010000000001"
 
 
 def test_parses_compact_huisnummer_letter() -> None:
-    labels = parse_csv(_csv(
-        "1000AA;12A;;;;C;20240101;;"
-    ))
+    labels = parse_csv(_csv("1000AA;12A;;;;C;20240101;;"))
     assert labels[0].huisnummer == 12
     assert labels[0].huisletter == "A"
     assert labels[0].toevoeging is None
 
 
 def test_huisletter_column_wins_over_embedded() -> None:
-    labels = parse_csv(_csv(
-        "1000AA;12;B;;;C;;;"
-    ))
+    labels = parse_csv(_csv("1000AA;12;B;;;C;;;"))
     assert labels[0].huisletter == "B"
 
 
 def test_rejects_rows_without_postcode() -> None:
-    labels = parse_csv(_csv(
-        ";42;;;;A;;;"
-    ))
+    labels = parse_csv(_csv(";42;;;;A;;;"))
     assert labels == []
 
 
 def test_rejects_unparseable_huisnummer() -> None:
-    labels = parse_csv(_csv(
-        "2628CD;abc;;;;A;;;"
-    ))
+    labels = parse_csv(_csv("2628CD;abc;;;;A;;;"))
     assert labels == []
 
 
 def test_address_key_normalises_postcode_casing() -> None:
-    labels = parse_csv(_csv(
-        "  2628cd  ;42;a;;;A;;;"
-    ))
+    labels = parse_csv(_csv("  2628cd  ;42;a;;;A;;;"))
     assert labels[0].address_key() == ("2628CD", 42, "A", None)
 
 
@@ -124,9 +110,7 @@ def test_bulk_prefilter_matches_postcode_at_real_column_index() -> None:
     )
     wanted_keys = {address_key("7881AA", 42, None, None)}
 
-    labels = parse_csv_from_bulk_bytes(
-        csv_bytes, wanted_ids=None, wanted_keys=wanted_keys
-    )
+    labels = parse_csv_from_bulk_bytes(csv_bytes, wanted_ids=None, wanted_keys=wanted_keys)
     assert len(labels) == 1, "prefilter must not drop the matching row"
     assert labels[0].postcode == "7881AA"
     assert labels[0].huisnummer == 42
@@ -143,9 +127,7 @@ def test_bulk_prefilter_tolerates_spaces_and_lowercase_postcodes() -> None:
     )
     wanted_keys = {address_key("7881AA", 42, None, None)}
 
-    labels = parse_csv_from_bulk_bytes(
-        csv_bytes, wanted_ids=None, wanted_keys=wanted_keys
-    )
+    labels = parse_csv_from_bulk_bytes(csv_bytes, wanted_ids=None, wanted_keys=wanted_keys)
     assert len(labels) == 1
     assert labels[0].postcode == "7881AA"
 
@@ -415,9 +397,7 @@ def test_decimal_preserves_zero_distinct_from_missing() -> None:
     contribution). It must round-trip as ``0.0`` and not collapse to
     ``None``, which would swallow valid data.
     """
-    csv_text = _extended_csv(
-        "20240101;;20340101;;;;;;;;;;7777ZZ;1;;;;C;;;;0;0;0;0;;0;0"
-    )
+    csv_text = _extended_csv("20240101;;20340101;;;;;;;;;;7777ZZ;1;;;;C;;;;0;0;0;0;;0;0")
     labels = parse_csv(csv_text)
     assert len(labels) == 1
     label = labels[0]
@@ -507,10 +487,15 @@ def test_co2_is_placeholder_only_for_definitief_energielabel() -> None:
     Empirical: 99.997% of Definitief Energielabel rows ship 0,00 (the
     method does not compute CO₂); other regimes compute it as data.
     """
-    assert _label_with_method(
-        "Rekenmethodiek Definitief Energielabel, versie 1.2, 16 september 2014"
-    ).co2_is_placeholder() is True
-    assert _label_with_method("NTA 8800:2024 (basisopname woningbouw)").co2_is_placeholder() is False
+    assert (
+        _label_with_method(
+            "Rekenmethodiek Definitief Energielabel, versie 1.2, 16 september 2014"
+        ).co2_is_placeholder()
+        is True
+    )
+    assert (
+        _label_with_method("NTA 8800:2024 (basisopname woningbouw)").co2_is_placeholder() is False
+    )
     assert _label_with_method("Nader Voorschrift, versie 1.0").co2_is_placeholder() is False
     assert _label_with_method("ISSO75.3, versie 3.0, oktober 2011").co2_is_placeholder() is False
     assert _label_with_method(None).co2_is_placeholder() is False

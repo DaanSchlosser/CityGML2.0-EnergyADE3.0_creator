@@ -64,8 +64,7 @@ def test_unregistered_binding_namespace_emits_warning():
 
     drift_warnings = [w for w in caught if fake_ns in str(w.message)]
     assert drift_warnings, (
-        "Expected a warning citing the unregistered URI, got: "
-        f"{[str(w.message) for w in caught]}"
+        f"Expected a warning citing the unregistered URI, got: {[str(w.message) for w in caught]}"
     )
 
 
@@ -79,9 +78,7 @@ def test_prefix_config_pins_canonical_prefixes():
     assert namespaces.NSMAP["core"] == "http://www.opengis.net/citygml/2.0"
     assert namespaces.NSMAP["bldg"] == "http://www.opengis.net/citygml/building/2.0"
     assert namespaces.NSMAP["gml"] == "http://www.opengis.net/gml"
-    assert namespaces.NSMAP["nrg3"] == (
-        "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0"
-    )
+    assert namespaces.NSMAP["nrg3"] == ("http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0")
 
 
 def test_extra_uris_are_declared_even_without_binding_coverage():

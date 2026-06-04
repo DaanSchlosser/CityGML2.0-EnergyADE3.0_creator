@@ -86,9 +86,7 @@ def _build(data: dict[str, Any], base_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_unmutated_fixture_is_still_valid(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_unmutated_fixture_is_still_valid(base_data: dict[str, Any], base_path: Path) -> None:
     _build(deepcopy(base_data), base_path)
 
 
@@ -97,40 +95,28 @@ def test_unmutated_fixture_is_still_valid(
 # ---------------------------------------------------------------------------
 
 
-def test_rejects_unknown_top_level_key(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_unknown_top_level_key(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     data["rogue_section"] = {"anything": True}
-    with pytest.raises(
-        InputFileError, match=r"unexpected top-level key.*rogue_section"
-    ):
+    with pytest.raises(InputFileError, match=r"unexpected top-level key.*rogue_section"):
         _build(data, base_path)
 
 
-def test_rejects_non_object_city_model(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_non_object_city_model(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     data["city_model"] = "just a string"
     with pytest.raises(InputFileError, match=r"city_model must be an object"):
         _build(data, base_path)
 
 
-def test_rejects_unknown_city_model_key(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_unknown_city_model_key(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     data["city_model"]["unexpected_meta"] = "hi"
-    with pytest.raises(
-        InputFileError, match=r"city_model.*unexpected_meta"
-    ):
+    with pytest.raises(InputFileError, match=r"city_model.*unexpected_meta"):
         _build(data, base_path)
 
 
-def test_rejects_features_not_a_list(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_features_not_a_list(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     data["features"] = {"not": "a list"}
     with pytest.raises(InputFileError, match=r"features must be an array"):
@@ -142,71 +128,51 @@ def test_rejects_features_not_a_list(
 # ---------------------------------------------------------------------------
 
 
-def test_rejects_feature_missing_id(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_feature_missing_id(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     del data["features"][0]["id"]
-    with pytest.raises(
-        InputFileError, match=r"features\[0\]\.id must be a non-empty string"
-    ):
+    with pytest.raises(InputFileError, match=r"features\[0\]\.id must be a non-empty string"):
         _build(data, base_path)
 
 
-def test_rejects_feature_whitespace_only_id(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_feature_whitespace_only_id(base_data: dict[str, Any], base_path: Path) -> None:
     """NCName check must fire even when a non-empty string is all whitespace."""
     data = deepcopy(base_data)
     data["features"][0]["id"] = "   "
-    with pytest.raises(
-        InputFileError, match=r"features\[0\]\.id must be a non-empty string"
-    ):
+    with pytest.raises(InputFileError, match=r"features\[0\]\.id must be a non-empty string"):
         _build(data, base_path)
 
 
-def test_rejects_feature_missing_type(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_feature_missing_type(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     del data["features"][0]["type"]
     with pytest.raises(InputFileError, match=r"features\[0\]\.type must be"):
         _build(data, base_path)
 
 
-def test_rejects_unknown_feature_type(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_unknown_feature_type(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     data["features"][0]["type"] = "nrg3:DefinitelyNotAThing"
     with pytest.raises(InputFileError, match=r"Unknown type 'nrg3:DefinitelyNotAThing'"):
         _build(data, base_path)
 
 
-def test_rejects_duplicate_feature_ids(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_duplicate_feature_ids(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     stolen_id = data["features"][0]["id"]
     data["features"][1]["id"] = stolen_id
-    with pytest.raises(
-        InputFileError, match=rf"features\[1\]\.id duplicates '{stolen_id}'"
-    ):
+    with pytest.raises(InputFileError, match=rf"features\[1\]\.id duplicates '{stolen_id}'"):
         _build(data, base_path)
 
 
-def test_rejects_id_that_is_not_ncname(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_id_that_is_not_ncname(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     data["features"][0]["id"] = "has a space and : colon"
     with pytest.raises(InputFileError, match=r"is not a valid XML NCName"):
         _build(data, base_path)
 
 
-def test_rejects_id_starting_with_digit(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_id_starting_with_digit(base_data: dict[str, Any], base_path: Path) -> None:
     """NCName forbids leading digits; XML parsers refuse such gml:id values."""
     data = deepcopy(base_data)
     data["features"][0]["id"] = "1bad_id"
@@ -219,9 +185,7 @@ def test_rejects_id_starting_with_digit(
 # ---------------------------------------------------------------------------
 
 
-def test_rejects_parent_pointing_at_missing_id(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_parent_pointing_at_missing_id(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     for feature in data["features"]:
         if "parent" in feature:
@@ -236,9 +200,7 @@ def test_rejects_parent_pointing_at_missing_id(
         _build(data, base_path)
 
 
-def test_rejects_self_parent(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_self_parent(base_data: dict[str, Any], base_path: Path) -> None:
     """A feature declaring itself as parent used to raise a downstream
     ``ValueError`` from the builder with an opaque message. Must now fail
     loudly at the validator."""
@@ -249,9 +211,7 @@ def test_rejects_self_parent(
         _build(data, base_path)
 
 
-def test_rejects_cyclic_parent_chain(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_cyclic_parent_chain(base_data: dict[str, Any], base_path: Path) -> None:
     """A->B and B->A must be rejected with a cycle-specific message.
 
     Uses schedule features (which carry no parent-type whitelist entry)
@@ -260,10 +220,7 @@ def test_rejects_cyclic_parent_chain(
     check catches ZonePart-without-Zone-parent first.
     """
     data = deepcopy(base_data)
-    schedules = [
-        f for f in data["features"]
-        if f.get("type") == "nrg3:ConstantValueSchedule"
-    ]
+    schedules = [f for f in data["features"] if f.get("type") == "nrg3:ConstantValueSchedule"]
     if len(schedules) < 2:
         pytest.skip("fixture has fewer than two schedules to form a cycle")
     schedules[0]["parent"] = schedules[1]["id"]
@@ -272,9 +229,7 @@ def test_rejects_cyclic_parent_chain(
         _build(data, base_path)
 
 
-def test_rejects_empty_string_parent(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_empty_string_parent(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     for feature in data["features"]:
         if "parent" in feature:
@@ -282,15 +237,11 @@ def test_rejects_empty_string_parent(
             break
     else:
         pytest.fail("fixture has no parent references")
-    with pytest.raises(
-        InputFileError, match=r"parent must be a non-empty string"
-    ):
+    with pytest.raises(InputFileError, match=r"parent must be a non-empty string"):
         _build(data, base_path)
 
 
-def test_rejects_zonepart_parented_to_building(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_zonepart_parented_to_building(base_data: dict[str, Any], base_path: Path) -> None:
     """Energy ADE requires Building -> Zone -> ZonePart. The XSD permits the
     shortcut Building -> ZonePart via ZonePropertyType's substitution group,
     so silent acceptance would produce output that validates but corrupts
@@ -313,9 +264,7 @@ def test_rejects_zonepart_parented_to_building(
         _build(data, base_path)
 
 
-def test_accepts_zonepart_parented_to_zone(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_accepts_zonepart_parented_to_zone(base_data: dict[str, Any], base_path: Path) -> None:
     """Positive control: the canonical Zone -> ZonePart hierarchy is accepted.
 
     Without this sibling test, the whitelist could get over-tightened to
@@ -329,9 +278,7 @@ def test_accepts_zonepart_parented_to_zone(
 # ---------------------------------------------------------------------------
 
 
-def test_rejects_geometry_source_missing_path(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_geometry_source_missing_path(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     del data["geometry_sources"][0]["path"]
     with pytest.raises(
@@ -370,9 +317,7 @@ def test_rejects_geometry_source_with_unknown_type(
 ) -> None:
     data = deepcopy(base_data)
     data["geometry_sources"][0]["type"] = "step-unknown-lod42"
-    with pytest.raises(
-        InputFileError, match=r"geometry_sources\[0\]\.type must be one of"
-    ):
+    with pytest.raises(InputFileError, match=r"geometry_sources\[0\]\.type must be one of"):
         _build(data, base_path)
 
 
@@ -421,18 +366,14 @@ def test_rejects_geometry_source_target_pointing_at_wrong_feature_type(
 # ---------------------------------------------------------------------------
 
 
-def test_rejects_srs_dimension_not_in_2_or_3(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_srs_dimension_not_in_2_or_3(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     data["srs_dimension"] = 4
     with pytest.raises(InputFileError, match=r"srs_dimension must be 2 or 3"):
         _build(data, base_path)
 
 
-def test_rejects_srs_dimension_as_bool(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_srs_dimension_as_bool(base_data: dict[str, Any], base_path: Path) -> None:
     """Python bool is a subclass of int. ``True`` is numerically 1 but
     clearly not a valid srs_dimension. Validator must treat this as a
     type error, not a value error."""
@@ -442,18 +383,14 @@ def test_rejects_srs_dimension_as_bool(
         _build(data, base_path)
 
 
-def test_rejects_empty_srs_name(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_empty_srs_name(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     data["srs_name"] = ""
     with pytest.raises(InputFileError, match=r"srs_name must be a non-empty"):
         _build(data, base_path)
 
 
-def test_rejects_whitespace_only_srs_name(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_whitespace_only_srs_name(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     data["srs_name"] = "  \t  "
     with pytest.raises(InputFileError, match=r"srs_name must be a non-empty"):
@@ -476,21 +413,15 @@ def test_rejects_installed_on_referencing_nonexistent_surface(
         _build(data, base_path)
 
 
-def test_rejects_related_to_not_a_list(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_related_to_not_a_list(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     pv = _find_feature(data, "pv_panel_1")
     pv["related_to"] = {"relation": "installedOn", "target": "RoofSurface_01"}  # object, not list
-    with pytest.raises(
-        InputFileError, match=r"'related_to' must be a non-empty list"
-    ):
+    with pytest.raises(InputFileError, match=r"'related_to' must be a non-empty list"):
         _build(data, base_path)
 
 
-def test_rejects_unknown_relation_kind(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_unknown_relation_kind(base_data: dict[str, Any], base_path: Path) -> None:
     """``relation`` must name a registered RelationKind (e.g. installedOn, serving)."""
     data = deepcopy(base_data)
     pv = _find_feature(data, "pv_panel_1")
@@ -507,12 +438,8 @@ def test_rejects_feature_relation_with_object_target(
     as an error instead of resolving against the surface index."""
     data = deepcopy(base_data)
     pv = _find_feature(data, "pv_panel_1")
-    pv["related_to"] = [
-        {"relation": "serving", "target": {"name": "RoofSurface_01", "lod": 2}}
-    ]
-    with pytest.raises(
-        InputFileError, match=r"'related_to'\[0\]\.target for relation 'serving'"
-    ):
+    pv["related_to"] = [{"relation": "serving", "target": {"name": "RoofSurface_01", "lod": 2}}]
+    with pytest.raises(InputFileError, match=r"'related_to'\[0\]\.target for relation 'serving'"):
         _build(data, base_path)
 
 
@@ -524,9 +451,9 @@ def test_rejects_cmap_by_id_referencing_nonexistent_construction(
     invisible unless a downstream consumer complained.
     """
     data = deepcopy(base_data)
-    data.setdefault("construction_mapping", {}).setdefault("by_id", {})[
-        "new_surface_key"
-    ] = "constr_nonexistent_xyz"
+    data.setdefault("construction_mapping", {}).setdefault("by_id", {})["new_surface_key"] = (
+        "constr_nonexistent_xyz"
+    )
     with pytest.raises(
         InputFileError,
         match=r"construction_mapping.*constr_nonexistent_xyz",
@@ -538,9 +465,9 @@ def test_rejects_cmap_by_type_referencing_nonexistent_construction(
     base_data: dict[str, Any], base_path: Path
 ) -> None:
     data = deepcopy(base_data)
-    data.setdefault("construction_mapping", {}).setdefault("by_type", {})[
-        "WallSurface"
-    ] = "constr_also_nonexistent"
+    data.setdefault("construction_mapping", {}).setdefault("by_type", {})["WallSurface"] = (
+        "constr_also_nonexistent"
+    )
     with pytest.raises(
         InputFileError,
         match=r"construction_mapping.*constr_also_nonexistent",
@@ -553,23 +480,17 @@ def test_rejects_cmap_by_type_referencing_nonexistent_construction(
 # ---------------------------------------------------------------------------
 
 
-def test_rejects_measure_field_as_plain_string(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_measure_field_as_plain_string(base_data: dict[str, Any], base_path: Path) -> None:
     """``installed_power`` expects {value, uom}; a bare string must fail at
     the build phase with the feature index identified in the message."""
     data = deepcopy(base_data)
     pv = _find_feature(data, "pv_panel_1")
     pv["installed_power"] = "five kilowatts"
-    with pytest.raises(
-        InputFileError, match=r"id='pv_panel_1'.*installed_power"
-    ):
+    with pytest.raises(InputFileError, match=r"id='pv_panel_1'.*installed_power"):
         _build(data, base_path)
 
 
-def test_rejects_integer_field_as_string(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_rejects_integer_field_as_string(base_data: dict[str, Any], base_path: Path) -> None:
     data = deepcopy(base_data)
     building = _first_of_type(data, "bldg:Building")
     building["storeys_above_ground"] = "two"
@@ -583,15 +504,11 @@ def test_rejects_integer_field_as_string(
 # ---------------------------------------------------------------------------
 
 
-def test_xsd_rejects_non_numeric_coordinates(
-    base_data: dict[str, Any], base_path: Path
-) -> None:
+def test_xsd_rejects_non_numeric_coordinates(base_data: dict[str, Any], base_path: Path) -> None:
     # Only need to run once per suite; sample input is cheap and valid.
     model = generate_city_model(_SAMPLE_INPUT if _SAMPLE_INPUT.exists() else INPUT)
     xml = model.to_string()
-    corrupted = xml.replace(
-        "<gml:posList>", "<gml:posList>not_a_number ", 1
-    )
+    corrupted = xml.replace("<gml:posList>", "<gml:posList>not_a_number ", 1)
     doc = etree.fromstring(corrupted.encode("utf-8"))
     schema = load_schema()
     with pytest.raises(etree.DocumentInvalid):

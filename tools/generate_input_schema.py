@@ -90,8 +90,7 @@ def _build_related_to_branches() -> list[dict[str, Any]]:
                                 "type": "string",
                                 "minLength": 1,
                                 "description": (
-                                    "STEP layer name as it appears in the "
-                                    "LoD-specific STEP file."
+                                    "STEP layer name as it appears in the LoD-specific STEP file."
                                 ),
                             },
                             "lod": {
@@ -106,8 +105,7 @@ def _build_related_to_branches() -> list[dict[str, Any]]:
                             },
                         },
                         "description": (
-                            "Explicit (name, LoD) pair for unambiguous "
-                            "surface targeting."
+                            "Explicit (name, LoD) pair for unambiguous surface targeting."
                         ),
                     },
                 ],
@@ -123,22 +121,24 @@ def _build_related_to_branches() -> list[dict[str, Any]]:
                     "than emitting a nonsense xlink to a surface gml:id."
                 ),
             }
-        branches.append({
-            "type": "object",
-            "required": ["relation", "target"],
-            "additionalProperties": False,
-            "properties": {
-                "relation": {
-                    "const": kind.codelist_value,
-                    "description": (
-                        f"{kind.codelist_value!r} from the EnergyADE 3.0 "
-                        f"RelationTypeValue codelist family. "
-                        f"Codespace: {kind.codespace}."
-                    ),
+        branches.append(
+            {
+                "type": "object",
+                "required": ["relation", "target"],
+                "additionalProperties": False,
+                "properties": {
+                    "relation": {
+                        "const": kind.codelist_value,
+                        "description": (
+                            f"{kind.codelist_value!r} from the EnergyADE 3.0 "
+                            f"RelationTypeValue codelist family. "
+                            f"Codespace: {kind.codespace}."
+                        ),
+                    },
+                    "target": target_schema,
                 },
-                "target": target_schema,
-            },
-        })
+            }
+        )
     return branches
 
 
@@ -148,9 +148,7 @@ def _branch_for_spec(spec: GeometrySourceSpec) -> dict[str, Any]:
         "path": {
             "type": "string",
             "minLength": 1,
-            "description": (
-                "Path to the STEP file (relative to this JSON file, or absolute)."
-            ),
+            "description": ("Path to the STEP file (relative to this JSON file, or absolute)."),
         },
     }
     for field_name, target_spec in spec.target_fields.items():
@@ -209,9 +207,7 @@ def build_schema() -> dict[str, Any]:
             },
             "coordinate_origin": {
                 "type": "array",
-                "description": (
-                    "Optional XYZ offset added to every imported STEP coordinate."
-                ),
+                "description": ("Optional XYZ offset added to every imported STEP coordinate."),
                 "minItems": 3,
                 "maxItems": 3,
                 "items": {"type": "number"},

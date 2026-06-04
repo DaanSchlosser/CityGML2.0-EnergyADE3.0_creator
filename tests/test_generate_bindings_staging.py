@@ -84,8 +84,7 @@ def test_resolve_disambiguates_inside_a_multi_file_namespace(
         resolved = gb._resolve_schema_location(ns_index, gml_ns, url)
         assert resolved is not None, f"Failed to resolve {url}"
         assert resolved.name == filename, (
-            f"Expected {filename}, resolved to {resolved.name}; basename "
-            "disambiguation is broken"
+            f"Expected {filename}, resolved to {resolved.name}; basename disambiguation is broken"
         )
 
 

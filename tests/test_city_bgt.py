@@ -21,7 +21,6 @@ responses, matching the existing ``test_city_bag.py`` pattern.
 from __future__ import annotations
 
 import datetime as _dt
-import json
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, ClassVar
@@ -48,8 +47,6 @@ from citygml_energy.city_builder.http import CachedSession
 from citygml_energy.city_builder.tree_matching import MATCH_RADIUS_M, match_nearest_within
 from citygml_energy.core import CityModel
 from citygml_energy.gml_builders import build_envelope
-
-
 from tests._factories import make_parsed_tree, make_session_with_pages
 
 
@@ -66,7 +63,8 @@ def match_trees_to_bgt(
     bodies short for the ~5 calls below.
     """
     return match_nearest_within(
-        trees, bgt_trees,
+        trees,
+        bgt_trees,
         candidate_xy=lambda b: (b.x_rd, b.y_rd),
         radius_m=radius_m,
         register_label="BGT boom",
@@ -110,10 +108,12 @@ _make_session = make_session_with_pages
 
 
 def test_fetch_bgt_trees_parses_minimum_feature_set(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session = _make_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[{"features": [_bgt_feature("G0114.abc", 267050.0, 537780.0)], "links": []}],
     )
     trees = fetch_bgt_trees(session, bbox=(267000, 537700, 267100, 537800))
@@ -126,54 +126,64 @@ def test_fetch_bgt_trees_parses_minimum_feature_set(
 
 
 def test_fetch_bgt_trees_filters_non_boom_plus_types(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The vegetatieobject_punt collection carries more than just trees —
     e.g. ``boomstronk`` (tree stumps). The fetcher must retain only live
     trees (``plus_type == "boom"``) so downstream joins are clean.
     """
     session = _make_session(
-        tmp_path, monkeypatch,
-        pages=[{
-            "features": [
-                _bgt_feature("G0114.tree", 267050.0, 537780.0, plus_type="boom"),
-                _bgt_feature("G0114.stump", 267051.0, 537780.0, plus_type="boomstronk"),
-            ],
-            "links": [],
-        }],
+        tmp_path,
+        monkeypatch,
+        pages=[
+            {
+                "features": [
+                    _bgt_feature("G0114.tree", 267050.0, 537780.0, plus_type="boom"),
+                    _bgt_feature("G0114.stump", 267051.0, 537780.0, plus_type="boomstronk"),
+                ],
+                "links": [],
+            }
+        ],
     )
     trees = fetch_bgt_trees(session, bbox=(267000, 537700, 267100, 537800))
     assert [t.lokaal_id for t in trees] == ["G0114.tree"]
 
 
 def test_fetch_bgt_trees_drops_terminated_features(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``status == 'voormalig'`` = feature removed from the landscape and
     must not count against CFTree's live reconstruction.
     """
     session = _make_session(
-        tmp_path, monkeypatch,
-        pages=[{
-            "features": [
-                _bgt_feature("G0114.alive", 267050.0, 537780.0, status="bestaand"),
-                _bgt_feature("G0114.dead", 267051.0, 537780.0, status="voormalig"),
-            ],
-            "links": [],
-        }],
+        tmp_path,
+        monkeypatch,
+        pages=[
+            {
+                "features": [
+                    _bgt_feature("G0114.alive", 267050.0, 537780.0, status="bestaand"),
+                    _bgt_feature("G0114.dead", 267051.0, 537780.0, status="voormalig"),
+                ],
+                "links": [],
+            }
+        ],
     )
     trees = fetch_bgt_trees(session, bbox=(267000, 537700, 267100, 537800))
     assert [t.lokaal_id for t in trees] == ["G0114.alive"]
 
 
 def test_fetch_bgt_trees_follows_next_link(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When a response carries a RFC-5005 ``rel="next"`` link we must
     walk every page until the link is gone or the page is empty.
     """
     session = _make_session(
-        tmp_path, monkeypatch,
+        tmp_path,
+        monkeypatch,
         pages=[
             {
                 "features": [_bgt_feature("G0114.p1", 267050.0, 537780.0)],
@@ -192,7 +202,8 @@ def test_fetch_bgt_trees_follows_next_link(
 
 
 def test_fetch_bgt_trees_degrades_gracefully_on_http_error(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A PDOK outage must not fail the city build -- empty list + log warning.
 
@@ -227,8 +238,7 @@ def test_bgt_feature_uri_has_stable_shape() -> None:
     """The cross-reference URI is a contract; test pins the shape."""
     url = bgt_feature_uri("G0114.abc")
     assert url == (
-        "https://api.pdok.nl/lv/bgt/ogc/v1"
-        "/collections/vegetatieobject_punt/items/G0114.abc"
+        "https://api.pdok.nl/lv/bgt/ogc/v1/collections/vegetatieobject_punt/items/G0114.abc"
     )
 
 
@@ -254,9 +264,9 @@ def _bgt(lokaal_id: str, x: float, y: float, **kw: Any) -> BgtTree:
 def test_match_pairs_closest_within_radius() -> None:
     trees = [_parsed_tree("1", 100.0, 100.0), _parsed_tree("2", 200.0, 100.0)]
     bgt = [
-        _bgt("G0114.a", 101.0, 100.0),   # 1 m from tree 1
-        _bgt("G0114.b", 200.5, 100.5),   # ~0.7 m from tree 2
-        _bgt("G0114.c", 500.0, 500.0),   # far away — should match nothing
+        _bgt("G0114.a", 101.0, 100.0),  # 1 m from tree 1
+        _bgt("G0114.b", 200.5, 100.5),  # ~0.7 m from tree 2
+        _bgt("G0114.c", 500.0, 500.0),  # far away — should match nothing
     ]
     matches = match_trees_to_bgt(trees, bgt)
     assert matches["1"].lokaal_id == "G0114.a"
@@ -314,14 +324,11 @@ def _tree_with_polygons() -> ParsedTree:
     from citygml_energy._step import GeometryPolygon
 
     # Minimal triangle + triangle so the MultiSurface has two members.
-    p1 = GeometryPolygon(
-        exterior=[(0, 0, 0), (1, 0, 0), (0.5, 1, 0), (0, 0, 0)]
-    )
-    p2 = GeometryPolygon(
-        exterior=[(0, 0, 0), (0.5, 1, 0), (0.5, 0.5, 1), (0, 0, 0)]
-    )
+    p1 = GeometryPolygon(exterior=[(0, 0, 0), (1, 0, 0), (0.5, 1, 0), (0, 0, 0)])
+    p2 = GeometryPolygon(exterior=[(0, 0, 0), (0.5, 1, 0), (0.5, 0.5, 1), (0, 0, 0)])
     return ParsedTree(
-        gtid="42", centroid=(0.3, 0.3, 0.3),
+        gtid="42",
+        centroid=(0.3, 0.3, 0.3),
         polygons=[p1, p2],
         attributes={"trunk_H_m": 10.0, "crown_width_m": 5.0},
     )
@@ -337,8 +344,7 @@ def test_build_tree_emits_bgt_external_reference() -> None:
     assert isinstance(ref, ExternalReferenceType)
     assert ref.information_system == BGT_INFORMATION_SYSTEM_URL
     assert ref.external_object.uri == (
-        "https://api.pdok.nl/lv/bgt/ogc/v1/collections/"
-        "vegetatieobject_punt/items/G0114.abcdef"
+        "https://api.pdok.nl/lv/bgt/ogc/v1/collections/vegetatieobject_punt/items/G0114.abcdef"
     )
 
 

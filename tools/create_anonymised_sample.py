@@ -42,7 +42,7 @@ NS = {
 }
 
 GEOMETRY_TAGS = {
-    f"{{{NS['gml']}}}boundedBy",          # root-level envelope
+    f"{{{NS['gml']}}}boundedBy",  # root-level envelope
     f"{{{NS['bldg']}}}lod0FootPrint",
     f"{{{NS['bldg']}}}lod1Solid",
     f"{{{NS['bldg']}}}lod2MultiSurface",

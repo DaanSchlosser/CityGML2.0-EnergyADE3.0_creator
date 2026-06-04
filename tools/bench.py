@@ -55,9 +55,7 @@ def _report(label: str, samples: list[float]) -> None:
 
 def bench_building(iters: int, *, input_path: Path, output_path: Path) -> list[float]:
     return [
-        _time_one(
-            lambda: generate_gml_file(input_path=input_path, output_path=output_path)
-        )
+        _time_one(lambda: generate_gml_file(input_path=input_path, output_path=output_path))
         for _ in range(iters)
     ]
 
@@ -71,15 +69,20 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--building-iters", type=int, default=3)
     parser.add_argument("--city-iters", type=int, default=1)
     parser.add_argument(
-        "--building-input", type=Path, default=DEFAULT_INPUT_PATH,
+        "--building-input",
+        type=Path,
+        default=DEFAULT_INPUT_PATH,
         help="Per-building JSON input.",
     )
     parser.add_argument(
-        "--building-output", type=Path, default=DEFAULT_OUTPUT_PATH,
+        "--building-output",
+        type=Path,
+        default=DEFAULT_OUTPUT_PATH,
         help="Output GML path for the per-building run.",
     )
     parser.add_argument(
-        "--city-input", type=Path,
+        "--city-input",
+        type=Path,
         default=REPO_ROOT / "inputs" / "cities" / "emmer-compascuum_small-area.json",
         help="City-scale JSON config (default: inputs/cities/emmer-compascuum_small-area.json).",
     )
