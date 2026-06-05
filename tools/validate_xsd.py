@@ -27,6 +27,12 @@ _GML_BASE_DIR = _XSD_ROOT / "gml" / "3.1.1" / "base"
 _SMIL_DIR = _XSD_ROOT / "gml" / "3.1.1" / "smil"
 _XAL_XSD = _XSD_ROOT / "xAL.xsd"
 _XLINK_XSD = _XSD_ROOT / "xlink" / "xlink.xsd"
+# The W3C XML-namespace schema (xml:lang, xml:space, xml:base, xml:id) lives
+# under tools/, not xsd/, on purpose: xsd/ is staged verbatim for xsdata binding
+# generation, which resolves the XML namespace internally and must not receive a
+# local xml.xsd (see tools/generate_bindings.py). libxml2 schema validation does
+# need the file on disk, so the resolver below maps the canonical URL to it.
+_XML_XSD = Path(__file__).resolve().parent / "schemas" / "xml.xsd"
 
 # ── URL → local file mapping ─────────────────────────────────────────────────
 _URL_MAP: dict[str, Path] = {
@@ -38,6 +44,12 @@ _URL_MAP: dict[str, Path] = {
     / "smil20-language.xsd",
     # xlink
     "http://www.w3.org/1999/xlink.xsd": _XLINK_XSD,
+    # W3C XML namespace (xml:lang, xml:space, xml:base, xml:id), imported by
+    # xlink.xsd and smil20.xsd. Vendored so schema compilation needs no network
+    # and does not rely on libxml2 declaring these implicitly: older libxml2
+    # (2.11) does, but newer builds do not, so the import must actually resolve.
+    "http://www.w3.org/2001/xml.xsd": _XML_XSD,
+    "http://www.w3.org/XML/1998/namespace": _XML_XSD,
     # CityGML 2.0 base
     "http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd": _CITYGML_DIR / "cityGMLBase.xsd",
     # CityGML 2.0 modules
