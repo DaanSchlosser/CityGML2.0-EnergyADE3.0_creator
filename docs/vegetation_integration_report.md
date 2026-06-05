@@ -27,24 +27,27 @@ The concrete deliverable is one GML file that XSD-validates and
 carries real-world tree locations + LoD3 crown+trunk geometry for the
 area:
 
-| Output | Buildings | Trees | Solar panels | Size | Valid |
-|---|---|---|---|---|---|
-| [`generated/emmer_compascuum.gml`](../generated/emmer_compascuum.gml) | 674 | 652 | 334 | 167 MB | XSD-valid |
+| Output | Buildings | Trees | Size | Valid |
+|---|---|---|---|---|
+| [`generated/emmer-compascuum_small-area.gml`](../generated/emmer-compascuum_small-area.gml) | 951 | 702 | 189 MB | XSD-valid |
 
-CFTree processed the 41.5 ha AOI (4 intersecting AHN4 sub-tiles),
-producing 652 reconstructed trees in 36.8 min wall-clock on 8 cores.
-The city pipeline then loads that tree set and the same boundary
-polygon clips it in place. BGT's authoritative per-tree register
-(`vegetatieobject_punt`, plus_type `boom`) carries 714 boom points
-inside the same AOI; a 4 m nearest-neighbour join cross-references
-225 of the 652 CFTree trees back to their BGT `lokaal_id`. The ~35 %
-match rate is expected for a mixed residential / rural AOI: BGT only
-registers publicly-maintained trees, so private-garden trees
-reconstructed by CFTree have no BGT entry by design.
+CFTree reconstructs the 41.5 ha AOI from AHN6 LiDAR; the per-tile
+outputs are merged, clipped to the boundary polygon, and deduplicated
+into 702 trees by [`tools/merge_cftree_tiles.py`](../tools/merge_cftree_tiles.py)
+(see [`inputs/vegetation/README.md`](../inputs/vegetation/README.md)). The
+city pipeline loads that pre-clipped tree set directly. BGT's
+authoritative per-tree register (`vegetatieobject_punt`, plus_type
+`boom`) carries 868 boom points inside the AOI; a 4 m nearest-neighbour
+join cross-references 218 of the 702 CFTree trees back to their BGT
+`lokaal_id`. The ~31 % match rate is expected for a mixed residential /
+rural AOI: BGT only registers publicly-maintained trees, so
+private-garden trees reconstructed by CFTree have no BGT entry by
+design.
 
 A second 4 m nearest-neighbour join attaches Gemeente Emmen's
 `bor_groen_bomen_beschermd` ArcGIS FeatureServer record to each CFTree
-tree where one is in range. Unlike BGT, this register carries genuine
+tree where one is in range (84 of the 702 trees, against 402 BOR
+records in the AOI). Unlike BGT, this register carries genuine
 attributes (Latin and Dutch species name, planting year, height and
 trunk-diameter classes, protection status, growth form). Of those,
 only the Latin scientific name fits a typed CityGML 2.0 vegetation
@@ -69,41 +72,37 @@ only" policy that excluded the OSM and Bomenstichting sources.
 | # | Source | What it provides | License | Access method used |
 |---|---|---|---|---|
 | 1 | **CFTree** ([NoahAlting/CFTree](https://github.com/NoahAlting/CFTree)) | LoD3 watertight crown + trunk triangle meshes, per-tree morphometrics (height, DBH, crown width, porosity, r50) | GPL-3.0 (the tool; outputs are derivatives of AHN, which is open government data) | External preprocessor in a WSL conda env; outputs consumed as `trees_lod3.city.json` tiles |
-| 2 | **AHN4** (Actueel Hoogtebestand Nederland, 2020 flight) | Raw LiDAR point cloud at ~10 points/m²; input to CFTree | CC-0 | Downloaded per tile via CFTree's `get_data` stage from the TU Delft GeoTiles mirror (`https://geotiles.citg.tudelft.nl/AHN4_T/<kaartblad>_<subtile>.LAZ`) |
+| 2 | **AHN6** (Actueel Hoogtebestand Nederland, 2025 flight) — with **AHN4** (2020) as the CC-0 fallback | Raw LiDAR point cloud; input to CFTree | AHN6 CC-BY-4.0 / AHN4 CC-0 | Downloaded per tile via CFTree's `get_data` stage. AHN6 (2025) is the current default; AHN4 (2020) is mirrored per sub-tile at the TU Delft GeoTiles service (`https://geotiles.citg.tudelft.nl/AHN4_T/<kaartblad>_<subtile>.LAZ`) |
 | 3 | **BGT / IMGeo 2.2** `vegetatieobject_punt` (plus_type `boom`) | Authoritative per-tree point register maintained by municipalities / provinces / water boards. No semantic attributes (no species, no leaf class, no planting year, no dimensions), only an authoritative handle plus registry metadata. | CC-0 (PDOK) | PDOK OGC API Features: `https://api.pdok.nl/lv/bgt/ogc/v1/collections/vegetatieobject_punt/items?bbox=…&bbox-crs=EPSG::28992`. Pagination via `rel="next"` links. Cached in the pipeline's `CachedSession`. |
 | 4 | **Gemeente Emmen `bor_groen_bomen_beschermd`** | Per-tree register of trees registered under Emmen's public-space management (~58 k records: 57 503 `Bijzondere boom` + 466 `Monumentale boom`). Carries Latin and Dutch species name, planting year, height and trunk-diameter classes, protection status, growth form, and ecological standplaats. ~26 % of records have a populated species, ~93 % have a planting year. | Free use with attribution (per the layer's `licenseInfo` field; "Bij het overnemen van (delen van) de kaart, moet de bron worden vermeld") | ArcGIS REST FeatureServer query: `https://services3.arcgis.com/YaBq8GMTp0Kh437n/arcgis/rest/services/bor_groen_bomen_beschermd/FeatureServer/0/query?geometry=…&inSR=28992&outSR=28992&f=json`. Bbox-filtered, paged via `resultOffset`, cached by the same `CachedSession`. |
 
-### 2.1 AHN5 / AHN6 availability: why AHN4 is the current input
+### 2.1 AHN versions: AHN6 (2025) is the current input, AHN4 (2020) the CC-0 fallback
 
 The Emmer-Compascuum bbox (EPSG:28992 `[264400, 535580, 268720,
-538940]`) is in the north-east of the Netherlands. That matters,
-because the three most recent AHN flights cover the country in phases:
+538940]`) is in the north-east of the Netherlands, where the three most
+recent AHN flights cover the country in phases:
 
-* **AHN4** (2020, complete nationwide), **available and open**:
-  `https://basisdata.nl/hwh-ahn/ahn4/01_LAZ/C_<kaartblad>.LAZ` and
-  mirrored per sub-tile at the TU Delft GeoTiles service. This is the
-  only input that runs CFTree end-to-end today.
+* **AHN6** (2025 flight), **the current default input** (CC-BY-4.0).
+  The shipped reconstruction
+  ([`inputs/vegetation/emmer-compascuum_small-area_AHN6.city.json`](../inputs/vegetation/emmer-compascuum_small-area_AHN6.city.json),
+  702 trees) is derived from it.
 * **AHN5** (2023 flight), **does not cover NE Netherlands**. Verified
   against the `EllipsisDrive_index` layer of
   `https://basisdata.nl/hwh-ahn/AUX/bladwijzer.gpkg`: all four
   kaartbladen intersecting Emmer-Compascuum (`18AZ1`, `18AZ2`, `18CN1`,
-  `18CN2`) have `AHN5_LAZ = NaN`. Put differently: AHN5 was flown
-  mostly in the west + centre of the country.
-* **AHN6** (2025 flight), **scheduled and inventoried, but not yet
-  publicly downloadable for this bbox**. The `bladwijzer_AHN6.gpkg`
-  published on `basisdata.nl/hwh-ahn/AUX/` does list 20 1×1 km tiles
-  over Emmer-Compascuum (all `jaar=2025`, `perceel=3`), but
-  `basisdata.nl/hwh-ahn/AHN6/...` returns `403 AccessDenied` on every
-  probed path. The AHN dataroom and Ellipsis Drive host the data,
-  but without a public HTTP URL pattern or unauthenticated API. This
-  matches the rollout pattern of previous AHN versions: the bladwijzer
-  metadata is published first, then LAZ tiles land on basisdata.nl
-  some months later.
+  `18CN2`) have `AHN5_LAZ = NaN`. AHN5 was flown mostly in the west +
+  centre of the country.
+* **AHN4** (2020, complete nationwide), **the CC-0 fallback**. Open and
+  downloadable from `basisdata.nl/hwh-ahn/ahn4/01_LAZ/` and mirrored
+  per sub-tile at the TU Delft GeoTiles service. The shipped AHN4
+  reconstruction (623 trees) is retained as a permissively licensed
+  alternative.
 
-Consequence: the pipeline is wired to the newest publicly-downloadable
-AHN version that covers the AOI, which today is AHN4. When AHN6 lands
-on `basisdata.nl` or on the GeoTiles mirror, switching is a one-line
-base-URL change in [`scripts/get_data.py`](../../CFTree/scripts/get_data.py).
+Both shipped reconstructions use the same boundary polygon, so they are
+drop-in alternatives: set the config's `vegetation.path` to the AHN4 or
+AHN6 file. The default is AHN6. When a newer AHN flight publishes for
+this bbox, switching is a base-URL change in
+[`scripts/get_data.py`](../../CFTree/scripts/get_data.py).
 
 ### 2.2 What CFTree writes
 
@@ -165,7 +164,7 @@ within 4 m of its crown centroid, the builder attaches:
 
 The 4 m match radius balances BGT's nominal 0.3 m class-D positional
 accuracy against CFTree's crown-centroid-to-trunk offset (1-3 m on a
-one-sided canopy). Tuned against the small-area run: 225 of 652 CFTree
+one-sided canopy). Tuned against the small-area run: 218 of 702 CFTree
 trees got a BGT match, a coverage figure that roughly tracks
 public-space vs garden-space in the AOI, since BGT only records
 publicly-maintained trees.
@@ -390,11 +389,11 @@ were kept:
 
 * **OpenStreetMap (dropped).** Wired up in an earlier revision as an
   8 m nearest-neighbour join. A diagnostic pass over the
-  Emmer-Compascuum small-area AOI found 20 `natural=tree` nodes in the
-  bbox. 11 of the 652 CFTree trees got matched by proximity (1-5 m),
-  but **every matched OSM node had only the `natural=tree` tag and
-  no others**: no species, no leaf_type, no leaf_cycle, no
-  start_date. The "enrichment" contributed nothing beyond a
+  Emmer-Compascuum small-area AOI found only ~20 `natural=tree` nodes
+  in the bbox, and **every node that matched a CFTree tree by proximity
+  carried only the `natural=tree` tag and nothing else**: no species,
+  no leaf_type, no leaf_cycle, no start_date. The "enrichment"
+  contributed nothing beyond a
   cross-reference link to the OSM node id, while OSM is also outside
   the project's "Dutch government data only" policy. Removed.
 * **Landelijk Register Monumentale Bomen (dropped).** 0 entries in
@@ -496,7 +495,10 @@ cases:
 
 ## 6. Implementation notes (for reproducibility)
 
-The pipeline, end-to-end, on a fresh WSL Ubuntu 24.04 machine:
+The shipped tree reconstructions ([`inputs/vegetation/`](../inputs/vegetation/))
+let the city pipeline run without CFTree; this section is only needed to
+**regenerate** the trees from raw LiDAR. The CFTree preprocessor,
+end-to-end, on a fresh WSL Ubuntu 24.04 machine:
 
 1. `wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && bash ~/miniconda.sh -b`
 2. `conda env create -f CFTree/environment.yml` (≈ 20 min, 5.9 GB
@@ -514,9 +516,10 @@ The pipeline, end-to-end, on a fresh WSL Ubuntu 24.04 machine:
 5. **Line endings.** CFTree's shell scripts (`tiles_clipper_robust.sh`
    and friends) are checked out with CRLF on Windows. Fix:
    `find CFTree -name '*.sh' -exec sed -i 's/\r$//' {} \;`.
-6. **AHN URL base.** `scripts/get_data.py` hardcodes
-   `https://geotiles.citg.tudelft.nl/AHN5_T`, which does not exist
-   (see §2.1). Patched to `AHN4_T`.
+6. **AHN URL base.** Point the AHN base-URL in `scripts/get_data.py` at
+   the flight you are reconstructing: AHN6 (2025) for the current
+   default, or the `AHN4_T` GeoTiles mirror for the CC-0 fallback
+   (see §2.1).
 7. Drop the Emmer-Compascuum AOI polygon in
    `CFTree/cases/emmer_compascuum/case_area.geojson`, derived from
    the `grids.gpkg` bbox `[264400, 535580, 268720, 538940]` in
@@ -530,10 +533,10 @@ share.
 
 ## 7. Known limitations / follow-ups
 
-* **Run on AHN6 when it publishes.** Will happen by the next AHN
-  release cycle (probably Q3-Q4 2026 for this perceel). Action:
-  retest the URL pattern `basisdata.nl/hwh-ahn/AHN6/01_LAZ/` and bump
-  the CFTree `base_url`.
+* **AHN6 is now the default input.** The pipeline reconstructs from the
+  2025 AHN6 flight (CC-BY-4.0); the 2020 AHN4 reconstruction (CC-0)
+  remains shipped as a fallback. Re-running on a future AHN release is a
+  `base_url` bump in CFTree's `scripts/get_data.py`.
 * **Emmen BOR FeatureServer endpoint.** The ArcGIS REST URL
   (`services3.arcgis.com/YaBq8GMTp0Kh437n/.../bor_groen_bomen_beschermd`)
   is owned by Gemeente Emmen, not by the project. The fetcher pins

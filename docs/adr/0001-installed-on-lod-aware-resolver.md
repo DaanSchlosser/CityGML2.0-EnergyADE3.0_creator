@@ -26,9 +26,9 @@ Existing canonical behaviour is preserved end-to-end. The canonical owner-occupi
 
 Authors gain an opt-in escape hatch for LoD-specific targeting through the object form. The bare-name form remains the canonical authoring shape and what the canonical input uses. The object form is only required when the author intentionally wants a non-highest-LoD representation, which is rare in practice because most consumers prefer the most-detailed available representation.
 
-The horizontal axis remains structurally inexpressible in Energy ADE 3.0. A device whose footprint covers part of multiple roof faces still produces a list of qualitative `installedOn` relations with no native quantification slot on `nrg3:CityObjectRelation`. The workaround documented in `docs/mapping_building.md` § 15.8 (one PV feature per face plus a master aggregator that holds the energy resource) stays the schema-honest shape until a future Energy ADE revision adds an `installationCoverage` measure or equivalent. This ADR is scoped to the vertical axis; the horizontal axis is recorded as a schema gap, not a decision.
+The horizontal axis remains structurally inexpressible in Energy ADE 3.0. A device whose footprint covers part of multiple roof faces still produces a list of qualitative `installedOn` relations with no native quantification slot on `nrg3:CityObjectRelation`. The workaround (one PV feature per face plus a master aggregator that holds the energy resource) stays the schema-honest shape until a future Energy ADE revision adds an `installationCoverage` measure or equivalent. This ADR is scoped to the vertical axis; the horizontal axis is recorded as a schema gap, not a decision.
 
-`docs/mapping_building.md` § 10 documents both authoring shapes. § 13.1's obsolete "ascending-LoD ordering convention" paragraph has been replaced with a forward-pointer to § 15.8, which contains the thesis-grade writeup of the two-axis problem.
+`docs/mapping_building.md` § 10 documents both authoring shapes. § 13.1 documents the per-(face, LoD) modelling rule that makes this resolution necessary.
 
 JSON schema accepts both shapes through a `oneOf` on each `installed_on` entry. The schema is generated, so any future change to the authoring shape must go through `tools/generate_input_schema.py`.
 

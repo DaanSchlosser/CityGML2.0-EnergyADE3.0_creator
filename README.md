@@ -236,17 +236,20 @@ combining:
 
 ### 4.1 Quick start
 
+The shipped configs reproduce the thesis runs, so they fetch live data and, for
+energy labels, need a free EP-Online API key (the one non-open input). Get a key
+from RVO (`epbdwebservices.rvo.nl`) and set `EP_ONLINE_API_KEY` in `.env` at the
+project root (git-ignored); or set `"include_energy_labels": false` to build from
+open data alone. For a fully offline run with no key and no network, use the
+per-building pipeline ([§3](#3-per-building-pipeline)).
+
 ```powershell
 python -m pip install -e ".[city]"
 python examples/create_city.py --input inputs/cities/emmer-compascuum_small-area.json
 ```
 
-The default config (~41.5 ha Emmer-Compascuum AOI) doubles as the
-canonical smoke test.
-
-**EP-Online API key.** Set `EP_ONLINE_API_KEY` in `.env` at the project
-root (git-ignored). Without it, set `include_energy_labels: false`.
-The first run fills `cache_dir` with BAG/3DBAG/EP-Online responses;
+The default config (~41.5 ha Emmer-Compascuum AOI) doubles as the canonical
+smoke test. The first run fills `cache_dir` with BAG/3DBAG/EP-Online responses;
 subsequent runs read from cache instead of refetching.
 
 ### 4.2 Config
