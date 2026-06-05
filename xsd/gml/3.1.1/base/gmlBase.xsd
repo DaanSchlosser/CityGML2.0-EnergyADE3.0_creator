@@ -239,8 +239,11 @@ However, this leads to a non-deterministic content model, since both the base an
 			<documentation>Base type for complex metadata property types.</documentation>
 		</annotation>
 		<sequence minOccurs="0">
-			<any processContents="lax"/>
-			<!-- <element ref="gml:_MetaData"/> -->
+			<!-- Stock GML 3.1.1 content model. A local <any processContents="lax"/>
+			     here made nrg3:MetadataType (which extends this type with author,
+			     owner, etc.) non-deterministic, which strict libxml2 rejects as a
+			     Unique Particle Attribution violation. -->
+			<element ref="gml:_MetaData"/>
 		</sequence>
 		<attributeGroup ref="gml:AssociationAttributeGroup"/>
 		<attribute name="about" type="anyURI" use="optional"/>
