@@ -511,6 +511,11 @@ Bundled third-party components keep their own licences:
 - The two tracked files under `KITModelViewer_V7.5.2_Build-3777/` are the
   Energy ADE 3.0 upgrade for the KIT viewer (see §6); the viewer itself is a
   separate KIT download and is not part of this repository.
+- The CityGML 2.0 / GML 3.1.1 / xAL / XLink schemas in [xsd/](xsd/) and the W3C
+  [xml.xsd](tools/schemas/xml.xsd) are third-party standards (OGC, OASIS, W3C),
+  redistributed for offline validation. Each keeps its original copyright
+  notice; one file is modified and one was added by this project. See
+  [xsd/PROVENANCE.md](xsd/PROVENANCE.md) for the licences and the exact changes.
 
 To cite the software, use the metadata in [CITATION.cff](CITATION.cff) (GitHub
 renders a "Cite this repository" button from it). A persistent DOI will be

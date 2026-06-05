@@ -26,7 +26,7 @@ Desktop.ini
 
 # Project-specific
 # KIT viewer install is git-ignored except for two files that carry the
-# Energy ADE 3.0 upgrades this repo ships (see README §9).
+# Energy ADE 3.0 upgrades this repo ships (see README §6).
 /KITModelViewer_V7.5.2_Build-3777/*
 !/KITModelViewer_V7.5.2_Build-3777/Data/
 !/KITModelViewer_V7.5.2_Build-3777/GMLSchemata/

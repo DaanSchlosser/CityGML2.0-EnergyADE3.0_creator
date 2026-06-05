@@ -61,7 +61,7 @@ cross-references, and Gemeente Emmen BOR-derived attribute
 enrichment**. Non-government attribute sources (OpenStreetMap, the
 Bomenstichting's Landelijk Register Monumentale Bomen) were initially
 integrated as nearest-neighbour enrichments but dropped from this
-build, see §4.3 for the rationale. Emmen's BOR layer is in scope
+build, see §4.2 for the rationale. Emmen's BOR layer is in scope
 because it is published by a Dutch municipality (`ago@emmen`),
 which keeps the pipeline within the "Dutch government open data
 only" policy that excluded the OSM and Bomenstichting sources.
@@ -357,7 +357,7 @@ Two attributes we have but cannot express natively:
    fields, which means they can carry anything behind a codeSpace, but
    there is no standard vocabulary. Workaround: a previous revision
    published OSM's `Key:leaf_type` and `Key:leaf_cycle` wiki URLs as
-   the codeSpace; that source was dropped (§4.3) and no Dutch
+   the codeSpace; that source was dropped (§4.2) and no Dutch
    government layer carries leaf type or cycle, so this gap remains
    un-filled in the current build.
 
@@ -383,7 +383,7 @@ need to either (a) publish its own ADE that extends
 `cfdPorosity`, `r50`, etc., or (b) wait for a future vegetation ADE
 from SIG3D.
 
-### 4.3 Source selection: OSM and Monumentale Bomen out, BGT and BOR in
+### 4.2 Source selection: OSM and Monumentale Bomen out, BGT and BOR in
 
 Three candidate enrichments were evaluated. Two were dropped, two
 were kept:
@@ -444,7 +444,7 @@ empty" comment, so a contributor following the trail of "tree enrichment"
 back through the log lands first on the active matcher and then on
 the rationale for what was dropped.
 
-### 4.4 Energy ADE 3.0: silent on vegetation
+### 4.3 Energy ADE 3.0: silent on vegetation
 
 The Energy ADE 3.0 beta 8 schema set, as bundled in
 [`Energy_ADE-3.0beta8/`](../Energy_ADE-3.0beta8/), does not extend
@@ -548,7 +548,7 @@ share.
   design for the city pipeline's PoC scope; a generic
   `MunicipalTreeRegisterSource` abstraction is a clean follow-up
   but not part of this build.
-* **No OSM / Monumentale Bomen enrichment in this build.** See §4.3.
+* **No OSM / Monumentale Bomen enrichment in this build.** See §4.2.
   The Bomenstichting's national register and OSM `natural=tree`
   are out of scope under the current "Dutch government data only"
   policy. The `tree_enrichment.py` module that previously held the

@@ -431,7 +431,7 @@ The snippet below is **schema-derived, not byte-verified against a city-pipeline
   <nrg3:identifier codeSpace="http://bag.basisregistraties.overheid.nl/bag/id/pand/">0114100000206140</nrg3:identifier>
 
   <!-- gen:intAttribute substitutes into _GenericApplicationPropertyOfCityObject,
-       which falls in the inherited core:CityObject sequence position — ahead of
+       which falls in the inherited core:CityObject sequence position, ahead of
        bldg:Building's own sequence start (yearOfConstruction). -->
   <gen:intAttribute name="yearOfConstructionEPOnline">
     <gen:value>1956</gen:value>

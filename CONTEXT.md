@@ -109,14 +109,14 @@ _Avoid_: solar panel (use Aerial PV polygon for the city-detected feature).
 ### Registers and standards
 
 **EP-Online**:
-The Dutch national register of energy-performance certificates. One certificate per VBO under NTA 8800; older regimes (NEN 7120, ISSO 82.3) used different units and per-Pand aggregation rules. See [[reference_eponline_dates_and_regimes]] for the regime-aware mapping. Per the [Scope-based parent placement](#scope-based-parent-placement) rule, an EP-Online certificate parents to the `nrg3:BuildingUnit` (per-VBO regimes) or to the `bldg:Building` (per-Pand regimes).
+The Dutch national register of energy-performance certificates. One certificate per VBO under NTA 8800; older regimes (NEN 7120, ISSO 82.3) used different units and per-Pand aggregation rules. See [`mapping_city.md` §6](docs/mapping_city.md) for the regime-aware mapping. Per the [Scope-based parent placement](#scope-based-parent-placement) rule, an EP-Online certificate parents to the `nrg3:BuildingUnit` (per-VBO regimes) or to the `bldg:Building` (per-Pand regimes).
 
 **BOR**:
 The municipal *Beheer Openbare Ruimte* register of public-space objects (the city pipeline uses Emmen's) that supplies a verified tree species, joined to a CFTree point by nearest match. A register like EP-Online, used to enrich a [Tree](#city-pipeline)'s `veg:species`.
 _Avoid_: BGT (a separate topographic register), "tree register" (name it BOR).
 
 **NTA 8800**:
-The current Dutch method for determining a building's energy performance, in force since 2021. It fixes the units and aggregation of the EP-Online certificate (one per VBO, `final` energy in kWh/m²·yr) and the reference-climate PV-yield calculation behind the simulated production series. Older regimes (NEN 7120, ISSO 82.3) used different units and per-Pand aggregation; see [[reference_eponline_dates_and_regimes]].
+The current Dutch method for determining a building's energy performance, in force since 2021. It fixes the units and aggregation of the EP-Online certificate (one per VBO, `final` energy in kWh/m²·yr) and the reference-climate PV-yield calculation behind the simulated production series. Older regimes (NEN 7120, ISSO 82.3) used different units and per-Pand aggregation; see [`mapping_city.md` §6](docs/mapping_city.md).
 _Avoid_: BENG (the new-build norm built on NTA 8800, not the method itself), energy label (the label is the certificate's output grade).
 
 ## Conventions
