@@ -368,7 +368,8 @@ def _is_startindex_cap_error(response: requests.Response) -> bool:
         if (exc.get("locator") or "").strip() == "startIndex":
             return True
         if (exc.get("exceptionCode") or "").strip() == "InvalidParameterValue":
-            text = " ".join(exc.itertext()).lower()
+            # itertext() is typed str | bytes in lxml-stubs; text nodes are str.
+            text = " ".join(t for t in exc.itertext() if isinstance(t, str)).lower()
             if "startindex" in text and "higher than" in text:
                 return True
     return False

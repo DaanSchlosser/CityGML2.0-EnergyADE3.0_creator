@@ -82,11 +82,11 @@ class _LocalResolver(etree.Resolver):
         # Exact URL match (OGC schemas)
         local = _URL_MAP.get(system_url)
         if local is not None:
-            return self.resolve_filename(str(local), context)  # pyright: ignore[reportAttributeAccessIssue]
+            return self.resolve_filename(str(local), context)  # type: ignore[attr-defined]  # pyright: ignore[reportAttributeAccessIssue]
 
         # xAL (namespace URI or OASIS URL)
         if any(hint in system_url for hint in _XAL_HINTS):
-            return self.resolve_filename(str(_XAL_XSD), context)  # pyright: ignore[reportAttributeAccessIssue]
+            return self.resolve_filename(str(_XAL_XSD), context)  # type: ignore[attr-defined]  # pyright: ignore[reportAttributeAccessIssue]
 
         return None  # fall through to lxml default (file-relative)
 
@@ -111,7 +111,9 @@ def validate(gml_path: Path, schema: etree.XMLSchema) -> list[str]:
     )
     doc = etree.parse(str(gml_path), safe_parser)
     schema.validate(doc)
-    return [str(e) for e in schema.error_log]
+    # lxml-stubs types ``error_log`` as the empty ``_ErrorLog`` base; the runtime
+    # object is an iterable ``_ListErrorLog``.
+    return [str(e) for e in schema.error_log]  # type: ignore[attr-defined]
 
 
 def main() -> int:
