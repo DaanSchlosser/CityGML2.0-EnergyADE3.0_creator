@@ -39,6 +39,8 @@ Desktop.ini
 /KITModelViewer_V7.5.2_Build-3777/GMLSchemata/CityGML_2_0/CityGML/*
 !/KITModelViewer_V7.5.2_Build-3777/GMLSchemata/CityGML_2_0/CityGML/EnergyADE-local.xsd
 /generated
+# 4TU deposit staging bundle (assembled by hand for upload; not part of the repo)
+/deposit
 
 # Local agent tooling
 .claude/
