@@ -3,15 +3,17 @@
 Pipeline:
   1. Generate a CityGML 2.0 + EnergyADE 3.0 file from
      ``inputs/buildings/owner_occupier_building_sample.json`` (a structural
-     clone of the real per-building input file where every data value is a
+     clone of the owner-occupier reference input where every data value is a
      placeholder).
   2. Drop every LOD geometry subtree so the output carries no coordinates.
 
 The resulting ``generated/owner_occupier_building_sample.gml`` is safe to attach to
 SDM_KITModelViewer issues #24, #25, and #26 — it preserves the element
-structure that triggers the inconsistent rendering, but the sample has no
-real addresses, owners, register identifiers, product models, measurements,
-or time-series data.
+structure that triggers the inconsistent rendering, but every value is a
+placeholder and the geometry is stripped, so it carries none of the reference
+building's real measurements, energy figures, product models, or time-series
+data. (The reference input's owner, address, and register identifiers are
+themselves already placeholders, not real personal data.)
 
 Semantic boundary surfaces (``bldg:boundedBy`` wrapping
 WallSurface/RoofSurface/GroundSurface/Window/Door) are preserved so the
