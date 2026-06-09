@@ -130,9 +130,7 @@ def validate_feature_collection(
     if "file_header" in data:
         file_header = data["file_header"]
         if not isinstance(file_header, str) or not file_header.strip():
-            raise InputFileError(
-                f"{source}: file_header must be a non-empty string when provided"
-            )
+            raise InputFileError(f"{source}: file_header must be a non-empty string when provided")
         # The header is emitted as an XML comment; XML 1.0 forbids '--'
         # inside a comment, so reject it here rather than produce a file
         # that no XML parser can read.

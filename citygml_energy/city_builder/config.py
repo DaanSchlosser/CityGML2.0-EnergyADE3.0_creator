@@ -367,9 +367,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
     file_header = data.get("file_header")
     if file_header is not None:
         if not isinstance(file_header, str) or not file_header.strip():
-            raise CityBuildError(
-                f"{source}: file_header must be a non-empty string when provided"
-            )
+            raise CityBuildError(f"{source}: file_header must be a non-empty string when provided")
         # Emitted as an XML comment; XML 1.0 forbids '--' inside a comment.
         if "--" in file_header:
             raise CityBuildError(

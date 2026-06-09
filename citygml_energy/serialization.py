@@ -47,9 +47,7 @@ def _get_serializer(indent: str) -> XmlSerializer:
     return XmlSerializer(config=config, writer=XmlEventWriter)
 
 
-def serialize_to_string(
-    obj: object, *, indent: str = "\t", header: str | None = None
-) -> str:
+def serialize_to_string(obj: object, *, indent: str = "\t", header: str | None = None) -> str:
     """Serialize an xsdata dataclass to an XML string.
 
     When *header* is given, it is emitted as an XML comment placed between
@@ -73,9 +71,7 @@ def serialize_to_file(
     """Serialize an xsdata dataclass to a GML/XML file."""
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        serialize_to_string(obj, indent=indent, header=header), encoding="utf-8"
-    )
+    output.write_text(serialize_to_string(obj, indent=indent, header=header), encoding="utf-8")
 
 
 def _inject_header_comment(xml: str, header: str) -> str:
@@ -89,8 +85,7 @@ def _inject_header_comment(xml: str, header: str) -> str:
     """
     if "--" in header:
         raise ValueError(
-            "file header may not contain the sequence '--' "
-            "(forbidden inside an XML comment)"
+            "file header may not contain the sequence '--' (forbidden inside an XML comment)"
         )
     comment = f"<!--\n{header}\n-->"
     marker = "?>"

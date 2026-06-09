@@ -149,9 +149,7 @@ class CityModel:
             header=self.file_header if header is None else header,
         )
 
-    def write(
-        self, filepath: str | Path, *, indent: str = "\t", header: str | None = None
-    ) -> None:
+    def write(self, filepath: str | Path, *, indent: str = "\t", header: str | None = None) -> None:
         """Write the CityModel to a GML/XML file.
 
         *header* overrides :attr:`file_header` for this call; when omitted,
