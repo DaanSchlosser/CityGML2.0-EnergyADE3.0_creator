@@ -23,14 +23,15 @@ The integration is deliberately narrow:
   counted. Per-facet splitting is not supported: panels that straddle a
   ridge land entirely on their largest overlap. The source dataset is
   per-array, not per-module, so a split would not buy extra fidelity.
-* **Projection is flat-Z, not slope-following.** The roof facet's
-  Newell plane gives a Z at the panel centroid; every panel vertex is
-  stamped with that Z plus a small offset. Rationale: the source
-  annotation is a 2D footprint from aerial imagery with no tilt
-  information, so stamping a planar projection avoids inventing
-  geometry we cannot verify. One consequence: the emitted
-  :class:`GenericSolarCollector` leaves ``azimuth`` and ``inclination``
-  unset — a slope-derived value would contradict the horizontal polygon.
+* **Projection is slope-following.** Each panel vertex is dropped onto
+  the matched roof facet's Newell plane and offset perpendicular to it,
+  so the emitted geometry is coplanar with the roof rather than hovering
+  flat. The roof normal gives the collector's ``inclination`` and
+  ``azimuth`` (the latter omitted on a horizontal roof, where it is
+  undefined), and ``moduleArea`` is the resulting on-roof (tilted) area,
+  not the flat overhead footprint. The 2D source annotation carries no
+  panel tilt of its own; the tilt is inherited from the roof the panel
+  is matched to.
 
 All CPU-heavy work (GPKG read, spatial index build, matching,
 projection) runs **once** in the pipeline's main process before the
@@ -160,10 +161,11 @@ class ProjectedPanel:
 
     * ``lod2_polygons`` — panel vertices dropped onto the roof plane,
       then offset perpendicular to it by ``z_offset_m``.
-    * ``footprint_area_m2`` — the 2D polygon area. Emitted as
-      ``nrg3:moduleArea``. On a tilted roof the true surface area is
-      larger by ``1/cos(inclination)``; we keep the footprint value
-      because it is what the source dataset annotated.
+    * ``footprint_area_m2`` — the flat 2D area of the source polygon
+      (the overhead footprint the aerial dataset annotated). The emitted
+      ``nrg3:moduleArea`` is the true on-roof area: this footprint
+      divided by ``cos(inclination)`` (equivalently, the area of the
+      tilted ``lod2MultiSurface``). The two coincide only on a flat roof.
     * ``azimuth_deg`` — compass bearing (0° N, clockwise) of the roof
       normal's horizontal projection. ``None`` on horizontal roofs.
     * ``inclination_deg`` — tilt from horizontal, 0 = flat, 90 = vertical.
@@ -327,7 +329,7 @@ def _iter_candidate_rows(
 
 
 # ---------------------------------------------------------------------------
-# Matching + flat-Z projection
+# Matching + slope-following projection
 # ---------------------------------------------------------------------------
 
 
@@ -358,9 +360,10 @@ def match_and_project_panels(
     """Return ``({pand_id: [ProjectedPanel, ...]}, skipped_panels)``.
 
     Builds an R-tree over every LoD 2 RoofSurface facet, picks the
-    facet with the largest 2D overlap per panel, and stamps each panel
-    vertex with the Newell-plane Z at the panel centroid plus
-    *z_offset_m*. ``shapely.STRtree`` turns the match step from
+    facet with the largest 2D overlap per panel, and projects each
+    panel coplanar with that facet (every vertex dropped onto the roof
+    plane, then offset along the roof normal by *z_offset_m*).
+    ``shapely.STRtree`` turns the match step from
     :math:`O(P \\cdot F)` into effectively :math:`O(P \\log F)` once the
     number of roof facets climbs above a few thousand.
     """
@@ -660,8 +663,10 @@ def attach_solar_collectors_to_building(
       generic emitted XSD type.
     * ``lod2MultiSurface`` — the pre-projected polygons from
       :func:`match_and_project_panels`.
-    * ``moduleArea`` (m²) — the 2D polygon area, which equals the
-      emitted surface area because the panel is stamped flat.
+    * ``moduleArea`` (m²) — the true on-roof (tilted) panel area: the
+      flat footprint divided by ``cos(inclination)``, equal to the area
+      of the emitted ``lod2MultiSurface`` (the two coincide only on a
+      horizontal roof).
     * ``relatedTo[installedOn] → #<roof_gml_id>`` — intra-document
       xlink to the specific LoD 2 ``bldg:RoofSurface`` polygon the
       panel was matched to. The target id is derived from
@@ -786,9 +791,20 @@ def _build_solar_collector(
     (still the Building, per the CONTEXT.md "Scope-based parent
     placement" rule). ``None`` skips the xlink entirely.
     """
+    # moduleArea is the true on-roof (tilted) area, not the flat overhead
+    # footprint: the panel is projected coplanar with the matched roof
+    # facet, so its real area is the footprint divided by cos(roof
+    # inclination), which equals the area of the emitted lod2MultiSurface.
+    # cos(0)=1 leaves flat-roof panels unchanged; the guard avoids a
+    # blow-up on a near-vertical facet (a roof normal here is up-facing,
+    # so inclination stays well below 90 degrees in practice).
+    _cos_tilt = math.cos(math.radians(panel.inclination_deg))
+    _on_roof_area_m2 = (
+        panel.footprint_area_m2 / _cos_tilt if _cos_tilt > 1e-6 else panel.footprint_area_m2
+    )
     collector = GenericSolarCollector(
         id=collector_gml_id,
-        module_area=AreaType(value=round(panel.footprint_area_m2, 3), uom=_UOM_AREA_M2),
+        module_area=AreaType(value=round(_on_roof_area_m2, 3), uom=_UOM_AREA_M2),
         inclination=AngleType(value=round(panel.inclination_deg, 2), uom=_UOM_DEGREES),
         lod2_multi_surface=build_multi_surface(
             f"{collector_gml_id}_lod2",

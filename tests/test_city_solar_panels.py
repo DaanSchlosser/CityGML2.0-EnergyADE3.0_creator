@@ -425,7 +425,10 @@ def test_attach_solar_emits_expected_xsd_structure() -> None:
     # the UoM XML nor the code — the viewer accepts only the canonical
     # tokens, so the test is pinned to what the pipeline actually emits.
     assert collector.module_area.uom == "m2"
-    assert collector.module_area.value == 1.0
+    # moduleArea is the on-roof (tilted) area, not the flat footprint: the
+    # 1.0 m2 footprint on a 30 deg roof becomes 1.0 / cos(30 deg) = 1.155 m2
+    # (= the area of the emitted lod2MultiSurface).
+    assert collector.module_area.value == 1.155
     assert collector.inclination.uom == "deg"
     assert collector.inclination.value == 30.0
     assert collector.azimuth is not None
@@ -460,6 +463,8 @@ def test_attach_omits_azimuth_on_flat_roof() -> None:
     collector = building.device[0].generic_solar_collector
     assert collector.azimuth is None
     assert collector.inclination.value == 0.0
+    # On a flat roof the on-roof area equals the footprint (cos(0) = 1).
+    assert collector.module_area.value == 1.0
 
 
 def test_attach_drops_panels_when_no_lod2_roof_surface() -> None:
