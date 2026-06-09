@@ -10,7 +10,9 @@ The JSON schema is at [`../../schemas/city_input.schema.json`](../../schemas/cit
 |---|---|---|
 | `emmer-compascuum_small-area.json` | Emmer-Compascuum (~41.5 ha AOI) | Uses every optional input: `boundary` (GeoJSON), `solar_panels`, and `vegetation` (CFTree LoD3 trees). Doubles as the canonical smoke test. |
 | `emmer-compascuum_small-area_solar-only.json` | Emmer-Compascuum (~41.5 ha AOI) | Same boundary and solar panels, no vegetation input. |
+| `emmer-compascuum_small-area_no-energy-labels.json` | Emmer-Compascuum (~41.5 ha AOI) | Same small-area build but `include_energy_labels: false`, so no EP-Online labels are fetched or emitted. Source config for the openly-shareable city GML in the 4TU deposit; carries a `file_header` banner. |
 | `emmer-compascuum.json` | Emmer-Compascuum woonplaats (within Emmen) | Full settlement clipped to the BAG woonplaats boundary: BAG + 3DBAG LoD0 + EP-Online. |
+| `emmer-compascuum_solar.json` | Emmer-Compascuum woonplaats (within Emmen) | Full woonplaats with LoD2 roofs so University of Groningen solar panels project as `nrg3:GenericSolarCollector` across the whole panel population. |
 | `delft.json` | Delft (full municipality) | |
 | `groningen.json` | Groningen (full municipality) |  |
 | `zwolle.json` | Zwolle (full municipality) |  |

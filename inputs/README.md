@@ -15,7 +15,7 @@ Each subfolder has its own `README.md` describing the files in detail.
 
 ## Quick start
 
-Per-building (default reads [`buildings/owner_occupier_building.json`](buildings/owner_occupier_building.json)):
+Per-building (default reads [`buildings/NL-single-family-house.json`](buildings/NL-single-family-house.json)):
 
 ```powershell
 python examples/create_building.py

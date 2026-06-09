@@ -7,7 +7,7 @@
 - [`mapping_city.md`](mapping_city.md): the same level of per-field detail for the city-scale pipeline (BAG + 3DBAG + EP-Online + PV + CFTree + BGT + BOR + municipality + boundary). The two pipelines share the bindings and the `core.CityModel` object but consume different inputs and emit different feature subsets.
 - [`README.md` § 3 / § 4 / § 5](../README.md): authoring guide, pipeline-stage walkthrough, and module reference. This document focuses on the *mapping*; the README covers the *mechanics* of the pipeline (when to run what, file layout, geometry source semantics).
 
-**Reference inputs.** [`inputs/buildings/owner_occupier_building.json`](../inputs/buildings/owner_occupier_building.json) is the canonical thesis-grade input; [`inputs/buildings/owner_occupier_building_sample.json`](../inputs/buildings/owner_occupier_building_sample.json) is a placeholder-data clone for sharing in upstream issue trackers (KITModelViewer, etc.). Both share the same structural shape; this doc references both interchangeably.
+**Reference inputs.** [`inputs/buildings/NL-single-family-house.json`](../inputs/buildings/NL-single-family-house.json) is the canonical thesis-grade input; [`inputs/buildings/NL-single-family-house_sample.json`](../inputs/buildings/NL-single-family-house_sample.json) is a placeholder-data clone for sharing in upstream issue trackers (KITModelViewer, etc.). Both share the same structural shape; this doc references both interchangeably.
 
 ## Conventions
 
@@ -48,7 +48,7 @@ Step 5 must run **after** step 3 (the geometry populates the polygon vertices th
 | `nrg3:BuildingUnit` | `BuildingUnit` | Building | `nrg3:BuildingUnit` |
 | `nrg3:Zone` | `Zone` | Building | `nrg3:Zone` |
 | `nrg3:ZonePart` | `ZonePart` | Zone (enforced) | `nrg3:ZonePart` |
-| `nrg3:ConstantValueSchedule` | `ConstantValueSchedule` | ZonePart (`heating_schedule` / `cooling_schedule`) | `nrg3:ConstantValueSchedule` |
+| `nrg3:ConstantValueSchedule` | `ConstantValueSchedule` | ScheduleLibrary (`library_member`, InLine); referenced from a ZonePart's `heating_schedule` / `cooling_schedule` by xlink | `nrg3:ConstantValueSchedule` |
 | `nrg3:PhotovoltaicCollector` | `PhotovoltaicCollector` | Building (physical-structure-level: the panel array sits on the Pand, not inside any one occupied unit) | `nrg3:PhotovoltaicCollector` |
 | `nrg3:SolarThermalCollector` | `SolarThermalCollector` | Building (same rooftop / physical-structure reasoning as PV; not exercised in the canonical input) | `nrg3:SolarThermalCollector` |
 | `nrg3:HeatPump` | `HeatPump` | BuildingUnit (serves and meters the occupied unit) | `nrg3:HeatPump` |
@@ -62,6 +62,7 @@ Step 5 must run **after** step 3 (the geometry populates the polygon vertices th
 | `nrg3:MonthlyTimeSeries` / `nrg3:RegularTimeSeries` / `nrg3:IrregularTimeSeries` (and their `TypicalValues*` / `*File` variants) | corresponding TimeSeries class | Energy (`time_dependent_amount`) | `nrg3:*TimeSeries` |
 | `nrg3:MaterialLibrary` | `MaterialLibrary` | model root | `nrg3:MaterialLibrary` (top-level library) |
 | `nrg3:LayeredConstructionLibrary` | `LayeredConstructionLibrary` | model root | `nrg3:LayeredConstructionLibrary` (top-level library) |
+| `nrg3:ScheduleLibrary` | `ScheduleLibrary` | model root | `nrg3:ScheduleLibrary` (top-level library; holds the schedule definitions referenced by ZoneParts) |
 
 The list above is the set actually exercised in the canonical input. Any other Energy ADE 3.0 feature class declared in the bindings can also be authored: the pipeline's `build_from_dict` + `attach_child` machinery is XSD-driven and discovers field slots via type introspection, so adding a new feature requires no code changes (only a `type` value matching the bindings class). [`README.md` § 8](../README.md) maintains the live list.
 
@@ -69,6 +70,7 @@ The list above is the set actually exercised in the canonical input. Any other E
 
 ```json
 {
+  "file_header": "...provenance / licence banner...",
   "city_model": {"name": "...", "description": "..."},
   "coordinate_origin": [x, y, z],
   "construction_mapping": {
@@ -88,6 +90,7 @@ The list above is the set actually exercised in the canonical input. Any other E
 
 | Top-level key | Required | Purpose |
 |---|---|---|
+| `file_header` | optional | Free-text banner (copyright / provenance / read-me) emitted as an XML comment between the `<?xml ...?>` declaration and the root `<core:CityModel>` (schema-invisible). Validated non-empty and must not contain `--` (forbidden inside an XML comment). The reference building and both deposited GMLs use it. See [`schemas/citygml_energy_input.schema.json`](../schemas/citygml_energy_input.schema.json). |
 | `city_model` | ✓ | Wrapper for `gml:name` and `gml:description` on the root `<core:CityModel>`. |
 | `features` | ✓ | Flat list of feature dicts. Each dict carries `type`, `id`, optional `parent` / `parent_field` / `related_to`, and the XSD-typed attributes for that class. |
 | `coordinate_origin` | optional (default `[0,0,0]`) | Offset added to every imported STEP vertex; lets STEP files authored at the origin land in real-world RD New / NAP coordinates. |
@@ -149,7 +152,7 @@ The XSD permits `nrg3:energyPerformanceCertificate` on **both** AbstractBuilding
 | `owner_name` | str | `nrg3:ownerName` | |
 | `ownership_type` | CodeType | `nrg3:ownershipType` | `OwnershipTypeValue.xml`. |
 | `area` | list[QualifiedArea] | `nrg3:area[]` (BuildingUnit-level area) | Same multi-source pattern as Building's `bdgArea`, each entry wrapping a `qualified_area` object. Typically one entry for the per-VBO usable area. |
-| `address` | `list[AddressPropertyType]` (xlink-only on the BuildingUnit) | `nrg3:address[]` carrying `@xlink:href` to a `core:Address` owned by the parent `bldg:Building` | The address itself is authored as a **separate top-level feature** of `type: "core:Address"` with `parent` set to the **Building** `id` (not the BuildingUnit). The loader's two-phase build attaches it to `bldg:address[]` (CityGML 2.0 composition slot, XSD `building.xsd` line 78). The BuildingUnit then declares `"address": [{"href": "#<address_id>"}]`, emitting a pure-xlink `nrg3:address` on the unit. This matches the Energy ADE 3.0 UML: `BuildingUnit.address` is tagged `relationType="association"` (XSD line 1431-1437), i.e. a pointer, not a composition. The address dict itself carries `xal_address.address_details.country.{country_name_code, country_name, locality.{locality_name, thoroughfare.{thoroughfare_number, thoroughfare_name}, postal_code.postal_code_number}}`, mirroring the xAL element tree. The full canonical-input shape lives in [`inputs/buildings/owner_occupier_building.json`](../inputs/buildings/owner_occupier_building.json) and the city pipeline's [`builders/address.py`](../citygml_energy/city_builder/builders/address.py) is the single source of truth on the xAL conventions (Locality/@Type=`Town`, Thoroughfare/@Type=`Street`, ISO 3166-1 alpha-2 country code, BAG-canonical hyphen separator for `huisnummertoevoeging`). The per-building pipeline does not auto-translate flat fields: author the nested form directly. |
+| `address` | `list[AddressPropertyType]` (xlink-only on the BuildingUnit) | `nrg3:address[]` carrying `@xlink:href` to a `core:Address` owned by the parent `bldg:Building` | The address itself is authored as a **separate top-level feature** of `type: "core:Address"` with `parent` set to the **Building** `id` (not the BuildingUnit). The loader's two-phase build attaches it to `bldg:address[]` (CityGML 2.0 composition slot, XSD `building.xsd` line 78). The BuildingUnit then declares `"address": [{"href": "#<address_id>"}]`, emitting a pure-xlink `nrg3:address` on the unit. This matches the Energy ADE 3.0 UML: `BuildingUnit.address` is tagged `relationType="association"` (XSD line 1431-1437), i.e. a pointer, not a composition. The address dict itself carries `xal_address.address_details.country.{country_name_code, country_name, locality.{locality_name, thoroughfare.{thoroughfare_number, thoroughfare_name}, postal_code.postal_code_number}}`, mirroring the xAL element tree. The full canonical-input shape lives in [`inputs/buildings/NL-single-family-house.json`](../inputs/buildings/NL-single-family-house.json) and the city pipeline's [`builders/address.py`](../citygml_energy/city_builder/builders/address.py) is the single source of truth on the xAL conventions (Locality/@Type=`Town`, Thoroughfare/@Type=`Street`, ISO 3166-1 alpha-2 country code, BAG-canonical hyphen separator for `huisnummertoevoeging`). The per-building pipeline does not auto-translate flat fields: author the nested form directly. |
 | `energy_performance_certificate` | list[EPC] | `nrg3:EnergyPerformanceCertificate[]` (auto-wrapped in `nrg3:energyPerformanceCertificate` property element) | The EPC slot. See [`mapping_city.md` § 6](mapping_city.md#6-ep-online-mutatiebestand-csv-dutch-energy-label-register) for the regime-aware EP-Online mapping; the per-building pipeline authors an EPC directly in JSON with the same field shape (`type_value`, `label`, optional `value: {value, uom}`, optional `certification_method`, `creation_date`, `valid_from`, `valid_to`, `status`). The canonical input picks the schema-honest `totalEnergyDemand` for `type_value` (NTA 8800 EPCs cover the full building energy budget), `actual` for `status` (registered EP-Online certs are *rechtsgeldig*), and pins `value`'s uom to `kWh/m2/a` for an NTA 8800 cert. The **registration ID** lives on `nrg3:identifier` with `code_space=https://www.ep-online.nl/` to keep it dereferenceable; in the canonical input the EP-Online ID has been anonymised (replaced with placeholder digits) to protect the owner's privacy while preserving the BAG VBO ↔ EPC linkage shape. |
 
 ---
@@ -159,6 +162,8 @@ The XSD permits `nrg3:energyPerformanceCertificate` on **both** AbstractBuilding
 The Energy ADE 3.0 thermal-zone hierarchy is `Building → Zone → ZonePart`. The XSD permits `Building → ZonePart` directly via the `ZonePropertyType` slot, but the conceptual model says zones group zone-parts. The validator enforces `nrg3:ZonePart` parents to `nrg3:Zone` ([`input_loader._ALLOWED_PARENT_TYPES`](../citygml_energy/input_loader.py)) so authoring slips are caught before they corrupt the hierarchy.
 
 Zone and ZonePart inherit from the same `nrg3:AbstractZoneType`, so **everything in the ZonePart table is also legal on a Zone** per the XSD: `is_heated`, `is_cooled`, `is_mechanically_ventilated`, `infiltration_rate`, `heat_capacity`, `internal_heat_gains` (+ convective / latent / radiant fractions), `number_of_building_units`, `building_unit`, `heating_schedule`, `cooling_schedule`, `mechanical_ventilation_schedule`, `zone_boundary`, plus the AbstractCityObjectSpace LoD slots (`lod0_multi_surface`, `lod{1,2,3}_solid`) and `area` / `volume`. The Zone table below lists only what the canonical input puts on the Zone level; richer authoring is permitted. The conceptual rule (Zone groups ZoneParts; thermal-envelope geometry and per-room schedules live on ZonePart, with the Zone aggregating across them) is a modelling convention, not an XSD constraint.
+
+When the conditioning regime is modelled per ZonePart, the parent `nrg3:Zone` deliberately leaves `is_heated` / `is_cooled` / `is_mechanically_ventilated` **absent** (null, not false) and the two `nrg3:ZonePart` children each carry all three. Per the Energy ADE 3.0 author, modelling the parent zone with `false` flags while the parts say `true` is contradictory; leaving the parent null is the intended encoding.
 
 ### `nrg3:Zone`
 
@@ -184,8 +189,8 @@ Geometry: Zones rarely carry their own geometry; their LoD geometry is usually i
 | `is_cooled` | bool | `nrg3:isCooled` | |
 | `is_mechanically_ventilated` | bool | `nrg3:isMechanicallyVentilated` | |
 | `coincides_with_lod*_hull` | bool | as above | |
-| `heating_schedule` (via child Schedule with `parent_field="heating_schedule"`) | xlink to ConstantValueSchedule | `nrg3:heatingSchedule` | See § 4. |
-| `cooling_schedule` (same pattern) | xlink to ConstantValueSchedule | `nrg3:coolingSchedule` | See § 4. |
+| `heating_schedule` | xlink, e.g. `{"href": "#zone_part_1_heating_schedule"}` | `nrg3:heatingSchedule xlink:href=…` | ByReference into the `nrg3:ScheduleLibrary`. See § 4. |
+| `cooling_schedule` | xlink, e.g. `{"href": "#zone_part_1_cooling_schedule"}` | `nrg3:coolingSchedule xlink:href=…` | ByReference into the `nrg3:ScheduleLibrary`. See § 4. |
 | `lod0_multi_surface` / `lod{1,2,3}_solid` | inline GML geometry | `nrg3:lod0MultiSurface` / `nrg3:lod{1,2,3}Solid` | Aggregate hull of the ZonePart. Populated from a `step-zonepart-lod{0,1,2,3}` source whose `target_zone_part_id` matches this ZonePart's `id`. ZonePart has no aggregated `volumeGeometry` slot; the standard CityGML LoD ladder fills the same role. |
 | ZoneBoundary surfaces (children, attached via STEP geometry) | inline GML | `nrg3:zoneBoundary` (one ZoneWallSurface / ZoneGroundSurface / ZoneRoofSurface / ZoneIntermediateFloorSurface / etc. per ZonePart face; openings as `nrg3:ZoneWindow` / `nrg3:ZoneDoor` attached via the `nrg3:zoneOpening` relation on the parent face) | Built by `apply_geometry_sources` for `step-zonepart-lod{2,3}` sources from each STEP layer name. The classifier maps the building-style STEP layer names (`WallSurface_*`, `GroundSurface_*`, `RoofSurface_*`) to the matching `nrg3:Zone…Surface` subclass; `Window_*` / `Door_*` shells parented (via STEP `|parent=…`) to a wall become `nrg3:ZoneWindow` / `nrg3:ZoneDoor` children attached through the `nrg3:zoneOpening` relation on the matched ZoneWallSurface. |
 
@@ -193,17 +198,21 @@ ZonePart is the natural carrier of per-room thermal-envelope geometry: a multi-z
 
 ---
 
-## 4. `nrg3:ConstantValueSchedule`
+## 4. `nrg3:ScheduleLibrary` and `nrg3:ConstantValueSchedule`
 
-Parents to a ZonePart via `parent_field` set to either `heating_schedule` or `cooling_schedule` (both fields are `[0..1]` on the parent so the slot disambiguation is mandatory).
+The schedule definitions are **not** authored on the ZoneParts. They live inside a single top-level `nrg3:ScheduleLibrary` feature (parent: model root) as `library_member` entries — each member is a `{"constant_value_schedule": {...}}` wrapper, mirroring how `nrg3:MaterialLibrary` / `nrg3:LayeredConstructionLibrary` hold their members. Every ZonePart's `heating_schedule` / `cooling_schedule` field then carries an xlink reference `{"href": "#<schedule_id>"}` into that library, emitted as `<nrg3:heatingSchedule xlink:href="#…"/>`.
+
+This is the Energy ADE 3.0 UML split: the schedule association on a thermal zone is tagged **ByReference** (so it must be an xlink), and the library association is **InLine** (the definitions live there). The XSD cannot enforce it — both `nrg3:heatingSchedule` and `libraryMember` are `AbstractSchedulePropertyType`, which accepts an inline child *or* an href — so authoring an inline schedule on a ZonePart still validates; keeping the definitions in the library is the modelling convention.
+
+The `nrg3:ScheduleLibrary` itself takes `id`, optional `name` / `description`, a `type_value` of `{"value": "scheduleLibrary"}`, and a non-empty `library_member` list. Each `nrg3:ConstantValueSchedule` member:
 
 | JSON field | Type | GML target | Notes |
 |---|---|---|---|
-| `id` | str | `nrg3:ConstantValueSchedule/@gml:id` | |
+| `id` | str | `nrg3:ConstantValueSchedule/@gml:id` | The xlink target referenced from the ZonePart. |
 | `type_value` | CodeType | `nrg3:type` | `ScheduleTypeValue.xml` (`typicalYear`, etc.). |
 | `value` | Measure | `nrg3:value` | uom `C` for setpoint temperatures. |
 
-Energy ADE 3.0 defines three concrete `AbstractAtomicSchedule` subclasses (`nrg3:ConstantValueSchedule` (used here), `nrg3:DualValueSchedule` (idle / usage values with day-time switch points), and `nrg3:TimeSeriesSchedule` (wraps any `AbstractTimeSeries` so a periodic profile drives the schedule)), plus the aggregating non-atomic `nrg3:CompositeSchedule` (a sequence of `nrg3:ScheduleComponent` references, with per-component repetition counts and gaps) and the top-level wrapper `nrg3:ScheduleLibrary` for shareable templates. The loader accepts any of them via the same `parent_field` mechanism. Daily resolution is expressed as a `RegularTimeSeries` with `timeInterval = P1D` rather than a dedicated daily class; there is no `DailyPatternSchedule` or `DailyTimeSeries` in this XSD revision.
+Energy ADE 3.0 defines three concrete `AbstractAtomicSchedule` subclasses (`nrg3:ConstantValueSchedule` (used here), `nrg3:DualValueSchedule` (idle / usage values with day-time switch points), and `nrg3:TimeSeriesSchedule` (wraps any `AbstractTimeSeries` so a periodic profile drives the schedule)), plus the aggregating non-atomic `nrg3:CompositeSchedule` (a sequence of `nrg3:ScheduleComponent` references, with per-component repetition counts and gaps) and the top-level wrapper `nrg3:ScheduleLibrary` that holds them. Any of these schedule types can be authored as a `library_member` of the `nrg3:ScheduleLibrary` and referenced from a zone by xlink (the ByReference form above); the generic builder also still accepts an inline schedule attached via `parent_field`, but the library form is the convention. Daily resolution is expressed as a `RegularTimeSeries` with `timeInterval = P1D` rather than a dedicated daily class; there is no `DailyPatternSchedule` or `DailyTimeSeries` in this XSD revision.
 
 ---
 
@@ -703,7 +712,7 @@ This section catalogues gaps that affect the per-building pipeline specifically.
 
 ## 16. Canonical input data gaps
 
-This section catalogues places where the canonical owner-occupier input ([`inputs/buildings/owner_occupier_building.json`](../inputs/buildings/owner_occupier_building.json)) is incomplete or approximate. Gaps are split into two types:
+This section catalogues places where the canonical owner-occupier input ([`inputs/buildings/NL-single-family-house.json`](../inputs/buildings/NL-single-family-house.json)) is incomplete or approximate. Gaps are split into two types:
 
 - **16a (Estimated values)**: the spec or source data did not supply a figure, so a typical or derived value was used. The model serialises cleanly but the flagged values should be confirmed before being relied on for thermal analysis.
 - **16b (Not yet modelled)**: the spec supplies the data clearly but it has not been authored into the JSON, either because there is no matching LOD3 surface to attach it to or because the feature class has not been added yet.
@@ -765,6 +774,7 @@ This is the catalogue of fields the XSD makes mandatory (no `minOccurs="0"`) per
 | `nrg3:RegularTimeSeries` | `start_timestamp`, `end_timestamp`, `time_interval`, `values_list` |
 | `nrg3:MaterialLibrary` | at least one `library_member` |
 | `nrg3:LayeredConstructionLibrary` | at least one `library_member` |
+| `nrg3:ScheduleLibrary` | at least one `library_member` |
 | `nrg3:LayeredConstruction1` (inside library) | `type_value` |
 | `nrg3:SolidMaterial` | `type_value`, `is_transparent` |
 | `nrg3:Gas` | `type_value` |

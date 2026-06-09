@@ -3,6 +3,7 @@
 [![CI](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/actions/workflows/ci.yml/badge.svg)](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](pyproject.toml)
+[![DOI](https://zenodo.org/badge/1204296741.svg)](https://zenodo.org/badge/latestdoi/1204296741)
 
 A Python toolkit for generating CityGML 2.0 files extended with Energy
 ADE 3.0 (beta8), CityGML's extension mechanism for energy data. The
@@ -32,7 +33,7 @@ different inputs.
 
 | Pipeline | Input | Purpose in RenoDAT |
 |---|---|---|
-| **Per-building** | Hand-authored feature-collection JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport (zones, schedules, devices, layered constructions, material libraries) for one dwelling? The [owner-occupier reference building](inputs/buildings/owner_occupier_building.json) (a single-family residence in Delft, LoD0-LoD3 with thermal zone parts) is the worked example. |
+| **Per-building** | Hand-authored feature-collection JSON + Rhino STEP geometry | Can the standard carry the full detail of a single renovation passport (zones, schedules, devices, layered constructions, material libraries) for one dwelling? The [owner-occupier reference building](inputs/buildings/NL-single-family-house.json) (a single-family residence in Delft, LoD0-LoD3 with thermal zone parts) is the worked example. |
 | **City-scale** | JSON config naming a Dutch municipality | Does the same data model scale to the dwelling stock? Fetches BAG + 3DBAG + EP-Online (+ optional solar panels, BGT/BOR tree register, CFTree vegetation) for an entire area and assembles one GML file. |
 
 Both pipelines emit the same wire format, so a consumer reads one
@@ -58,7 +59,7 @@ uv sync --all-extras
 uv run python examples/create_building.py
 
 # validate the output offline against the bundled XSDs
-uv run python tools/validate_xsd.py generated/owner_occupier_building.gml
+uv run python tools/validate_xsd.py generated/NL-single-family-house.gml
 
 # run the test suite
 uv run pytest -q
@@ -74,7 +75,7 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"            # add ,city,city-fast for the city pipeline
 
 python examples/create_building.py
-python tools/validate_xsd.py generated/owner_occupier_building.gml
+python tools/validate_xsd.py generated/NL-single-family-house.gml
 python -m pytest -q
 ```
 
@@ -92,11 +93,12 @@ EP-Online CSV filtering. All extras are declared in
 ## 3. Per-building pipeline
 
 Everything the generator needs lives in a single JSON document
-([inputs/buildings/owner_occupier_building.json](inputs/buildings/owner_occupier_building.json))
+([inputs/buildings/NL-single-family-house.json](inputs/buildings/NL-single-family-house.json))
 with these top-level keys:
 
 ```jsonc
 {
+  "file_header":         "...provenance / licence banner...",
   "city_model":          { "name": "...", "description": "..." },
   "coordinate_origin":   [85182.085, 446868.675, 0.105],
   "construction_mapping": {
@@ -105,7 +107,7 @@ with these top-level keys:
   },
   "geometry_sources": [
     { "type": "step-building-lod3",
-      "path": "Owner-Occupier1_LOD3_STEP.stp",
+      "path": "NL-single-family-house_LOD3_STEP.stp",
       "target_building_id": "id_building_1",
       "target_pv_id": "pv_panel_1" }
   ],
@@ -137,6 +139,12 @@ with these top-level keys:
   placing local Rhino models on RD/NAP. **`srs_name`** and
   **`srs_dimension`** override the default
   `urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109` / `3`.
+- **`file_header`** (optional) is a free-text string emitted as an XML
+  comment between the `<?xml ?>` declaration and the root
+  `<core:CityModel>` (schema-invisible). It must be non-empty and must
+  not contain `--` (illegal inside an XML comment). The reference
+  building and both deposited GMLs use it for a provenance / licence
+  banner. The same key works in the city config (§4.2).
 
 A JSON schema for editor autocomplete lives at
 [schemas/citygml_energy_input.schema.json](schemas/citygml_energy_input.schema.json).
@@ -199,8 +207,8 @@ Every stage runs offline. No schema downloads, no XML templates.
   one model walk; each ADE plug-in module exports `EMITTERS` (and
   optional `SETUPS`). The current Energy ADE 3.0 plug-ins are
   `construction_mapping.py` (layeredConstruction xlinks) and
-  `boundary_attributes.py` (`bdgBdrySurf*` / `bdgOpn*` area,
-  inclination, azimuth, thickness, heat capacity).
+  `boundary_attributes.py` (`bdgBdrySurf*` / `bdgOpn*` area, opaque
+  area, inclination, azimuth, thickness, heat capacity).
 - **Ships its own schemas.** The repository ships every XSD it needs,
   so validation, binding regeneration, and tests run without network
   access.
@@ -271,7 +279,14 @@ subsequent runs read from cache instead of refetching.
 ```
 
 Optional `solar_panels`, `vegetation`, and `cbs_postcode6` blocks enable
-the corresponding inputs. The full schema lives at
+the corresponding inputs. Instead of `bbox`, a `boundary` block pointing
+at a GeoJSON polygon clips to a (possibly concave) area of interest, and
+`ep_online_api_key_file` points at a file holding the EP-Online key as an
+alternative to the `.env` variable. An optional top-level `file_header`
+string is emitted as an XML comment in the generated GML, exactly as in
+the per-building pipeline (§3); the deposited
+`emmer-compascuum_small-area_no-energy-labels.json` config carries one.
+The full schema lives at
 [schemas/city_input.schema.json](schemas/city_input.schema.json),
 generated from `CityBuildConfig` by
 [tools/generate_city_input_schema.py](tools/generate_city_input_schema.py)
@@ -306,8 +321,8 @@ configs live in [inputs/cities/](inputs/cities/).
 - When `include_energy_labels` is enabled: a single
   `app:Appearance` colouring every building's surfaces by the averaged
   EPC label of its BuildingUnits (EU energy-label palette; buildings
-  with no match render grey). Separate themes are emitted for PV
-  panels and vegetation when configured.
+  with no match render grey). Separate themes are emitted for solar
+  collectors and vegetation when configured.
 
 ### 4.4 Performance and further reading
 
@@ -363,11 +378,14 @@ tools/
 ├── generate_city_input_schema.py   Regenerate city-scale JSON schema
 ├── generate_pv_simulation.py       Compute NTA 8800 monthly PV-yield series
 ├── validate_xsd.py                 Offline XSD validation
+├── reproduce.ps1                   One-command Docker reproduction (Windows)
+├── reproduce.sh                    One-command Docker reproduction (Linux/macOS)
 ├── create_anonymised_sample.py     Produce the shareable sanitised sample input
 ├── merge_cftree_tiles.py           Merge CFTree CityJSON tile exports
 ├── audit_extra.py                  Audit generated GML: non-positive quantities, out-of-range angles, ADE hooks
 ├── audit_silent_bugs.py            Audit for silent data-loss bugs
-└── bench.py                        Benchmarking utilities
+├── bench.py                        Benchmarking utilities
+└── schemas/xml.xsd                 W3C xml.xsd for offline validation
 
 inputs/                         See inputs/README.md
 ├── buildings/                  Per-building feature-collection JSONs
@@ -497,12 +515,71 @@ without code changes; the loader resolves it dynamically by
 - **Sample data.** The owner-occupier reference building ships as a sanitised
   JSON + STEP fixture (see
   [inputs/buildings/README.md](inputs/buildings/README.md)).
+- **Reproducible container.** A pinned [Dockerfile](Dockerfile) builds the full
+  runtime as a frozen image, so the toolkit runs with no local Python or uv
+  install and validation behaves identically across hosts (see §9.1).
+
+### 9.1 Reproducible container
+
+The image pins its base by digest and resolves the environment from
+[uv.lock](uv.lock), freezing the exact `lxml` / `libxml2` build that schema
+validation depends on. CI publishes it to the GitHub Container Registry on each
+release ([.github/workflows/docker.yml](.github/workflows/docker.yml)), and the
+release pipeline runs the image offline to regenerate and validate the
+per-building document before it publishes, so a release never ships an image
+that fails to reproduce.
+
+The fastest path is the one-command reproduction script, which pulls (or builds,
+with `--build`) the image, regenerates the per-building document, and validates
+it, all offline:
+
+```powershell
+.\tools\reproduce.ps1            # Linux/macOS: tools/reproduce.sh
+```
+
+Or run the steps directly:
+
+```powershell
+# Pull the published image (or `docker build -t citygml-energy:1.0.0 .` to build it)
+docker pull ghcr.io/daanschlosser/citygml-energy:1.0.0
+
+# Regenerate the offline per-building document into ./out (no network needed)
+docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml-energy:1.0.0
+
+# Validate the result against the bundled XSDs, still offline
+docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml-energy:1.0.0 `
+  python tools/validate_xsd.py generated/NL-single-family-house.gml
+```
+
+The city-scale pipeline needs network access and, for energy labels, an
+EP-Online key. Mount your inputs and `.env`, then call `create_city.py`:
+
+```powershell
+docker run --rm --env-file .env `
+  -v "${PWD}/inputs:/app/inputs" -v "${PWD}/generated:/app/generated" `
+  ghcr.io/daanschlosser/citygml-energy:1.0.0 `
+  python examples/create_city.py --input inputs/cities/emmer-compascuum_small-area_no-energy-labels.json
+```
+
+Optionally, for a registry-independent copy of the environment that rebuilds
+even if the base image or wheels later change, archive the built image as a file
+alongside the Zenodo code release:
+
+```powershell
+docker save ghcr.io/daanschlosser/citygml-energy:1.0.0 | gzip > citygml-energy-1.0.0-image.tar.gz
+```
 
 ---
 
 ## 10. Licence and citation
 
 This toolkit is released under the **MIT License** (see [LICENSE](LICENSE)).
+
+The GML **datasets** produced by the toolkit (including the deposited 4TU
+bundle) are a separate work, released under **CC-BY-4.0** and carrying their
+own provenance and dataset DOI in the file-header comment; the MIT licence
+above covers the toolkit code only. See the dataset README in the 4TU deposit
+for the per-source attribution table.
 
 Bundled third-party components keep their own licences:
 
@@ -521,5 +598,10 @@ Bundled third-party components keep their own licences:
   [xsd/PROVENANCE.md](xsd/PROVENANCE.md) for the licences and the exact changes.
 
 To cite the software, use the metadata in [CITATION.cff](CITATION.cff) (GitHub
-renders a "Cite this repository" button from it). A persistent DOI will be
-added once a tagged release is archived.
+renders a "Cite this repository" button from it). Once a tagged release is
+archived on Zenodo, its persistent DOI resolves through the **DOI** badge at
+the top of this README, and every archived version is listed on the
+[Releases](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/releases)
+page. The badge tracks the GitHub repository, not a fixed DOI number, so it
+always points at the latest archived version and no file in this repository
+needs editing after the release.

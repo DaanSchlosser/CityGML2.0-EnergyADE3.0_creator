@@ -37,7 +37,7 @@ The `nrg3:Zone` feature: the conditioned (heated or cooled) volume of a Building
 _Avoid_: thermal zone (the Energy ADE 2.0 class name, dropped in 3.0), room.
 
 **ZonePart**:
-The `nrg3:ZonePart` feature: a thermal sub-unit of a Zone with homogeneous thermal behaviour, carrying its own `heatingSchedule` / `coolingSchedule`, its own `nrg3:zoneBoundary` surfaces, and its LoD hull geometry. How a Zone is divided into ZoneParts is an author's modelling choice (per room, per room type, per storey, per setpoint regime, and so on); the owner-occupier building uses one ZonePart per storey because the two storeys run different setpoints. Parents to a `nrg3:Zone`.
+The `nrg3:ZonePart` feature: a thermal sub-unit of a Zone with homogeneous thermal behaviour, referencing a `heatingSchedule` / `coolingSchedule` by xlink into the shared `nrg3:ScheduleLibrary` (the schedule definitions live there, ByReference per the Energy ADE 3.0 UML), with its own `nrg3:zoneBoundary` surfaces and its LoD hull geometry. How a Zone is divided into ZoneParts is an author's modelling choice (per room, per room type, per storey, per setpoint regime, and so on); the owner-occupier building uses one ZonePart per storey because the two storeys run different setpoints. Parents to a `nrg3:Zone`.
 _Avoid_: room, storey, subzone (a ZonePart maps to whatever granularity the author chooses; do not assume one storey or one room).
 
 **Zone boundary surface**:
@@ -94,17 +94,24 @@ _Avoid_: provenance, source (here `source` is the energy-origin axis, a differen
 The national LoD2 building-geometry product (BAG footprints extruded against AHN height), the geometry source for the city-scale pipeline. Distinct from **BAG**, the cadastral register behind Pand and VBO: 3DBAG supplies the shape, BAG supplies the identity and the legal units.
 _Avoid_: using BAG and 3DBAG interchangeably.
 
+**gemeente**:
+The Dutch municipality, one administrative level above a woonplaats (a gemeente can hold several woonplaatsen). Named by the required `municipality` config key and the largest area a single city-scale run can cover.
+_Avoid_: city.
+
 **woonplaats**:
-The BAG residential-place unit (a named town or settlement). The unit of one city-scale build: a single run covers one woonplaats.
-_Avoid_: municipality (a gemeente can hold several woonplaatsen), city.
+The BAG residential-place unit (a named town or settlement), e.g. Emmer-Compascuum within the gemeente Emmen. One possible clip target for a build extent (defined below), not a fixed build unit.
+_Avoid_: city; do not use interchangeably with gemeente.
+
+**Build extent (AOI)**:
+The geographic area one city-scale run emits as a single GML: the gemeente named by `municipality`, optionally clipped by a `boundary` polygon or `bbox` to a woonplaats or a smaller area of interest. Uncropped it is the whole gemeente (delft / groningen / zwolle); clipped it is a woonplaats (emmer-compascuum) or a sub-woonplaats AOI (emmer-compascuum_small-area).
 
 **Tree**:
 The `veg:SolitaryVegetationObject` feature the city pipeline emits from the CFTree point dataset, optionally enriched with a species from the BOR register. "Tree" is the colloquial name for it.
 _Avoid_: the bare `SolitaryVegetationObject` in prose without noting it is the tree feature; plant.
 
-**Aerial PV polygon**:
-A rooftop photovoltaic panel detected from aerial imagery in the city pipeline, emitted as an `nrg3:GenericSolarCollector` (technology-agnostic, because the aerial source carries no module-level metadata) with geometry but no per-array consumer metadata. A `serving` xlink is emitted only when the Pand has exactly one BuildingUnit, where the served set is fixed by elimination; for a zero-VBO or multi-VBO Pand the served set is genuinely unknown, so no `serving` xlink is emitted, unlike the per-building [Collective device](#device-scope) case where the served set is documented.
-_Avoid_: solar panel (use Aerial PV polygon for the city-detected feature).
+**Solar collector** (city):
+The `nrg3:GenericSolarCollector` feature the city pipeline emits from a solar-panel polygon detected in aerial imagery. Technology-agnostic on purpose: the aerial source carries no module-level metadata, so the array may be photovoltaic, solar-thermal, or hybrid, and the geometry carries no per-array consumer metadata. Every collector carries a `relatedTo[installedOn]` xlink to the `bldg:RoofSurface` polygon it intersects (always emitted, the topological anchor). A `serving` xlink is emitted only when the Pand has exactly one BuildingUnit, where the served set is fixed by elimination; for a zero-VBO or multi-VBO Pand the served set is genuinely unknown, so no `serving` xlink is emitted, unlike the per-building [Collective device](#device-scope) case where the served set is documented. The source polygons are legitimately "solar panels", because the RUG (University of Groningen) aerial-imagery dataset they come from annotates solar-panel footprints. Only the emitted GML feature is a solar collector.
+_Avoid_: `nrg3:PhotovoltaicCollector` or calling the emitted feature photovoltaic (the type is deliberately generic); calling the emitted GML feature a "solar panel" (that is the source polygon, not the feature).
 
 ### Registers and standards
 

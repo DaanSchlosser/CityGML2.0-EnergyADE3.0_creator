@@ -8,9 +8,9 @@ The JSON schema is at [`../../schemas/citygml_energy_input.schema.json`](../../s
 
 | File | Purpose |
 |---|---|
-| `owner_occupier_building.json` | The owner-occupier reference building. This is a single-family residence in Delft, modelled LoD0-3 with one zone consisting of two zone parts. The default input for `examples/create_building.py` and the worked example for §3-§9 of the README. |
-| `owner_occupier_building_sample.json` | Shareable, anonymised clone of the reference building. Same structural shape, but every data value is a placeholder. Used by [`tools/create_anonymised_sample.py`](../../tools/create_anonymised_sample.py) to produce a geometry-free sample GML safe to attach to upstream issue trackers. |
+| `NL-single-family-house.json` | The owner-occupier reference building. This is a single-family residence in Delft, modelled LoD0-3 with one zone consisting of two zone parts. The default input for `examples/create_building.py` and the worked example for §3-§9 of the README. |
+| `NL-single-family-house_sample.json` | Shareable, anonymised clone of the reference building. Same structural shape, but every data value is a placeholder. Used by [`tools/create_anonymised_sample.py`](../../tools/create_anonymised_sample.py) to produce a geometry-free sample GML safe to attach to upstream issue trackers. |
 
 ## Path conventions
 
-`geometry_sources[*].path` entries are resolved against the JSON file's own directory (i.e. `inputs/buildings/`). The reference building's STEP files all live in [`../stp/`](../stp/), so paths read `../stp/Owner-Occupier1_*.stp`.
+`geometry_sources[*].path` entries are resolved against the JSON file's own directory (i.e. `inputs/buildings/`). The reference building's STEP files all live in [`../stp/`](../stp/), so paths read `../stp/NL-single-family-house_*.stp`.

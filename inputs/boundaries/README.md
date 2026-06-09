@@ -8,8 +8,8 @@ Loader: [`citygml_energy/city_builder/boundary.py`](../../citygml_energy/city_bu
 
 | File | Used by | Notes |
 |---|---|---|
-| `emmer-compascuum_small-area.geojson` | [`../cities/emmer-compascuum_small-area.json`](../cities/emmer-compascuum_small-area.json), [`../cities/emmer-compascuum_small-area_solar-only.json`](../cities/emmer-compascuum_small-area_solar-only.json) | Hand-drawn concave AOI over Emmer-Compascuum. |
-| `emmer-compascuum_woonplaats.geojson` | [`../cities/emmer-compascuum.json`](../cities/emmer-compascuum.json) | Full BAG woonplaats boundary of Emmer-Compascuum. |
+| `emmer-compascuum_small-area.geojson` | [`../cities/emmer-compascuum_small-area.json`](../cities/emmer-compascuum_small-area.json), [`../cities/emmer-compascuum_small-area_solar-only.json`](../cities/emmer-compascuum_small-area_solar-only.json), [`../cities/emmer-compascuum_small-area_no-energy-labels.json`](../cities/emmer-compascuum_small-area_no-energy-labels.json) | Hand-drawn concave AOI over Emmer-Compascuum. |
+| `emmer-compascuum_woonplaats.geojson` | [`../cities/emmer-compascuum.json`](../cities/emmer-compascuum.json), [`../cities/emmer-compascuum_solar.json`](../cities/emmer-compascuum_solar.json) | Full BAG woonplaats boundary of Emmer-Compascuum. |
 | `emmer_compascuum_area.geojson` | — | Not currently referenced by any config. |
 
 ## Adding a new boundary
