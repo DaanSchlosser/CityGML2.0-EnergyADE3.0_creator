@@ -32,7 +32,7 @@ NS = {
     "nrg3": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0",
 }
 
-_SAMPLE_INPUT = INPUT.parent / "owner_occupier_building_sample.json"
+_SAMPLE_INPUT = INPUT.parent / "NL-single-family-house_sample.json"
 
 _RENODAT_INPUTS = [INPUT]
 if _SAMPLE_INPUT.exists():

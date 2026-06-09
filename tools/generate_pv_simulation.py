@@ -40,7 +40,7 @@ identical from one year to the next. There is no daily series, because the
 method has no sub-monthly resolution to express.
 
 System parameters below are read off ``pv_panel_1`` in
-``inputs/buildings/owner_occupier_building.json``.
+``inputs/buildings/NL-single-family-house.json``.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ __all__ = [
     "simulate_monthly_kwh",
 ]
 
-# --- pv_panel_1 system parameters (owner_occupier_building.json) -------------
+# --- pv_panel_1 system parameters (NL-single-family-house.json) -------------
 # 36 panels x 270 Wp = 9720 W; formula (16.4b): P_pk = n * P_pk;panel / 1000.
 PEAK_POWER_KWP: float = 9.72
 # Compass azimuth of the array (0 deg = N, 90 = E, 180 = S, 270 = W), matching

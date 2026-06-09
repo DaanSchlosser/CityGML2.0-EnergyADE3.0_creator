@@ -28,7 +28,7 @@ import pytest
 from citygml_energy import generate_city_model, load_feature_collection
 from examples.create_building import INPUT
 
-_SAMPLE_INPUT = INPUT.parent / "owner_occupier_building_sample.json"
+_SAMPLE_INPUT = INPUT.parent / "NL-single-family-house_sample.json"
 
 _INPUTS = [INPUT]
 if _SAMPLE_INPUT.exists():

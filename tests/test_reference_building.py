@@ -42,7 +42,7 @@ NS = {
     "xlink": "http://www.w3.org/1999/xlink",
 }
 
-_SAMPLE_INPUT = INPUT.parent / "owner_occupier_building_sample.json"
+_SAMPLE_INPUT = INPUT.parent / "NL-single-family-house_sample.json"
 
 _RENODAT_INPUTS = [INPUT]
 if _SAMPLE_INPUT.exists():
@@ -313,19 +313,61 @@ def test_zone_hull_coincidence_flags_are_false(reference_building_root):
     assert lod3 == "false", f"coincidesWithLod3Hull: expected false, got {lod3!r}"
 
 
-def test_heating_and_cooling_schedules_on_zone_parts(reference_building_root):
-    """Both conditioned zone parts carry a heating and a cooling schedule."""
+def test_zone_part_schedules_are_byreference_into_schedule_library(reference_building_root):
+    """Schedules are held InLine in a ScheduleLibrary, referenced ByReference.
+
+    Energy ADE 3.0 tags the thermal-zone heating/coolingSchedule association
+    as ByReference and the ScheduleLibrary's libraryMember as InLine. The XSD
+    permits an inline schedule on the ZonePart too -- ``heatingSchedule`` is an
+    ``AbstractSchedulePropertyType`` that accepts either a child element or an
+    ``xlink:href`` -- so this convention can only be checked here, not by the
+    schema. This is the fix for Giorgio's 2026-06-07 review note.
+    """
     zone_parts = reference_building_root.findall(".//nrg3:Zone/nrg3:zonePart/nrg3:ZonePart", NS)
     assert len(zone_parts) == 2
 
-    parts_with_heating = [
-        zp for zp in zone_parts if zp.find("nrg3:heatingSchedule", NS) is not None
-    ]
-    parts_with_cooling = [
-        zp for zp in zone_parts if zp.find("nrg3:coolingSchedule", NS) is not None
-    ]
-    assert len(parts_with_heating) == 2
-    assert len(parts_with_cooling) == 2
+    # Every ConstantValueSchedule definition must live InLine inside a
+    # ScheduleLibrary libraryMember, never inline on a ZonePart.
+    library_schedules = reference_building_root.findall(
+        ".//nrg3:ScheduleLibrary/nrg3:libraryMember/nrg3:ConstantValueSchedule", NS
+    )
+    library_ids = {s.get(f"{{{NS['gml']}}}id") for s in library_schedules}
+    assert len(library_ids) >= 4, "expected the four setpoint schedules in a ScheduleLibrary"
+    # No schedule definition may sit inline on a ZonePart.
+    assert reference_building_root.findall(".//nrg3:ZonePart//nrg3:ConstantValueSchedule", NS) == []
+
+    for zp in zone_parts:
+        for hook in ("nrg3:heatingSchedule", "nrg3:coolingSchedule"):
+            prop = zp.find(hook, NS)
+            assert prop is not None, f"{hook} missing on a ZonePart"
+            href = prop.get(f"{{{NS['xlink']}}}href")
+            assert href and href.startswith("#"), (
+                f"{hook} must be a ByReference xlink:href, got {href!r}"
+            )
+            assert list(prop) == [], f"{hook} must not carry an inline schedule (ByReference)"
+            assert href.lstrip("#") in library_ids, (
+                f"{hook} href {href!r} does not resolve to a ScheduleLibrary member"
+            )
+
+
+def test_parent_zone_leaves_conditioning_flags_null(reference_building_root):
+    """Conditioning flags live on the ZoneParts; the parent Zone leaves them null.
+
+    Giorgio's 2026-06-07 note: when ZoneParts carry
+    is{Heated,Cooled,MechanicallyVentilated}=true, the parent Zone must leave
+    them absent (null), not false. ``find`` with a plain tag matches only
+    direct children, so the ZoneParts' own flags do not register here.
+    """
+    zone = reference_building_root.find(".//bldg:Building/nrg3:zone/nrg3:Zone", NS)
+    assert zone is not None
+    for flag in ("nrg3:isHeated", "nrg3:isCooled", "nrg3:isMechanicallyVentilated"):
+        assert zone.find(flag, NS) is None, f"parent Zone must not carry {flag}"
+
+    zone_parts = zone.findall("nrg3:zonePart/nrg3:ZonePart", NS)
+    assert len(zone_parts) == 2
+    for zp in zone_parts:
+        assert zp.findtext("nrg3:isHeated", namespaces=NS) == "true"
+        assert zp.findtext("nrg3:isCooled", namespaces=NS) == "true"
 
 
 def test_energy_resources_attached_to_devices(reference_building_root):
@@ -619,6 +661,40 @@ def test_coordinates_are_fixed_point_decimals(reference_building_root):
     for pos in reference_building_root.findall(".//gml:pos", NS):
         for token in (pos.text or "").split():
             assert "e" not in token.lower(), f"Coordinate emitted in scientific notation: {token!r}"
+
+
+# ---------------------------------------------------------------------------
+# File header (release banner) -- canonical input only
+# ---------------------------------------------------------------------------
+
+
+def test_canonical_input_emits_file_header_comment():
+    """The canonical input's ``file_header`` is emitted as an XML comment.
+
+    It sits between the XML declaration and the root element -- the
+    conventional banner spot -- and, being a comment, leaves the document
+    well-formed and schema-valid.
+    """
+    model = generate_city_model(INPUT)
+    assert model.file_header, "canonical input must declare a file_header"
+
+    xml = model.to_string()
+    decl_end = xml.index("?>") + 2
+    root_start = xml.index("<core:CityModel")
+    banner = xml[decl_end:root_start]
+    assert "<!--" in banner and "-->" in banner
+    assert "NL single-family house" in banner
+    # Comment does not break well-formedness (bytes path: declaration present).
+    etree.fromstring(xml.encode("utf-8"))
+
+
+def test_file_header_rejects_double_hyphen():
+    """A ``file_header`` containing ``--`` is rejected (illegal in XML comments)."""
+    data = load_feature_collection(INPUT)
+    bad = deepcopy(data)
+    bad["file_header"] = "valid first line\nan illegal -- sequence"
+    with pytest.raises(InputFileError, match="--"):
+        build_city_model_from_feature_collection(bad)
 
 
 # ---------------------------------------------------------------------------

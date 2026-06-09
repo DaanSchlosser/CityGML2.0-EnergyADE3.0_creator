@@ -1,7 +1,7 @@
 """Per-building CLI entry point: JSON + STEP -> CityGML 2.0 + EnergyADE 3.0.
 
 Default inputs point at the owner-occupier reference building
-(``inputs/buildings/owner_occupier_building.json``). Use ``--input`` to
+(``inputs/buildings/NL-single-family-house.json``). Use ``--input`` to
 pass a different feature-collection JSON. See the README for the
 RenoDAT research context this script is a test case for.
 """

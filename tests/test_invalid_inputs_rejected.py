@@ -33,7 +33,7 @@ from citygml_energy import (
 from examples.create_building import INPUT
 from tools.validate_xsd import load_schema
 
-_SAMPLE_INPUT = INPUT.parent / "owner_occupier_building_sample.json"
+_SAMPLE_INPUT = INPUT.parent / "NL-single-family-house_sample.json"
 
 _NEGATIVE_INPUTS = [INPUT]
 if _SAMPLE_INPUT.exists():

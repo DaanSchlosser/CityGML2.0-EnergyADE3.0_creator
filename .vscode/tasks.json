@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Generate per-building GML (owner-occupier reference building)",
+      "label": "Generate per-building GML (NL single-family house)",
       "type": "process",
       "command": "${config:python.defaultInterpreterPath}",
       "args": [

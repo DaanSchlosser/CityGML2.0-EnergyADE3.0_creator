@@ -19,7 +19,7 @@ from tools.generate_pv_simulation import (
     simulate_monthly_kwh,
 )
 
-_SAMPLE_INPUT = DEFAULT_INPUT_PATH.parent / "owner_occupier_building_sample.json"
+_SAMPLE_INPUT = DEFAULT_INPUT_PATH.parent / "NL-single-family-house_sample.json"
 _FEATURE_ID = "id_monthly_ts_pv_production_simulated_1"
 
 

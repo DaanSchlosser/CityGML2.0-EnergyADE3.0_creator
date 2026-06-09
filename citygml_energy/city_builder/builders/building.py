@@ -171,7 +171,7 @@ def build_building(
 
     # BAG Pand id attached as an nrg3:identifier with the authoritative
     # linked-data codeSpace (see schemas/namespace_prefixes.json and
-    # CS_BAG_PAND). Matches the pattern in inputs/buildings/owner_occupier_building.json:35.
+    # CS_BAG_PAND). Matches the pattern in inputs/buildings/NL-single-family-house.json:35.
     # The codeSpace + value concatenate to the full dereferenceable URL
     # (`rdf_seealso` in the PDOK BAG WFS response), so we do not need to
     # round-trip the URL prefix from the fetcher.
@@ -266,7 +266,7 @@ def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
       codeSpace (the per-building input emits SIG3D codes too).
     * ``b3_volume_lod22`` → ``nrg3:area``-style ``QualifiedVolume``
       with type ``grossVolume``. Matches the per-building-input pattern at
-      ``inputs/buildings/owner_occupier_building.json::bdg_volume``, so a single GML file
+      ``inputs/buildings/NL-single-family-house.json::bdg_volume``, so a single GML file
       can mix 3DBAG-measured and per-building-input-declared volumes transparently.
     """
     year = to_int(attrs.get("oorspronkelijkbouwjaar"))
@@ -320,7 +320,7 @@ def _apply_building_attributes(building: Any, attrs: dict[str, Any]) -> None:
         # native ``volume`` list; the Energy ADE adds one under the name
         # ``bdgVolume`` whose property type is a
         # ``QualifiedVolumePropertyType`` specialisation ``BdgVolume``.
-        # Structure matches ``inputs/buildings/owner_occupier_building.json::bdg_volume``.
+        # Structure matches ``inputs/buildings/NL-single-family-house.json::bdg_volume``.
         building.bdg_volume.append(
             BdgVolume(
                 qualified_volume=QualifiedVolume(

@@ -2,12 +2,12 @@
 
 Pipeline:
   1. Generate a CityGML 2.0 + EnergyADE 3.0 file from
-     ``inputs/buildings/owner_occupier_building_sample.json`` (a structural
+     ``inputs/buildings/NL-single-family-house_sample.json`` (a structural
      clone of the owner-occupier reference input where every data value is a
      placeholder).
   2. Drop every LOD geometry subtree so the output carries no coordinates.
 
-The resulting ``generated/owner_occupier_building_sample.gml`` is safe to attach to
+The resulting ``generated/NL-single-family-house_sample.gml`` is safe to attach to
 SDM_KITModelViewer issues #24, #25, and #26 — it preserves the element
 structure that triggers the inconsistent rendering, but every value is a
 placeholder and the geometry is stripped, so it carries none of the reference
@@ -34,8 +34,8 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from citygml_energy import generate_gml_file
 
-DEFAULT_INPUT = REPO_ROOT / "inputs" / "buildings" / "owner_occupier_building_sample.json"
-DEFAULT_OUTPUT = REPO_ROOT / "generated" / "owner_occupier_building_sample.gml"
+DEFAULT_INPUT = REPO_ROOT / "inputs" / "buildings" / "NL-single-family-house_sample.json"
+DEFAULT_OUTPUT = REPO_ROOT / "generated" / "NL-single-family-house_sample.gml"
 
 NS = {
     "bldg": "http://www.opengis.net/citygml/building/2.0",
