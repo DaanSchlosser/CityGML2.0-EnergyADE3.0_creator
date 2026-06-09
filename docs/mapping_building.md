@@ -4,7 +4,7 @@
 
 **Companion documents.**
 
-- [`mapping_city.md`](mapping_city.md): the same level of per-field detail for the city-scale pipeline (BAG + 3DBAG + EP-Online + PV + CFTree + BGT + BOR + municipality + boundary). The two pipelines share the bindings and the `core.CityModel` object but consume different inputs and emit different feature subsets.
+- [`mapping_city.md`](mapping_city.md): the same level of per-field detail for the city-scale pipeline (BAG + 3DBAG + EP-Online + solar panels + CFTree + BGT + BOR + municipality + boundary). The two pipelines share the bindings and the `core.CityModel` object but consume different inputs and emit different feature subsets.
 - [`README.md` § 3 / § 4 / § 5](../README.md): authoring guide, pipeline-stage walkthrough, and module reference. This document focuses on the *mapping*; the README covers the *mechanics* of the pipeline (when to run what, file layout, geometry source semantics).
 
 **Reference inputs.** [`inputs/buildings/NL-single-family-house.json`](../inputs/buildings/NL-single-family-house.json) is the canonical thesis-grade input; [`inputs/buildings/NL-single-family-house_sample.json`](../inputs/buildings/NL-single-family-house_sample.json) is a placeholder-data clone for sharing in upstream issue trackers (KITModelViewer, etc.). Both share the same structural shape; this doc references both interchangeably.
@@ -671,7 +671,7 @@ CityGML 2.0 itself permits both shapes: one BoundarySurface carrying multiple Lo
 
 | Aspect | Per-building pipeline | City pipeline |
 |---|---|---|
-| **Input source** | Hand-authored JSON feature dicts + STEP geometry files | Config file naming a Dutch municipality; fetches BAG + 3DBAG + EP-Online + PV + CFTree + BGT + (optional) BOR |
+| **Input source** | Hand-authored JSON feature dicts + STEP geometry files | Config file naming a Dutch municipality; fetches BAG + 3DBAG + EP-Online + solar panels + CFTree + BGT + (optional) BOR |
 | **Layered constructions** | Full support: MaterialLibrary + LayeredConstructionLibrary authored in JSON; layer thickness, thermal conductivity, density, specific heat capacity all explicit; per-surface mapping via `construction_mapping`. | None: city pipeline has no source for layered constructions; only EP-Online label + per-VBO Energy resources. |
 | **Devices (Boiler / HeatPump / PV / EVChargingStation / SolarThermal)** | Fully modelled: separate JSON features per device, wired with `related_to` CityObjectRelation entries (installedOn / serving), Energy resources and device-specific parameters. | Partial: rooftop solar arrays only (from the optional UoG GeoPackage), emitted as technology-agnostic `nrg3:GenericSolarCollector` rather than `nrg3:PhotovoltaicCollector` because the aerial-imagery source has no cell-type metadata; heat sources inferred from EP-Online label, not modelled as Device objects. |
 | **Thermal zones and zone parts** | Full: `Zone` → `ZonePart` hierarchy, LoD3 boundary surfaces from STEP, heating/cooling schedules, occupant loads on zone parts. | None: city pipeline does not author Zones at all. |

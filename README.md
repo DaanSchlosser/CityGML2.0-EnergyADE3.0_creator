@@ -588,9 +588,14 @@ Bundled third-party components keep their own licences:
   unmodified under the **Apache License 2.0** (see
   [Energy_ADE-3.0beta8/LICENSE](Energy_ADE-3.0beta8/LICENSE) and
   [Energy_ADE-3.0beta8/PROVENANCE.md](Energy_ADE-3.0beta8/PROVENANCE.md)).
-- The two tracked files under `KITModelViewer_V7.5.2_Build-3777/` are the
-  Energy ADE 3.0 upgrade for the KIT viewer (see §6); the viewer itself is a
-  separate KIT download and is not part of this repository.
+- The two tracked files under `KITModelViewer_V7.5.2_Build-3777/` support the
+  Energy ADE 3.0 upgrade for the KIT viewer (see §6). `EnergyADE-local.xsd` is
+  the same Apache-2.0 schema by Dr. Giorgio Agugiaro (an earlier beta 8
+  vintage, with `<import>` URLs rewritten to local paths); `UOMList.xml` is the
+  KIT ModelViewer's unit-of-measurement config, extended here with three
+  Energy ADE units. The viewer itself is a separate KIT download and is not
+  part of this repository. See
+  [docs/kitmodelviewer.md](docs/kitmodelviewer.md) for the full provenance.
 - The CityGML 2.0 / GML 3.1.1 / xAL / XLink schemas in [xsd/](xsd/) and the W3C
   [xml.xsd](tools/schemas/xml.xsd) are third-party standards (OGC, OASIS, W3C),
   redistributed for offline validation. Each keeps its original copyright

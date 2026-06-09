@@ -27,3 +27,23 @@ garbled.
    `<name>.xsd` in the same directory, except:
    - `http://schemas.opengis.net/gml/3.1.1/base/gml.xsd` → `../3.1.1/base/gml.xsd`
 3. Restart the KITModelViewer and reload the GML file.
+
+## Provenance and licence of the tracked files
+
+Two files under `KITModelViewer_V7.5.2_Build-3777/` are tracked in this
+repository; the viewer install itself is a separate KIT download and is not
+included.
+
+- `GMLSchemata/CityGML_2_0/CityGML/EnergyADE-local.xsd` is the CityGML Energy
+  ADE 3.0 (beta 8) schema by Dr. Giorgio Agugiaro (3D Geoinformation group, TU
+  Delft), the same upstream as [`../Energy_ADE-3.0beta8/`](../Energy_ADE-3.0beta8/),
+  under the **Apache License 2.0**. It is a slightly earlier beta 8 vintage
+  (header `Last update: 2026-05-06`) renamed to `EnergyADE-local.xsd` for the
+  viewer, with the online `<import>` `schemaLocation` URLs rewritten to local
+  relative paths (the fix above). It is therefore a modified copy in Apache-2.0
+  terms.
+- `Data/UOMList.xml` is the KIT ModelViewer's unit-of-measurement configuration
+  file (KIT IAI), extended by this project with three Energy ADE unit entries
+  (`kWh/a`, `m3/a`, `W/W`); see the in-file comment dated 2026-05-27. It is
+  kept here only to document the viewer setup and carries the KIT ModelViewer's
+  own terms.
