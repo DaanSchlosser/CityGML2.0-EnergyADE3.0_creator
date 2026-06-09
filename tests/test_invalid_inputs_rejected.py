@@ -214,17 +214,32 @@ def test_rejects_self_parent(base_data: dict[str, Any], base_path: Path) -> None
 def test_rejects_cyclic_parent_chain(base_data: dict[str, Any], base_path: Path) -> None:
     """A->B and B->A must be rejected with a cycle-specific message.
 
-    Uses schedule features (which carry no parent-type whitelist entry)
-    so the cycle check fires before any type-level rejection. Reparenting
-    two ZoneParts at each other would also cycle, but the parent-type
-    check catches ZonePart-without-Zone-parent first.
+    Two synthetic schedule features that point at each other are appended
+    rather than discovered: schedule features carry no parent-type
+    whitelist entry, so the cycle check fires before any type-level
+    rejection, but the canonical input now holds its schedules inside a
+    ByReference ``nrg3:ScheduleLibrary``, leaving no top-level schedule to
+    reparent. Building them inline keeps the cycle path exercised.
     """
     data = deepcopy(base_data)
-    schedules = [f for f in data["features"] if f.get("type") == "nrg3:ConstantValueSchedule"]
-    if len(schedules) < 2:
-        pytest.skip("fixture has fewer than two schedules to form a cycle")
-    schedules[0]["parent"] = schedules[1]["id"]
-    schedules[1]["parent"] = schedules[0]["id"]
+    data["features"].extend(
+        [
+            {
+                "type": "nrg3:ConstantValueSchedule",
+                "id": "cycle_schedule_a",
+                "parent": "cycle_schedule_b",
+                "type_value": {"value": "typicalYear"},
+                "value": {"value": 20, "uom": "C"},
+            },
+            {
+                "type": "nrg3:ConstantValueSchedule",
+                "id": "cycle_schedule_b",
+                "parent": "cycle_schedule_a",
+                "type_value": {"value": "typicalYear"},
+                "value": {"value": 21, "uom": "C"},
+            },
+        ]
+    )
     with pytest.raises(InputFileError, match=r"cyclic parent relation"):
         _build(data, base_path)
 
