@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
-title: "CityGML 2.0 + Energy ADE 3.0 (beta 8) GML files creator"
+title: "CityGML 2.0 + Energy ADE 3.0 (beta 8) GML file creator"
 abstract: >-
   A Python toolkit that generates CityGML 2.0 files extended with Energy ADE
   3.0 (beta 8) from flat JSON input plus STEP or CityJSON geometry. It runs a
@@ -26,12 +26,12 @@ keywords:
   - 3D city model
   - energy data
 # Each tagged release is archived on Zenodo through the GitHub integration,
-# which mints a persistent DOI. That DOI is shown by the DOI badge at the top
-# of the README and on the repository Releases page, so this file needs no
-# manual update after a release. To make GitHub's "Cite this repository"
-# button carry the DOI as well, you may optionally fill in the value below:
-# doi: 10.5281/zenodo.XXXXXXX
-# identifiers:
-#   - type: doi
-#     value: 10.5281/zenodo.XXXXXXX
-#     description: "Archived release on Zenodo"
+# which mints a persistent DOI, also shown by the DOI badge at the top of the
+# README and on the repository Releases page. The concept DOI below always
+# resolves to the latest archived version; the identifier records the specific
+# v1.0.0 release.
+doi: 10.5281/zenodo.20612452
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.20612453
+    description: "Archived v1.0.0 release on Zenodo"

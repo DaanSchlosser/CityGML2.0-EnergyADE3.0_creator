@@ -3,7 +3,7 @@
 [![CI](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/actions/workflows/ci.yml/badge.svg)](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](pyproject.toml)
-[![DOI](https://zenodo.org/badge/1204296741.svg)](https://zenodo.org/badge/latestdoi/1204296741)
+[![DOI](https://zenodo.org/badge/1204296741.svg)](https://doi.org/10.5281/zenodo.20612452)
 
 A Python toolkit for generating CityGML 2.0 files extended with Energy
 ADE 3.0 (beta8), CityGML's extension mechanism for energy data. The
@@ -603,10 +603,12 @@ Bundled third-party components keep their own licences:
   [xsd/PROVENANCE.md](xsd/PROVENANCE.md) for the licences and the exact changes.
 
 To cite the software, use the metadata in [CITATION.cff](CITATION.cff) (GitHub
-renders a "Cite this repository" button from it). Once a tagged release is
-archived on Zenodo, its persistent DOI resolves through the **DOI** badge at
-the top of this README, and every archived version is listed on the
+renders a "Cite this repository" button from it). The releases are archived on
+Zenodo under the concept DOI
+[10.5281/zenodo.20612452](https://doi.org/10.5281/zenodo.20612452), which always
+resolves to the latest archived version; the v1.0.0 release has its own version
+DOI [10.5281/zenodo.20612453](https://doi.org/10.5281/zenodo.20612453). The
+**DOI** badge at the top of this README resolves to the latest version, and
+every archived version is listed on the
 [Releases](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/releases)
-page. The badge tracks the GitHub repository, not a fixed DOI number, so it
-always points at the latest archived version and no file in this repository
-needs editing after the release.
+page.
