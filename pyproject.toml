@@ -1,10 +1,15 @@
 [project]
 name = "citygml-energy"
-version = "0.5.0"
+version = "1.0.0"
 description = "CityGML 2.0 + Energy ADE 3.0 creator: generate standards-compliant GML from flat JSON input."
 requires-python = ">=3.12"
 dependencies = [
     "lxml>=5.0",
+    # Runtime dependency: the generated bindings import xsdata types
+    # (xsdata.models.datatype) and the model is serialised with xsdata. The
+    # ``[cli]`` codegen tooling stays in ``dev``; only the library is needed at
+    # runtime. Required by both the per-building and city pipelines.
+    "xsdata[lxml]>=24.0",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,27 @@
+# Docker does not read .gitignore, so the heavy or irrelevant paths are listed
+# here explicitly to keep the build context small and the build reproducible.
+
+# Version control and local virtualenv
+.git/
+.venv/
+**/__pycache__/
+*.pyc
+
+# Local and generated artifacts
+generated/
+deposit/
+dist/
+build/
+*.egg-info/
+
+# Large bundled tooling and data not needed to build or run the image.
+# The container bakes only the offline per-building inputs and the XSD set;
+# the city-scale inputs are mounted at runtime.
+KITModelViewer_V7.5.2_Build-3777/
+Energy_ADE-3.0beta8/fme/
+Energy_ADE-3.0beta8/documentation/
+Energy_ADE-3.0beta8/test_data/
+inputs/vegetation/
+inputs/solar_panels/
+inputs/cities/
+inputs/boundaries/

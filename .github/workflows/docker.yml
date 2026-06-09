@@ -1,0 +1,74 @@
+name: docker-image
+
+# Build, VERIFY, and publish the reproducible runtime image. The image is the
+# frozen computational environment referenced by the thesis reproducibility
+# appendix. It is published to the GitHub Container Registry on each release,
+# but only after it is proven to run offline (regenerate + validate the
+# per-building document with networking disabled), so a release can never ship
+# an image that builds yet fails at runtime.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-verify-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 1) Build the image and load it into the runner's Docker so it can be run.
+      #    No attestations here: provenance/SBOM manifests cannot be loaded.
+      - name: Build image for verification
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          provenance: false
+          tags: citygml-energy:ci
+          platforms: linux/amd64
+
+      # 2) Prove the image reproduces the per-building document with NO network.
+      #    Fails the job (and blocks the publish) if generation or validation breaks.
+      - name: Verify offline reproduction
+        run: |
+          docker run --rm --network none citygml-energy:ci \
+            sh -c "python examples/create_building.py && python tools/validate_xsd.py generated/NL-single-family-house.gml"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # ghcr image names must be lowercase; the repository slug has capitals.
+          images: ghcr.io/daanschlosser/citygml-energy
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+
+      # 3) Publish only after verification passed. Buildx reuses the cache from
+      #    step 1, so this is fast; attestations are attached to the pushed image.
+      - name: Build and push verified image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true

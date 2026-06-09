@@ -13,8 +13,8 @@ authors:
     given-names: Daan
     affiliation: "Delft University of Technology"
     email: daan.schlosser@gmail.com
-version: "0.5.0"
-date-released: "2026-06-03"
+version: "1.0.0"
+date-released: "2026-06-09"
 license: MIT
 repository-code: "https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator"
 keywords:
@@ -25,9 +25,11 @@ keywords:
   - GML
   - 3D city model
   - energy data
-# After archiving a tagged release on Zenodo (or the TU Delft 4TU.ResearchData
-# repository), record the DOI here so this entry resolves to a persistent,
-# citable version:
+# Each tagged release is archived on Zenodo through the GitHub integration,
+# which mints a persistent DOI. That DOI is shown by the DOI badge at the top
+# of the README and on the repository Releases page, so this file needs no
+# manual update after a release. To make GitHub's "Cite this repository"
+# button carry the DOI as well, you may optionally fill in the value below:
 # doi: 10.5281/zenodo.XXXXXXX
 # identifiers:
 #   - type: doi
