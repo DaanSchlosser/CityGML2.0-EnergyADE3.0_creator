@@ -18,7 +18,7 @@ pipeline maps:
 * ``gemiddeldElektriciteitsverbruikWoning`` — same lineage, **kWh /
   jaar / woning**, individuele aansluitingen only. Excludes
   collective consumption (lifts, gallery lighting) and excludes
-  self-generated electricity from rooftop PV.
+  self-generated electricity (e.g. from solar panels).
 
 CBS rounds both values to fifties and **suppresses** them when the
 postcode area contains fewer than 6 occupied dwellings (privacy rule).
@@ -147,7 +147,7 @@ class Postcode6Area:
             (``null`` / missing).
         gemiddeld_elektriciteitsverbruik_woning: same shape, kWh/year,
             individual connections only (excludes collective and
-            self-generated PV). Same sentinel-vs-null contract as the
+            self-generated electricity, e.g. from solar panels). Same sentinel-vs-null contract as the
             gas field.
         aantal_woningen: total dwellings registered in BAG for the
             postcode. ``None`` when missing. Surfaced for the builder

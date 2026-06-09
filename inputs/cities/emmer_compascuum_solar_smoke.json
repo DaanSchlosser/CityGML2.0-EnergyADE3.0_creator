@@ -6,7 +6,7 @@
   "include_addresses": true,
   "include_energy_labels": true,
   "cache_dir": "../../.cache/citygml_energy_city",
-  "output": "../../generated/emmer_compascuum_pv_smoke.gml",
+  "output": "../../generated/emmer_compascuum_solar_smoke.gml",
   "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
   "srs_dimension": 3,
   "city_model": {

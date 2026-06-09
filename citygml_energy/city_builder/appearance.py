@@ -15,7 +15,7 @@ toggle them in isolation:
 * :func:`append_vegetation_appearance` (theme ``"vegetation"``) —
   paints every solitary-vegetation object foliage-green.
 
-PV and vegetation share the same shape (one color, one theme, one
+Solar collectors and vegetation share the same shape (one color, one theme, one
 material over a set of targets) and route through
 :func:`_append_uniform_appearance`; the energy-label painter is
 genuinely different (per-letter grouping, multiple materials) and
@@ -219,7 +219,7 @@ def append_vegetation_appearance(
 
     The appearance lives under its own theme (``"vegetation"``) so the
     viewer's theme switcher can toggle it independently of building /
-    PV painting.
+    solar-collector painting.
 
     A no-op when the model contains no vegetation objects.
     """
@@ -278,7 +278,7 @@ def _append_uniform_appearance(
 ) -> None:
     """Append an ``app:Appearance`` with one ``app:X3DMaterial`` painting *targets* in *diffuse_color*.
 
-    Used by the PV and vegetation painters: both want exactly one color
+    Used by the solar-collector and vegetation painters: both want exactly one color
     over one set of targets, distinguished only by theme. The
     energy-label painter does its own multi-material construction (one
     material per averaged EPC letter) and does not route through this

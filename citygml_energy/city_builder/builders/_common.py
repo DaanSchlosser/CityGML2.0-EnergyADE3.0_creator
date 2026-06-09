@@ -42,7 +42,7 @@ UOM_VOLUME_M3: str = "m3"  # CUBIC_METRE primary id
 UOM_PERCENT: str = "percent"  # PERCENTAGE primary id (NOT "%", which is a sign-glyph)
 # DEGREE altId in UOMList.xml (primary id is "grad"; "deg" is the more
 # common ASCII synonym and is what the viewer's Properties panel
-# accepts as input for filters. Both PV-collector orientations and the
+# accepts as input for filters. Both solar-collector orientations and the
 # Energy ADE 3.0 ``bdgBdrySurf{Azimuth,Inclination}`` use this token.
 UOM_DEGREES: str = "deg"
 
