@@ -540,14 +540,14 @@ it, all offline:
 Or run the steps directly:
 
 ```powershell
-# Pull the published image (or `docker build -t citygml-energy:1.0.0 .` to build it)
-docker pull ghcr.io/daanschlosser/citygml-energy:1.0.0
+# Pull the published image (or `docker build -t citygml2.0-energyade3.0-beta8-creator:1.0.0 .` to build it)
+docker pull ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0
 
 # Regenerate the offline per-building document into ./out (no network needed)
-docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml-energy:1.0.0
+docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0
 
 # Validate the result against the bundled XSDs, still offline
-docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml-energy:1.0.0 `
+docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0 `
   python tools/validate_xsd.py generated/NL-single-family-house.gml
 ```
 
@@ -557,7 +557,7 @@ EP-Online key. Mount your inputs and `.env`, then call `create_city.py`:
 ```powershell
 docker run --rm --env-file .env `
   -v "${PWD}/inputs:/app/inputs" -v "${PWD}/generated:/app/generated" `
-  ghcr.io/daanschlosser/citygml-energy:1.0.0 `
+  ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0 `
   python examples/create_city.py --input inputs/cities/emmer-compascuum_small-area_no-energy-labels.json
 ```
 
@@ -566,7 +566,7 @@ even if the base image or wheels later change, archive the built image as a file
 alongside the Zenodo code release:
 
 ```powershell
-docker save ghcr.io/daanschlosser/citygml-energy:1.0.0 | gzip > citygml-energy-1.0.0-image.tar.gz
+docker save ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0 | gzip > citygml2.0-energyade3.0-beta8-creator-1.0.0-image.tar.gz
 ```
 
 ---

@@ -129,7 +129,7 @@ wheels = [
 ]
 
 [[package]]
-name = "citygml-energy"
+name = "citygml2-0-energyade3-0-beta8-creator"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [

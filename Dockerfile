@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 #
-# Reproducible runtime image for the citygml-energy toolkit
-# (CityGML 2.0 + Energy ADE 3.0 beta 8 generator).
+# Reproducible runtime image for the citygml2.0-energyade3.0-beta8-creator
+# toolkit (CityGML 2.0 + Energy ADE 3.0 beta 8 generator).
 #
 # The base image is pinned by digest and the Python environment is resolved
 # from uv.lock, so the build is deterministic: the same Dockerfile plus the

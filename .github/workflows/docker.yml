@@ -34,14 +34,14 @@ jobs:
           context: .
           load: true
           provenance: false
-          tags: citygml-energy:ci
+          tags: citygml2.0-energyade3.0-beta8-creator:ci
           platforms: linux/amd64
 
       # 2) Prove the image reproduces the per-building document with NO network.
       #    Fails the job (and blocks the publish) if generation or validation breaks.
       - name: Verify offline reproduction
         run: |
-          docker run --rm --network none citygml-energy:ci \
+          docker run --rm --network none citygml2.0-energyade3.0-beta8-creator:ci \
             sh -c "python examples/create_building.py && python tools/validate_xsd.py generated/NL-single-family-house.gml"
 
       - name: Log in to GitHub Container Registry
@@ -56,7 +56,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           # ghcr image names must be lowercase; the repository slug has capitals.
-          images: ghcr.io/daanschlosser/citygml-energy
+          images: ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest

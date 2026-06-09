@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
-title: "CityGML 2.0 + Energy ADE 3.0 Creator"
+title: "CityGML 2.0 + Energy ADE 3.0 (beta 8) GML files creator"
 abstract: >-
   A Python toolkit that generates CityGML 2.0 files extended with Energy ADE
   3.0 (beta 8) from flat JSON input plus STEP or CityJSON geometry. It runs a

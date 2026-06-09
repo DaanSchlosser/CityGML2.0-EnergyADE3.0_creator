@@ -10,7 +10,7 @@
 #   IMAGE=other:tag tools/reproduce.sh   # override the image reference
 set -eu
 
-IMAGE="${IMAGE:-ghcr.io/daanschlosser/citygml-energy:1.0.0}"
+IMAGE="${IMAGE:-ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0}"
 
 if [ "${1:-}" = "--build" ]; then
   echo "Building image from Dockerfile ..."
