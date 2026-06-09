@@ -197,6 +197,16 @@ def build_schema() -> dict[str, Any]:
         "additionalProperties": False,
         "properties": {
             "$schema": {"type": "string"},
+            "file_header": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Optional file banner (copyright / provenance / read-me) "
+                    "emitted as an XML comment between the XML declaration and "
+                    "the root element of the generated GML. Must not contain the "
+                    "'--' sequence (forbidden inside an XML comment)."
+                ),
+            },
             "city_model": {
                 "type": "object",
                 "additionalProperties": False,

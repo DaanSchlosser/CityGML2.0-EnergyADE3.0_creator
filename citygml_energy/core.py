@@ -62,6 +62,12 @@ class CityModel:
         # ``device_relations.apply_device_relations`` collapse the LoD
         # axis by picking the highest LoD present for the name.
         self.surface_name_index: dict[tuple[str, int], str] = {}
+        # Optional file-banner comment (copyright / provenance / read-me)
+        # emitted between the XML declaration and the root element on
+        # :meth:`write` / :meth:`to_string`. Populated from the input's
+        # top-level ``file_header`` key by the loader; ``None`` means no
+        # banner. Schema-invisible, so it never affects XSD validity.
+        self.file_header: str | None = None
 
     @property
     def xsd(self) -> XsdCityModel:
@@ -131,13 +137,32 @@ class CityModel:
         field = _resolve_bounded_by_field()
         setattr(self._model, field, BoundedBy(envelope=envelope))
 
-    def to_string(self, *, indent: str = "\t") -> str:
-        """Serialize to an XML string."""
-        return serialize_to_string(self._model, indent=indent)
+    def to_string(self, *, indent: str = "\t", header: str | None = None) -> str:
+        """Serialize to an XML string.
 
-    def write(self, filepath: str | Path, *, indent: str = "\t") -> None:
-        """Write the CityModel to a GML/XML file."""
-        serialize_to_file(self._model, filepath, indent=indent)
+        *header* overrides :attr:`file_header` for this call; when omitted,
+        the model's stored ``file_header`` (if any) is used.
+        """
+        return serialize_to_string(
+            self._model,
+            indent=indent,
+            header=self.file_header if header is None else header,
+        )
+
+    def write(
+        self, filepath: str | Path, *, indent: str = "\t", header: str | None = None
+    ) -> None:
+        """Write the CityModel to a GML/XML file.
+
+        *header* overrides :attr:`file_header` for this call; when omitted,
+        the model's stored ``file_header`` (if any) is used.
+        """
+        serialize_to_file(
+            self._model,
+            filepath,
+            indent=indent,
+            header=self.file_header if header is None else header,
+        )
 
 
 @cache

@@ -47,17 +47,56 @@ def _get_serializer(indent: str) -> XmlSerializer:
     return XmlSerializer(config=config, writer=XmlEventWriter)
 
 
-def serialize_to_string(obj: object, *, indent: str = "\t") -> str:
-    """Serialize an xsdata dataclass to an XML string."""
+def serialize_to_string(
+    obj: object, *, indent: str = "\t", header: str | None = None
+) -> str:
+    """Serialize an xsdata dataclass to an XML string.
+
+    When *header* is given, it is emitted as an XML comment placed between
+    the XML declaration and the root element (the conventional spot for a
+    file banner: copyright, provenance, read-me). The comment is invisible
+    to schema validation, so it never affects XSD validity.
+    """
     # NSMAP is a read-only mapping; xsdata does not mutate it. Passing the
     # module-level dict directly (rather than a copy) saves ~10 µs per call
     # and, more importantly, keeps the serializer's namespace context from
     # diverging from the repo-wide source of truth.
-    return _get_serializer(indent).render(obj, ns_map=NSMAP)
+    xml = _get_serializer(indent).render(obj, ns_map=NSMAP)
+    if header is not None:
+        xml = _inject_header_comment(xml, header)
+    return xml
 
 
-def serialize_to_file(obj: object, path: str | Path, *, indent: str = "\t") -> None:
+def serialize_to_file(
+    obj: object, path: str | Path, *, indent: str = "\t", header: str | None = None
+) -> None:
     """Serialize an xsdata dataclass to a GML/XML file."""
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(serialize_to_string(obj, indent=indent), encoding="utf-8")
+    output.write_text(
+        serialize_to_string(obj, indent=indent, header=header), encoding="utf-8"
+    )
+
+
+def _inject_header_comment(xml: str, header: str) -> str:
+    """Insert *header* as an XML comment after the XML declaration.
+
+    XML 1.0 forbids the ``--`` sequence inside a comment, so a header
+    carrying one would produce malformed output. We reject it loudly here
+    rather than silently emit an unparseable file. Validation upstream
+    (``input_loader``) catches this at load time; this guard covers any
+    other caller.
+    """
+    if "--" in header:
+        raise ValueError(
+            "file header may not contain the sequence '--' "
+            "(forbidden inside an XML comment)"
+        )
+    comment = f"<!--\n{header}\n-->"
+    marker = "?>"
+    idx = xml.find(marker)
+    if xml.startswith("<?xml") and idx != -1:
+        cut = idx + len(marker)
+        return f"{xml[:cut]}\n{comment}{xml[cut:]}"
+    # No XML declaration (e.g. xml_declaration disabled): prepend the banner.
+    return f"{comment}\n{xml}"

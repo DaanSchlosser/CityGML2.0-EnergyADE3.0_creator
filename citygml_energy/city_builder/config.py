@@ -35,7 +35,7 @@ class BuildContext:
     :class:`CityBuildConfig` (via :meth:`from_config` or
     :meth:`CityBuildConfig.build_context`) and threads it into every
     function that materialises xsdata features for the city: the
-    per-Pand builders, the PV-collector attach, the postcode6 attach,
+    per-Pand builders, the solar-collector attach, the postcode6 attach,
     and the vegetation attach. Carrying the trio (and the two related
     constants ``lods`` + ``municipality``) on one struct removes the
     per-call kwarg threading that previously leaked into every
@@ -168,6 +168,7 @@ class CityBuildConfig:
     city_model_name: str | None
     city_model_description: str | None
     gml_id_prefix: str
+    file_header: str | None = None
     solar_panels_source: SolarPanelsSource | None = None
     boundary_source: BoundarySource | None = None
     vegetation_source: VegetationSource | None = None
@@ -226,6 +227,7 @@ class CityBuildConfig:
 _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {
         "$schema",
+        "file_header",
         "municipality",
         "bbox",
         "boundary",
@@ -362,6 +364,19 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         if not isinstance(value, str):
             raise CityBuildError(f"{source}: city_model.{key} must be a string")
 
+    file_header = data.get("file_header")
+    if file_header is not None:
+        if not isinstance(file_header, str) or not file_header.strip():
+            raise CityBuildError(
+                f"{source}: file_header must be a non-empty string when provided"
+            )
+        # Emitted as an XML comment; XML 1.0 forbids '--' inside a comment.
+        if "--" in file_header:
+            raise CityBuildError(
+                f"{source}: file_header may not contain the sequence '--' "
+                f"(forbidden inside an XML comment)"
+            )
+
     gml_id_prefix = data.get("gml_id_prefix", "")
     if not isinstance(gml_id_prefix, str):
         raise CityBuildError(f"{source}: gml_id_prefix must be a string when provided")
@@ -401,6 +416,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         srs_dimension=srs_dimension,
         city_model_name=city_model.get("name"),
         city_model_description=city_model.get("description"),
+        file_header=file_header,
         gml_id_prefix=gml_id_prefix,
         solar_panels_source=solar_panels_source,
         boundary_source=boundary_source,

@@ -41,6 +41,22 @@ def test_valid_config_loads(tmp_path: Path) -> None:
     assert config.output_path.is_absolute()
 
 
+def test_file_header_parses(tmp_path: Path) -> None:
+    payload = _valid_config(tmp_path)
+    payload["file_header"] = "Banner\nCopyright (c) 2026 TU Delft. CC-BY-4.0 data, MIT toolkit."
+    config = load_city_config(_write(tmp_path / "c.json", payload))
+    assert config.file_header is not None
+    assert config.file_header.startswith("Banner")
+
+
+def test_file_header_with_double_hyphen_rejected(tmp_path: Path) -> None:
+    """A '--' in the header would produce an unparseable XML comment."""
+    payload = _valid_config(tmp_path)
+    payload["file_header"] = "valid line\nan illegal -- sequence"
+    with pytest.raises(CityBuildError, match="--"):
+        load_city_config(_write(tmp_path / "c.json", payload))
+
+
 def test_unknown_top_level_key_is_rejected(tmp_path: Path) -> None:
     payload = _valid_config(tmp_path)
     payload["unexpected"] = 42

@@ -53,6 +53,7 @@ _ALLOWED_TOP_LEVEL_KEYS = {
     "construction_mapping",
     "srs_name",
     "srs_dimension",
+    "file_header",
 }
 _ALLOWED_CITY_MODEL_KEYS = {"description", "name"}
 
@@ -125,6 +126,21 @@ def validate_feature_collection(
 
     if "$schema" in data and not isinstance(data["$schema"], str):
         raise InputFileError(f"{source}: $schema must be a string when provided")
+
+    if "file_header" in data:
+        file_header = data["file_header"]
+        if not isinstance(file_header, str) or not file_header.strip():
+            raise InputFileError(
+                f"{source}: file_header must be a non-empty string when provided"
+            )
+        # The header is emitted as an XML comment; XML 1.0 forbids '--'
+        # inside a comment, so reject it here rather than produce a file
+        # that no XML parser can read.
+        if "--" in file_header:
+            raise InputFileError(
+                f"{source}: file_header may not contain the sequence '--' "
+                f"(forbidden inside an XML comment)"
+            )
 
     city_model = data.get("city_model")
     if not isinstance(city_model, dict):
@@ -255,6 +271,9 @@ def build_city_model_from_feature_collection(
         gml_description=city_model_meta.get("description"),
         gml_name=city_model_meta.get("name"),
     )
+    # Optional file-banner comment, emitted on write between the XML
+    # declaration and the root element. Validated above.
+    model.file_header = data.get("file_header")
 
     # Two-phase build: first construct every object and index by id, then
     # attach children / promote roots. The split is required because a

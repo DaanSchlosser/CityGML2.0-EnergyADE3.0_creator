@@ -218,7 +218,7 @@ def _maybe_match_solar_panels(
 ) -> dict[str, list[ProjectedPanel]]:
     """Load + match + project solar panels once in the main process.
 
-    Empty dict when no PV source is configured, when LoD 2 is disabled
+    Empty dict when no solar-panel source is configured, when LoD 2 is disabled
     (there is nothing to attach to), or when no panels fall inside the
     bbox.
     """
@@ -588,6 +588,9 @@ def _assemble_city_model(
         gml_description=config.city_model_description,
         gml_name=config.city_model_name,
     )
+    # Optional file-banner comment (copyright / provenance / read-me),
+    # emitted on write between the XML declaration and the root element.
+    model.file_header = config.file_header
 
     inputs_per_pand = pand_executor.bundle_per_pand_inputs(
         panden=panden,
