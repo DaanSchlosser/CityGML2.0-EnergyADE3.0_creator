@@ -43,6 +43,16 @@ def build_schema() -> dict[str, Any]:
         "additionalProperties": False,
         "properties": {
             "$schema": {"type": "string"},
+            "file_header": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "Optional file banner (copyright / provenance / read-me) "
+                    "emitted as an XML comment between the XML declaration and "
+                    "the root element of the generated GML. Must not contain the "
+                    "'--' sequence (forbidden inside an XML comment)."
+                ),
+            },
             "municipality": {
                 "type": "string",
                 "minLength": 1,
@@ -169,9 +179,11 @@ def build_schema() -> dict[str, Any]:
                     "panel to the Building with the largest 2D LoD 2 roof "
                     "overlap. The technology-agnostic GenericSolarCollector is "
                     "emitted (rather than PhotovoltaicCollector) because the "
-                    "aerial-imagery source has no cell-type metadata. Geometry "
-                    "is stamped flat at the roof plane Z evaluated at the "
-                    "panel centroid plus z_offset_m."
+                    "aerial-imagery source has no cell-type metadata. Each "
+                    "panel is projected coplanar with the matched roof facet "
+                    "(every vertex dropped onto the roof plane, then offset "
+                    "along the roof normal by z_offset_m), so moduleArea is "
+                    "the true on-roof area, not the flat overhead footprint."
                 ),
                 "additionalProperties": False,
                 "required": ["path", "layer"],
@@ -195,8 +207,8 @@ def build_schema() -> dict[str, Any]:
                     "z_offset_m": {
                         "type": "number",
                         "description": (
-                            "Flat Z offset above the roof plane, in metres. "
-                            f"Defaults to {DEFAULT_Z_OFFSET_M}."
+                            "Offset from the roof plane along its normal, in "
+                            f"metres. Defaults to {DEFAULT_Z_OFFSET_M}."
                         ),
                     },
                 },
@@ -240,9 +252,12 @@ def build_schema() -> dict[str, Any]:
                     "geometry, groupMember xlinks to constituent "
                     "buildings, and up to two nrg3:Energy resources "
                     "(naturalGas m3/yr/dwelling, electricity "
-                    "kWh/yr/dwelling, type=actual). Suppressed CBS values "
-                    "(<6 occupied dwellings privacy rule) translate to "
-                    "no resource emitted."
+                    "kWh/yr/dwelling, type=actual). CBS sentinel values "
+                    "for the energy fields (-99995/-99997/-99999, e.g. the "
+                    "<6 occupied dwellings privacy rule) ride into "
+                    "nrg3:Energy/amount verbatim so a consumer can tell a "
+                    "suppressed cell from a real figure; the dwelling-count "
+                    "fields fold sentinels to absent."
                 ),
                 "additionalProperties": False,
                 "required": ["year"],
