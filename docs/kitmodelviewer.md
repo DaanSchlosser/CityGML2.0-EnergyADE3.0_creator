@@ -42,8 +42,8 @@ included.
   viewer, with the online `<import>` `schemaLocation` URLs rewritten to local
   relative paths (the fix above). It is therefore a modified copy in Apache-2.0
   terms.
-- `Data/UOMList.xml` is the KIT ModelViewer's unit-of-measurement configuration
+- `Data/UOMList.xml` is the KITModelViewer's unit-of-measurement configuration
   file (KIT IAI), extended by this project with three Energy ADE unit entries
   (`kWh/a`, `m3/a`, `W/W`); see the in-file comment dated 2026-05-27. It is
-  kept here only to document the viewer setup and carries the KIT ModelViewer's
+  kept here only to document the viewer setup and carries the KITModelViewer's
   own terms.
