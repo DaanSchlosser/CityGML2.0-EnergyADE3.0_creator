@@ -253,4 +253,11 @@ def _validate_polygon_geometry(geom: Any, *, context: str) -> Any:
     # cheap insurance against a non-noded vertex slipping through QGIS.
     if not geom.is_valid:
         geom = geom.buffer(0)
+        # The heal can collapse a hopeless ring (e.g. zero-area bowtie)
+        # to an empty geometry, whose all-NaN bounds would otherwise
+        # parameterise every downstream fetch.
+        if geom.is_empty:
+            raise CityBuildError(
+                f"{context} is invalid and healing produced an empty geometry; redraw the polygon"
+            )
     return geom

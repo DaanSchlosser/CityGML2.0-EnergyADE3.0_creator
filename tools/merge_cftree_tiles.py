@@ -44,37 +44,18 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Pull the existing parser so the merge step uses the exact same
-# dequantization rules the runtime loader does.
+# dequantization rules the runtime loader does, and the pipeline's own
+# boundary loader so the tool accepts exactly the boundary files the
+# city build does (a private copy here once drifted and rejected every
+# checked-in single-feature FeatureCollection).
 from citygml_energy._step import GeometryPolygon
+from citygml_energy.city_builder.boundary import BoundarySource, load_boundary_polygon
 from citygml_energy.city_builder.cityjson_trees_parse import (
     ParsedTree,
     parse_cftree_tile_file,
 )
 
 _LOG = logging.getLogger("merge_cftree_tiles")
-
-
-# ---------------------------------------------------------------------------
-# Boundary loader (single-Feature GeoJSON, EPSG:28992)
-# ---------------------------------------------------------------------------
-
-
-def _load_boundary(path: Path) -> Any:
-    """Load a single-Feature GeoJSON polygon as a shapely (Multi)Polygon."""
-    from shapely.geometry import shape
-
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if data.get("type") != "Feature":
-        raise ValueError(f"{path} must be a GeoJSON Feature; got type={data.get('type')!r}")
-    geom_dict = data.get("geometry")
-    if not geom_dict:
-        raise ValueError(f"{path} has no geometry")
-    geom = shape(geom_dict)
-    if geom.geom_type not in {"Polygon", "MultiPolygon"}:
-        raise ValueError(f"{path} must be (Multi)Polygon; got {geom.geom_type!r}")
-    if not geom.is_valid:
-        geom = geom.buffer(0)
-    return geom
 
 
 # ---------------------------------------------------------------------------
@@ -326,7 +307,10 @@ def main(argv: list[str] | None = None) -> int:
         "--boundary",
         required=True,
         type=Path,
-        help="Single-Feature GeoJSON polygon in EPSG:28992",
+        help=(
+            "GeoJSON (Multi)Polygon in EPSG:28992: a Feature or a "
+            "single-feature FeatureCollection (QGIS default export)"
+        ),
     )
     parser.add_argument(
         "--output",
@@ -353,7 +337,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     _LOG.info("Found %d tile file(s) under %s", len(tile_paths), args.case_dir)
 
-    boundary = _load_boundary(args.boundary)
+    boundary = load_boundary_polygon(BoundarySource(path=args.boundary))
 
     all_trees: list[ParsedTree] = []
     for tile_path in tile_paths:

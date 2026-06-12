@@ -36,6 +36,55 @@ from citygml_energy.city_builder.pipeline import filter_buildings_by_boundary
 # ---------------------------------------------------------------------------
 
 
+def test_checked_in_boundary_files_load_through_merge_tool() -> None:
+    """Regression: ``tools/merge_cftree_tiles.py`` once carried a stale
+    private boundary loader that only accepted a bare ``Feature`` and so
+    rejected every checked-in boundary file (all single-feature
+    ``FeatureCollection``s). The tool now delegates to
+    :func:`load_boundary_polygon`; this pins both that delegation and
+    that the real ``inputs/boundaries`` files keep loading through it.
+    """
+    from tools.merge_cftree_tiles import (
+        BoundarySource as ToolBoundarySource,
+    )
+    from tools.merge_cftree_tiles import (
+        load_boundary_polygon as tool_load_boundary,
+    )
+
+    assert tool_load_boundary is load_boundary_polygon
+
+    boundaries_dir = Path(__file__).resolve().parents[1] / "inputs" / "boundaries"
+    paths = sorted(boundaries_dir.glob("*.geojson"))
+    assert paths, "expected checked-in boundary files under inputs/boundaries"
+    for path in paths:
+        geom = tool_load_boundary(ToolBoundarySource(path=path))
+        assert geom.geom_type in {"Polygon", "MultiPolygon"}
+        assert geom.is_valid
+        assert geom.area > 0
+
+
+def test_load_boundary_polygon_rejects_ring_that_heals_to_empty(tmp_path: Path) -> None:
+    """A zero-area (collinear) ring is invalid and ``buffer(0)`` heals it
+    to an *empty* geometry whose bounds are all-NaN. That must raise,
+    not slip past the pre-heal ``is_empty`` check and parameterise every
+    downstream fetch with a NaN bbox.
+    """
+    import json
+
+    path = tmp_path / "boundary.geojson"
+    doc = {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[0, 0], [1, 1], [2, 2], [0, 0]]],
+        },
+    }
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(CityBuildError, match="empty"):
+        load_boundary_polygon(BoundarySource(path=path))
+
+
 def test_load_boundary_polygon_heals_concave_self_intersecting_ring(tmp_path: Path) -> None:
     """Hand-drawn concave rings sometimes come out of QGIS slightly
     non-noded; the loader must heal them with ``buffer(0)`` rather than
