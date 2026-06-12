@@ -61,24 +61,38 @@ def _qualified_areas_by_type(building: etree._Element, type_code: str) -> list:
     ]
 
 
-def test_diverging_gfa_entries_preserve_distinct_source_and_value(building):
-    """Two ``grossFloorArea`` entries must round-trip with distinct source+value.
+def _unit_areas_by_type(building: etree._Element, type_code: str) -> list:
+    """All ``<nrg3:QualifiedArea>`` on the BuildingUnit's ``nrg3:area`` slot."""
+    return [
+        area
+        for area in building.findall(
+            "nrg3:buildingUnit/nrg3:BuildingUnit/nrg3:area/nrg3:QualifiedArea", NS
+        )
+        if (t := area.find("nrg3:type", NS)) is not None and t.text == type_code
+    ]
 
-    This is the core multi-source claim: repeating the ``bdgArea`` element
-    with the same ``type`` code but different sources is the correct
-    encoding, and neither entry may collapse into the other during build
-    or serialization. The specific numeric areas are not asserted -- only
-    that both sides of the divergence survive.
+
+def test_diverging_nfa_entries_preserve_distinct_source_and_value(building):
+    """Two ``netFloorArea`` entries must round-trip with distinct source+value.
+
+    This is the core multi-source claim: repeating the qualified-area
+    element with the same ``type`` code but different sources is the
+    correct encoding, and neither entry may collapse into the other
+    during build or serialization. The divergence exemplar is the
+    BuildingUnit's usable area (BAG register vs measured model), since
+    BAG ``oppervlakte`` is a verblijfsobject attribute. The specific
+    numeric areas are not asserted -- only that both sides of the
+    divergence survive.
     """
-    gfa_entries = _qualified_areas_by_type(building, "grossFloorArea")
-    assert len(gfa_entries) == 2
+    nfa_entries = _unit_areas_by_type(building, "netFloorArea")
+    assert len(nfa_entries) == 2
 
     pairs = [
         (
             entry.find("nrg3:source", NS).text,
             float(entry.find("nrg3:value", NS).text),
         )
-        for entry in gfa_entries
+        for entry in nfa_entries
     ]
     sources, values = zip(*pairs, strict=True)
 
@@ -86,6 +100,8 @@ def test_diverging_gfa_entries_preserve_distinct_source_and_value(building):
     assert len(set(values)) == 2, f"values must differ, got {values}"
     for value in values:
         assert value > 0, f"area must be a positive magnitude, got {value}"
+    for entry in nfa_entries:
+        assert entry.find("nrg3:value", NS).get("uom") == "m2"
 
 
 def test_nfa_lives_on_the_building_unit_not_the_building(building):
@@ -94,34 +110,32 @@ def test_nfa_lives_on_the_building_unit_not_the_building(building):
     Energy ADE 3.0 ``BuildingUnit`` extends ``AbstractCityObjectSpace``,
     which natively carries ``area`` (``QualifiedAreaPropertyType``,
     ``maxOccurs="unbounded"``). ``Building`` carries ``bdgArea`` only as
-    an ADE extension on ``bldg:_AbstractBuilding``. The per-VBO usable
-    floor area (the BAG ``oppervlakteverblijfsobject`` analogue) is
-    semantically a unit-level fact, so it lives on the BuildingUnit;
-    the Building's ``bdgArea`` is reserved for whole-Pand totals
-    (``grossFloorArea`` from BAG-register vs. measurement model).
+    an ADE extension on ``bldg:_AbstractBuilding``. BAG ``oppervlakte``
+    is an attribute of the verblijfsobject (the NEN 2580
+    gebruiksoppervlakte of that VBO; a Pand registers no area at all),
+    so both the register value and its measured counterpart live on the
+    BuildingUnit. The Building's ``bdgArea`` is reserved for whole-Pand
+    totals: the single measured ``grossFloorArea``.
     """
     # The Building should carry no ``netFloorArea`` ``bdgArea`` entry.
     building_nfa = _qualified_areas_by_type(building, "netFloorArea")
     assert building_nfa == [], (
-        "netFloorArea moved to BuildingUnit/area in the EnergyADE 3.0 idiomatic "
-        "shape; Building.bdgArea now hosts only Pand-level totals (grossFloorArea)"
+        "netFloorArea belongs on BuildingUnit/area (BAG oppervlakte is a "
+        "verblijfsobject attribute); Building.bdgArea hosts only Pand-level totals"
     )
 
-    # The BuildingUnit should carry exactly one ``netFloorArea`` entry on
-    # ``nrg3:area`` (not ``bdgArea`` -- BuildingUnit's slot is just ``area``).
-    unit_nfa = building.findall(
-        "nrg3:buildingUnit/nrg3:BuildingUnit/nrg3:area/nrg3:QualifiedArea",
-        NS,
-    )
-    nfa_entries = [
-        a
-        for a in unit_nfa
-        if (t := a.find("nrg3:type", NS)) is not None and t.text == "netFloorArea"
-    ]
-    assert len(nfa_entries) == 1
-    value = nfa_entries[0].find("nrg3:value", NS)
-    assert value.get("uom") == "m2"
-    assert float(value.text) > 0
+    # The Building carries exactly one Pand-level total: the measured
+    # gross floor area (BAG registers no Pand-level area to diverge from).
+    building_gfa = _qualified_areas_by_type(building, "grossFloorArea")
+    assert len(building_gfa) == 1
+
+    # The BuildingUnit carries the register + measured pair.
+    nfa_entries = _unit_areas_by_type(building, "netFloorArea")
+    assert len(nfa_entries) == 2
+    for entry in nfa_entries:
+        value = entry.find("nrg3:value", NS)
+        assert value.get("uom") == "m2"
+        assert float(value.text) > 0
 
 
 def test_qualified_area_type_code_carries_codespace(building):

@@ -27,8 +27,8 @@ _Avoid_: unit, occupant unit (use BuildingUnit when naming the GML feature).
 ### Qualified quantities
 
 **Qualified attribute**:
-An `nrg3:Qualified…` wrapper (`QualifiedArea`, `QualifiedVolume`, `QualifiedHeight`) carrying one value together with its `type` and its source. When a quantity has diverging sources, each source is kept as its own qualified entry rather than reconciled into one number. The owner-occupier Building emits both the BAG gross floor area (122 m²) and the measured-model area (119.6 m²) as parallel `bdgArea` entries, so a downstream consumer picks the provenance it trusts.
-_Avoid_: collapsing the sources into a single "the" area, height, or volume.
+An `nrg3:Qualified…` wrapper (`QualifiedArea`, `QualifiedVolume`, `QualifiedHeight`) carrying one value together with its `type` and its source. When a quantity has diverging sources, each source is kept as its own qualified entry rather than reconciled into one number. The owner-occupier BuildingUnit emits both the BAG gebruiksoppervlakte (122 m², the register's per-VBO usable area) and the measured-model usable area (104.2 m²) as parallel `area` entries typed `netFloorArea`, so a downstream consumer picks the provenance it trusts; the Building keeps only the measured `grossFloorArea`, since BAG registers no Pand-level area.
+_Avoid_: collapsing the sources into a single "the" area, height, or volume; placing the BAG oppervlakte on the Building (it is a verblijfsobject attribute).
 
 ### Thermal zoning
 
