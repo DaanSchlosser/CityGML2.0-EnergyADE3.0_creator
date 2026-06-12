@@ -241,6 +241,115 @@ def test_fetch_bor_trees_follows_resultoffset_pagination(
     assert trees[-1].boom_id == "9999"
 
 
+def test_fetch_bor_trees_paginates_past_server_clamped_pages(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The live server clamps every page to its maxRecordCount (1000),
+    below the requested ``resultRecordCount`` (2000). A page shorter
+    than the request is therefore NOT a last-page signal; only
+    ``exceededTransferLimit`` going false is. An earlier version broke
+    on the first short page and silently truncated full-municipality
+    fetches at 1000 records.
+    """
+    pages = [
+        {
+            "features": [_bor_feature(i, float(i), 0.0) for i in range(1000)],
+            "exceededTransferLimit": True,
+        },
+        {
+            "features": [_bor_feature(1000 + i, float(i), 1.0) for i in range(1000)],
+            "exceededTransferLimit": True,
+        },
+        {
+            "features": [_bor_feature(2000 + i, float(i), 2.0) for i in range(500)],
+            "exceededTransferLimit": False,
+        },
+    ]
+    session = _make_session(tmp_path, monkeypatch, pages=pages)
+    trees = fetch_bor_trees(session, bbox=(0, 0, 10, 10))
+    assert len(trees) == 2500
+
+
+def test_fetch_bor_trees_stops_on_empty_page_even_with_flag_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Runaway guard: a server that returns an empty page while still
+    claiming ``exceededTransferLimit`` must end the walk, not loop.
+    """
+    session = _make_session(
+        tmp_path,
+        monkeypatch,
+        pages=[{"features": [], "exceededTransferLimit": True}],
+    )
+    assert fetch_bor_trees(session, bbox=(0, 0, 10, 10)) == []
+
+
+def test_fetch_bor_trees_degrades_gracefully_on_arcgis_error_body(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ArcGIS REST ships application errors as HTTP 200 with an
+    ``error`` body. That must hit the warn-and-return-[] path, not be
+    read as an empty forest via ``data.get("features")``.
+    """
+    session = _make_session(
+        tmp_path,
+        monkeypatch,
+        pages=[{"error": {"code": 400, "message": "Unable to complete operation."}}],
+    )
+    assert fetch_bor_trees(session, bbox=(0, 0, 10, 10)) == []
+
+
+def test_fetch_bor_trees_does_not_cache_arcgis_error_body(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A transient ArcGIS error must not poison the disk cache: the next
+    run should hit the network again and succeed.
+    """
+    cache_dir = tmp_path / "cache"
+    session = CachedSession(cache_dir=cache_dir, use_cache=True)
+    payloads = iter(
+        [
+            {"error": {"code": 500, "message": "transient"}},
+            {
+                "features": [_bor_feature(1, 264100.0, 537800.0)],
+                "exceededTransferLimit": False,
+            },
+        ]
+    )
+
+    class _FakeResponse:
+        status_code = 200
+
+        def __init__(self, payload: dict[str, Any]) -> None:
+            self._payload = payload
+
+        @property
+        def content(self) -> bytes:
+            import json as _json
+
+            return _json.dumps(self._payload).encode("utf-8")
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _FakeSession:
+        headers: ClassVar[dict[str, str]] = {}
+
+        def request(self, method: str, url: str, **kwargs: Any) -> _FakeResponse:
+            return _FakeResponse(next(payloads))
+
+    monkeypatch.setattr(session, "_session", _FakeSession())
+
+    assert fetch_bor_trees(session, bbox=(0, 0, 10, 10)) == []
+    assert list(cache_dir.glob("*.bin")) == [], "error body must not be cached"
+    trees = fetch_bor_trees(session, bbox=(0, 0, 10, 10))
+    assert len(trees) == 1, "next run must recover from the network"
+
+
 def test_fetch_bor_trees_degrades_gracefully_on_http_error(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

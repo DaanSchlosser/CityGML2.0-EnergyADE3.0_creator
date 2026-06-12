@@ -52,9 +52,15 @@ def fetch_municipality_outline(session: CachedSession, *, name: str) -> Municipa
     )
     for feature in features:
         props = feature.get("properties") or {}
-        feature_name = str(props.get("naam") or props.get("naam_officieel") or "").strip()
-        if feature_name.lower() == target:
-            return _build_outline(feature_name, feature, props)
+        naam = str(props.get("naam") or "").strip()
+        naam_officieel = str(props.get("naam_officieel") or "").strip()
+        # Both spellings are acceptable lookups: a user typing the
+        # official name ("'s-Gravenhage") must match a feature whose
+        # common name differs ("Den Haag"), not just fall back to the
+        # official field when the common one is absent.
+        candidates = {n.lower() for n in (naam, naam_officieel) if n}
+        if target in candidates:
+            return _build_outline(naam or naam_officieel, feature, props)
     raise ValueError(f"Municipality {name!r} not found in PDOK bestuurlijkegebieden")
 
 

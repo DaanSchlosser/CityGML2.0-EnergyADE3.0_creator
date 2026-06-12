@@ -17,13 +17,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import requests
+
+_LOGGER = logging.getLogger(__name__)
 
 USER_AGENT = "citygml-energy-city-builder/0.5"
 DEFAULT_TIMEOUT = 120.0
@@ -59,11 +64,13 @@ except ImportError:  # pragma: no cover, exercised when orjson is absent.
 
 @dataclass
 class CachedSession:
-    """HTTP session with on-disk caching keyed by (method, url, params).
+    """HTTP session with on-disk caching keyed by an explicit cache key.
 
-    Responses are stored as raw bytes next to a small JSON metadata file
-    so cached downloads survive restarts. Set ``use_cache=False`` to
-    bypass; useful for tests that monkeypatch the underlying session.
+    Responses are stored as raw bytes so cached downloads survive
+    restarts; writes go through a temp file + :func:`os.replace` so an
+    interrupted run can never leave a truncated entry behind. Set
+    ``use_cache=False`` to bypass; useful for tests that monkeypatch
+    the underlying session.
 
     **Mutability model.** ``CachedSession`` is a service object, not a
     value object. The configured fields (``cache_dir``, ``use_cache``,
@@ -137,14 +144,53 @@ class CachedSession:
         params: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         cache_key: str | None = None,
+        validate: Callable[[bytes], None] | None = None,
     ) -> bytes:
         """GET *url* and return the response body as bytes.
 
         If *cache_key* is given and :attr:`use_cache` is True the
         response is memoised to disk; subsequent calls with the same
         cache key skip the network entirely.
+
+        *validate*, when given, is called with the fresh response body
+        **before** it is written to the cache; raising from it both
+        propagates the error and keeps the bad payload out of the cache.
+        Needed for APIs (ArcGIS REST) that ship application errors with
+        HTTP 200, which ``raise_for_status`` cannot catch. Cached reads
+        skip validation: entries are validated-at-write by construction.
         """
-        return self._request("GET", url, params=params, headers=headers, cache_key=cache_key)
+        return self._request(
+            "GET", url, params=params, headers=headers, cache_key=cache_key, validate=validate
+        )
+
+    def cached_bytes(self, cache_key: str) -> bytes | None:
+        """Return the cached body for *cache_key*, or ``None`` when cold.
+
+        Never touches the network. Lets a fetcher whose cache identity
+        does not depend on the request URL (the EP-online bundle, whose
+        download URL rotates per vintage while the cache key is fixed)
+        skip the URL-discovery round-trip entirely on a warm cache,
+        which also removes the API-key and network requirement from
+        fully cached runs. Respects ``use_cache=False`` by reporting
+        cold.
+
+        Fixed-key entries never expire, so a hit logs the entry's date
+        and age; without that a months-old vintage would be served with
+        no signal at all.
+        """
+        cache_path = self._cache_path("GET", "", None, cache_key)
+        if cache_path is not None and cache_path.exists():
+            mtime = cache_path.stat().st_mtime
+            _LOGGER.info(
+                "Serving %r from the disk cache (entry dated %s, %d day(s) old); "
+                "delete %s to force a fresh download",
+                cache_key,
+                time.strftime("%Y-%m-%d", time.localtime(mtime)),
+                int((time.time() - mtime) / 86400),
+                cache_path,
+            )
+            return cache_path.read_bytes()
+        return None
 
     def get_json(
         self,
@@ -153,9 +199,12 @@ class CachedSession:
         params: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         cache_key: str | None = None,
+        validate: Callable[[bytes], None] | None = None,
     ) -> Any:
         """GET *url* and parse the response as JSON."""
-        raw = self.get_bytes(url, params=params, headers=headers, cache_key=cache_key)
+        raw = self.get_bytes(
+            url, params=params, headers=headers, cache_key=cache_key, validate=validate
+        )
         return loads_json(raw)
 
     # ------------------------------------------------------------------
@@ -170,6 +219,7 @@ class CachedSession:
         params: dict[str, Any] | None,
         headers: dict[str, str] | None,
         cache_key: str | None,
+        validate: Callable[[bytes], None] | None = None,
     ) -> bytes:
         cache_path = self._cache_path(method, url, params, cache_key)
         if cache_path is not None and cache_path.exists():
@@ -201,8 +251,19 @@ class CachedSession:
                 continue
             response.raise_for_status()
             body = response.content
+            if validate is not None:
+                validate(body)
             if cache_path is not None:
-                cache_path.write_bytes(body)
+                # Atomic publish: write to a pid-suffixed temp file in the
+                # same directory, then ``os.replace``. A crash mid-write
+                # leaves at worst an orphaned temp file, never a truncated
+                # cache entry that poisons every later run; the pid suffix
+                # keeps the parallel pand workers off each other's temp
+                # files (last replace wins, which is fine for identical
+                # responses).
+                tmp_path = cache_path.with_name(f"{cache_path.name}.{os.getpid()}.tmp")
+                tmp_path.write_bytes(body)
+                tmp_path.replace(cache_path)
             return body
 
         assert last_exc is not None

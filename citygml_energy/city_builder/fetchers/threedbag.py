@@ -34,8 +34,9 @@ from ..http import CachedSession, loads_json
 _LOG = logging.getLogger(__name__)
 # Cap concurrency to avoid flooding data.3dbag.nl and to keep CPU use sane
 # on shared machines. Real speedup plateaus around 4–8 on broadband; higher
-# counts just add contention.
-_TILE_FETCH_MAX_WORKERS = int(os.environ.get("CITYGML_ENERGY_3DBAG_WORKERS", "6"))
+# counts just add contention. Overridable via ``CITYGML_ENERGY_3DBAG_WORKERS``,
+# parsed leniently at fetch time by :func:`_tile_fetch_worker_cap`.
+_TILE_FETCH_DEFAULT_WORKERS = 6
 
 # Bump when the parsed-tile output shape changes in a way that older cache
 # entries would silently propagate. The content digest of the upstream ZIP
@@ -66,6 +67,31 @@ class Tile:
     bbox: tuple[float, float, float, float]  # EPSG:28992, from tile geometry
 
 
+def _tile_fetch_worker_cap() -> int:
+    """Return the tile-fetch concurrency cap, honouring the env override.
+
+    Same contract as :func:`citygml_energy.city_builder.pand_executor.
+    assembly_worker_count`: a malformed ``CITYGML_ENERGY_3DBAG_WORKERS``
+    never breaks a run. A non-integer value falls back to the default
+    with a warning; ``0`` and negative values mean "sequential" and
+    clamp to ``1`` (the previous ``int(...)`` at module import crashed
+    the import on garbage and ``ThreadPoolExecutor`` on ``0``).
+    """
+    raw = os.environ.get("CITYGML_ENERGY_3DBAG_WORKERS", "").strip()
+    if not raw:
+        return _TILE_FETCH_DEFAULT_WORKERS
+    try:
+        requested = int(raw)
+    except ValueError:
+        _LOG.warning(
+            "CITYGML_ENERGY_3DBAG_WORKERS=%r is not an integer; using the default of %d",
+            raw,
+            _TILE_FETCH_DEFAULT_WORKERS,
+        )
+        return _TILE_FETCH_DEFAULT_WORKERS
+    return max(1, requested)
+
+
 def fetch_tile_index(session: CachedSession, outline: BaseGeometry) -> list[Tile]:
     """Return every tile from the 3DBAG index that intersects *outline*.
 
@@ -82,15 +108,9 @@ def fetch_tile_index(session: CachedSession, outline: BaseGeometry) -> list[Tile
     bounds_key = "_".join(str(round(v)) for v in bounds)
     index_cache = session.cache_dir / f"3dbag_tile_index.{bounds_key}.json"
     if session.use_cache and index_cache.exists():
-        data = json.loads(index_cache.read_text(encoding="utf-8"))
-        return [
-            Tile(
-                tile_id=d["tile_id"],
-                download_url=d["download_url"],
-                bbox=tuple(d["bbox"]),
-            )
-            for d in data
-        ]
+        cached = _try_load_tile_index(index_cache)
+        if cached is not None:
+            return cached
 
     try:
         import flatgeobuf as fgb
@@ -117,16 +137,61 @@ def fetch_tile_index(session: CachedSession, outline: BaseGeometry) -> list[Tile
         tiles.append(Tile(tile_id=tile_id, download_url=download_url, bbox=bbox))
 
     if session.use_cache:
-        index_cache.write_text(
-            json.dumps(
-                [
-                    {"tile_id": t.tile_id, "download_url": t.download_url, "bbox": list(t.bbox)}
-                    for t in tiles
-                ]
-            ),
-            encoding="utf-8",
-        )
+        _try_save_tile_index(index_cache, tiles)
     return tiles
+
+
+def _try_load_tile_index(cache_path: Path) -> list[Tile] | None:
+    """Load the tile-index JSON cache, returning ``None`` on any failure.
+
+    Same contract as :func:`_try_load_parsed_tile`: a truncated write or
+    a hand-mangled file re-queries the index instead of failing the next
+    run on an unhandled ``JSONDecodeError``.
+    """
+    try:
+        data = json.loads(cache_path.read_text(encoding="utf-8"))
+        return [
+            Tile(
+                tile_id=str(d["tile_id"]),
+                download_url=str(d["download_url"]),
+                bbox=tuple(d["bbox"]),
+            )
+            for d in data
+        ]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        _LOG.warning(
+            "3DBAG tile-index cache %s unreadable (%s); re-querying the index",
+            cache_path.name,
+            exc,
+        )
+        return None
+
+
+def _try_save_tile_index(cache_path: Path, tiles: list[Tile]) -> None:
+    """Persist the tile index atomically. Best-effort: OSError is logged and swallowed.
+
+    pid-suffixed temp + ``Path.replace`` mirrors the body-cache write in
+    :mod:`citygml_energy.city_builder.http`: two builds sharing a cache
+    dir each write their own temp file, and the rename is atomic, so a
+    reader never sees a half-written index.
+    """
+    payload = json.dumps(
+        [
+            {"tile_id": t.tile_id, "download_url": t.download_url, "bbox": list(t.bbox)}
+            for t in tiles
+        ]
+    )
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = cache_path.with_name(f"{cache_path.name}.{os.getpid()}.tmp")
+        tmp.write_text(payload, encoding="utf-8")
+        tmp.replace(cache_path)
+    except OSError as exc:
+        _LOG.warning(
+            "3DBAG tile-index cache write to %s failed (%s); continuing without cache",
+            cache_path.name,
+            exc,
+        )
 
 
 def fetch_tile_cityjson(session: CachedSession, tile: Tile) -> dict[str, Any]:
@@ -165,7 +230,7 @@ def fetch_buildings_for_outline(
         return []
 
     buildings: list[ParsedBuilding] = []
-    workers = min(_TILE_FETCH_MAX_WORKERS, max(1, len(tiles)))
+    workers = min(_tile_fetch_worker_cap(), max(1, len(tiles)))
     if workers == 1:
         for tile in tiles:
             buildings.extend(_tile_parsed_buildings(session, tile))

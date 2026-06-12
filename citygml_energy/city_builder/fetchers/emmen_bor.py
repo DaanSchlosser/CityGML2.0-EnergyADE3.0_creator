@@ -72,10 +72,13 @@ BOR_FEATURESERVER_URL: str = (
 # catalog page over the API endpoint.
 BOR_INFORMATION_SYSTEM_URL: str = "https://gemeente.emmen.nl/erfgoed"
 
-# ArcGIS REST query is capped at 2000 features per request by the
-# server. Within Emmer-Compascuum the bbox returns ~700 features in
-# total; pagination here mostly serves to cover full-municipality
-# rebuilds without surprises.
+# Requested page size. The server clamps every page to its own
+# ``maxRecordCount`` (1000 for this layer as of writing), which may be
+# lower than what we ask for — pagination therefore trusts the
+# ``exceededTransferLimit`` flag, never the page length. Within
+# Emmer-Compascuum the bbox returns ~700 features in total; pagination
+# here mostly serves to cover full-municipality rebuilds without
+# surprises.
 _PAGE_SIZE: int = 2000
 
 # RD New WKID, expected by the FeatureServer for both ``inSR`` and
@@ -264,10 +267,19 @@ def _fetch_all_pages(
     """Walk every ``resultOffset`` page of the FeatureServer query.
 
     ArcGIS REST signals "no more pages" via
-    ``"exceededTransferLimit": false`` (or its absence). We loop until
-    a page either reports the limit was not exceeded or returns fewer
-    features than requested — both are unambiguous "this is the last
-    page" signals.
+    ``"exceededTransferLimit": false`` (or its absence), and that flag
+    is the **only** trustworthy signal: the server clamps each page to
+    its own ``maxRecordCount`` (1000 here), so a page shorter than the
+    requested ``resultRecordCount`` is *not* a last-page indicator —
+    treating it as one silently truncated full-municipality fetches at
+    1000 records. An empty page also stops the walk, purely as a guard
+    against a server that never clears the flag.
+
+    ArcGIS reports application errors as HTTP 200 with an ``error``
+    body. Each page is checked for that shape — at fetch time (so the
+    error never enters the disk cache) and after parse (so a
+    previously-cached error body still soft-fails loudly instead of
+    reading as "zero trees").
     """
     xmin, ymin, xmax, ymax = bbox
     base_params: dict[str, Any] = {
@@ -293,20 +305,47 @@ def _fetch_all_pages(
         params = dict(base_params)
         params["resultOffset"] = offset
         cache_key = bbox_cache_key("emmen_bor", bbox, page=page)
-        data = session.get_json(url, params=params, cache_key=cache_key)
+        data = session.get_json(
+            url, params=params, cache_key=cache_key, validate=_validate_arcgis_body
+        )
+        _raise_on_arcgis_error(data)
         page_features = data.get("features") or []
         collected.extend(page_features)
 
-        # Two complementary stop conditions: ArcGIS sets
-        # ``exceededTransferLimit`` when the page was capped at the
-        # server-side maximum, and a short page is the unambiguous
-        # "no more rows" signal even when the flag is missing.
+        # ``exceededTransferLimit`` means the server capped this page at
+        # its maxRecordCount and more rows remain; its absence (or an
+        # empty page, the runaway guard) ends the walk.
         more = bool(data.get("exceededTransferLimit"))
-        if not more or len(page_features) < _PAGE_SIZE:
+        if not more or not page_features:
             break
         offset += len(page_features)
 
     return collected
+
+
+def _raise_on_arcgis_error(data: Any) -> None:
+    """Raise :class:`ValueError` when *data* is an ArcGIS error body.
+
+    ArcGIS REST ships application failures (bad query, quota, internal
+    timeout) as HTTP 200 with ``{"error": {...}}``, invisible to
+    ``raise_for_status``. Raising here routes them onto the documented
+    warn-and-degrade path in :func:`fetch_bor_trees` instead of letting
+    ``data.get("features")`` read the failure as an empty forest.
+    """
+    if isinstance(data, dict) and "error" in data:
+        raise ValueError(f"ArcGIS error response: {data['error']!r}")
+
+
+def _validate_arcgis_body(body: bytes) -> None:
+    """Pre-cache validator: keep ArcGIS HTTP-200 error bodies off disk.
+
+    Runs inside :meth:`CachedSession.get_bytes` on fresh responses only,
+    so a transient server-side error is retried on the next run instead
+    of being replayed from the cache forever.
+    """
+    from ..http import loads_json
+
+    _raise_on_arcgis_error(loads_json(body))
 
 
 def _clean_string(value: Any) -> str | None:

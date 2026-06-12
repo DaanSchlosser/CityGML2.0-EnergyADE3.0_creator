@@ -20,12 +20,17 @@ import json
 from pathlib import Path
 from typing import Any, ClassVar
 
-import pytest  # noqa: TC002 (load-bearing at runtime: fixture types are runtime markers)
+import pytest
 
 from citygml_energy.city_builder.fetchers.threedbag import (
+    _TILE_FETCH_DEFAULT_WORKERS,
     Tile,
     _decompress_if_gzipped,
+    _tile_fetch_worker_cap,
+    _try_load_tile_index,
+    _try_save_tile_index,
     fetch_tile_cityjson,
+    fetch_tile_index,
 )
 from citygml_energy.city_builder.http import CachedSession
 
@@ -184,3 +189,100 @@ def test_tile_cache_key_replaces_slashes(
     )
     fetch_tile_cityjson(session, tile)
     assert captured["cache_key"] == "3dbag_9_200_300"
+
+
+# ---------------------------------------------------------------------------
+# Worker-count env override
+# ---------------------------------------------------------------------------
+
+
+def test_worker_cap_defaults_and_honours_valid_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("CITYGML_ENERGY_3DBAG_WORKERS", raising=False)
+    assert _tile_fetch_worker_cap() == _TILE_FETCH_DEFAULT_WORKERS
+    monkeypatch.setenv("CITYGML_ENERGY_3DBAG_WORKERS", "3")
+    assert _tile_fetch_worker_cap() == 3
+
+
+def test_worker_cap_tolerates_malformed_env_value(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``int(...)`` at module import crashed the whole import on a
+    non-integer value; the cap must fall back to the default instead,
+    matching :func:`pand_executor.assembly_worker_count`'s contract that
+    a malformed env var never breaks a run."""
+    monkeypatch.setenv("CITYGML_ENERGY_3DBAG_WORKERS", "six")
+    assert _tile_fetch_worker_cap() == _TILE_FETCH_DEFAULT_WORKERS
+
+
+def test_worker_cap_clamps_nonpositive_to_sequential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``0`` used to survive to ``ThreadPoolExecutor(max_workers=0)`` and
+    crash the fetch; zero / negative mean "sequential" and clamp to 1."""
+    for raw in ("0", "-4"):
+        monkeypatch.setenv("CITYGML_ENERGY_3DBAG_WORKERS", raw)
+        assert _tile_fetch_worker_cap() == 1
+
+
+# ---------------------------------------------------------------------------
+# Tile-index cache: tolerant load + atomic write
+# ---------------------------------------------------------------------------
+
+
+def test_tile_index_cache_round_trips(tmp_path: Path) -> None:
+    cache = tmp_path / "3dbag_tile_index.test.json"
+    tiles = [
+        Tile(
+            tile_id="9/200/300",
+            download_url="https://example.invalid/t.gz",
+            bbox=(0.0, 0.0, 1.0, 1.0),
+        )
+    ]
+    _try_save_tile_index(cache, tiles)
+    assert _try_load_tile_index(cache) == tiles
+    assert not list(tmp_path.glob("*.tmp"))  # temp file was renamed away
+
+
+def test_tile_index_cache_unreadable_returns_none(tmp_path: Path) -> None:
+    """A truncated cache write used to crash the next run with an
+    unhandled ``JSONDecodeError``; it must fall through to a re-query
+    instead, mirroring the parsed-tile pickle cache's contract."""
+    cache = tmp_path / "3dbag_tile_index.test.json"
+    cache.write_text('[{"tile_id": "9/200/300", "download_url"', encoding="utf-8")
+    assert _try_load_tile_index(cache) is None
+    cache.write_text('[{"tile_id": "9/200/300"}]', encoding="utf-8")  # missing keys
+    assert _try_load_tile_index(cache) is None
+
+
+def test_fetch_tile_index_recovers_from_corrupt_cache(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End-to-end: a corrupt on-disk index falls through to the (here
+    monkeypatched) FlatGeoBuf query and the atomic rewrite repairs the
+    cache file for the next run."""
+    flatgeobuf = pytest.importorskip("flatgeobuf")
+    shapely_geometry = pytest.importorskip("shapely.geometry")
+
+    class _FakeFeature:
+        properties: ClassVar[dict[str, str]] = {
+            "tile_id": "9/200/300",
+            "cj_download": "https://example.invalid/t.gz",
+        }
+        geometry = None
+
+    monkeypatch.setattr(flatgeobuf, "HTTPReader", lambda url, bbox: [_FakeFeature()])
+
+    session = CachedSession(cache_dir=tmp_path / "cache", use_cache=True)
+    outline = shapely_geometry.box(0.0, 0.0, 1000.0, 1000.0)
+    bounds_key = "_".join(str(round(v)) for v in outline.bounds)
+    index_cache = session.cache_dir / f"3dbag_tile_index.{bounds_key}.json"
+    index_cache.parent.mkdir(parents=True, exist_ok=True)
+    index_cache.write_text("{not json", encoding="utf-8")
+
+    tiles = fetch_tile_index(session, outline)
+    assert [t.tile_id for t in tiles] == ["9/200/300"]
+    # The corrupt file was repaired by the atomic rewrite.
+    assert _try_load_tile_index(index_cache) == tiles

@@ -126,6 +126,28 @@ def test_fetch_municipality_outline_walks_pages_until_match(
     assert outline.cbs_code == "0114"
 
 
+def test_fetch_municipality_outline_matches_official_name_spelling(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A user typing the official spelling ("'s-Gravenhage") must match a
+    feature whose common name differs ("Den Haag"). The official field is
+    an *alternative* spelling, not just a fallback for an absent ``naam``
+    (which is all the original ``naam or naam_officieel`` expressed)."""
+    feature = _municipality_feature("Den Haag", code="GM0518")
+    feature["properties"]["naam_officieel"] = "'s-Gravenhage"
+
+    session = _make_session(tmp_path, monkeypatch, pages=[{"features": [feature]}])
+    outline = fetch_municipality_outline(session, name="'s-GRAVENHAGE")
+    assert outline.name == "Den Haag"  # display prefers the common name
+    assert outline.cbs_code == "0518"
+
+    # The common spelling keeps working when both fields are present.
+    session = _make_session(tmp_path, monkeypatch, pages=[{"features": [feature]}])
+    outline = fetch_municipality_outline(session, name="den haag")
+    assert outline.name == "Den Haag"
+
+
 def test_fetch_municipality_outline_raises_when_not_found(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

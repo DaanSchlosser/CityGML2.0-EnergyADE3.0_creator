@@ -295,6 +295,49 @@ def test_paginate_features_passes_extra_params(
     assert call["params"]["cql_filter"] == "status='Pand in gebruik'"
 
 
+def test_paginate_features_rejects_page_size_outside_pdok_window(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PDOK clamps GetFeature pages at ``DEFAULT_PAGE_SIZE`` rows
+    regardless of the requested ``count``, so a larger page_size would
+    make every page look short and end the walk after one page (silent
+    truncation — the same failure shape as the Emmen-BOR record-count
+    clamp); ``0`` would never see a short page and loop forever. Both
+    must fail loudly before any request goes out."""
+    session, captured = _capturing_session(tmp_path, monkeypatch, pages=[])
+    for bad in (0, DEFAULT_PAGE_SIZE + 1):
+        with pytest.raises(ValueError, match="page_size"):
+            paginate_features(
+                session,
+                "https://example/wfs",
+                type_names="bag:pand",
+                cache_prefix="bag_pand",
+                page_size=bad,
+            )
+    assert captured == []  # rejected before any HTTP round trip
+
+
+def test_paginate_features_rejects_extra_params_that_shadow_paging_keys(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Overriding ``count`` / ``startIndex`` via ``extra_params`` would
+    desync the paging arithmetic; the docstring promises the paginator's
+    own keys are not overrideable, so a collision raises instead of
+    silently winning the ``dict.update``."""
+    session, captured = _capturing_session(tmp_path, monkeypatch, pages=[])
+    with pytest.raises(ValueError, match="extra_params"):
+        paginate_features(
+            session,
+            "https://example/wfs",
+            type_names="bag:pand",
+            cache_prefix="bag_pand",
+            extra_params={"count": 5},
+        )
+    assert captured == []
+
+
 # ---------------------------------------------------------------------------
 # count_matched_features: the resultType=hits probe that steers BAG bbox
 # subdivision before a doomed deep walk.

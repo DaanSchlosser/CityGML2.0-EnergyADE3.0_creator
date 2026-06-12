@@ -49,6 +49,24 @@ DEFAULT_PAGE_SIZE: int = 1000
 # CityGML envelope) all assume metric Dutch coordinates.
 DEFAULT_SRS_NAME: str = "EPSG:28992"
 
+# Query keys the paginator owns. ``extra_params`` may not collide with
+# these: overriding ``count``/``startIndex`` would desync the paging
+# arithmetic, and the rest define the request identity the cache key is
+# built from.
+_RESERVED_PARAM_KEYS: frozenset[str] = frozenset(
+    {
+        "service",
+        "version",
+        "request",
+        "typeNames",
+        "outputFormat",
+        "srsName",
+        "count",
+        "startIndex",
+        "bbox",
+    }
+)
+
 
 def paginate_features(
     session: CachedSession,
@@ -76,11 +94,33 @@ def paginate_features(
     being searched for) into the prefix: the cache identity should be
     "what the server returns," not "what the caller is looking for."
 
-    *extra_params* is folded into the WFS query after the standard
-    keys so a caller can add CQL filters or vendor extensions without
-    touching this module. The standard keys (``service``, ``version``,
-    ``typeNames``, …) are not overrideable from here.
+    *extra_params* is folded into the WFS query so a caller can add CQL
+    filters or vendor extensions without touching this module. The
+    paginator's own keys (``service``, ``version``, ``typeNames``,
+    ``count``, ``startIndex``, …) are not overrideable: a colliding key
+    raises :class:`ValueError`, because overriding ``count`` or
+    ``startIndex`` would silently desync the paging arithmetic.
+
+    *page_size* must stay within ``[1, DEFAULT_PAGE_SIZE]``. PDOK clamps
+    GetFeature pages at :data:`DEFAULT_PAGE_SIZE` rows regardless of the
+    requested ``count``, so a larger request would make every page look
+    "short", stop the walk after one page, and silently truncate the
+    result; ``0`` would never see a short page and loop forever. Both
+    are rejected loudly instead.
     """
+    if not 1 <= page_size <= DEFAULT_PAGE_SIZE:
+        raise ValueError(
+            f"page_size must be in [1, {DEFAULT_PAGE_SIZE}], got {page_size}: PDOK "
+            f"clamps GetFeature pages at {DEFAULT_PAGE_SIZE} rows, so a larger "
+            f"request would silently truncate after one short-looking page"
+        )
+    if extra_params:
+        clash = _RESERVED_PARAM_KEYS & extra_params.keys()
+        if clash:
+            raise ValueError(
+                f"extra_params may not override the paginator's own WFS keys: {sorted(clash)}"
+            )
+
     features: list[dict[str, Any]] = []
     start = 0
     while True:
