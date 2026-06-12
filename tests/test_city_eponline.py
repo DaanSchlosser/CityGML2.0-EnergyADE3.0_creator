@@ -545,7 +545,7 @@ class _NetworkForbidden:
         raise AssertionError("fetch_energy_labels touched the network despite a warm cache")
 
 
-def test_fetch_serves_warm_cache_without_network_or_api_key(tmp_path) -> None:
+def test_fetch_serves_warm_cache_without_network_or_api_key(tmp_path, monkeypatch) -> None:
     """The bundle cache key is fixed, so a warm cache must short-circuit
     the DownloadInfo round-trip (the only step needing the API key)."""
     from citygml_energy.city_builder.fetchers.eponline import fetch_energy_labels
@@ -565,12 +565,12 @@ def test_fetch_serves_warm_cache_without_network_or_api_key(tmp_path) -> None:
             return _SeedResponse()
 
     # Seed the cache through the public API (one fake network round-trip).
-    session._session = _SeedSession()  # documented test seam, see http.py
+    monkeypatch.setattr(session, "_session", _SeedSession())  # documented test seam, see http.py
     seeded = session.get_bytes("https://example.invalid/bundle", cache_key="ep_online_bundle")
     assert session.cached_bytes("ep_online_bundle") == seeded
 
     # From here on any network use fails the test; the API key is junk.
-    session._session = _NetworkForbidden()
+    monkeypatch.setattr(session, "_session", _NetworkForbidden())
     labels = fetch_energy_labels(session, api_key="not-a-real-key")
     assert len(labels) == 1
     assert labels[0].postcode == "2628CD"
@@ -586,7 +586,7 @@ def test_cached_bytes_reports_cold_and_respects_use_cache(tmp_path) -> None:
     assert uncached.cached_bytes("ep_online_bundle") is None
 
 
-def test_cached_bytes_warm_hit_logs_the_entry_age(tmp_path, caplog) -> None:
+def test_cached_bytes_warm_hit_logs_the_entry_age(tmp_path, caplog, monkeypatch) -> None:
     """A warm hit names the entry's date and age, so a months-old vintage
     is visible instead of being served silently forever (fixed-key entries
     never expire)."""
@@ -607,7 +607,7 @@ def test_cached_bytes_warm_hit_logs_the_entry_age(tmp_path, caplog) -> None:
         def request(self, *args: object, **kwargs: object) -> _SeedResponse:
             return _SeedResponse()
 
-    session._session = _SeedSession()  # documented test seam, see http.py
+    monkeypatch.setattr(session, "_session", _SeedSession())  # documented test seam, see http.py
     session.get_bytes("https://example.invalid/bundle", cache_key="ep_online_bundle")
 
     with caplog.at_level(logging.INFO, logger="citygml_energy.city_builder.http"):
