@@ -186,9 +186,19 @@ class _SurfaceRecord:
 
 @dataclass
 class _AttachmentBuckets:
-    """Intermediate state collected while walking classified STEP features."""
+    """Intermediate state collected while walking classified STEP features.
 
-    surface_data: dict[str, _SurfaceRecord]
+    ``surface_data`` keys the STEP layer name to *every* shell attached
+    under that name, in file order. A layer name may legitimately recur
+    within one source (a CAD layer holding several faces exports one
+    same-named shell per face; the canonical ZonePart STEPs carry two
+    ``GroundSurface_01`` shells each), and opening matching is geometric
+    (interior-ring overlap), so every record must stay a candidate — a
+    name-keyed single slot would silently drop the earlier shells'
+    polygons from matching.
+    """
+
+    surface_data: dict[str, list[_SurfaceRecord]]
     pending_openings: list[_ClassifiedFeature]
     solar_polygons: list[GeometryPolygon]
     solar_roof_parents: set[str]
@@ -828,6 +838,7 @@ def _process_classified_features(
                 parent_id_prefix=parent_id_prefix,
                 buckets=buckets,
                 register_surface_name_index=register_surface_name_index,
+                source_path=source_path,
             )
             continue
 
@@ -854,6 +865,7 @@ def _attach_surface(
     parent_id_prefix: str,
     buckets: _AttachmentBuckets,
     register_surface_name_index: bool = True,
+    source_path: Path,
 ) -> None:
     """Build one boundary surface, append it to the parent's surface list.
 
@@ -868,6 +880,15 @@ def _attach_surface(
     under the same STEP names would silently overwrite the building
     entries (the canonical input has ``RoofSurface_01`` shells in both
     the building's LoD3 export and the upstairs ZonePart export).
+
+    A layer name recurring *within one source* is legitimate (one shell
+    per face of a multi-face CAD layer); every shell is attached and
+    every record is kept as an opening-matching candidate. A layer name
+    recurring *on the model-wide index* (same name, same LoD, building
+    sources) is rejected instead: that name is the author-facing handle
+    ``related_to[installedOn]`` entries resolve through, and a
+    last-wins overwrite would silently re-target device relations to
+    whichever same-named shell happened to come last in file order.
     """
     assert feature.entry is not None
     gml_id = ctx.next_gml_id(parent_id_prefix, feature.entry.element_cls)
@@ -885,8 +906,8 @@ def _attach_surface(
     getattr(parent_obj, parent_list_field).append(
         surface_wrapper(**{feature.entry.field_name: surface})
     )
-    buckets.surface_data[feature.object_name] = _SurfaceRecord(
-        surface=surface, polygons=feature.polygons, gml_id=gml_id
+    buckets.surface_data.setdefault(feature.object_name, []).append(
+        _SurfaceRecord(surface=surface, polygons=feature.polygons, gml_id=gml_id)
     )
     if register_surface_name_index:
         # Expose (STEP-name, LoD) ↔ gml:id mapping on the model-wide index
@@ -898,6 +919,15 @@ def _attach_surface(
         # ``RoofSurface_01`` in both LoD 2 and LoD 3 STEPs but the two
         # refer to different physical faces, since LoD 3 numbers
         # sub-faces fresh and re-uses low indices).
+        existing = ctx.surface_name_index.get((feature.object_name, lod_level))
+        if existing is not None:
+            raise ValueError(
+                f"Geometry source {source_path} re-declares surface layer name "
+                f"{feature.object_name!r} at LoD {lod_level} (already registered "
+                f"as {existing!r}); a layer name must be unique per LoD across "
+                f"all building sources so 'installedOn' targets resolve "
+                f"unambiguously"
+            )
         ctx.surface_name_index[(feature.object_name, lod_level)] = gml_id
 
 
@@ -919,15 +949,27 @@ def _attach_pending_openings(
     ``nrg3:zoneOpening`` relation, matching the reference encoding.
     """
     lod_field = f"lod{lod_level}_multi_surface"
+    if buckets.pending_openings and lod_level < 3:
+        # CityGML 2.0 openings (bldg:Window/Door and their nrg3 zone
+        # twins) carry geometry only at LoD 3/4 — the element classes
+        # have no lod2 field, so without this guard the kwargs call
+        # below dies with an unhelpful TypeError.
+        names = sorted({f.entry.xsd_name for f in buckets.pending_openings if f.entry})
+        raise ValueError(
+            f"STEP geometry {source_path} declares opening shells "
+            f"({', '.join(names)}) at LoD {lod_level}, but CityGML 2.0 "
+            f"openings carry geometry only at LoD 3 or 4; move the "
+            f"Window/Door layers to the LoD 3 STEP file"
+        )
     for feature in buckets.pending_openings:
         assert feature.entry is not None
-        parent_step_name = _match_opening_to_parent(feature, buckets.surface_data)
-        if parent_step_name is None:
+        parent_record = _match_opening_to_parent(feature, buckets.surface_data)
+        if parent_record is None:
             raise ValueError(
                 f"Opening in {source_path} could not be matched to any parent "
                 f"surface by interior-ring geometry"
             )
-        parent_surface = buckets.surface_data[parent_step_name].surface
+        parent_surface = parent_record.surface
 
         gml_id = ctx.next_gml_id(parent_id_prefix, feature.entry.element_cls)
         opening_obj = feature.entry.element_cls(
@@ -1000,22 +1042,27 @@ def _attach_solar_panels(
 
 def _match_opening_to_parent(
     opening: _ClassifiedFeature,
-    surface_data: dict[str, _SurfaceRecord],
-) -> str | None:
-    """Return the STEP name of the surface whose interior ring matches *opening*.
+    surface_data: dict[str, list[_SurfaceRecord]],
+) -> _SurfaceRecord | None:
+    """Return the record of the surface whose interior ring matches *opening*.
 
     Openings are linked to surfaces geometrically: Rhino exports a window as
     a separate shell and punches its outline into the parent wall as an
     interior (hole) ring. We match by comparing the opening's exterior
     vertices to every surface's interior rings; the shared-edge floating-
     point noise is absorbed by rounding (:func:`_ring_vertex_key`).
+
+    Every record of a name is a candidate (a multi-face CAD layer
+    exports one same-named shell per face), so the match returns the
+    record itself rather than the non-unique layer name.
     """
     opening_keys = {_ring_vertex_key(p.exterior) for p in opening.polygons}
-    for step_name, record in surface_data.items():
-        for polygon in record.polygons:
-            for interior in polygon.interiors:
-                if _ring_vertex_key(interior) in opening_keys:
-                    return step_name
+    for records in surface_data.values():
+        for record in records:
+            for polygon in record.polygons:
+                for interior in polygon.interiors:
+                    if _ring_vertex_key(interior) in opening_keys:
+                        return record
     return None
 
 

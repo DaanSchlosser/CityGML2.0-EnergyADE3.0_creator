@@ -52,6 +52,20 @@ def test_flatten_ring_rejects_empty() -> None:
         flatten_ring([])
 
 
+def test_flatten_ring_forces_exact_closure_when_endpoints_straddle_the_grid() -> None:
+    """Endpoints within the closure tolerance (1e-9 m) can straddle a
+    rounding boundary of the 1 µm output grid; emitting both as-is
+    serialised first != last — an invalid ``gml:LinearRing`` that strict
+    viewers reject outright. The closing triplet must always be the
+    quantised first vertex, bit-for-bit."""
+    lo = 0.4999994999999996  # rounds to 0.499999 on the µm grid
+    hi = 0.4999995000000004  # rounds to 0.5; |hi - lo| ≈ 8e-16, well within tolerance
+    ring = [(lo, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (hi, 0.0, 0.0)]
+    flat = flatten_ring(ring)
+    assert len(flat) == 12  # treated as closed: no extra vertex appended
+    assert flat[:3] == flat[-3:]
+
+
 def test_open_ring_always_returns_a_new_list() -> None:
     closed = [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 0.0, 0.0)]
     result = open_ring(closed)

@@ -271,8 +271,10 @@ def build_envelope(
 def flatten_ring(ring: list[Coord3D]) -> list[float]:
     """Close a ring (first == last) and flatten into ``gml:posList`` floats.
 
-    A ring with a single vertex is rejected: every GML polygon needs at
-    least three points plus a closing vertex to be well-formed.
+    An empty ring is rejected; closure is guaranteed *on the output
+    grid* — the closing vertex is always emitted as the exact quantised
+    first vertex, never as a tolerance-equal near-duplicate that could
+    round to a different posList triplet.
 
     Uses :func:`itertools.chain.from_iterable` (C-level) to flatten
     rather than a nested ``[v for c in coords for v in c]``
@@ -281,10 +283,18 @@ def flatten_ring(ring: list[Coord3D]) -> list[float]:
     """
     if not ring:
         raise ValueError("Geometry rings must contain at least one coordinate")
+    flat = [_q(v) for v in chain.from_iterable(ring)]
     if points_close(ring[0], ring[-1]):
-        return [_q(v) for v in chain.from_iterable(ring)]
-    # Closed form: append the first point to the tail via chain, no copy.
-    return [_q(v) for v in chain.from_iterable(ring)] + [_q(v) for v in ring[0]]
+        # Closed by tolerance: re-emit the first vertex as the closing
+        # one. The endpoints may differ by up to the tolerance and
+        # straddle a quantisation boundary, which would serialise
+        # first != last — an invalid gml:LinearRing that strict viewers
+        # reject outright. Forcing the triplet guarantees closure on
+        # the output grid.
+        flat[-3:] = flat[:3]
+        return flat
+    # Open ring: append the (already quantised) first vertex to close it.
+    return flat + flat[:3]
 
 
 def open_ring(ring: list[Coord3D]) -> list[Coord3D]:

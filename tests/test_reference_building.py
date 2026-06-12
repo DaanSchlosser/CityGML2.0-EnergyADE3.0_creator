@@ -455,16 +455,21 @@ def test_simulated_monthly_pv_series_surpasses_measured(reference_building_root)
     )
 
 
-def test_pv_has_two_installed_on_relations_from_json(reference_building_root):
-    """PV panel array spans two roofs; both relations originate from the JSON.
+def test_pv_has_installed_on_relations_at_both_lods_from_json(reference_building_root):
+    """PV relations cover each covered roof surface in both LoD representations.
 
-    The input's ``related_to`` field declares two installedOn entries
-    targeting ``RoofSurface_01`` and ``RoofSurface_02``. Each resolves
-    after geometry attachment, producing one ``CityObjectRelation`` with
-    ``relationType="installedOn"`` per entry. Geometry alone no longer
-    drives these (every PV panel's STEP layer has ``|parent=RoofSurface_02``,
-    so a geometry-derived approach would emit only one relation). The
-    two distinct hrefs prove the JSON path is live.
+    The input's ``related_to`` field declares three installedOn entries:
+    one LoD-pinned ``{"name": "RoofSurface_02", "lod": 2}`` for the LoD2
+    host face, plus bare ``RoofSurface_01`` and ``RoofSurface_02``, which
+    resolve highest-LoD-wins to the two LoD3 faces the array spans. This
+    is the relation-multiplicity rule for cross-LoD installation links
+    (per the Energy ADE developer): repeat the relation per covered
+    surface so either LoD view resolves its own targets. Each entry
+    produces one ``CityObjectRelation`` with ``relationType="installedOn"``.
+    Geometry alone no longer drives these (every PV panel's STEP layer
+    has ``|parent=RoofSurface_02``, so a geometry-derived approach would
+    emit only one relation). The three distinct hrefs prove the JSON
+    path is live and the LoD pin resolves separately from the bare names.
     """
     relations = reference_building_root.findall(
         ".//nrg3:PhotovoltaicCollector/nrg3:relatedTo/nrg3:CityObjectRelation", NS
@@ -474,13 +479,13 @@ def test_pv_has_two_installed_on_relations_from_json(reference_building_root):
         for rel in relations
         if (rt := rel.find("nrg3:relationType", NS)) is not None and rt.text == "installedOn"
     ]
-    assert len(installed_on) == 2
+    assert len(installed_on) == 3
 
     hrefs = {
         rel.find("nrg3:relatedTo", NS).get("{http://www.w3.org/1999/xlink}href")
         for rel in installed_on
     }
-    assert len(hrefs) == 2, f"expected two distinct href targets, got {hrefs}"
+    assert len(hrefs) == 3, f"expected three distinct href targets, got {hrefs}"
     assert all(h and h.startswith("#") for h in hrefs)
 
 

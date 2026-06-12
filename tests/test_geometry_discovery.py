@@ -177,3 +177,67 @@ def test_geometry_module_does_not_import_schema_specific_classes() -> None:
         f"geometry.py re-imported schema-specific classes: {sorted(leaks)}. "
         f"Use citygml_energy.mapping.resolve_class(...) instead."
     )
+
+
+# ---------------------------------------------------------------------------
+# _attach_pending_openings LoD guard
+# ---------------------------------------------------------------------------
+
+
+def test_pending_openings_at_lod2_raise_a_clear_error() -> None:
+    """CityGML 2.0 openings carry geometry only at LoD 3/4: the binding
+    classes have no ``lod2_multi_surface`` field, so an LoD 2 STEP with
+    Window/Door shells previously died with a raw ``TypeError`` deep in
+    the kwargs call. The guard must turn that into an actionable
+    ``ValueError`` naming the offending element and the fix.
+    """
+    from pathlib import Path
+
+    import pytest
+
+    from citygml_energy._step import GeometryPolygon
+    from citygml_energy.geometry import (
+        _attach_pending_openings,
+        _AttachmentBuckets,
+        _ClassifiedFeature,
+        _RenderContext,
+    )
+
+    wrapper = _discover_wrapper(WallSurface2, "opening")
+    assert wrapper is not None
+    window_entry = _discover_property_map(wrapper)["Window"]
+
+    ctx = _RenderContext(
+        origin=(0.0, 0.0, 0.0),
+        srs_name="urn:ogc:def:crs:EPSG::28992",
+        srs_dimension=3,
+        type_counters={},
+        feature_index={},
+        surface_name_index={},
+    )
+    polygon = GeometryPolygon(
+        exterior=[(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 1.0), (0.0, 0.0, 0.0)],
+    )
+    buckets = _AttachmentBuckets(
+        surface_data={},
+        pending_openings=[
+            _ClassifiedFeature(
+                object_name="Window_01",
+                parent_name=None,
+                kind="opening",
+                entry=window_entry,
+                polygons=[polygon],
+            )
+        ],
+        solar_polygons=[],
+        solar_roof_parents=set(),
+        all_coordinates=[],
+    )
+    with pytest.raises(ValueError, match=r"LoD 2.*LoD 3"):
+        _attach_pending_openings(
+            ctx,
+            buckets=buckets,
+            parent_id_prefix="b1",
+            lod_level=2,
+            source_path=Path("walls_lod2.step"),
+        )
