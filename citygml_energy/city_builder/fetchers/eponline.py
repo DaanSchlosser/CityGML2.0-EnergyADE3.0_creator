@@ -314,22 +314,33 @@ def fetch_energy_labels(
     parsed-label pickle. A pickle for 5 M labels is half a gig on disk
     and tens of seconds of load time per run; filter-on-parse beats both
     reading the pickle and rewriting it on URL rotation.
-    """
-    # DownloadInfo is intentionally NOT cached: the download URL rotates with
-    # each vintage publication. Caching it would serve stale URLs indefinitely.
-    meta_raw = session.get_bytes(
-        DOWNLOAD_INFO_URL,
-        headers={"Authorization": api_key},
-    )
-    meta = json.loads(meta_raw.decode("utf-8"))
-    download_url = meta.get("downloadUrl") or meta.get("DownloadUrl")
-    if not download_url:
-        raise ValueError("EP-online DownloadInfo response is missing downloadUrl")
 
-    zip_bytes = session.get_bytes(
-        str(download_url),
-        cache_key="ep_online_bundle",
-    )
+    On a warm cache the function makes no network request at all: the
+    bundle's cache identity is the fixed key, not the rotating download
+    URL, so the DownloadInfo round-trip (the only step that needs the
+    API key) would discover a URL that is never used. Skipping it makes
+    fully cached runs work offline and without an API key. The hit is
+    logged with the entry's date and age, so serving a months-old
+    vintage is visible rather than silent.
+    """
+    zip_bytes = session.cached_bytes("ep_online_bundle")
+    if zip_bytes is None:
+        # DownloadInfo is intentionally NOT cached: the download URL rotates
+        # with each vintage publication. Caching it would serve stale URLs
+        # indefinitely.
+        meta_raw = session.get_bytes(
+            DOWNLOAD_INFO_URL,
+            headers={"Authorization": api_key},
+        )
+        meta = json.loads(meta_raw.decode("utf-8"))
+        download_url = meta.get("downloadUrl") or meta.get("DownloadUrl")
+        if not download_url:
+            raise ValueError("EP-online DownloadInfo response is missing downloadUrl")
+
+        zip_bytes = session.get_bytes(
+            str(download_url),
+            cache_key="ep_online_bundle",
+        )
     return _parse_csv_from_zip(zip_bytes, wanted_ids=wanted_ids, wanted_keys=wanted_keys)
 
 
@@ -648,10 +659,10 @@ def _iter_labels_from_text(
     around a zip entry (via :func:`_parse_csv_from_zip`).
 
     When *wanted_keys* is supplied, a **line-level postcode prefilter**
-    runs ahead of :func:`csv.reader`: we extract the raw first field
-    (EP-online always writes postcode as column 1 without quoting),
-    normalise it cheaply, and drop lines whose postcode isn't wanted
-    before paying the csv-tokenise cost. On the production 5 M-row file
+    runs ahead of :func:`csv.reader`: we slice the raw postcode field at
+    the column index resolved from the header (EP-online never quotes
+    that column), normalise it cheaply, and drop lines whose postcode
+    isn't wanted before paying the csv-tokenise cost. On the production 5 M-row file
     this cuts csv-parsing work by ~99 %. The id-only match path (BAG
     VBO-ID column) still works for rows whose postcode *is* in the
     wanted set; id-only matches on rows with a mismatched postcode are
@@ -678,7 +689,9 @@ def _iter_labels_from_text(
 
     if key_set is not None:
         postcode_set = frozenset(k[0] for k in key_set)
-        filtered_lines = _filter_lines_by_postcode(line_iter, postcode_set)
+        filtered_lines = _filter_lines_by_postcode(
+            line_iter, postcode_set, postcode_col_idx=idx["postcode"]
+        )
         reader = csv.reader(filtered_lines, delimiter=";")
     else:
         reader = csv.reader(line_iter, delimiter=";")
@@ -689,23 +702,40 @@ def _iter_labels_from_text(
 def _filter_lines_by_postcode(
     lines: Iterable[str],
     postcode_set: frozenset[str],
+    *,
+    postcode_col_idx: int,
 ) -> Iterable[str]:
-    """Yield only lines whose first semicolon-delimited field is a wanted postcode.
+    """Yield only lines whose Postcode column is a wanted postcode.
 
-    Runs before :func:`csv.reader`, so postcode-rejected lines cost one
-    ``str.find`` + one ``str.upper`` + one set lookup, with no tokenisation
-    and no Python-object allocation for the row cells.
+    The production EP-online CSV ships ``Postcode`` at column 12 (after
+    ``Registratiedatum;Opnamedatum;GeldigTot;…``), not column 0, so the
+    prefilter walks *postcode_col_idx* semicolons before slicing — the
+    str twin of :func:`_filter_bulk_bytes_by_postcode`. Runs before
+    :func:`csv.reader`, so postcode-rejected lines cost a few
+    ``str.find`` calls + one ``str.upper`` + one set lookup, with no
+    tokenisation and no Python-object allocation for the row cells.
 
     Normalisation matches :func:`citygml_energy.city_builder.address_key.normalise_postcode`
     (uppercase + internal whitespace stripped). EP-online never quotes
-    its postcode column, so the raw slice before the first ``;`` is
+    its postcode column, so the raw slice between semicolons is
     equivalent to the csv-parsed cell.
     """
     for line in lines:
-        sep = line.find(";")
-        if sep < 0:
+        # Walk to the start of the Postcode field by skipping
+        # `postcode_col_idx` semicolons, then read up to the next one.
+        start = 0
+        for _ in range(postcode_col_idx):
+            sep = line.find(";", start)
+            if sep < 0:
+                start = -1
+                break
+            start = sep + 1
+        if start < 0:
             continue
-        first = line[:sep]
+        end = line.find(";", start)
+        # A postcode in the trailing column has no closing ``;``; the
+        # strip below eats the newline.
+        first = line[start:end] if end >= 0 else line[start:]
         # Fast path: most EP-online postcodes are already tight-uppercase.
         if " " in first:
             first = first.replace(" ", "")

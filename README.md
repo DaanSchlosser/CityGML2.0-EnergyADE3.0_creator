@@ -248,8 +248,11 @@ The shipped configs reproduce the thesis runs, so they fetch live data and, for
 energy labels, need a free EP-Online API key (the one non-open input). Get a key
 from RVO (`epbdwebservices.rvo.nl`) and set `EP_ONLINE_API_KEY` in `.env` at the
 project root (git-ignored); or set `"include_energy_labels": false` to build from
-open data alone. For a fully offline run with no key and no network, use the
-per-building pipeline ([§3](#3-per-building-pipeline)).
+open data alone. The key is only used while the EP-Online bundle cache is cold:
+once `.cache/citygml_energy_city` holds the bundle, repeat runs skip the
+EP-Online network round-trip entirely and need neither the key nor a
+connection for that source. For a fully offline run with no key and no
+network, use the per-building pipeline ([§3](#3-per-building-pipeline)).
 
 ```powershell
 python -m pip install -e ".[city]"

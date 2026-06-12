@@ -177,7 +177,7 @@ Each Building + its child BuildingParts contributes geometries at up to three Lo
 
 ## 6. EP-Online `Mutatiebestand` CSV: Dutch energy-label register
 
-**Access:** two-step via `https://public.ep-online.nl/api/v5/Mutatiebestand/DownloadInfo?fileType=csv&xmlVersion=4` (needs `Authorization` header with the EP-Online API key) → ZIP URL → ~1 GB CSV inside the ZIP.
+**Access:** two-step via `https://public.ep-online.nl/api/v5/Mutatiebestand/DownloadInfo?fileType=csv&xmlVersion=4` (needs `Authorization` header with the EP-Online API key) → ZIP URL → ~1 GB CSV inside the ZIP. Cold-cache only: the ZIP is cached under a fixed key (the download URL rotates per vintage), so a warm cache serves the bundle without the DownloadInfo round-trip, the API key, or a network connection.
 **Fetcher and parser:** [`fetchers/eponline.py`](../citygml_energy/city_builder/fetchers/eponline.py).
 **Builders:** [`builders/epc.py`](../citygml_energy/city_builder/builders/epc.py), [`builders/building.py::build_building_unit`](../citygml_energy/city_builder/builders/building.py).
 **Per-resource energy emission:** [`energy_resources.py::attach_energy_resources_to_building_unit`](../citygml_energy/city_builder/energy_resources.py).

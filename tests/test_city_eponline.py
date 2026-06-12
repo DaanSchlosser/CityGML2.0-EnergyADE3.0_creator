@@ -117,6 +117,28 @@ def test_bulk_prefilter_matches_postcode_at_real_column_index() -> None:
     assert labels[0].energieklasse == "A"
 
 
+def test_streaming_prefilter_matches_postcode_at_real_column_index() -> None:
+    # Twin of the bulk-path regression above: parse_csv with wanted_keys
+    # routes through _filter_lines_by_postcode, which read column 0
+    # (Registratiedatum) instead of the resolved Postcode column and so
+    # silently dropped every row of a production-shape CSV.
+    from citygml_energy.city_builder.address_key import address_key
+
+    csv_text = _real_shape_csv(
+        b"20240101;20240101;20340101;Holder;RV;Final;Conv;No;W;A;B;1234;"
+        b"7881AA;42;;;0114010000000001;A;20240101;20240101;20340101",
+        b"20240101;20240101;20340101;Holder;RV;Final;Conv;No;W;A;B;1234;"
+        b"9999ZZ;99;;;unrelated;C;20240101;20240101;20340101",
+    ).decode("utf-8")
+    wanted_keys = {address_key("7881AA", 42, None, None)}
+
+    labels = parse_csv(csv_text, wanted_keys=wanted_keys)
+    assert len(labels) == 1, "streaming prefilter must not drop the matching row"
+    assert labels[0].postcode == "7881AA"
+    assert labels[0].huisnummer == 42
+    assert labels[0].energieklasse == "A"
+
+
 def test_bulk_prefilter_tolerates_spaces_and_lowercase_postcodes() -> None:
     from citygml_energy.city_builder.address_key import address_key
     from citygml_energy.city_builder.fetchers.eponline import parse_csv_from_bulk_bytes
@@ -499,3 +521,100 @@ def test_co2_is_placeholder_only_for_definitief_energielabel() -> None:
     assert _label_with_method("Nader Voorschrift, versie 1.0").co2_is_placeholder() is False
     assert _label_with_method("ISSO75.3, versie 3.0, oktober 2011").co2_is_placeholder() is False
     assert _label_with_method(None).co2_is_placeholder() is False
+
+
+# ---------------------------------------------------------------------------
+# Warm-cache fetch: no network, no API key
+# ---------------------------------------------------------------------------
+
+
+def _bundle_zip_bytes(csv_text: str) -> bytes:
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("mutatiebestand.csv", csv_text)
+    return buf.getvalue()
+
+
+class _NetworkForbidden:
+    """Stand-in requests.Session that fails the test on any request."""
+
+    def request(self, *args: object, **kwargs: object) -> object:
+        raise AssertionError("fetch_energy_labels touched the network despite a warm cache")
+
+
+def test_fetch_serves_warm_cache_without_network_or_api_key(tmp_path) -> None:
+    """The bundle cache key is fixed, so a warm cache must short-circuit
+    the DownloadInfo round-trip (the only step needing the API key)."""
+    from citygml_energy.city_builder.fetchers.eponline import fetch_energy_labels
+    from citygml_energy.city_builder.http import CachedSession
+
+    session = CachedSession(cache_dir=tmp_path)
+
+    class _SeedResponse:
+        status_code = 200
+        content = _bundle_zip_bytes(_csv("2628CD;42;;;;A++;20230514;20230501;20331231"))
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _SeedSession:
+        def request(self, *args: object, **kwargs: object) -> _SeedResponse:
+            return _SeedResponse()
+
+    # Seed the cache through the public API (one fake network round-trip).
+    session._session = _SeedSession()  # documented test seam, see http.py
+    seeded = session.get_bytes("https://example.invalid/bundle", cache_key="ep_online_bundle")
+    assert session.cached_bytes("ep_online_bundle") == seeded
+
+    # From here on any network use fails the test; the API key is junk.
+    session._session = _NetworkForbidden()
+    labels = fetch_energy_labels(session, api_key="not-a-real-key")
+    assert len(labels) == 1
+    assert labels[0].postcode == "2628CD"
+
+
+def test_cached_bytes_reports_cold_and_respects_use_cache(tmp_path) -> None:
+    from citygml_energy.city_builder.http import CachedSession
+
+    session = CachedSession(cache_dir=tmp_path)
+    assert session.cached_bytes("ep_online_bundle") is None
+
+    uncached = CachedSession(cache_dir=tmp_path, use_cache=False)
+    assert uncached.cached_bytes("ep_online_bundle") is None
+
+
+def test_cached_bytes_warm_hit_logs_the_entry_age(tmp_path, caplog) -> None:
+    """A warm hit names the entry's date and age, so a months-old vintage
+    is visible instead of being served silently forever (fixed-key entries
+    never expire)."""
+    import logging
+
+    from citygml_energy.city_builder.http import CachedSession
+
+    session = CachedSession(cache_dir=tmp_path)
+
+    class _SeedResponse:
+        status_code = 200
+        content = b"zip-bytes"
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _SeedSession:
+        def request(self, *args: object, **kwargs: object) -> _SeedResponse:
+            return _SeedResponse()
+
+    session._session = _SeedSession()  # documented test seam, see http.py
+    session.get_bytes("https://example.invalid/bundle", cache_key="ep_online_bundle")
+
+    with caplog.at_level(logging.INFO, logger="citygml_energy.city_builder.http"):
+        assert session.cached_bytes("ep_online_bundle") == b"zip-bytes"
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert any(
+        "'ep_online_bundle'" in message and "dated" in message and "delete" in message
+        for message in messages
+    )
