@@ -16,9 +16,9 @@ joins to miss, which is exactly the failure mode we want designed out.
 
 Hot-path note: :func:`normalise_postcode` is called once per CSV row
 (~5 M calls on the production EP-online file). Both normalisers
-short-circuit the already-clean case (no internal whitespace, already
-upper-cased) before falling through to the generic ``strip().upper()``
-path.
+short-circuit the already-clean case (alphanumeric and already
+upper-cased, checked with one C-level ``isalnum`` pass) before falling
+through to the generic strip-all-whitespace path.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ AddressKey = tuple[str, int, str | None, str | None]
 
 
 def normalise_postcode(raw: Any) -> str:
-    """Return *raw* upper-cased with internal whitespace stripped.
+    """Return *raw* upper-cased with all whitespace stripped.
 
     Empty / falsy input returns ``""``. Accepts any stringifiable value so
     the EP-online parser can feed CSV cells directly.
@@ -41,9 +41,13 @@ def normalise_postcode(raw: Any) -> str:
     if not raw:
         return ""
     if isinstance(raw, str):
-        if " " not in raw:
+        # ``isalnum`` is one C-level pass and excludes *all* whitespace
+        # (space, tab, CR, …), so the fast path can never disagree with
+        # the strip-everything slow path below — the literal ``" " not
+        # in raw`` check it replaces let a stray tab/CR ride through.
+        if raw.isalnum():
             return raw if raw.isupper() else raw.upper()
-        return raw.replace(" ", "").upper()
+        return "".join(raw.split()).upper()
     return "".join(str(raw).split()).upper()
 
 
@@ -55,7 +59,10 @@ def normalise_letter(raw: str | None) -> str | None:
     """
     if raw is None:
         return None
-    if raw and raw[0] != " " and raw[-1] != " " and raw.isupper():
+    # Fast path mirrors :func:`normalise_postcode`: alphanumeric (so no
+    # whitespace anywhere, not just no literal space at the ends) and
+    # already upper-cased.
+    if raw and raw.isalnum() and raw.isupper():
         return raw
     trimmed = raw.strip().upper()
     return trimmed or None
