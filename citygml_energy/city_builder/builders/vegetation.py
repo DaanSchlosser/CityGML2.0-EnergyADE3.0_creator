@@ -39,6 +39,7 @@ from ...gml_builders import build_multi_surface
 from ...mapping import resolve_class
 from ...namespaces import CS_EMMEN_BOR_TREES
 from ...schema_types import SOLITARY_VEGETATION_OBJECT
+from ...units import UOM_METRES
 from .._helpers import safe_gml_id, to_finite_float
 from ..cityjson_trees_parse import ParsedTree
 from ..config import BuildContext
@@ -52,7 +53,6 @@ from ..fetchers.emmen_bor import (
     BorTree,
     bor_feature_uri,
 )
-from ._common import UOM_METRES
 
 __all__ = ["build_solitary_vegetation_object"]
 

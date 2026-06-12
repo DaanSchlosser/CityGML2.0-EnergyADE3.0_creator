@@ -163,8 +163,8 @@ def test_heat_pump_validates(xsd_schema):
         model="NIBE F1255 PC",
         installed_power=MeasureType(value=6000, uom="W"),
         heat_source=CodeType(value="waterSource", code_space=CS_NRG3_HEAT_SOURCE),
-        cop_source_temperature=MeasureType(value=24, uom="degC"),
-        cop_operation_temperature=MeasureType(value=31, uom="degC"),
+        cop_source_temperature=MeasureType(value=24, uom="Cel"),
+        cop_operation_temperature=MeasureType(value=31, uom="Cel"),
     )
     building = Building(
         id="bldg_1",
@@ -214,7 +214,7 @@ def test_epc_validates(xsd_schema):
         id="epc_1",
         type_value=CodeType(value="EPC-NL", code_space=CS_NRG3_EPC_TYPE),
         label="A",
-        value=MeasureType(value=50, uom="kWh/(m^2*a)"),
+        value=MeasureType(value=50, uom="kWh/m2/a"),
     )
     building = Building(
         id="bldg_1",
@@ -245,7 +245,7 @@ def test_constant_value_schedule_validates(xsd_schema):
     schedule = ConstantValueSchedule(
         id="sched_1",
         type_value=CodeType(value="typicalYear", code_space=CS_NRG3_SCHEDULE_TYPE),
-        value=MeasureType(value=22, uom="degC"),
+        value=MeasureType(value=22, uom="Cel"),
     )
     zone_part = ZonePart(
         id="zp_1",

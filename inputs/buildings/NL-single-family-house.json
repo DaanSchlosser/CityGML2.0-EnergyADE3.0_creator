@@ -235,8 +235,8 @@
       "number_of_devices": 1,
       "installed_power": {"value": 6000, "uom": "W"},
       "heat_source": {"value": "verticalGroundCollector", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
-      "cop_source_temperature": {"value": 24, "uom": "C"},
-      "cop_operation_temperature": {"value": 31, "uom": "C"},
+      "cop_source_temperature": {"value": 24, "uom": "Cel"},
+      "cop_operation_temperature": {"value": 31, "uom": "Cel"},
       "nominal_efficiency": {"value": 5.5, "uom": "W/W"}
     },
     {
@@ -248,7 +248,7 @@
       "creation_date": "2026-05-02",
       "number_of_devices": 1,
       "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"},
-      "supply_temperature": {"value": 31, "uom": "C"}
+      "supply_temperature": {"value": 31, "uom": "Cel"}
     },
     {
       "type": "nrg3:ThermalStorageDevice",
@@ -260,7 +260,7 @@
       "number_of_devices": 1,
       "volume": {"value": 0.2, "uom": "m3"},
       "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"},
-      "preparation_temperature": {"value": 32, "uom": "C"}
+      "preparation_temperature": {"value": 32, "uom": "Cel"}
     },
     {
       "type": "nrg3:Occupants",
@@ -742,7 +742,7 @@
             "name": ["External wall (HSB timber frame, Rc=5.0)"],
             "description": "HSB buitengevel per arch. spec ('BUITENGEVEL opbouw RC 5.0 m2.K/W'). Outer-cladding (DCV) is supplier-delivered and its product is unspecified in the spec extract: the cladding layer is a generic timber placeholder. The 36x270 mm vuren stud cavity holds 260 mm of Naturoll 032 (120+140 mm); a ventilated 42 mm cavity behind the cladding is captured as a Gas layer per ISO 6946.",
             "type_value": {"value": "insulatedWoodenWall"},
-            "u_value": {"value": 0.20, "uom": "W/K*m2"},
+            "u_value": {"value": 0.20, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_ext_wall_L1", "description": "Binnenbekleding gipsvezelplaat 12 mm Fermacell", "thickness": {"value": 0.012, "uom": "m"}, "material": {"href": "#mat_fermacell_12mm"}}},
               {"layer": {"id": "constr_ext_wall_L2", "description": "Dampremmende laag PE folie 0.15 mm", "thickness": {"value": 0.00015, "uom": "m"}, "material": {"href": "#mat_pe_vapour_barrier"}}},
@@ -761,7 +761,7 @@
             "name": ["Ground floor (kanaalplaatvloer, Rc≈6.1)"],
             "description": "Begane grondvloer confirmed from CAD drawing as a prestressed kanaalplaatvloer spanning 8 m. Build-up from bottom (ground) to top (interior): 192 mm insulation below slab | 260 mm kanaalplaatvloer | 20 mm acoustic/decoupling layer (full-black in drawing) | 70 mm screed with embedded vloerverwarming. Computed Rc: 0.192/0.036 + 0.260/1.2 + 0.020/0.040 + 0.070/1.4 = 5.33 + 0.22 + 0.50 + 0.05 = 6.10 m²K/W, which exceeds the 'Begane grondvloer Rc=5.0 m2.K/W' Bouwbesluit minimum as expected for a nul-op-de-meter dwelling. The EPS insulation product and the exact 20 mm decoupling material are unconfirmed; see mapping_building.md § 16.",
             "type_value": {"value": "insulatedConcreteFloor"},
-            "u_value": {"value": 0.16, "uom": "W/K*m2"},
+            "u_value": {"value": 0.16, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_floor_L1", "description": "Dekvloer / screed 70 mm with embedded floor heating (vloerverwarming)", "thickness": {"value": 0.070, "uom": "m"}, "material": {"href": "#mat_screed"}}},
               {"layer": {"id": "constr_floor_L2", "description": "Ontkoppelingslaag / acoustic decoupling board 20 mm (full-black layer in CAD drawing; exact product unconfirmed)", "thickness": {"value": 0.020, "uom": "m"}, "material": {"href": "#mat_acoustic_sep_layer"}}},
@@ -776,7 +776,7 @@
             "name": ["Reed roof (sporendak tpv riet, Rc>6.0)"],
             "description": "Sporendaken tpv riet per arch. spec ('SPORENDAKEN TPV RIET opbouw RC >6.0 m2.K/W'). Sloped HSB rafter roof: 36x245 mm vuren C24 sporen h.o.h. 600 mm, 240 mm of Naturoll 032+035 (120 mm 032 inside, 120 mm 035 outside) between rafters, 15 mm OSB3 sub-deck, ~300 mm reed thatch as the outer covering. The reed thatch layer pushes the assembly Rc above 6.0 m²K/W per the spec.",
             "type_value": {"value": "insulatedThatchRoof"},
-            "u_value": {"value": 0.15, "uom": "W/K*m2"},
+            "u_value": {"value": 0.15, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_reed_roof_L1", "description": "Binnenbekleding 11 mm spaanplaat PRIME", "thickness": {"value": 0.011, "uom": "m"}, "material": {"href": "#mat_chipboard_prime_11mm"}}},
               {"layer": {"id": "constr_reed_roof_L2", "description": "Dampremmende laag PE folie 0.15 mm", "thickness": {"value": 0.00015, "uom": "m"}, "material": {"href": "#mat_pe_vapour_barrier"}}},
@@ -793,7 +793,7 @@
             "name": ["PV-paneled roof (sporendak tpv PV-panelen, Rc<6.0)"],
             "description": "Sporendaken tpv PV-panelen per arch. spec ('SPORENDAKEN TPV PV-PANELEN opbouw RC <6.0 m2.K/W'). Identical rafter-cavity insulation as the reed-roof variant (240 mm Naturoll 032+035) but the cold-side build-up is a PV decking instead of reed thatch: Morgo Top Solar membrane, 21x48 mm tengels (counter-battens forming a ventilated cavity), 22x100 mm ruwe vuren delen as the PV-mount deck. The PV panels themselves are modelled separately as nrg3:PhotovoltaicCollector (pv_panel_1) and are not part of this construction. Mapped to RoofSurface_06 / RoofSurface_07 via construction_mapping.by_id.",
             "type_value": {"value": "insulatedTimberRoof"},
-            "u_value": {"value": 0.18, "uom": "W/K*m2"},
+            "u_value": {"value": 0.18, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_pv_roof_L1", "description": "Binnenbekleding 11 mm spaanplaat PRIME", "thickness": {"value": 0.011, "uom": "m"}, "material": {"href": "#mat_chipboard_prime_11mm"}}},
               {"layer": {"id": "constr_pv_roof_L2", "description": "Dampremmende laag PE folie 0.15 mm", "thickness": {"value": 0.00015, "uom": "m"}, "material": {"href": "#mat_pe_vapour_barrier"}}},
@@ -811,7 +811,7 @@
             "name": ["Uninsulated reed sub-roof (sporendak tpv riet, ongeisoleerd)"],
             "description": "Sporendaken tpv riet ongeisoleerd per arch. spec ('SPORENDAKEN TPV RIET opbouw (ongeisoleerd)'): rafters 36x196 mm vuren C24 h.o.h. 600 mm and 15 mm OSB3 sub-deck, with reed thatch on top. No insulation, no inner cladding, no vapour barrier. Library entry only: this build-up most likely covers an unheated overhang or a thatched canopy; no roof surface in the current LOD3 geometry is mapped to it. See mapping_building.md § 16 (canonical-input gap log) for the unresolved geometric extent.",
             "type_value": {"value": "uninsulatedThatchRoof"},
-            "u_value": {"value": 0.27, "uom": "W/K*m2"},
+            "u_value": {"value": 0.27, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_uninsulated_reed_roof_L1", "description": "Sporen vuren C24 36x196 mm h.o.h. 600 mm: rafter cavity is open (no insulation per spec); modelled as a thin-air structural-cavity placeholder", "thickness": {"value": 0.196, "uom": "m"}, "material": {"href": "#mat_air_ventilated_cavity"}}},
               {"layer": {"id": "constr_uninsulated_reed_roof_L2", "description": "Bovenbekleding 15 mm OSB3 sub-deck", "thickness": {"value": 0.015, "uom": "m"}, "material": {"href": "#mat_osb3"}}},
@@ -825,7 +825,7 @@
             "name": ["First-floor deck (vloerelement 1e verdieping)"],
             "description": "Vloerelementen 1e verdieping per arch. spec: 38x285 mm vuren C24 balklaag h.o.h. 400 mm with 18 mm OSB3 veer-en-groef bovenplaat. No ceiling finish or acoustic underlay specified; library entry only - no InteriorFloorSurface in the current LOD3 envelope geometry. Documented for completeness so a future LOD4 zoning pass can reuse the build-up.",
             "type_value": {"value": "interiorTimberFloor"},
-            "u_value": {"value": 0.6, "uom": "W/K*m2"},
+            "u_value": {"value": 0.6, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_first_floor_L1", "description": "Joist-cavity placeholder: 38x285 mm vuren C24 balklaag h.o.h. 400 mm; modelled as ventilated-air cavity since no insulation or ceiling layer is specified", "thickness": {"value": 0.285, "uom": "m"}, "material": {"href": "#mat_air_ventilated_cavity"}}},
               {"layer": {"id": "constr_first_floor_L2", "description": "Bovenplaat 18 mm OSB3 met veer en groef", "thickness": {"value": 0.018, "uom": "m"}, "material": {"href": "#mat_osb3"}}}
@@ -838,7 +838,7 @@
             "name": ["Second-floor deck (vloerelement 2e verdieping)"],
             "description": "Vloerelementen 2e verdieping per arch. spec: 38x270 mm vuren C24 balklaag h.o.h. 400 mm with 18 mm OSB3 veer-en-groef bovenplaat. Library entry only - same status as constr_first_floor.",
             "type_value": {"value": "interiorTimberFloor"},
-            "u_value": {"value": 0.6, "uom": "W/K*m2"},
+            "u_value": {"value": 0.6, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_second_floor_L1", "description": "Joist-cavity placeholder: 38x270 mm vuren C24 balklaag h.o.h. 400 mm", "thickness": {"value": 0.270, "uom": "m"}, "material": {"href": "#mat_air_ventilated_cavity"}}},
               {"layer": {"id": "constr_second_floor_L2", "description": "Bovenplaat 18 mm OSB3 met veer en groef", "thickness": {"value": 0.018, "uom": "m"}, "material": {"href": "#mat_osb3"}}}
@@ -851,7 +851,7 @@
             "name": ["Stability internal wall (stabiliteitsbinnenwand)"],
             "description": "Stabiliteitsbinnenwanden per arch. spec: 11 mm spaanplaat V313 stability sheathing on one side of 38x89 mm vuren stijlen h.o.h. 600 mm. The opposite face is unsheathed in the spec extract; modelled as ventilated-air cavity since the actual finish (gypsum, fermacell, exposed?) is not stated. Library entry only - no InteriorWallSurface in the current LOD3 envelope geometry.",
             "type_value": {"value": "interiorWoodenWall"},
-            "u_value": {"value": 1.5, "uom": "W/K*m2"},
+            "u_value": {"value": 1.5, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_stability_int_wall_L1", "description": "Stabiliteitsplaat 11 mm spaanplaat V313", "thickness": {"value": 0.011, "uom": "m"}, "material": {"href": "#mat_chipboard_v313_11mm"}}},
               {"layer": {"id": "constr_stability_int_wall_L2", "description": "Open stud cavity 38x89 mm vuren stijlen h.o.h. 600 mm (no insulation per spec)", "thickness": {"value": 0.089, "uom": "m"}, "material": {"href": "#mat_air_ventilated_cavity"}}}
@@ -864,7 +864,7 @@
             "name": ["Internal partition wall (binnenwand)"],
             "description": "Binnenwanden per arch. spec: 38x89 mm vuren stijlen h.o.h. 600 mm (or 400 mm in wet rooms). No sheathing, insulation, or finish materials are stated in the drawing extract. Library entry only - no InteriorWallSurface in the current LOD3 envelope geometry.",
             "type_value": {"value": "interiorWoodenWall"},
-            "u_value": {"value": 2.0, "uom": "W/K*m2"},
+            "u_value": {"value": 2.0, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_int_wall_L1", "description": "Open stud cavity 38x89 mm vuren stijlen h.o.h. 600 mm (no finish specified)", "thickness": {"value": 0.089, "uom": "m"}, "material": {"href": "#mat_air_ventilated_cavity"}}}
             ]
@@ -876,7 +876,7 @@
             "name": ["Window HR++ (U=1.1, g=0.60)"],
             "description": "HR++ double glazing per arch. spec ('Beglazing: HR++, U=1.1 W/m2.K, ZTA 0,60'): 4 mm float / 16 mm argon / 4 mm low-e float. The frame-included U is variable (spec 'Kozijn incl. glas U=variabel min. 1,65 W/m2'); the value here (1.1) is the centre-of-glass U and the glazing_ratio captures the frame fraction.",
             "type_value": {"value": "doubleGlazedWindow"},
-            "u_value": {"value": 1.1, "uom": "W/K*m2"},
+            "u_value": {"value": 1.1, "uom": "W/(m2*K)"},
             "g_value": {"value": 0.60, "uom": "scale"},
             "glazing_ratio": {"value": 0.70, "uom": "scale"},
             "layer": [
@@ -892,7 +892,7 @@
             "name": ["Front door (U=1.43 incl frame)"],
             "description": "Insulated timber front door per arch. spec ('Voordeuren: U=1,43 W/m2.k (incl kozijn)'). The U-value includes the frame. Build-up of the door leaf is not detailed in the spec extract; the layer is a 54 mm timber-leaf placeholder so the per-surface Thickness attribute computes.",
             "type_value": {"value": "insulatedTimberDoor"},
-            "u_value": {"value": 1.43, "uom": "W/K*m2"},
+            "u_value": {"value": 1.43, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_front_door_L1", "thickness": {"value": 0.054, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
             ]
@@ -904,7 +904,7 @@
             "name": ["Back door (U=1.64 incl frame)"],
             "description": "Insulated timber back door per arch. spec ('Achterdeuren: U=1,64 W/m2.k (incl kozijn)'). The U-value includes the frame. Build-up of the door leaf is not detailed in the spec extract; the layer is a 48 mm timber-leaf placeholder.",
             "type_value": {"value": "insulatedTimberDoor"},
-            "u_value": {"value": 1.64, "uom": "W/K*m2"},
+            "u_value": {"value": 1.64, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_back_door_L1", "thickness": {"value": 0.048, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
             ]
@@ -923,28 +923,28 @@
           "constant_value_schedule": {
             "id": "zone_part_1_heating_schedule",
             "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-            "value": {"value": 22, "uom": "C"}
+            "value": {"value": 22, "uom": "Cel"}
           }
         },
         {
           "constant_value_schedule": {
             "id": "zone_part_1_cooling_schedule",
             "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-            "value": {"value": 24, "uom": "C"}
+            "value": {"value": 24, "uom": "Cel"}
           }
         },
         {
           "constant_value_schedule": {
             "id": "zone_part_2_heating_schedule",
             "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-            "value": {"value": 18, "uom": "C"}
+            "value": {"value": 18, "uom": "Cel"}
           }
         },
         {
           "constant_value_schedule": {
             "id": "zone_part_2_cooling_schedule",
             "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-            "value": {"value": 24, "uom": "C"}
+            "value": {"value": 24, "uom": "Cel"}
           }
         }
       ]

@@ -8,9 +8,10 @@ feature-type-specific code lives here.
 
 from __future__ import annotations
 
+import difflib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,7 @@ from .geometry import (
 )
 from .mapping import attach_child, build_from_dict, resolve_class
 from .namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
+from .units import REGISTERED_UOM_TOKENS
 
 __all__ = [
     "InputFileError",
@@ -163,6 +165,7 @@ def validate_feature_collection(
 
     for index, feature in enumerate(features):
         _validate_feature(feature, index, source)
+        _validate_uom_tokens(feature, index, source)
         gml_id = feature["id"].strip()
         if gml_id in feature_ids:
             raise InputFileError(f"{source}: features[{index}].id duplicates {gml_id!r}")
@@ -423,6 +426,68 @@ def _validate_feature(
             f"(must start with a letter or '_' and contain only letters, digits, "
             f"'.', '-', or '_'; no spaces or colons)"
         )
+
+
+def _iter_uom_declarations(node: Any, path: str) -> Iterator[tuple[str, Any]]:
+    """Yield ``(json_path, value)`` for every ``uom`` key under *node*.
+
+    Walks dicts and lists recursively, so nested measures (construction
+    library members under ``library_member``, time-series values, device
+    capacities) are all covered. The xsdata bindings use ``uom``
+    exclusively for the XML ``@uom`` attribute, so every hit is a unit
+    declaration by construction.
+    """
+    if isinstance(node, dict):
+        for key, value in node.items():
+            child = f"{path}.{key}"
+            if key == "uom":
+                yield child, value
+            else:
+                yield from _iter_uom_declarations(value, child)
+    elif isinstance(node, list):
+        for item_index, item in enumerate(node):
+            yield from _iter_uom_declarations(item, f"{path}[{item_index}]")
+
+
+def _validate_uom_tokens(feature: Mapping[str, Any], index: int, source: str) -> None:
+    """Reject ``uom`` declarations that are not registered catalog spellings.
+
+    Input ``uom`` strings reach the output GML verbatim, and the
+    project's wire-format contract (``citygml_energy/units.py``) is that
+    every emitted token resolves in the KITModelViewer unit catalog.
+    Without this gate an off-catalog token (``"m^2"``, ``"%"``) sails
+    through the build and XSD validation and is first flagged by the H6
+    output audit, which names the GML element rather than the input line
+    the author must fix. Checking here turns that into a load-time error
+    with the JSON path named.
+
+    Exact membership, no stripping: a whitespace-padded token would be
+    emitted padded and fail the H6 exact-match audit, so it is rejected
+    here too.
+    """
+    for path, value in _iter_uom_declarations(feature, f"features[{index}]"):
+        if not isinstance(value, str) or not value.strip():
+            raise InputFileError(
+                f"{source}: {path} must be a non-empty string naming a "
+                f"registered unit token (got {value!r})"
+            )
+        if value not in REGISTERED_UOM_TOKENS:
+            suggestions = difflib.get_close_matches(
+                value, sorted(REGISTERED_UOM_TOKENS), n=3, cutoff=0.6
+            )
+            hint = (
+                "; did you mean " + ", ".join(repr(s) for s in suggestions) + "?"
+                if suggestions
+                else ""
+            )
+            raise InputFileError(
+                f"{source}: {path} = {value!r} is not registered in the "
+                f"KITModelViewer unit catalog (Data/UOMList.xml){hint}. "
+                f"Catalog spellings avoid caret forms ('m2', not 'm^2') and "
+                f"the percent glyph ('percent', not '%'). A genuinely new "
+                f"unit is added to UOMList.xml and mirrored in "
+                f"REGISTERED_UOM_TOKENS (citygml_energy/units.py)."
+            )
 
 
 def _parse_related_to(

@@ -65,19 +65,19 @@ from ...schema_types import (
     BUILDING_UNIT,
     CITYGML_SURFACE_TYPES,
 )
-from .._helpers import safe_gml_id, to_float, to_int
-from ..address_match import ResolvedAddress
-from ..cityjson_parse import MIN_FACE_AREA_M2, ParsedBuilding, SemanticPolygon
-from ..config import BuildContext
-from ..energy_resources import attach_energy_resources_to_building_unit
-from ._common import (
+from ...units import (
     UOM_AREA_M2,
     UOM_DEGREES,
     UOM_METRES,
     UOM_PERCENT,
     UOM_VOLUME_M3,
-    inner_type,
 )
+from .._helpers import safe_gml_id, to_float, to_int
+from ..address_match import ResolvedAddress
+from ..cityjson_parse import MIN_FACE_AREA_M2, ParsedBuilding, SemanticPolygon
+from ..config import BuildContext
+from ..energy_resources import attach_energy_resources_to_building_unit
+from ._common import inner_type
 from .address import build_address
 from .epc import _apply_eponline_classification_to_building_unit, build_epc
 

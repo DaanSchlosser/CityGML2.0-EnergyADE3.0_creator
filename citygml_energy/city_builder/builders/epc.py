@@ -44,10 +44,10 @@ from ...namespaces import (
     CS_RVO_GEBOUWTYPE,
 )
 from ...schema_types import ENERGY_PERFORMANCE_CERTIFICATE
+from ...units import UOM_KWH_PER_M2_PER_A, UOM_MJ_PER_A
 from .._helpers import safe_gml_id
 from ..address_match import ResolvedAddress, _label_timestamp
 from ..config import BuildContext
-from ..energy_resources import UOM_KWH_PER_M2_PER_A, UOM_MJ_PER_A
 from ..fetchers.eponline import EnergyLabel
 
 __all__ = [

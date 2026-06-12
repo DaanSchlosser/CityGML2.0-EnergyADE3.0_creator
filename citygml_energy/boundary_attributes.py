@@ -31,13 +31,21 @@ Per-surface attributes emitted (BoundarySurface, when geometry present):
   effectively horizontal (azimuth is geometrically undefined there).
 * ``bdgBdrySurfThickness`` (m): Σ ``Layer.thickness`` over the
   LayeredConstruction referenced by the surface's
-  ``layeredConstruction`` xlink. Skipped when no construction is
-  mapped, or when no layer has a thickness.
+  ``layeredConstruction`` xlink. Each layer's declared ``@uom`` is
+  normalised to metres via :data:`citygml_energy.units.LENGTH`
+  (``mm`` / ``cm`` declarations convert; an unrecognised token skips
+  the layer with a warning). Skipped entirely when no construction is
+  mapped, or when no layer has a usable thickness.
 * ``bdgBdrySurfHeatCapacity`` (kJ/(K·m²)): areal thermal mass,
   ``Σᵢ thicknessᵢ · densityᵢ · cpᵢ / 1000`` over every solid layer of
-  the LayeredConstruction. Layers whose material lacks ``density`` or
+  the LayeredConstruction, with density and cp unit-normalised via
+  :data:`citygml_energy.units.DENSITY` and
+  :data:`citygml_energy.units.SPECIFIC_HEAT_CAPACITY` (so a datasheet
+  ``kJ/(kg*K)`` cp converts instead of silently entering the product
+  1000x off). Layers whose material lacks ``density`` or
   ``specificHeatCapacity`` (e.g. ``Gas`` panes inside a window cavity)
-  are excluded from the sum but **not** from ``Thickness``.
+  or declares them in an unrecognised unit are excluded from the sum
+  but **not** from ``Thickness``.
 
 Per-opening attributes emitted (Window/Door and the EnergyADE
 ZoneWindow/ZoneDoor, when geometry present):
@@ -105,22 +113,21 @@ from .derived_attributes import DerivedAttribute, DerivedContext, Setup
 from .gml_builders import newell_normal, open_ring, planar_surface_attributes
 from .mapping import iter_instances
 
+# uom tokens and read-side unit normalisation both come from the
+# package-wide vocabulary (:mod:`citygml_energy.units`), which also
+# documents each token's UOMList.xml registration.
+from .units import (
+    DENSITY,
+    LENGTH,
+    SPECIFIC_HEAT_CAPACITY,
+    UOM_AREA_M2,
+    UOM_DEGREES,
+    UOM_KJ_PER_K_M2,
+    UOM_METRES,
+    measure_value,
+)
+
 __all__ = ["EMITTERS", "SETUPS"]
-
-
-# uom strings used on the emitted elements. Wire-format follows the
-# project's conventions (no caret superscripts; ``m2`` instead of
-# ``m^2``; ``deg`` instead of "decimal degree"); see neighbouring
-# writes in :mod:`citygml_energy.city_builder.builders.building` for
-# the same tokens. ``kJ/(K*m2)`` is the SI-conformant areal heat
-# capacity token (``k`` = kilo prefix, ``K`` = kelvin per BIPM SI
-# Brochure §3.1; ISO 13786 building-physics convention is identical);
-# a typical wall sits at 50–500 kJ/(K·m²), so ``J/(K·m²)`` would push
-# values to 5–6 digits.
-_UOM_AREA_M2: str = "m2"
-_UOM_DEGREES: str = "deg"
-_UOM_METRES: str = "m"
-_UOM_HEAT_CAPACITY: str = "kJ/(K*m2)"
 
 # Decimal precisions: 3 dp on metric quantities (mm² / mm / kJ/(K·m²)),
 # 2 dp on angles. Coordinates entering this module were quantised to a
@@ -186,7 +193,7 @@ def _compute_total_area(surf: Any, ctx: DerivedContext) -> list[Any] | None:
     return [
         BdgBdrySurfTotalSurfaceArea(
             value=round(total, _DEC_AREA),
-            uom=_UOM_AREA_M2,
+            uom=UOM_AREA_M2,
         )
     ]
 
@@ -198,7 +205,7 @@ def _compute_opaque_area(surf: Any, ctx: DerivedContext) -> list[Any] | None:
     return [
         BdgBdrySurfOpaqueSurfaceArea(
             value=round(opaque, _DEC_AREA),
-            uom=_UOM_AREA_M2,
+            uom=UOM_AREA_M2,
         )
     ]
 
@@ -211,7 +218,7 @@ def _compute_inclination(surf: Any, ctx: DerivedContext) -> list[Any] | None:
     return [
         BdgBdrySurfInclination(
             value=round(inclination_deg, _DEC_ANGLE),
-            uom=_UOM_DEGREES,
+            uom=UOM_DEGREES,
         )
     ]
 
@@ -230,7 +237,7 @@ def _compute_azimuth(surf: Any, ctx: DerivedContext) -> list[Any] | None:
     return [
         BdgBdrySurfAzimuth(
             value=canonical,
-            uom=_UOM_DEGREES,
+            uom=UOM_DEGREES,
         )
     ]
 
@@ -242,7 +249,7 @@ def _compute_thickness(surf: Any, ctx: DerivedContext) -> list[Any] | None:
     return [
         BdgBdrySurfThickness(
             value=round(cinfo.thickness_m, _DEC_LENGTH),
-            uom=_UOM_METRES,
+            uom=UOM_METRES,
         )
     ]
 
@@ -254,7 +261,7 @@ def _compute_heat_capacity(surf: Any, ctx: DerivedContext) -> list[Any] | None:
     return [
         BdgBdrySurfHeatCapacity(
             value=round(cinfo.heat_capacity_kj_per_k_m2, _DEC_HEAT_CAPACITY),
-            uom=_UOM_HEAT_CAPACITY,
+            uom=UOM_KJ_PER_K_M2,
         )
     ]
 
@@ -274,7 +281,7 @@ def _compute_opening_area(opening: Any, ctx: DerivedContext) -> list[Any] | None
     total = _total_multisurface_area(opening)
     if total is None:
         return None
-    return [BdgOpnArea(value=round(total, _DEC_AREA), uom=_UOM_AREA_M2)]
+    return [BdgOpnArea(value=round(total, _DEC_AREA), uom=UOM_AREA_M2)]
 
 
 def _compute_opening_inclination(
@@ -288,7 +295,7 @@ def _compute_opening_inclination(
     return [
         BdgOpnInclination(
             value=round(inclination_deg, _DEC_ANGLE),
-            uom=_UOM_DEGREES,
+            uom=UOM_DEGREES,
         )
     ]
 
@@ -309,7 +316,7 @@ def _compute_opening_azimuth(
     return [
         BdgOpnAzimuth(
             value=canonical,
-            uom=_UOM_DEGREES,
+            uom=UOM_DEGREES,
         )
     ]
 
@@ -377,9 +384,11 @@ class _ConstructionInfo:
 
     Computed once per construction and reused across every surface that
     references it. Both fields are None when the underlying data is
-    insufficient (no thickness on any layer, or no solid material with
-    both density + cp), so callers can decide independently whether to
-    emit each ``bdgBdrySurf*`` element.
+    insufficient: no layer with a usable thickness, or no solid material
+    with both density + cp. "Usable" includes the unit check; a measure
+    whose ``@uom`` :func:`citygml_energy.units.measure_value` does not
+    recognise counts as absent (after a warning). Callers decide
+    independently whether to emit each ``bdgBdrySurf*`` element.
     """
 
     thickness_m: float | None
@@ -427,7 +436,26 @@ def _reduce_construction(
     construction: LayeredConstruction1,
     materials: dict[str, Any],
 ) -> _ConstructionInfo:
-    """Sum thickness + areal heat capacity over *construction*'s layers."""
+    """Sum thickness + areal heat capacity over *construction*'s layers.
+
+    Every measure read here goes through
+    :func:`citygml_energy.units.measure_value`, which normalises the
+    declared ``@uom`` into the SI base the formula expects (m, kg/m³,
+    J/(kg·K)) and warns-and-skips tokens it does not recognise. The
+    distinction matters because the plausible wrong declarations
+    (``mm`` thickness, ``kJ/(kg*K)`` datasheet heat capacity) are
+    themselves valid UOMList tokens, so only this read-side check can
+    catch them; the H6 output audit cannot.
+
+    Per-layer skip semantics: a layer whose *thickness* is absent or
+    unit-rejected is excluded from both sums (nothing about it can be
+    trusted into either figure); a layer whose *density* or *specific
+    heat capacity* is absent or unit-rejected still contributes its
+    thickness but not its heat capacity, the same shape as the Gas
+    case below.
+    """
+    gml_id = getattr(construction, "id", None)
+    ctx = f"LayeredConstruction {gml_id!r}" if isinstance(gml_id, str) else "LayeredConstruction"
     thickness_total = 0.0
     has_thickness = False
     heat_capacity_total = 0.0
@@ -436,7 +464,11 @@ def _reduce_construction(
         layer_inner = getattr(layer, "layer", None)
         if layer_inner is None:
             continue
-        thickness = _measure_value(getattr(layer_inner, "thickness", None))
+        layer_id = getattr(layer_inner, "id", None)
+        layer_ctx = f"{ctx}, layer {layer_id!r}" if isinstance(layer_id, str) else ctx
+        thickness = measure_value(
+            getattr(layer_inner, "thickness", None), LENGTH, context=layer_ctx
+        )
         if thickness is None:
             continue
         thickness_total += thickness
@@ -452,8 +484,10 @@ def _reduce_construction(
             # (argon ~1.78 kg/m³ · 520 J/(K·kg) · 0.016 m → 14.8 J/(K·m²),
             # versus glass ~2500 · 750 · 0.004 → 7500 J/(K·m²)).
             continue
-        density = _measure_value(material.density)
-        cp = _measure_value(material.specific_heat_capacity)
+        density = measure_value(material.density, DENSITY, context=layer_ctx)
+        cp = measure_value(
+            material.specific_heat_capacity, SPECIFIC_HEAT_CAPACITY, context=layer_ctx
+        )
         if density is None or cp is None:
             continue
         heat_capacity_total += thickness * density * cp
@@ -462,16 +496,6 @@ def _reduce_construction(
         thickness_m=thickness_total if has_thickness else None,
         heat_capacity_kj_per_k_m2=(heat_capacity_total / 1000.0 if has_heat_capacity else None),
     )
-
-
-def _measure_value(measure: Any | None) -> float | None:
-    """Return the numeric ``value`` on a ``gml:MeasureType``, or ``None``."""
-    if measure is None:
-        return None
-    value = getattr(measure, "value", None)
-    if isinstance(value, (int, float)):
-        return float(value)
-    return None
 
 
 def _resolve_material(

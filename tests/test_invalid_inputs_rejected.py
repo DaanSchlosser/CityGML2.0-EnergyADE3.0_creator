@@ -229,14 +229,14 @@ def test_rejects_cyclic_parent_chain(base_data: dict[str, Any], base_path: Path)
                 "id": "cycle_schedule_a",
                 "parent": "cycle_schedule_b",
                 "type_value": {"value": "typicalYear"},
-                "value": {"value": 20, "uom": "C"},
+                "value": {"value": 20, "uom": "Cel"},
             },
             {
                 "type": "nrg3:ConstantValueSchedule",
                 "id": "cycle_schedule_b",
                 "parent": "cycle_schedule_a",
                 "type_value": {"value": "typicalYear"},
-                "value": {"value": 21, "uom": "C"},
+                "value": {"value": 21, "uom": "Cel"},
             },
         ]
     )
@@ -528,3 +528,72 @@ def test_xsd_rejects_non_numeric_coordinates(base_data: dict[str, Any], base_pat
     schema = load_schema()
     with pytest.raises(etree.DocumentInvalid):
         schema.assertValid(doc)
+
+
+# ---------------------------------------------------------------------------
+# uom gate -- every declared unit token must be a registered catalog spelling.
+# ---------------------------------------------------------------------------
+
+
+def _first_uom_holder(node: Any) -> dict[str, Any] | None:
+    """Depth-first search for the first dict carrying a ``uom`` key."""
+    if isinstance(node, dict):
+        if "uom" in node:
+            return node
+        for value in node.values():
+            found = _first_uom_holder(value)
+            if found is not None:
+                return found
+    elif isinstance(node, list):
+        for item in node:
+            found = _first_uom_holder(item)
+            if found is not None:
+                return found
+    return None
+
+
+def test_rejects_off_catalog_uom_token_with_suggestion(
+    base_data: dict[str, Any], base_path: Path
+) -> None:
+    data = deepcopy(base_data)
+    holder = _first_uom_holder(data["features"])
+    if holder is None:
+        pytest.fail("fixture declares no uom anywhere")
+    holder["uom"] = "m^2"
+    with pytest.raises(
+        InputFileError,
+        match=r"not registered in the KITModelViewer unit catalog.*did you mean",
+    ):
+        _build(data, base_path)
+
+
+def test_rejects_percent_glyph_uom(base_data: dict[str, Any], base_path: Path) -> None:
+    data = deepcopy(base_data)
+    holder = _first_uom_holder(data["features"])
+    if holder is None:
+        pytest.fail("fixture declares no uom anywhere")
+    holder["uom"] = "%"
+    with pytest.raises(InputFileError, match=r"'percent', not '%'"):
+        _build(data, base_path)
+
+
+def test_rejects_whitespace_padded_uom(base_data: dict[str, Any], base_path: Path) -> None:
+    # A padded token would be emitted padded and fail the H6 exact-match
+    # audit, so the loader rejects it outright.
+    data = deepcopy(base_data)
+    holder = _first_uom_holder(data["features"])
+    if holder is None:
+        pytest.fail("fixture declares no uom anywhere")
+    holder["uom"] = " m2"
+    with pytest.raises(InputFileError, match=r"not registered in the KITModelViewer"):
+        _build(data, base_path)
+
+
+def test_rejects_non_string_uom(base_data: dict[str, Any], base_path: Path) -> None:
+    data = deepcopy(base_data)
+    holder = _first_uom_holder(data["features"])
+    if holder is None:
+        pytest.fail("fixture declares no uom anywhere")
+    holder["uom"] = 5
+    with pytest.raises(InputFileError, match=r"uom must be a non-empty string"):
+        _build(data, base_path)

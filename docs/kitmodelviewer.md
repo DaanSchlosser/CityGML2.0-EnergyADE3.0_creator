@@ -26,7 +26,11 @@ garbled.
    `http://schemas.opengis.net/citygml/.../<name>.xsd` URLs map to
    `<name>.xsd` in the same directory, except:
    - `http://schemas.opengis.net/gml/3.1.1/base/gml.xsd` → `../3.1.1/base/gml.xsd`
-3. Restart the KITModelViewer and reload the GML file.
+3. Replace `<KITModelViewer>/Data/UOMList.xml` with this repository's
+   [tracked copy](../KITModelViewer_V7.5.2_Build-3777/Data/UOMList.xml), so
+   every `@uom` token the emitted GMLs carry resolves to a unit name in the
+   Properties panel.
+4. Restart the KITModelViewer and reload the GML file.
 
 ## Provenance and licence of the tracked files
 
@@ -43,7 +47,7 @@ included.
   relative paths (the fix above). It is therefore a modified copy in Apache-2.0
   terms.
 - `Data/UOMList.xml` is the KITModelViewer's unit-of-measurement configuration
-  file (KIT IAI), extended by this project with three Energy ADE unit entries
-  (`kWh/a`, `m3/a`, `W/W`); see the in-file comment dated 2026-05-27. It is
-  kept here only to document the viewer setup and carries the KITModelViewer's
-  own terms.
+  file (KIT IAI), tracked in the version this project checks its emitted `@uom`
+  tokens against (audit check H6 and `tests/test_units.py`), so a viewer
+  install can use this copy directly. It carries the KITModelViewer's own
+  terms.

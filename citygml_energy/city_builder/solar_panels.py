@@ -68,7 +68,7 @@ from ..bindings import (
 )
 from ..gml_builders import build_multi_surface, newell_normal
 from ..namespaces import CS_NRG3_OTHER_RELATION_TYPE
-from .builders._common import UOM_AREA_M2, UOM_DEGREES
+from ..units import UOM_AREA_M2, UOM_DEGREES
 from .builders.building import (
     iter_lod2_thematic_classification,
     lod2_thematic_surface_gml_id,
@@ -96,13 +96,6 @@ DEFAULT_Z_OFFSET_M: float = 0.1
 # intersection math stays exact; we fail loudly on any other SRS id.
 _EXPECTED_SRS_ID: int = 28992
 _UNDEFINED_SRS_IDS: frozenset[int] = frozenset({0, -1})
-
-# uom tokens are shared with the building builder via
-# :mod:`builders._common`; they pin the KITModelViewer
-# UOMList.xml @id values so the viewer's Properties panel renders the
-# unit name rather than the raw token.
-_UOM_AREA_M2: str = UOM_AREA_M2
-_UOM_DEGREES: str = UOM_DEGREES
 
 # Below this, the roof is effectively horizontal and the azimuth is
 # numerically meaningless. 1e-6 is well below single-panel noise and
@@ -804,8 +797,8 @@ def _build_solar_collector(
     )
     collector = GenericSolarCollector(
         id=collector_gml_id,
-        module_area=AreaType(value=round(_on_roof_area_m2, 3), uom=_UOM_AREA_M2),
-        inclination=AngleType(value=round(panel.inclination_deg, 2), uom=_UOM_DEGREES),
+        module_area=AreaType(value=round(_on_roof_area_m2, 3), uom=UOM_AREA_M2),
+        inclination=AngleType(value=round(panel.inclination_deg, 2), uom=UOM_DEGREES),
         lod2_multi_surface=build_multi_surface(
             f"{collector_gml_id}_lod2",
             list(panel.lod2_polygons),
@@ -817,7 +810,7 @@ def _build_solar_collector(
         # round-then-mod 360: rounding 359.998 to 2 dp would otherwise
         # emit 360.0 and violate the [0, 360) bearing contract.
         canonical_az = round(panel.azimuth_deg, 2) % 360.0
-        collector.azimuth = AngleType(value=canonical_az, uom=_UOM_DEGREES)
+        collector.azimuth = AngleType(value=canonical_az, uom=UOM_DEGREES)
 
     rx, ry, rz = panel.reference_point
     collector.reference_point.append(

@@ -232,8 +232,8 @@
       "number_of_devices": 1,
       "installed_power": {"value": 4000.0, "uom": "W"},
       "heat_source": {"value": "verticalGroundCollector", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/HeatSourceValue.xml"},
-      "cop_source_temperature": {"value": 10.0, "uom": "C"},
-      "cop_operation_temperature": {"value": 40.0, "uom": "C"},
+      "cop_source_temperature": {"value": 10.0, "uom": "Cel"},
+      "cop_operation_temperature": {"value": 40.0, "uom": "Cel"},
       "nominal_efficiency": {"value": 4.5, "uom": "W/W"}
     },
     {
@@ -245,7 +245,7 @@
       "creation_date": "2000-01-03",
       "number_of_devices": 1,
       "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"},
-      "supply_temperature": {"value": 40.0, "uom": "C"}
+      "supply_temperature": {"value": 40.0, "uom": "Cel"}
     },
     {
       "type": "nrg3:ThermalStorageDevice",
@@ -257,7 +257,7 @@
       "number_of_devices": 1,
       "volume": {"value": 0.2, "uom": "m3"},
       "medium": {"value": "water", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/MediumTypeValue.xml"},
-      "preparation_temperature": {"value": 45.0, "uom": "C"}
+      "preparation_temperature": {"value": 45.0, "uom": "Cel"}
     },
     {
       "type": "nrg3:Occupants",
@@ -600,7 +600,7 @@
             "name": ["Sample construction 1"],
             "description": "Sample external wall.",
             "type_value": {"value": "insulatedWoodenWall"},
-            "u_value": {"value": 0.25, "uom": "W/K*m2"},
+            "u_value": {"value": 0.25, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_wall_L1", "thickness": {"value": 0.01, "uom": "m"}, "material": {"href": "#mat_gypsum_board"}}},
               {"layer": {"id": "constr_wall_L2", "description": "Sample insulation layer.", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_mineral_wool"}}},
@@ -614,7 +614,7 @@
             "name": ["Sample construction 2"],
             "description": "Sample ground floor.",
             "type_value": {"value": "groundSlab"},
-            "u_value": {"value": 0.25, "uom": "W/K*m2"},
+            "u_value": {"value": 0.25, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_floor_L1", "description": "Sample screed layer.", "thickness": {"value": 0.05, "uom": "m"}, "material": {"href": "#mat_screed"}}},
               {"layer": {"id": "constr_floor_L2", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_eps"}}},
@@ -628,7 +628,7 @@
             "name": ["Sample construction 3"],
             "description": "Sample roof.",
             "type_value": {"value": "insulatedThatchRoof"},
-            "u_value": {"value": 0.20, "uom": "W/K*m2"},
+            "u_value": {"value": 0.20, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_roof_L1", "thickness": {"value": 0.01, "uom": "m"}, "material": {"href": "#mat_gypsum_board"}}},
               {"layer": {"id": "constr_roof_L2", "description": "Sample insulation layer.", "thickness": {"value": 0.20, "uom": "m"}, "material": {"href": "#mat_mineral_wool"}}},
@@ -643,7 +643,7 @@
             "name": ["Sample construction 4"],
             "description": "Sample window.",
             "type_value": {"value": "doubleGlazedWindow"},
-            "u_value": {"value": 1.00, "uom": "W/K*m2"},
+            "u_value": {"value": 1.00, "uom": "W/(m2*K)"},
             "g_value": {"value": 0.50, "uom": "scale"},
             "glazing_ratio": {"value": 0.50, "uom": "scale"},
             "layer": [
@@ -659,7 +659,7 @@
             "name": ["Sample construction 5"],
             "description": "Sample front door.",
             "type_value": {"value": "insulatedTimberDoor"},
-            "u_value": {"value": 1.50, "uom": "W/K*m2"},
+            "u_value": {"value": 1.50, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_front_door_L1", "thickness": {"value": 0.05, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
             ]
@@ -671,7 +671,7 @@
             "name": ["Sample construction 6"],
             "description": "Sample back door.",
             "type_value": {"value": "insulatedTimberDoor"},
-            "u_value": {"value": 1.50, "uom": "W/K*m2"},
+            "u_value": {"value": 1.50, "uom": "W/(m2*K)"},
             "layer": [
               {"layer": {"id": "constr_back_door_L1", "thickness": {"value": 0.05, "uom": "m"}, "material": {"href": "#mat_timber_door"}}}
             ]
@@ -690,28 +690,28 @@
           "constant_value_schedule": {
             "id": "zone_part_1_heating_schedule",
             "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-            "value": {"value": 20.0, "uom": "C"}
+            "value": {"value": 20.0, "uom": "Cel"}
           }
         },
         {
           "constant_value_schedule": {
             "id": "zone_part_1_cooling_schedule",
             "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-            "value": {"value": 26.0, "uom": "C"}
+            "value": {"value": 26.0, "uom": "Cel"}
           }
         },
         {
           "constant_value_schedule": {
             "id": "zone_part_2_heating_schedule",
             "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-            "value": {"value": 16.0, "uom": "C"}
+            "value": {"value": 16.0, "uom": "Cel"}
           }
         },
         {
           "constant_value_schedule": {
             "id": "zone_part_2_cooling_schedule",
             "type_value": {"value": "typicalYear", "code_space": "http://3dcities.bk.tudelft.nl/citygml/2.0/energy/3.0/ScheduleTypeValue.xml"},
-            "value": {"value": 26.0, "uom": "C"}
+            "value": {"value": 26.0, "uom": "Cel"}
           }
         }
       ]

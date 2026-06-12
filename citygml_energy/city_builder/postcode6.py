@@ -94,11 +94,10 @@ from ..namespaces import (
     CS_NRG3_URBAN_FUNCTION_AREA_TYPE,
 )
 from ..schema_types import URBAN_FUNCTION_AREA
+from ..units import UOM_AREA_M2, UOM_KWH_PER_A, UOM_M3_PER_A
 from ._helpers import safe_gml_id
-from .builders._common import UOM_AREA_M2
 from .cityjson_parse import ParsedBuilding
 from .config import BuildContext, CbsPostcode6Source
-from .energy_resources import UOM_KWH_PER_A, UOM_M3_PER_A
 from .fetchers import cbs_postcode6 as cbs_postcode6_fetchers
 from .fetchers.cbs_postcode6 import Postcode6Area
 from .http import CachedSession

@@ -52,18 +52,15 @@ from validate_xsd import load_schema
 # Data/UOMList.xml (one <UOM> entry per unit, each with one ``id`` and 0–3
 # ``altId`` aliases). Any uom="..." attribute in our GML whose value is
 # neither an id nor an altId will render as raw text in the viewer's
-# Properties panel instead of the human-readable sign. The repo bundles
-# the viewer at KITModelViewer_V*/ (untracked); we point at whichever
-# build is present and skip the check cleanly if none is.
+# Properties panel instead of the human-readable sign. The catalog is
+# tracked at KITModelViewer_V*/Data/UOMList.xml; we point at whichever
+# build directory is present and skip the check cleanly if none is.
 KIT_VIEWER_GLOB = "KITModelViewer_V*/Data/UOMList.xml"
 
 # Every uom token emitted by this pipeline lives in the bundled
-# UOMList.xml — including the three TU Delft–proposed additions
-# (kWh/a, m3/a, W/W) the file ships with at v1.2 pending upstream KIT
-# merge. The audit therefore has no per-token allowlist: if H6 reports
+# UOMList.xml, so the audit has no per-token allowlist: if H6 reports
 # a uom as unknown, it really is unknown to the catalog and either
 # wants fixing in the input or wants adding to UOMList.xml itself.
-UOM_NL_EXTENSIONS: frozenset[str] = frozenset()
 
 
 @lru_cache(maxsize=1)
@@ -342,33 +339,17 @@ def audit(path: Path) -> int:
             v = elem.get("uom")
             if v:
                 uom_counts[v] += 1
-        extensions: list[tuple[str, int]] = []
-        unknowns: list[tuple[str, int]] = []
-        for token, n in sorted(uom_counts.items()):
-            if token in uom_known:
-                continue
-            if token in UOM_NL_EXTENSIONS:
-                extensions.append((token, n))
-            else:
-                unknowns.append((token, n))
+        unknowns: list[tuple[str, int]] = [
+            (token, n) for token, n in sorted(uom_counts.items()) if token not in uom_known
+        ]
         n_distinct = len(uom_counts)
-        n_known = n_distinct - len(extensions) - len(unknowns)
         if unknowns:
             errors += sum(n for _, n in unknowns)
             print(f"  H6 @uom UNKNOWN to KIT UOMList ({len(unknowns)} distinct):")
             for token, n in unknowns:
                 print(f"     {n:>5} × {token!r}")
-        elif extensions:
-            print(
-                f"  H6 @uom: OK ({n_known}/{n_distinct} distinct tokens in KIT UOMList; "
-                f"{len(extensions)} documented NL extension(s))"
-            )
         else:
             print(f"  H6 @uom: OK ({n_distinct} distinct tokens, all in KIT UOMList)")
-        if extensions:
-            print(f"  H6 @uom EXTENSION (pending KIT upstream) ({len(extensions)} distinct):")
-            for token, n in extensions:
-                print(f"     {n:>5} × {token!r}")
 
     # ------------------------------------------------------------------ H8
     # XSD-required children per feature type. Reports the failing parent's

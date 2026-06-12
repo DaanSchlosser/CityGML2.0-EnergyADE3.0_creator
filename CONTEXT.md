@@ -126,6 +126,12 @@ _Avoid_: BGT (a separate topographic register), "tree register" (name it BOR).
 The current Dutch method for determining a building's energy performance, in force since 2021. It fixes the units and aggregation of the EP-Online certificate (one per VBO, `final` energy in kWh/m²·yr) and the reference-climate PV-yield calculation behind the simulated production series. Older regimes (NEN 7120, ISSO 82.3) used different units and per-Pand aggregation; see [`mapping_city.md` §6](docs/mapping_city.md).
 _Avoid_: BENG (the new-build norm built on NTA 8800, not the method itself), energy label (the label is the certificate's output grade).
 
+### Units
+
+**uom token**:
+The exact unit-of-measure string written on a `@uom` attribute in the output GML, e.g. `m2`, `deg`, `kWh/m2/a`, `kJ/(K*m2)`. Every token the pipelines emit is declared once in [`citygml_energy/units.py`](citygml_energy/units.py) and is registered in the bundled KITModelViewer `Data/UOMList.xml` (as a `UOM/@id` or an `altId` alias); `tools/audit_silent_bugs.py` check H6 cross-references every `uom=` attribute of a generated GML against that catalog. The per-building input loader applies the same gate up front: every `uom` declared in the input JSON must be a member of `units.REGISTERED_UOM_TOKENS` (a test-synced mirror of the catalog spellings), so an off-catalog token is rejected at load time with the JSON path named. Tokens are wire-format labels everywhere except one place: `units.measure_value` normalises construction-layer measures (thickness, density, specific heat capacity) into SI before the thickness and heat-capacity reductions in `boundary_attributes`, converting registered aliases (`mm`, `cm`, `kJ/(kg*K)`) and warning-then-skipping unrecognised tokens.
+_Avoid_: `%` (use `percent`), caret forms such as `m^2` or `kWh/(m^2*a)` (use the catalog spellings `m2`, `kWh/m2/a`), inventing tokens that are not in `UOMList.xml`.
+
 ## Conventions
 
 ### Scope-based parent placement

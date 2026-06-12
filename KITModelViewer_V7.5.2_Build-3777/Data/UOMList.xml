@@ -11,7 +11,11 @@
 	</version>
 	<UOM name="AMPERE" id="A" quantity="ELECTRIC_CURRENT" sign="A" description="Unit for electric current"/>
 	<UOM name="CANDELA" id="cd" quantity="LUMINOUS_INTENSITY" sign="cd" description="Unit for luminous intensity"/>
-	<UOM name="DEGREE_CELSIUS" id="C" quantity="TEMPERATURE" sign="ºC" description="Unit for thermodynamic temperature"/>
+	<!-- DEGREE_CELSIUS: UCUM (https://ucum.org/ucum) codes degree Celsius as the
+	     case-sensitive symbol "Cel". Bare "C" is UCUM's COULOMB, and "°C" is only
+	     the print symbol, so a uom="C" temperature is read as electric charge by
+	     any UCUM-aware consumer. id corrected from "C" to "Cel" on 2026-06-10. -->
+	<UOM name="DEGREE_CELSIUS" id="Cel" quantity="TEMPERATURE" sign="°C" description="Unit for thermodynamic temperature"/>
 	<UOM name="KELVIN" id="K" quantity="TEMPERATURE" sign="K" offset="273.15" description="Unit for thermodynamic temperature">
 		<altId>
 			k
@@ -165,10 +169,11 @@
 			kwhm-2
 		</altId>
 	</UOM>
-	<UOM name="UVALUE" id="W/K*m2" quantity="UVALUE" sign="W/(m²*K)" description="Unit for thermal transmittance">
-		<altId>
-			W/(m2*K)
-		</altId>
+	<!-- UVALUE: the id "W/K*m2" parses by left-to-right precedence as (W/K)*m2 =
+	     W*m2/K, the inverse of a thermal transmittance. The correct, unambiguous
+	     form is W/(m2*K) = W*m-2*K-1. id corrected from "W/K*m2" to "W/(m2*K)" on
+	     2026-06-10. -->
+	<UOM name="UVALUE" id="W/(m2*K)" quantity="UVALUE" sign="W/(m²*K)" description="Unit for thermal transmittance">
 		<altId>
 			W(K*m^2)-1
 		</altId>

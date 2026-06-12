@@ -100,6 +100,12 @@ from ..namespaces import (
     CS_NRG3_REFERENCE_PERIOD,
     CS_NRG3_RESOURCE_OPERATION_TYPE,
 )
+from ..units import (
+    UOM_KG_PER_A,
+    UOM_KG_PER_M2_PER_A,
+    UOM_KWH_PER_M2_PER_A,
+    UOM_MJ_PER_A,
+)
 from .fetchers.eponline import EnergyLabel
 
 __all__ = [
@@ -164,64 +170,17 @@ _REFERENCE_YEAR: str = "year"
 # ---------------------------------------------------------------------------
 # uom tokens
 #
-# Every token emitted by this module lives in the bundled KIT
-# ``UOMList.xml``. Four were KIT upstream additions (``kWh/m2/a``,
-# ``kg/m2/a``, ``MJ/a``, ``kg/a``); the remaining two (``kWh/a``,
-# ``m3/a``) were added locally in UOMList.xml v1.2 (2026-05-27) as
-# TU Delft–proposed extensions, pending upstream merge by KIT.
-# ``tools/audit_silent_bugs.py`` reads the same UOMList.xml so any
-# future drift is caught automatically.
+# Imported from :mod:`citygml_energy.units` (the package-wide
+# vocabulary, which also records each token's UOMList.xml registration
+# and the v1.2 TU Delft extension provenance). The regime semantics
+# that pick one token over another are documented at the emission sites
+# below and in § 7 of the mapping doc: NTA 8800 metrics are per-area
+# intensities (kWh/m²·yr, CO₂ in kg/m²·yr), legacy NEN-7120-lineage
+# metrics are absolute annual totals (MJ/yr, CO₂ in kg/yr). The EPC
+# builder reuses ``UOM_KWH_PER_M2_PER_A`` / ``UOM_MJ_PER_A`` from the
+# same vocabulary so ``EnergyPerformanceCertificate.value`` and the
+# matching ``nrg3:Energy.amount`` stay in lockstep.
 # ---------------------------------------------------------------------------
-
-# Per-area annual energy. NTA 8800 reports BENG metrics in kWh/m²·jaar.
-# In UOMList.xml as ``KILOWATT_PER_SQUAREMETER_PER_YEAR id="kWh/m2/a"``.
-#
-# Public so :mod:`citygml_energy.city_builder.builders.epc` can populate
-# ``EnergyPerformanceCertificate.value`` with the same uom string as the
-# matching ``nrg3:Energy.amount`` resource it parallels (NTA 8800 regime).
-UOM_KWH_PER_M2_PER_A: str = "kWh/m2/a"
-
-# Per-area annual CO₂ emission (NTA 8800 convention). In UOMList.xml as
-# ``KILOGRAM_PER_SQUAREMETER_PER_YEAR id="kg/m2/a"``. § 7 of the mapping
-# doc records the regime-aware use.
-_UOM_KG_PER_M2_PER_A: str = "kg/m2/a"
-
-# Total annual energy (legacy regime, NEN 7120 lineage). The
-# ``BerekendeEnergieverbruik`` column for legacy methods is the absolute
-# annual primary fossil energy — not a per-m² intensity. In UOMList.xml
-# as ``MEGAJOULE_PER_YEAR id="MJ/a"``. § 7 of the mapping doc records
-# the regime asymmetry.
-#
-# Public for the same reason as :data:`UOM_KWH_PER_M2_PER_A`: the EPC
-# builder mirrors this token on ``EnergyPerformanceCertificate.value``
-# for legacy-regime certs.
-UOM_MJ_PER_A: str = "MJ/a"
-
-# Total annual CO₂ emission (legacy Nader Voorschrift / ISSO branch). The
-# CO₂ column for those legacy methods is total kg/yr, not per-m². In
-# UOMList.xml as ``KILOGRAM_PER_YEAR id="kg/a"``. Companion to
-# ``UOM_MJ_PER_A``.
-_UOM_KG_PER_A: str = "kg/a"
-
-# Total annual natural-gas volume. Used by the CBS Postcode6
-# ``UrbanFunctionArea`` resources for ``gemiddeldGasverbruikWoning``
-# (per-postcode average across occupied dwellings). Added to
-# UOMList.xml v1.2 as ``CUBIC_METRE_PER_YEAR`` (TU Delft proposal,
-# pending KIT upstream merge) — UOMList previously only had
-# ``m3/s`` / ``m3/h`` flow-rate forms, which don't fit an annual
-# aggregate. § 12 of the mapping doc records the postcode-aggregate
-# semantics. Public so the UrbanFunctionArea builder can populate the
-# resource ``amount`` slot without reaching into a private constant.
-UOM_M3_PER_A: str = "m3/a"
-
-# Total annual electrical energy. Used by the CBS Postcode6 electricity
-# resource alongside ``UOM_M3_PER_A``. Added to UOMList.xml v1.2 as
-# ``KILOWATT_HOUR_PER_YEAR`` (TU Delft proposal, pending KIT upstream
-# merge) — UOMList previously had ``kWh`` (no per-time) and ``MWh/a``
-# (which would force a 1000× rescale of the CBS-published values).
-# Distinct from ``UOM_KWH_PER_M2_PER_A`` (NTA 8800 per-area intensity):
-# ``kWh/a`` is the absolute annual figure CBS publishes per dwelling.
-UOM_KWH_PER_A: str = "kWh/a"
 
 
 # ---------------------------------------------------------------------------
@@ -418,7 +377,7 @@ def _attach_legacy_total_resource(unit: Any, label: EnergyLabel) -> None:
     if label.berekende_co2_emissie is not None and not label.co2_is_placeholder():
         energy.co2_equivalent = MeasureType(
             value=float(label.berekende_co2_emissie),
-            uom=_UOM_KG_PER_A,
+            uom=UOM_KG_PER_A,
         )
 
     unit.resource.append(Resource(energy=energy))
@@ -485,6 +444,6 @@ def _build_per_area_energy(
     if co2_equivalent is not None:
         energy.co2_equivalent = MeasureType(
             value=float(co2_equivalent),
-            uom=_UOM_KG_PER_M2_PER_A,
+            uom=UOM_KG_PER_M2_PER_A,
         )
     return energy

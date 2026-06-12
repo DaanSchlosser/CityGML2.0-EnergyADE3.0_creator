@@ -18,14 +18,16 @@ from datetime import date
 from citygml_energy.city_builder.address_match import ResolvedAddress
 from citygml_energy.city_builder.builders import build_building_unit
 from citygml_energy.city_builder.energy_resources import (
-    _UOM_KG_PER_A,
-    _UOM_KG_PER_M2_PER_A,
-    UOM_KWH_PER_M2_PER_A,
-    UOM_MJ_PER_A,
     attach_energy_resources_to_building_unit,
 )
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
+from citygml_energy.units import (
+    UOM_KG_PER_A,
+    UOM_KG_PER_M2_PER_A,
+    UOM_KWH_PER_M2_PER_A,
+    UOM_MJ_PER_A,
+)
 from tests._factories import make_vbo
 
 # A canonical NTA 8800 Berekeningstype string. Tests that exercise the
@@ -216,7 +218,7 @@ def test_co2_equivalent_rides_on_primary_energy_only() -> None:
     )
     assert primary.co2_equivalent is not None
     assert primary.co2_equivalent.value == 14.7
-    assert primary.co2_equivalent.uom == _UOM_KG_PER_M2_PER_A
+    assert primary.co2_equivalent.uom == UOM_KG_PER_M2_PER_A
 
     net = next(
         r.energy
@@ -390,7 +392,7 @@ def test_legacy_nader_voorschrift_emits_co2_alongside_total_energy() -> None:
     assert e.amount.value == 68956.31
     assert e.co2_equivalent is not None
     assert e.co2_equivalent.value == 3684.02
-    assert e.co2_equivalent.uom == _UOM_KG_PER_A
+    assert e.co2_equivalent.uom == UOM_KG_PER_A
 
 
 def test_legacy_no_verbruik_emits_nothing() -> None:

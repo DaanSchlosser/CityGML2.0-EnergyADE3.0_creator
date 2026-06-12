@@ -26,7 +26,7 @@
 
 [`generation.py::generate_city_model`](../citygml_energy/generation.py) is a thin wrapper over [`input_loader.load_city_model_from_feature_collection`](../citygml_energy/input_loader.py); the actual orchestration lives in [`input_loader.build_city_model_from_feature_collection`](../citygml_energy/input_loader.py), which drives:
 
-1. **Load** the JSON via [`input_loader.load_feature_collection`](../citygml_energy/input_loader.py). Validates the schema (top-level keys, feature shapes, parent cycles, geometry-source paths, construction-mapping references), then resolves geometry-source paths against the input file's parent directory.
+1. **Load** the JSON via [`input_loader.load_feature_collection`](../citygml_energy/input_loader.py). Validates the schema (top-level keys, feature shapes, parent cycles, geometry-source paths, construction-mapping references, and every declared `uom` against the registered unit vocabulary in [`units.py`](../citygml_energy/units.py), so an off-catalog token such as `m^2` or `%` is rejected at load time with the JSON path named instead of showing up later in the output audit), then resolves geometry-source paths against the input file's parent directory.
 2. **Build** every feature into an xsdata dataclass via the schema-agnostic [`mapping.build_from_dict`](../citygml_energy/mapping.py). Two-phase: first construct + index by id, then attach children via [`mapping.attach_child`](../citygml_energy/mapping.py) (so a parent can appear after its child in the JSON).
 3. **Apply geometry** via [`geometry.apply_geometry_sources`](../citygml_energy/geometry.py): import each STEP file, attach LoD slots to the right Building / ZonePart, build BoundarySurfaces / Openings from STEP layer names, populate the model's `surface_name_index`.
 4. **Apply CityObjectRelation entries** via [`device_relations.apply_device_relations`](../citygml_energy/device_relations.py) (re-exported from [`geometry`](../citygml_energy/geometry.py) so the call site in `input_loader` reads `from .geometry import apply_device_relations`): resolve every `related_to` entry through the [`RELATION_KINDS`](../citygml_energy/device_relations.py) registry. The kind's `target_kind` selects the resolver path: `surface` looks up STEP layer names against the `surface_name_index` with LoD collapse (highest-LoD-wins; falls back to the gml:id index), `feature` resolves only against the gml:id index. Each entry emits one `nrg3:CityObjectRelation` with the kind's codelist member as `relationType` and the resolved gml:id as the `xlink:href` target. Unresolved references raise loudly. Stays on its own driver because its shape (iterate per-device JSON `related_to` lists and raise on missing keys) does not fit the model-walk seam used for the derived attributes below.
@@ -210,7 +210,7 @@ The `nrg3:ScheduleLibrary` itself takes `id`, optional `name` / `description`, a
 |---|---|---|---|
 | `id` | str | `nrg3:ConstantValueSchedule/@gml:id` | The xlink target referenced from the ZonePart. |
 | `type_value` | CodeType | `nrg3:type` | `ScheduleTypeValue.xml` (`typicalYear`, etc.). |
-| `value` | Measure | `nrg3:value` | uom `C` for setpoint temperatures. |
+| `value` | Measure | `nrg3:value` | uom `Cel` for setpoint temperatures. |
 
 Energy ADE 3.0 defines three concrete `AbstractAtomicSchedule` subclasses (`nrg3:ConstantValueSchedule` (used here), `nrg3:DualValueSchedule` (idle / usage values with day-time switch points), and `nrg3:TimeSeriesSchedule` (wraps any `AbstractTimeSeries` so a periodic profile drives the schedule)), plus the aggregating non-atomic `nrg3:CompositeSchedule` (a sequence of `nrg3:ScheduleComponent` references, with per-component repetition counts and gaps) and the top-level wrapper `nrg3:ScheduleLibrary` that holds them. Any of these schedule types can be authored as a `library_member` of the `nrg3:ScheduleLibrary` and referenced from a zone by xlink (the ByReference form above); the generic builder also still accepts an inline schedule attached via `parent_field`, but the library form is the convention. Daily resolution is expressed as a `RegularTimeSeries` with `timeInterval = P1D` rather than a dedicated daily class; there is no `DailyPatternSchedule` or `DailyTimeSeries` in this XSD revision.
 
@@ -263,8 +263,8 @@ Solar collector subclass (XSD class `nrg3:SolarThermalCollector`, **not** `Solar
 |---|---|---|---|
 | inherited device fields | - | inherited slots | |
 | `heat_source` | CodeType | `nrg3:heatSource` | `HeatSourceValue.xml`. Codelist values: `unknown`, `ambientAir`, `aquifer`, `exhaustAir`, `horizontalGroundCollector`, `verticalGroundCollector`. The `code_space` URL names the vocabulary; off-codelist values remain schema-permissible (`gml:CodeType` is open) but stay inside the codelist when a fitting term exists. |
-| `cop_source_temperature` | Measure | `nrg3:copSourceTemperature` | uom `C`. |
-| `cop_operation_temperature` | Measure | `nrg3:copOperationTemperature` | uom `C`. |
+| `cop_source_temperature` | Measure | `nrg3:copSourceTemperature` | uom `Cel`. |
+| `cop_operation_temperature` | Measure | `nrg3:copOperationTemperature` | uom `Cel`. |
 | `nominal_efficiency` | Measure | `nrg3:nominalEfficiency` | The COP at the (source temp, operation temp) pair above. |
 
 **Mapping gap: in-envelope vs outside-envelope placement.** Energy ADE 3.0 has no native attribute on `AbstractDevice` (or any subclass) for whether a device sits inside the building's thermal envelope. For an in-envelope heat pump, pipework insulation, or a hot-water buffer, this fact has nowhere structured to live. The canonical input records it in `gml:description`; a more rigorous solution would be a `nrg3:CityObjectRelation` to the relevant `Zone` with a project-defined relation type, but the Energy ADE `OtherRelationTypeValue.xml` codelist (`installedOn`, `connectedTo`, `serving`) does not yet include an `isInsideThermalEnvelope`-style entry.
@@ -302,8 +302,8 @@ Hydronic / air distribution circuit fed by a heat source. Exercised in the canon
 |---|---|---|---|
 | inherited device fields | - | inherited slots | |
 | `medium` | CodeType | `nrg3:medium` | `MediumTypeValue.xml` (`water`, `air`, `steam`, `unknown`). |
-| `supply_temperature` | Measure | `nrg3:supplyTemperature` | uom `C`. The temperature delivered to the emitter side. |
-| `return_temperature` | Measure | `nrg3:returnTemperature` | uom `C`. Optional; not collected in the canonical input. |
+| `supply_temperature` | Measure | `nrg3:supplyTemperature` | uom `Cel`. The temperature delivered to the emitter side. |
+| `return_temperature` | Measure | `nrg3:returnTemperature` | uom `Cel`. Optional; not collected in the canonical input. |
 | `nominal_flow` | Measure | `nrg3:nominalFlow` | Optional. |
 | `is_circulation` | bool | `nrg3:isCirculation` | Whether the circuit recirculates DHW (`true` for closed loops). Optional. |
 | `distribution_perimeter` | CodeType | `nrg3:distributionPerimeter` | `DistributionPerimeterTypeValue.xml`. Optional. |
@@ -318,7 +318,7 @@ Hot- or cold-water buffer (DHW tank, ice store, etc.). Exercised in the canonica
 | inherited device fields | - | inherited slots | |
 | `medium` | CodeType | `nrg3:medium` | `MediumTypeValue.xml`. |
 | `volume` | Volume | `nrg3:volume` | uom `m3`. Storage capacity. |
-| `preparation_temperature` | Measure | `nrg3:preparationTemperature` | uom `C`. Optional. |
+| `preparation_temperature` | Measure | `nrg3:preparationTemperature` | uom `Cel`. Optional. |
 | `thermal_losses_factor` | Measure | `nrg3:thermalLossesFactor` | Optional. |
 
 ### 5.8. `nrg3:GenericElectricalDevice`
@@ -428,7 +428,7 @@ Authored as `{"solid_material": {...}}` inside `library_member`.
 | `id` | str | `@gml:id` | The id used by Layer xlinks (`{"href": "#mat_*"}`). |
 | `name`, `description`, `type_value` | as above | inherited | |
 | `is_transparent` | bool | `nrg3:isTransparent` | True for glass; constrains the layer's role in opaque vs transparent assemblies. |
-| `thermal_conductivity` | Measure | `nrg3:thermalConductivity` | uom `W/(K*m)`. The canonical input bracket-encloses the denominator (`W/(K*m)`, `J/(K*kg)`) on per-material thermal properties for SI-conformant readability; the older bracket-free `W/K*m` shape is still schema-permissible (no UOMList entry pins the bracket placement) but kept for the legacy `u_value` / `r_value` slots below to match the KIT UOMList tokens (`UVALUE` / `THERMAL_RESISTANCE` rows). |
+| `thermal_conductivity` | Measure | `nrg3:thermalConductivity` | uom `W/(K*m)`. The canonical input bracket-encloses the denominator (`W/(K*m)`, `J/(K*kg)`) on per-material thermal properties for SI-conformant readability; `u_value` below uses the same bracketed form `W/(m2*K)`, correcting the KIT `UVALUE` id `W/K*m2`, which parses left-to-right as `(W/K)*m2` (the inverse of a transmittance) rather than the intended `W/(m2*K)`. `r_value` keeps the KIT `THERMAL_RESISTANCE` token `K*m2/W`, which is already unambiguous (`K*m2/W` = m2*K/W). |
 | `density` | Measure | `nrg3:density` | uom `kg/m3`. |
 | `specific_heat_capacity` | Measure | `nrg3:specificHeatCapacity` | uom `J/(K*kg)`. Same SI-bracket convention as `thermal_conductivity`. |
 
@@ -460,7 +460,7 @@ Authored as `{"layered_construction": {...}}` inside `library_member`. The `1` s
 |---|---|---|---|
 | `id` | str | `@gml:id` | The id referenced by `construction_mapping.by_type` / `by_id` and resolved to xlink:href on each surface. |
 | `name`, `description`, `type_value` | as above | inherited | |
-| `u_value` | Measure | `nrg3:uValue` | uom `W/K*m2`. The pre-computed conductance through the assembly. |
+| `u_value` | Measure | `nrg3:uValue` | uom `W/(m2*K)`. The pre-computed thermal transmittance through the assembly. |
 | `g_value` | Measure | `nrg3:gValue` | uom `scale`. Solar heat-gain coefficient (windows only). |
 | `glazing_ratio` | Measure | `nrg3:glazingRatio` | uom `scale`. The glazed fraction of a window assembly's frame-plus-pane area. |
 | `layer` | list[`{layer}`] | `nrg3:layer[]` | The ordered layer stack; first entry = inner face, last entry = outer face. |
