@@ -346,7 +346,10 @@ def _apply_cftree_morphometrics(obj: Any, attrs: dict[str, Any]) -> None:
             continue
         setattr(obj, field_name, LengthType(value=value, uom=UOM_METRES))
 
-    for cftree_key in _CFTREE_GENERIC_DOUBLE:
+    # Sorted: frozenset iteration order varies with hash randomization
+    # across processes, and attribute order must be byte-stable run to
+    # run for reproducible output.
+    for cftree_key in sorted(_CFTREE_GENERIC_DOUBLE):
         value = to_finite_float(attrs.get(cftree_key))
         if value is None:
             continue

@@ -448,6 +448,18 @@ def test_build_tree_generic_attributes_cover_non_native_metrics() -> None:
     assert obj.trunk_diameter.value == pytest.approx(0.12)
 
 
+def test_build_tree_generic_attributes_emit_in_sorted_order() -> None:
+    """``gen:doubleAttribute`` order must be byte-stable across runs.
+    The source key set is a ``frozenset``, whose iteration order varies
+    with hash randomization between processes; the builder must sort it
+    so two builds of the same input produce identical bytes.
+    """
+    tree = _parsed_tree_from_cityjson()
+    obj = build_solitary_vegetation_object(tree)
+    names = [a.name for a in obj.double_attribute]
+    assert names == sorted(names)
+
+
 def test_build_tree_skips_nan_and_inf_values() -> None:
     """``NaN`` means CFTree could not compute the metric; it must not serialize."""
     import math
