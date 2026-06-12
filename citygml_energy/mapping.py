@@ -187,9 +187,21 @@ def _coerce(target: type, raw: Any) -> Any:
     # bool is a subclass of int, so check it before the isinstance fast-path
     # to make sure True/False are not accepted where an int or float is expected.
     if target is bool:
+        if isinstance(raw, bool):
+            return raw
+        # Strict on purpose: the lenient ``"x" in truthy_set`` shape maps
+        # a typo'd "ture" (or any container's truthiness) to a silent
+        # False, which then ships as confident XML content.
         if isinstance(raw, str):
-            return raw.lower() in ("true", "1", "yes")
-        return bool(raw)
+            lowered = raw.strip().lower()
+            if lowered in ("true", "1", "yes"):
+                return True
+            if lowered in ("false", "0", "no"):
+                return False
+            raise TypeError(f"Cannot coerce {raw!r} to bool: expected true/false, 1/0, or yes/no")
+        if isinstance(raw, int) and raw in (0, 1):
+            return bool(raw)
+        raise TypeError(f"Cannot coerce {type(raw).__name__} value {raw!r} to bool")
     if target in (int, float, Decimal) and isinstance(raw, bool):
         raise TypeError(
             f"Cannot coerce bool {raw!r} to {target.__name__}: "

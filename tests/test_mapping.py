@@ -121,6 +121,45 @@ def test_build_from_dict_rejects_bool_for_decimal_field() -> None:
         )
 
 
+def test_bool_coercion_accepts_canonical_spellings() -> None:
+    zone = resolve_class("nrg3:Zone")
+    field = "coincides_with_lod2_hull"
+    assert (
+        build_from_dict(zone, {"type_value": "thermalZone", field: "true"}).coincides_with_lod2_hull
+        is True
+    )
+    assert (
+        build_from_dict(
+            zone, {"type_value": "thermalZone", field: "FALSE"}
+        ).coincides_with_lod2_hull
+        is False
+    )
+    assert (
+        build_from_dict(zone, {"type_value": "thermalZone", field: 1}).coincides_with_lod2_hull
+        is True
+    )
+    assert (
+        build_from_dict(zone, {"type_value": "thermalZone", field: False}).coincides_with_lod2_hull
+        is False
+    )
+
+
+def test_bool_coercion_rejects_typos_and_containers() -> None:
+    """The lenient ``raw in truthy_set`` shape silently mapped a typo'd
+    "ture" (and any container's truthiness) to False, which then shipped
+    as confident XML content. Anything outside the canonical spellings
+    must raise instead.
+    """
+    zone = resolve_class("nrg3:Zone")
+    field = "coincides_with_lod2_hull"
+    with pytest.raises(TypeError, match="bool"):
+        build_from_dict(zone, {"type_value": "thermalZone", field: "ture"})
+    with pytest.raises(TypeError, match="bool"):
+        build_from_dict(zone, {"type_value": "thermalZone", field: ["true"]})
+    with pytest.raises(TypeError, match="bool"):
+        build_from_dict(zone, {"type_value": "thermalZone", field: 2})
+
+
 # ---------------------------------------------------------------------------
 # iter_instances / find_by_id
 # ---------------------------------------------------------------------------
