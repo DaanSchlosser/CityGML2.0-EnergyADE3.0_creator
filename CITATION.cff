@@ -29,9 +29,12 @@ keywords:
 # which mints a persistent DOI, also shown by the DOI badge at the top of the
 # README and on the repository Releases page. The concept DOI below always
 # resolves to the latest archived version; the identifiers record the
-# version-specific releases (the v1.0.1 entry is added once Zenodo mints it).
+# version-specific releases.
 doi: 10.5281/zenodo.20612452
 identifiers:
+  - type: doi
+    value: 10.5281/zenodo.20669526
+    description: "Archived v1.0.1 release on Zenodo"
   - type: doi
     value: 10.5281/zenodo.20612453
     description: "Archived v1.0.0 release on Zenodo"

@@ -609,8 +609,9 @@ To cite the software, use the metadata in [CITATION.cff](CITATION.cff) (GitHub
 renders a "Cite this repository" button from it). The releases are archived on
 Zenodo under the concept DOI
 [10.5281/zenodo.20612452](https://doi.org/10.5281/zenodo.20612452), which always
-resolves to the latest archived version; the v1.0.0 release has its own version
-DOI [10.5281/zenodo.20612453](https://doi.org/10.5281/zenodo.20612453). The
+resolves to the latest archived version; each release also has its own version
+DOI (v1.0.1: [10.5281/zenodo.20669526](https://doi.org/10.5281/zenodo.20669526),
+v1.0.0: [10.5281/zenodo.20612453](https://doi.org/10.5281/zenodo.20612453)). The
 **DOI** badge at the top of this README resolves to the latest version, and
 every archived version is listed on the
 [Releases](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/releases)
