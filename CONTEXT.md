@@ -105,6 +105,10 @@ _Avoid_: city; do not use interchangeably with gemeente.
 **Build extent (AOI)**:
 The geographic area one city-scale run emits as a single GML: the gemeente named by `municipality`, optionally clipped by a `boundary` polygon or `bbox` to a woonplaats or a smaller area of interest. Uncropped it is the whole gemeente (delft / groningen / zwolle); clipped it is a woonplaats (emmer-compascuum) or a sub-woonplaats AOI (emmer-compascuum_small-area).
 
+**Matchable VBO**:
+A VBO whose BAG record carries both a postcode and a huisnummer, the precondition for emitting a CityGML `bldg:address` and for taking part in the EP-Online join. The predicate lives in [`address_match`](citygml_energy/city_builder/address_match.py), where one `LabelFilter` built from the matchable set drives both the EP-Online CSV row filter and the address join, so a label is only fetched when the join can use it. A VBO that is not matchable is dropped from the city output entirely (no BuildingUnit, no EPC), even when EP-Online carries a label for its BAG id.
+_Avoid_: building the wanted-id or wanted-key sets anywhere outside `address_match` (the fetch filter and the join must share the one predicate).
+
 **Tree**:
 The `veg:SolitaryVegetationObject` feature the city pipeline emits from the CFTree point dataset, optionally enriched with a species from the BOR register. "Tree" is the colloquial name for it.
 _Avoid_: the bare `SolitaryVegetationObject` in prose without noting it is the tree feature; plant.

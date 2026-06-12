@@ -56,6 +56,38 @@ class ResolvedAddress:
         return self.vbo.point
 
 
+@dataclass(frozen=True)
+class LabelFilter:
+    """The EP-online row filter derived from the matchable VBO set.
+
+    ``ids`` holds BAG VBO ids (the EP-online v5+ ``BAGVerblijfsobjectID``
+    match); ``keys`` holds the normalised address-key fallback. Both are
+    built from the same matchable VBOs that :func:`match_addresses`
+    joins, so a label survives the CSV filter only when the join can
+    actually use it. Frozensets keep the filter hashable and
+    order-independent; the pipeline's filtered-labels cache digest
+    relies on that.
+    """
+
+    ids: frozenset[str]
+    keys: frozenset[AddressKey]
+
+
+def wanted_label_filter(vbos: list[Verblijfsobject]) -> LabelFilter:
+    """Return the :class:`LabelFilter` for the matchable subset of *vbos*.
+
+    A VBO without a postcode or huisnummer never becomes a BuildingUnit
+    (:func:`match_addresses` drops it before the join), so neither its
+    BAG id nor its address key belongs in the fetch filter. This is the
+    only place the wanted sets are built; the fetch filter and the join
+    sharing one predicate is the point of this function. (The pipeline
+    used to build its own id set from *all* VBOs, fetching labels the
+    join then discarded and poisoning the filter-cache digest with
+    unmatchable ids.)
+    """
+    return _filter_from_matchable(_matchable_vbos(vbos))
+
+
 def match_addresses(
     *,
     vbos: list[Verblijfsobject],
@@ -74,18 +106,15 @@ def match_addresses(
     VBOs that lack a postcode or huisnummer are silently dropped: they
     cannot produce a valid CityGML ``bldg:address``.
     """
-    # Only the VBOs that can match are addressable; dropping the rest up
-    # front means we can build a *tight* wanted-key set for the label
-    # filter. With 5M+ labels and ~500 VBOs, that filter turns the label
-    # scan from "index everything" to "keep ~0.01% of rows".
-    matchable = [v for v in vbos if v.postcode is not None and v.huisnummer is not None]
-    wanted_ids = {v.identificatie for v in matchable}
-    wanted_keys = {address_key_from_vbo(v) for v in matchable}
+    # Only the matchable VBOs take part; dropping the rest up front
+    # means the label index is built against a *tight* filter. With 5M+
+    # labels and ~500 VBOs, that filter turns the label scan from
+    # "index everything" to "keep ~0.01% of rows".
+    matchable = _matchable_vbos(vbos)
 
     labels_by_vbo_id, labels_by_key = _index_labels(
         energy_labels or [],
-        wanted_ids=wanted_ids,
-        wanted_keys=wanted_keys,
+        wanted=_filter_from_matchable(matchable),
     )
 
     grouped: dict[str, list[ResolvedAddress]] = {}
@@ -104,11 +133,23 @@ def match_addresses(
 # ---------------------------------------------------------------------------
 
 
+def _matchable_vbos(vbos: list[Verblijfsobject]) -> list[Verblijfsobject]:
+    """The VBOs that can take part in the join (postcode and huisnummer set)."""
+    return [v for v in vbos if v.postcode is not None and v.huisnummer is not None]
+
+
+def _filter_from_matchable(matchable: list[Verblijfsobject]) -> LabelFilter:
+    """Build the :class:`LabelFilter` from an already-matchable VBO list."""
+    return LabelFilter(
+        ids=frozenset(v.identificatie for v in matchable),
+        keys=frozenset(address_key_from_vbo(v) for v in matchable),
+    )
+
+
 def _index_labels(
     labels: list[EnergyLabel],
     *,
-    wanted_ids: set[str],
-    wanted_keys: set[AddressKey],
+    wanted: LabelFilter,
 ) -> tuple[dict[str, EnergyLabel], dict[AddressKey, EnergyLabel]]:
     """Return ``(by_vbo_id, by_address_key)``: most recent label per key.
 
@@ -116,8 +157,8 @@ def _index_labels(
     corrections). We keep the one with the newest ``registratiedatum``,
     falling back to ``opnamedatum``.
 
-    Only labels whose ``bag_verblijfsobject_id`` matches *wanted_ids* or
-    whose address-key matches *wanted_keys* are retained. This membership
+    Only labels whose ``bag_verblijfsobject_id`` matches ``wanted.ids`` or
+    whose address-key matches ``wanted.keys`` are retained. This membership
     test turns what was a full 5M-row indexing pass into a filter, which
     is critical for the city-pipeline case where the BBOX covers a few
     hundred VBOs out of the national mutation file.
@@ -130,9 +171,9 @@ def _index_labels(
     by_address_key: dict[AddressKey, EnergyLabel] = {}
     for label in labels:
         vbo_id = label.bag_verblijfsobject_id
-        hit_id = vbo_id is not None and vbo_id in wanted_ids
+        hit_id = vbo_id is not None and vbo_id in wanted.ids
         key = label.address_key()
-        hit_key = key in wanted_keys
+        hit_key = key in wanted.keys
         if not hit_id and not hit_key:
             continue
 

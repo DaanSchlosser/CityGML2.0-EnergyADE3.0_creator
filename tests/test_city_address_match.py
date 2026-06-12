@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from citygml_energy.city_builder.address_match import match_addresses
+from citygml_energy.city_builder.address_match import match_addresses, wanted_label_filter
 from citygml_energy.city_builder.fetchers.bag import Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
 from tests._factories import make_vbo
@@ -275,3 +275,55 @@ def test_two_vbos_in_one_pand_can_carry_different_regimes() -> None:
     label_43 = by_huisnummer[43].energy_label
     assert label_42 is not None and label_42.calculation_regime() == "nta8800"
     assert label_43 is not None and label_43.calculation_regime() == "legacy_total"
+
+
+def _unaddressable_vbo(identificatie: str, pand_id: str) -> Verblijfsobject:
+    """A VBO with no postcode: match_addresses drops it before the join."""
+    return Verblijfsobject(
+        identificatie=identificatie,
+        pand_identificatie=pand_id,
+        gebruiksdoel=[],
+        oppervlakte=None,
+        status=None,
+        postcode=None,
+        huisnummer=1,
+        huisletter=None,
+        toevoeging=None,
+        openbare_ruimte_naam="Mekelweg",
+        woonplaats=None,
+        point=None,
+        properties={},
+    )
+
+
+def test_label_filter_excludes_unaddressable_vbos() -> None:
+    """An unaddressable VBO's BAG id must not reach the CSV filter.
+
+    Its label could never be used: match_addresses drops the VBO before
+    the join. The pipeline used to build wanted ids from all VBOs, so a
+    label could be fetched, then silently discarded.
+    """
+    vbos = [_vbo("V1", "P1"), _unaddressable_vbo("V2", "P1")]
+    flt = wanted_label_filter(vbos)
+    assert flt.ids == frozenset({"V1"})
+    assert len(flt.keys) == 1
+
+
+def test_label_filter_population_equals_the_join_population() -> None:
+    """The fetch filter and the join share one matchable predicate."""
+    vbos = [
+        _vbo("V1", "P1"),
+        _vbo("V2", "P2", huisnummer=7),
+        _unaddressable_vbo("V3", "P3"),
+    ]
+    flt = wanted_label_filter(vbos)
+    grouped = match_addresses(vbos=vbos)
+    joined_ids = {r.vbo.identificatie for group in grouped.values() for r in group}
+    assert flt.ids == frozenset(joined_ids)
+
+
+def test_label_filter_is_order_independent() -> None:
+    """Equal VBO sets give equal filters regardless of input order; the
+    pipeline's filtered-labels cache digest depends on this."""
+    a = [_vbo("V1", "P1"), _vbo("V2", "P2", huisnummer=7)]
+    assert wanted_label_filter(a) == wanted_label_filter(list(reversed(a)))

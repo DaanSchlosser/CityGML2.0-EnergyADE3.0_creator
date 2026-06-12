@@ -31,8 +31,7 @@ from . import pand_executor
 from . import postcode6 as postcode6_step
 from . import solar_panels as solar_panels_module
 from . import vegetation as vegetation_module
-from .address_key import address_key_from_vbo
-from .address_match import ResolvedAddress, match_addresses
+from .address_match import LabelFilter, ResolvedAddress, match_addresses, wanted_label_filter
 from .appearance import (
     append_energy_label_appearance,
     append_solar_panel_appearance,
@@ -371,15 +370,17 @@ def _maybe_fetch_energy_labels(
     """Fetch only the EP-online labels that could possibly match *vbos*.
 
     The 5 M-row EP-online mutation file dwarfs the ~10³ addresses inside
-    a typical city-builder BBOX. Passing the VBO-derived id / address-key
-    sets into the fetcher lets the CSV parser drop non-matching rows
-    immediately, so the pipeline sees only the matching subset.
+    a typical city-builder BBOX. The :func:`wanted_label_filter` derived
+    from the matchable VBOs lets the CSV parser drop non-matching rows
+    immediately, so the pipeline sees only the subset the address join
+    can use. The filter is built by :mod:`.address_match` (never here)
+    so the fetch filter and the join cannot drift apart.
 
     A second caching layer persists the *filtered* label list to disk
-    keyed by ``(wanted_keys, wanted_ids, ep-online-ZIP-vintage)``. Cache
-    entries invalidate automatically when EP-online publishes a new
-    mutation ZIP because the ZIP's on-disk size/mtime participate in
-    the cache key.
+    keyed by ``(filter, ep-online-ZIP-vintage)``. Cache entries
+    invalidate automatically when EP-online publishes a new mutation
+    ZIP because the ZIP's on-disk size/mtime participate in the cache
+    key.
     """
     if not config.include_energy_labels:
         return None
@@ -389,12 +390,9 @@ def _maybe_fetch_energy_labels(
             "include_energy_labels=true but ep_online_api_key_file did not yield a token"
         )
 
-    wanted_ids = {v.identificatie for v in vbos}
-    wanted_keys = {
-        address_key_from_vbo(v) for v in vbos if v.postcode is not None and v.huisnummer is not None
-    }
+    wanted = wanted_label_filter(vbos)
 
-    wanted_digest = _wanted_sets_digest(wanted_ids, wanted_keys)
+    wanted_digest = _wanted_sets_digest(wanted)
     cache_path = _filtered_labels_cache_path(session, wanted_digest)
     if cache_path is not None and cache_path.exists():
         labels = _try_load_filtered_labels(cache_path)
@@ -405,8 +403,8 @@ def _maybe_fetch_energy_labels(
     labels = eponline_fetchers.fetch_energy_labels(
         session,
         api_key=api_key,
-        wanted_ids=wanted_ids,
-        wanted_keys=wanted_keys,
+        wanted_ids=wanted.ids,
+        wanted_keys=wanted.keys,
     )
 
     # Re-resolve the cache path. On first run the ZIP didn't exist yet
@@ -422,17 +420,14 @@ def _maybe_fetch_energy_labels(
 _EP_ONLINE_ZIP_GLOB = "ep_online_bundle.*.bin"
 
 
-def _wanted_sets_digest(
-    wanted_ids: set[str],
-    wanted_keys: set[tuple[str, int, str | None, str | None]],
-) -> str:
-    """Stable SHA-256 digest of the two filter sets (order-independent)."""
+def _wanted_sets_digest(wanted: LabelFilter) -> str:
+    """Stable SHA-256 digest of the label filter (order-independent)."""
     h = hashlib.sha256()
-    for vbo_id in sorted(wanted_ids):
+    for vbo_id in sorted(wanted.ids):
         h.update(vbo_id.encode("utf-8"))
         h.update(b"\x00")
     h.update(b"\x01")  # boundary marker between the two sets
-    for key in sorted(wanted_keys, key=lambda k: (k[0], k[1], k[2] or "", k[3] or "")):
+    for key in sorted(wanted.keys, key=lambda k: (k[0], k[1], k[2] or "", k[3] or "")):
         h.update(f"{key[0]}|{key[1]}|{key[2] or ''}|{key[3] or ''}".encode())
         h.update(b"\x00")
     return h.hexdigest()[:24]
