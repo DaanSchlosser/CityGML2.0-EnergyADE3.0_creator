@@ -281,6 +281,34 @@ def test_match_and_project_flat_roof_has_zero_inclination_and_null_azimuth() -> 
         assert panel.reference_point[2] == pytest.approx(3.0 + DEFAULT_Z_OFFSET_M, abs=1e-6)
 
 
+def test_fit_roof_plane_screens_near_vertical_facets() -> None:
+    """Wall-like slivers occasionally land in 3DBAG RoofSurface sets.
+    ``_z_on_plane`` divides by the plane normal's Z, so ``_fit_roof_plane``
+    must return ``None`` for (near-)vertical facets instead of handing
+    back a plane whose ``1/nz`` explodes the projected panel Z.
+    """
+
+    def _facet(points: list[tuple[float, float, float]]) -> SemanticPolygon:
+        return SemanticPolygon(
+            polygon=GeometryPolygon(exterior=points, interiors=[]),
+            surface_type="RoofSurface",
+        )
+
+    # Exactly vertical: nz == 0 survives the sign-flip and divides by zero.
+    vertical = _facet([(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 3.0), (0.0, 0.0, 3.0)])
+    assert solar_panels_module._fit_roof_plane(vertical) is None
+
+    # ~88 degrees: above the 85-degree screen, still unusable for panels.
+    near_vertical = _facet([(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.1, 3.0), (0.0, 0.1, 3.0)])
+    assert solar_panels_module._fit_roof_plane(near_vertical) is None
+
+    # A regular 45-degree pitch must keep fitting.
+    pitched = _facet([(0.0, 0.0, 3.0), (1.0, 0.0, 3.0), (1.0, 1.0, 4.0), (0.0, 1.0, 4.0)])
+    plane = solar_panels_module._fit_roof_plane(pitched)
+    assert plane is not None
+    assert plane.n_unit[2] == pytest.approx(0.5**0.5, abs=1e-9)
+
+
 def test_match_and_project_sloped_roof_sets_azimuth_and_inclination_and_lifts_with_slope() -> None:
     """A roof slope that rises in +Y has a normal pointing into -Y.
 

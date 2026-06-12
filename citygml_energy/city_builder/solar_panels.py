@@ -102,6 +102,12 @@ _UNDEFINED_SRS_IDS: frozenset[int] = frozenset({0, -1})
 # still catches the textbook "flat roof" case.
 _HORIZONTAL_EPS: float = 1e-6
 
+# Minimum unit-normal Z for a facet to count as a usable roof plane:
+# cos(85 deg). Steeper facets are wall-like slivers that occasionally
+# land in 3DBAG RoofSurface sets; projecting panel corners onto them
+# divides by a near-zero nz and explodes the Z coordinates.
+_MIN_ROOF_NZ: float = 0.0872
+
 # gml:id prefix for the collectors. BAG identificaties lead with a
 # digit, so the prefix is what keeps them as valid XML NCNames. The
 # ``solar_`` prefix names the source dataset (a "solar panels"
@@ -575,8 +581,9 @@ def _fit_roof_plane(roof_sp: SemanticPolygon) -> _RoofPlane | None:
     vertex winding. CityGML roof polygons should wind so the outward
     normal points away from the building (upward), but we defensively
     flip any facet whose computed normal points down. Returns ``None``
-    if the polygon is degenerate (``|n| ~ 0``), which would otherwise
-    produce a division by zero downstream.
+    if the polygon is degenerate (``|n| ~ 0``) or near-vertical
+    (``nz`` below :data:`_MIN_ROOF_NZ`); either would otherwise blow
+    up the ``1/nz`` plane evaluation in :func:`_z_on_plane`.
     """
     ring = roof_sp.polygon.exterior
     if len(ring) < 3:
@@ -590,6 +597,11 @@ def _fit_roof_plane(roof_sp: SemanticPolygon) -> _RoofPlane | None:
     if nz < 0.0:
         nx, ny, nz = -nx, -ny, -nz
     n_unit = (nx / mag, ny / mag, nz / mag)
+    if n_unit[2] < _MIN_ROOF_NZ:
+        # Wall-like facets occasionally land in 3DBAG RoofSurface sets;
+        # no panel belongs on a >85-degree face, and projecting onto one
+        # would divide by a near-zero nz.
+        return None
     x0, y0, z0 = ring[0]
     return _RoofPlane(anchor=(float(x0), float(y0), float(z0)), n_unit=n_unit, nz_raw=nz)
 
