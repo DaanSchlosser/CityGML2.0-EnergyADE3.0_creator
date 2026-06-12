@@ -13,8 +13,8 @@ authors:
     given-names: Daan
     affiliation: "Delft University of Technology"
     email: daan.schlosser@gmail.com
-version: "1.0.0"
-date-released: "2026-06-09"
+version: "1.0.1"
+date-released: "2026-06-12"
 license: MIT
 repository-code: "https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator"
 keywords:
@@ -28,8 +28,8 @@ keywords:
 # Each tagged release is archived on Zenodo through the GitHub integration,
 # which mints a persistent DOI, also shown by the DOI badge at the top of the
 # README and on the repository Releases page. The concept DOI below always
-# resolves to the latest archived version; the identifier records the specific
-# v1.0.0 release.
+# resolves to the latest archived version; the identifiers record the
+# version-specific releases (the v1.0.1 entry is added once Zenodo mints it).
 doi: 10.5281/zenodo.20612452
 identifiers:
   - type: doi
