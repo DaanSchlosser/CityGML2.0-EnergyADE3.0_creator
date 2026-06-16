@@ -3,7 +3,7 @@
 [![CI](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/actions/workflows/ci.yml/badge.svg)](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-blue.svg)](pyproject.toml)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20612452.svg)](https://doi.org/10.5281/zenodo.20612452)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20612452-blue.svg)](https://doi.org/10.5281/zenodo.20612452)
 
 A Python toolkit for generating CityGML 2.0 files extended with Energy
 ADE 3.0 (beta8), CityGML's extension mechanism for energy data. The
