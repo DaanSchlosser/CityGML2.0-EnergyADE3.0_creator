@@ -11,6 +11,14 @@ point is an easier authoring path: you describe the model in JSON and
 attach STEP or CityJSON geometry, and the toolkit assembles and
 serialises the Energy ADE GML so you never write the XML by hand.
 
+<div align="center">
+  <img src="docs/img/city-scale_EPC-coloring_and_solar-panels_trees.png" alt="City-scale CityGML 2.0 + Energy ADE 3.0 output: a Dutch neighbourhood with buildings coloured by energy label, roof-mounted solar collectors, and LoD3 trees" width="820">
+  <br>
+  <em>City-scale output for a Dutch neighbourhood, with each building coloured by the averaged energy label of its dwellings, roof-mounted solar collectors, and LoD3 trees from the optional vegetation input.</em>
+  <br>
+  <br>
+</div>
+
 > **Viewing the output in KITModelViewer?** The viewer ships with an
 > incompatible Energy ADE 2.0 schema. See
 > [§6 KITModelViewer compatibility](#6-kitmodelviewer-compatibility) for
@@ -91,6 +99,25 @@ EP-Online CSV filtering. All extras are declared in
 ---
 
 ## 3. Per-building pipeline
+
+The owner-occupier reference dwelling, built from a single JSON document
+plus Rhino STEP geometry, shown at each level of detail and split into
+its thermal zone parts:
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><img src="docs/img/owner-occupier-lod0.png" width="155" alt="LoD0 footprint"><br><sub><b>LoD0</b><br>footprint</sub></td>
+      <td align="center"><img src="docs/img/owner-occupier-lod1.png" width="155" alt="LoD1 massing block"><br><sub><b>LoD1</b><br>massing block</sub></td>
+      <td align="center"><img src="docs/img/owner-occupier-lod2.png" width="155" alt="LoD2 thematic surfaces"><br><sub><b>LoD2</b><br>thematic surfaces</sub></td>
+      <td align="center"><img src="docs/img/owner-occupier-lod3.png" width="155" alt="LoD3 with openings and a photovoltaic array"><br><sub><b>LoD3</b><br>openings + PV</sub></td>
+      <td align="center"><img src="docs/img/owner-occupier-lod2-zoneparts.png" width="155" alt="The reference dwelling split into per-storey thermal zone parts"><br><sub><b>ZoneParts</b><br>thermal zones</sub></td>
+    </tr>
+  </table>
+  <em>LoD0 footprint through LoD3 openings and photovoltaics, then the two thermal <code>nrg3:ZonePart</code> volumes (lower storey red, upper storey blue) that the Energy ADE attaches schedules and energy resources to.</em>
+  <br>
+  <br>
+</div>
 
 Everything the generator needs lives in a single JSON document
 ([inputs/buildings/NL-single-family-house.json](inputs/buildings/NL-single-family-house.json))
@@ -327,6 +354,18 @@ configs live in [inputs/cities/](inputs/cities/).
   with no match render grey). Separate themes are emitted for solar
   collectors and vegetation when configured.
 
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><img src="docs/img/city-scale_tree-coloring-per-vegetation-species.png" width="380" alt="City-scale trees coloured by vegetation species"><br><sub><b>Trees by species</b></sub></td>
+      <td align="center"><img src="docs/img/city-scale_UrbanAreaFunction-highlight.png" width="380" alt="Urban function area polygons highlighted over the building stock"><br><sub><b>Urban function areas</b></sub></td>
+    </tr>
+  </table>
+  <em>LoD3 trees coloured by vegetation species from CFTree and Emmen BOR, beside <code>nrg3:UrbanFunctionArea</code> polygons aggregated from CBS Postcode6 and highlighted over the building stock.</em>
+  <br>
+  <br>
+</div>
+
 ### 4.4 Performance and further reading
 
 Per-Pand build can be parallelised via `CITYGML_ENERGY_ASSEMBLY_WORKERS`
@@ -334,6 +373,18 @@ Per-Pand build can be parallelised via `CITYGML_ENERGY_ASSEMBLY_WORKERS`
 panden). Module layout is in [§5](#5-repository-layout); the full
 data-source-to-XSD mapping and design rationale live in
 [docs/mapping_city.md](docs/mapping_city.md).
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><img src="docs/img/delft_topview_northoriented.png" width="410" alt="Whole-city EPC-coloured building stock of Delft, north-oriented top view"><br><sub><b>Delft</b></sub></td>
+      <td align="center"><img src="docs/img/groningen_topview_northoriented.png" width="410" alt="Whole-city EPC-coloured building stock of Groningen, north-oriented top view"><br><sub><b>Groningen</b></sub></td>
+    </tr>
+  </table>
+  <em>Two entire municipalities run through the city-scale pipeline, with every building coloured by its averaged energy label (north-oriented; grey where EP-Online has no match).</em>
+  <br>
+  <br>
+</div>
 
 ---
 
