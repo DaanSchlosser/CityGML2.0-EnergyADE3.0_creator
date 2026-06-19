@@ -2,13 +2,13 @@
 
 CityJSON 2.0 files holding `SolitaryVegetationObject` features for the small-area test AOI in Emmer-Compascuum.
 
-Each file is the output of [`tools/merge_cftree_tiles.py`](../../tools/merge_cftree_tiles.py): per-tile [CFTree](https://github.com/NoahAlting/CFTree) reconstructions are merged, clipped to a boundary polygon, deduplicated by 2D centroid proximity, and re-numbered with sequential `T_<n>` ids so the runtime no longer needs to carry tile metadata or resolve cross-tile collisions. The original CFTree gtid is preserved in each tree's `original_gtid` attribute for traceability.
+Each file is the output of [`tools/merge_cftree_tiles.py`](../../tools/merge_cftree_tiles.py): per-tile [CFTree](https://github.com/NoahAlting/CFTree) reconstructions are merged, clipped to a boundary polygon, and re-numbered with sequential `T_<n>` ids so the runtime no longer needs to carry tile metadata or resolve cross-tile collisions. CFTree assigns each physical tree to the single tile whose non-overlapping core cell contains its centroid, so the per-tile inputs hold no cross-tile duplicates and the merge does not deduplicate. The original CFTree gtid is preserved in each tree's `original_gtid` attribute for traceability.
 
 ## Files
 
 | File | AHN version | Trees | AOI | Source CFTree case |
 |---|---|---|---|---|
-| `emmer-compascuum_small-area_AHN4.city.json` | AHN4 (2020 flight, CC0) | 623 | [`../boundaries/emmer-compascuum_small-area.geojson`](../boundaries/emmer-compascuum_small-area.geojson) | `CFTree/data/emmer-compascuum_small-area` (3 sub-tiles) |
+| `emmer-compascuum_small-area_AHN4.city.json` | AHN4 (2020 flight, CC0) | 614 | [`../boundaries/emmer-compascuum_small-area.geojson`](../boundaries/emmer-compascuum_small-area.geojson) | `CFTree/data/emmer-compascuum_small-area` (3 sub-tiles) |
 | `emmer-compascuum_small-area_AHN6.city.json` | AHN6 (2025 flight, CC-BY-4.0) | 702 | [`../boundaries/emmer-compascuum_small-area.geojson`](../boundaries/emmer-compascuum_small-area.geojson) | `CFTree/data/emmer_compascuum_grid2` (3 tiles) |
 
 ## Regenerating
@@ -29,7 +29,7 @@ python tools/merge_cftree_tiles.py \
     --output inputs/vegetation/emmer-compascuum_small-area_AHN6.city.json
 ```
 
-`--dedup-threshold-m` defaults to 1.0 m (centroid distance below which two reconstructions are treated as the same physical tree). The AHN4 small-area run drops 28 cross-tile duplicates at this threshold; AHN6 grid2 has zero duplicates at any threshold up to 2 m. Going wider than 1 m starts collapsing genuinely distinct neighbouring trees, so widen only if cross-tile overlap behaviour in CFTree changes meaningfully.
+Cross-tile duplicates are removed inside CFTree, not here: each tree is assigned to the single tile whose core cell contains its centroid, so two overlapping tiles never both emit the same tree. The merge concatenates the per-tile trees and clips them to the boundary. It relies on the CFTree case being built with this tile-ownership pipeline; a case from an older CFTree that still emits overlapping-tile reconstructions would carry those duplicates straight through, since the merge no longer deduplicates.
 
 ## Schema notes
 

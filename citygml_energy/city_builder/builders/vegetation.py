@@ -175,8 +175,9 @@ def build_solitary_vegetation_object(
     """
     tree_cls = resolve_class(SOLITARY_VEGETATION_OBJECT)
     # gtids are globally unique in the merged CFTree output produced by
-    # ``tools.merge_cftree_tiles`` (per-tile collisions are resolved at
-    # merge time by re-numbering survivors), so the gml:id can be
+    # ``tools.merge_cftree_tiles`` (CFTree assigns each tree to one owning
+    # tile, so the per-tile inputs carry no cross-tile duplicates, and the
+    # merge re-numbers every tree sequentially), so the gml:id can be
     # derived directly from the gtid without tile namespacing.
     gml_id = safe_gml_id(build_context.gml_id_prefix, "tree", tree.gtid)
     obj = tree_cls(id=gml_id, name=[Name(value=f"T_{tree.gtid}")])

@@ -1,23 +1,23 @@
-"""Merge a CFTree case directory's per-tile CityJSONs into a single deduped file.
+"""Merge a CFTree case directory's per-tile CityJSONs into a single file.
 
 CFTree writes one ``trees_lod3.city.json`` per AHN sub-tile under
-``data/<case>/tiles/<tile_id>/``. Two adjacent tiles can each reconstruct
-the same physical tree from their own (overlapping) point cloud chunks,
-so the city-build pipeline used to ingest tiles individually and then
-namespace each tree's ``gml:id`` by ``tile_id`` to dodge xs:ID collisions.
+``data/<case>/tiles/<tile_id>/``. CFTree assigns each physical tree to
+exactly one tile (the tile whose non-overlapping core cell contains the
+tree's centroid), so a tree that two overlapping tiles both reconstruct is
+emitted by only one of them. The per-tile outputs therefore carry no
+cross-tile duplicates and this tool does not deduplicate; it concatenates.
 
 This tool consolidates a CFTree case ahead of time:
 
 1. Walk ``<case>/tiles/*/trees_lod3.city.json`` and parse every tree.
-2. Drop trees whose centroid falls outside an AOI boundary polygon.
-3. Cluster trees by 2D centroid proximity and keep one representative
-   per cluster (the one with the most polygon faces, i.e. the most
-   complete reconstruction).
-4. Re-number the survivors with sequential ``T_<n>`` ids and write a
-   single CityJSON 2.0 file that the city-build vegetation loader can
-   ingest without further dedup.
+2. Drop trees whose centroid falls outside an AOI boundary polygon. A tile
+   reconstructs a halo past its core cell, so some trees land in the buffer
+   ring outside the requested AOI; this clip removes them.
+3. Re-number the trees with sequential ``T_<n>`` ids and write a single
+   CityJSON 2.0 file that the city-build vegetation loader can ingest
+   directly.
 
-Run it once per (CFTree case, AOI, AHN version) tuple — the output is
+Run it once per (CFTree case, AOI, AHN version) tuple; the output is
 checked into the repo so the CFTree directory itself can be detached
 from the build.
 
@@ -59,7 +59,7 @@ _LOG = logging.getLogger("merge_cftree_tiles")
 
 
 # ---------------------------------------------------------------------------
-# Clip + dedupe
+# Clip
 # ---------------------------------------------------------------------------
 
 
@@ -70,51 +70,6 @@ def _clip_to_boundary(trees: list[ParsedTree], boundary: Any) -> list[ParsedTree
 
     prepare(boundary)
     return [tree for tree in trees if boundary.contains(Point(tree.centroid[0], tree.centroid[1]))]
-
-
-def _dedupe_by_centroid(
-    trees: list[ParsedTree],
-    threshold_m: float,
-) -> list[ParsedTree]:
-    """Greedy spatial dedup: cluster by centroid, keep most-detailed tree.
-
-    "Most detailed" = highest polygon-face count, ties broken by lower
-    gtid. Order-independent thanks to the upfront sort.
-
-    O(n*k) where k is the number of already-kept trees in a square
-    bucket; with a default bucket size = ``threshold_m`` the lookup is
-    effectively O(1) per insertion.
-    """
-    if not trees:
-        return []
-    sorted_trees = sorted(
-        trees, key=lambda t: (-len(t.polygons), int(t.gtid) if t.gtid.isdigit() else t.gtid)
-    )
-
-    bucket_size = max(threshold_m, 0.001)
-    threshold_sq = threshold_m * threshold_m
-    buckets: dict[tuple[int, int], list[ParsedTree]] = {}
-    kept: list[ParsedTree] = []
-
-    for tree in sorted_trees:
-        cx, cy, _ = tree.centroid
-        bx, by = int(cx // bucket_size), int(cy // bucket_size)
-        is_dup = False
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                for other in buckets.get((bx + dx, by + dy), ()):
-                    ox, oy, _ = other.centroid
-                    if (cx - ox) ** 2 + (cy - oy) ** 2 < threshold_sq:
-                        is_dup = True
-                        break
-                if is_dup:
-                    break
-            if is_dup:
-                break
-        if not is_dup:
-            kept.append(tree)
-            buckets.setdefault((bx, by), []).append(tree)
-    return kept
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +218,7 @@ def _write_merged_cityjson(
                 max(abs_zs),
             ],
             "presentLoDs": [3.0],
-            "title": f"CFTree merged + clipped + deduped ({case_label})",
+            "title": f"CFTree merged + clipped ({case_label})",
             "identifier": case_label,
             "extensions": {
                 "merge_provenance": {
@@ -285,12 +240,69 @@ def _write_merged_cityjson(
 # ---------------------------------------------------------------------------
 
 
+# Default per-tile output filename CFTree writes; the single source of
+# truth for both the CLI's ``--tree-filename`` default and the on-demand
+# runner's tile glob (citygml_energy.city_builder.cftree_runner imports
+# this so the two never drift out of sync).
+TILE_FILENAME = "trees_lod3.city.json"
+
+
 def _gather_tile_files(case_dir: Path, filename: str) -> list[Path]:
     """Find every ``tiles/*/<filename>`` under *case_dir*."""
     tiles_dir = case_dir / "tiles"
     if not tiles_dir.is_dir():
         raise FileNotFoundError(f"{case_dir} has no 'tiles' subdirectory; is this a CFTree case?")
     return sorted(tiles_dir.glob(f"*/{filename}"))
+
+
+def merge_case(
+    case_dir: Path,
+    boundary_path: Path,
+    output_path: Path,
+    *,
+    tree_filename: str = TILE_FILENAME,
+) -> int:
+    """Merge one CFTree case's per-tile CityJSONs into a single file.
+
+    Walks ``<case_dir>/tiles/*/<tree_filename>``, clips to the AOI in
+    *boundary_path*, and writes the merged CityJSON 2.0 to *output_path*.
+    Returns the number of trees written. The tiles carry no cross-tile
+    duplicates (CFTree assigns each tree to one owning tile), so there is no
+    dedup step here; the clip only removes trees in the halo ring outside the
+    requested AOI.
+
+    This is the importable core the CLI :func:`main` wraps and the
+    on-demand runner
+    (:func:`citygml_energy.city_builder.cftree_runner.ensure_tree_file`)
+    calls in-process, so the clip / re-numbering rules live in one place.
+    Raises :class:`FileNotFoundError` when the case has no tiles to merge
+    (no ``tiles`` directory, or no matching per-tile files).
+    """
+    tile_paths = _gather_tile_files(case_dir, tree_filename)
+    if not tile_paths:
+        raise FileNotFoundError(f"No {tree_filename} files found under {case_dir}/tiles/")
+    _LOG.info("Found %d tile file(s) under %s", len(tile_paths), case_dir)
+
+    boundary = load_boundary_polygon(BoundarySource(path=boundary_path))
+
+    all_trees: list[ParsedTree] = []
+    for tile_path in tile_paths:
+        parsed = parse_cftree_tile_file(tile_path)
+        all_trees.extend(parsed)
+        _LOG.info("  %s: %d trees", tile_path.parent.name, len(parsed))
+    _LOG.info("Parsed %d trees across %d tile(s)", len(all_trees), len(tile_paths))
+
+    clipped = _clip_to_boundary(all_trees, boundary)
+    _LOG.info("Inside-AOI: %d / %d trees", len(clipped), len(all_trees))
+
+    _write_merged_cityjson(
+        clipped,
+        output_path,
+        case_label=case_dir.name,
+        boundary_label=boundary_path.name,
+    )
+    _LOG.info("Wrote %s (%d trees)", output_path, len(clipped))
+    return len(clipped)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -320,50 +332,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--tree-filename",
-        default="trees_lod3.city.json",
+        default=TILE_FILENAME,
         help="Filename to read in each tile dir (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--dedup-threshold-m",
-        type=float,
-        default=1.0,
-        help="2D centroid distance below which two trees are duplicates (default: %(default)s)",
     )
     args = parser.parse_args(argv)
 
-    tile_paths = _gather_tile_files(args.case_dir, args.tree_filename)
-    if not tile_paths:
-        _LOG.error("No %s files found under %s/tiles/", args.tree_filename, args.case_dir)
+    try:
+        merge_case(
+            args.case_dir,
+            args.boundary,
+            args.output,
+            tree_filename=args.tree_filename,
+        )
+    except FileNotFoundError as exc:
+        _LOG.error("%s", exc)
         return 1
-    _LOG.info("Found %d tile file(s) under %s", len(tile_paths), args.case_dir)
-
-    boundary = load_boundary_polygon(BoundarySource(path=args.boundary))
-
-    all_trees: list[ParsedTree] = []
-    for tile_path in tile_paths:
-        parsed = parse_cftree_tile_file(tile_path)
-        all_trees.extend(parsed)
-        _LOG.info("  %s: %d trees", tile_path.parent.name, len(parsed))
-    _LOG.info("Parsed %d trees across %d tile(s)", len(all_trees), len(tile_paths))
-
-    clipped = _clip_to_boundary(all_trees, boundary)
-    _LOG.info("Inside-AOI: %d / %d trees", len(clipped), len(all_trees))
-
-    deduped = _dedupe_by_centroid(clipped, threshold_m=args.dedup_threshold_m)
-    _LOG.info(
-        "After dedup (threshold=%.2f m): %d / %d trees",
-        args.dedup_threshold_m,
-        len(deduped),
-        len(clipped),
-    )
-
-    _write_merged_cityjson(
-        deduped,
-        args.output,
-        case_label=args.case_dir.name,
-        boundary_label=args.boundary.name,
-    )
-    _LOG.info("Wrote %s (%d trees)", args.output, len(deduped))
     return 0
 
 
