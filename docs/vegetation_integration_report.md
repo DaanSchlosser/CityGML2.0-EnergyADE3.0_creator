@@ -32,13 +32,15 @@ area:
 | [`generated/emmer-compascuum_small-area.gml`](../generated/emmer-compascuum_small-area.gml) | 951 | 702 | 189 MB | XSD-valid |
 
 CFTree reconstructs the 41.5 ha AOI from AHN6 LiDAR; the per-tile
-outputs are merged, clipped to the boundary polygon, and deduplicated
-into 702 trees by [`tools/merge_cftree_tiles.py`](../tools/merge_cftree_tiles.py)
-(see [`inputs/vegetation/README.md`](../inputs/vegetation/README.md)). The
-city pipeline loads that pre-clipped tree set directly. BGT's
+outputs are merged and clipped to the boundary polygon into 702 trees by
+[`tools/merge_cftree_tiles.py`](../tools/merge_cftree_tiles.py)
+(see [`inputs/vegetation/README.md`](../inputs/vegetation/README.md)).
+CFTree assigns each tree to one owning tile, so the per-tile inputs hold
+no cross-tile duplicates and the merge does not deduplicate. The city
+pipeline loads that pre-clipped tree set directly. BGT's
 authoritative per-tree register (`vegetatieobject_punt`, plus_type
 `boom`) carries 868 boom points inside the AOI; a 4 m nearest-neighbour
-join cross-references 218 of the 702 CFTree trees back to their BGT
+join cross-references 219 of the 702 CFTree trees back to their BGT
 `lokaal_id`. The ~31 % match rate is expected for a mixed residential /
 rural AOI: BGT only registers publicly-maintained trees, so
 private-garden trees reconstructed by CFTree have no BGT entry by
@@ -95,7 +97,7 @@ recent AHN flights cover the country in phases:
 * **AHN4** (2020, complete nationwide), **the CC-0 fallback**. Open and
   downloadable from `basisdata.nl/hwh-ahn/ahn4/01_LAZ/` and mirrored
   per sub-tile at the TU Delft GeoTiles service. The shipped AHN4
-  reconstruction (623 trees) is retained as a permissively licensed
+  reconstruction (614 trees) is retained as a permissively licensed
   alternative.
 
 Both shipped reconstructions use the same boundary polygon, so they are
@@ -164,7 +166,7 @@ within 4 m of its crown centroid, the builder attaches:
 
 The 4 m match radius balances BGT's nominal 0.3 m class-D positional
 accuracy against CFTree's crown-centroid-to-trunk offset (1-3 m on a
-one-sided canopy). Tuned against the small-area run: 218 of 702 CFTree
+one-sided canopy). Tuned against the small-area run: 219 of 702 CFTree
 trees got a BGT match, a coverage figure that roughly tracks
 public-space vs garden-space in the AOI, since BGT only records
 publicly-maintained trees.

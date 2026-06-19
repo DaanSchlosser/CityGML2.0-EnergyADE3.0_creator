@@ -13,7 +13,7 @@
   "srs_dimension": 3,
   "city_model": {
     "name": "Emmer-Compascuum (small area)",
-    "description": "Emmer-Compascuum small-area test AOI: BAG + 3DBAG LoD 0/1/2 + EP-online, extended with solar panel polygons from the University of Groningen aerial-imagery dataset (Zenodo 14860030, CC-BY-4.0), LoD3 tree reconstructions from CFTree (AHN6 LiDAR -> HOMED + TreeSeparation + CGAL alpha-wrap), pre-merged + clipped + deduped via tools/merge_cftree_tiles.py, optionally enriched with OSM species/leaf_type and Landelijk Register Monumentale Bomen, and CBS Postcode6 dwelling-energy aggregates (gemiddeldGasverbruikWoning m3/yr, gemiddeldElektriciteitsverbruikWoning kWh/yr) attached as nrg3:UrbanFunctionArea features per postcode polygon. Boundary polygon from inputs/boundaries/emmer-compascuum_small-area.geojson."
+    "description": "Emmer-Compascuum small-area test AOI: BAG + 3DBAG LoD 0/1/2 + EP-online, extended with solar panel polygons from the University of Groningen aerial-imagery dataset (Zenodo 14860030, CC-BY-4.0), LoD3 tree reconstructions from CFTree (AHN6 LiDAR -> HOMED + TreeSeparation + CGAL alpha-wrap), each tree owned by one tile so there are no cross-tile duplicates, pre-merged + clipped via tools/merge_cftree_tiles.py, optionally enriched with OSM species/leaf_type and Landelijk Register Monumentale Bomen, and CBS Postcode6 dwelling-energy aggregates (gemiddeldGasverbruikWoning m3/yr, gemiddeldElektriciteitsverbruikWoning kWh/yr) attached as nrg3:UrbanFunctionArea features per postcode polygon. Boundary polygon from inputs/boundaries/emmer-compascuum_small-area.geojson."
   },
   "solar_panels": {
     "path": "../solar_panels/solar_panels.gpkg",
