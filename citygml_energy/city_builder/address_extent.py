@@ -87,6 +87,27 @@ def normalise_street(name: str) -> str:
     return "".join(ch for ch in stripped.lower() if ch.isalnum())
 
 
+# Colloquial place names whose official BAG woonplaats differs. The geocoder
+# returns the official name, so a user's everyday spelling has to be mapped
+# before comparison or a perfectly valid address is rejected: "Den Haag" is the
+# woonplaats "'s-Gravenhage", "Den Bosch" is "'s-Hertogenbosch". The place is
+# only a hint, so this never accepts a genuinely different town (a Delft hit for
+# a Leiden query still fails), it only bridges the alias spellings of one place.
+_PLACE_ALIASES: dict[str, str] = {
+    normalise_street("Den Haag"): normalise_street("'s-Gravenhage"),
+    normalise_street("Den Bosch"): normalise_street("'s-Hertogenbosch"),
+}
+
+
+def _acceptable_place_keys(normalised_place: str) -> set[str]:
+    """Normalised place keys that satisfy *normalised_place*: itself + any alias."""
+    keys = {normalised_place}
+    alias = _PLACE_ALIASES.get(normalised_place)
+    if alias:
+        keys.add(alias)
+    return keys
+
+
 def _probe_addresses(query: AddressQuery) -> list[tuple[str, int | None]]:
     """Pick the (street, number) probes used to anchor the seed bbox.
 
@@ -123,11 +144,17 @@ def _street_variants(street: str) -> list[str]:
 
 
 def _place_matches(hit: locatieserver.GeocodeHit, wanted_place: str | None) -> bool:
-    """Whether *hit* sits in the requested place (woonplaats or gemeente)."""
+    """Whether *hit* sits in the requested place (woonplaats or gemeente).
+
+    Comparison is alias-aware, so a colloquial place hint ("Den Haag") matches
+    the geocoder's official woonplaats ("'s-Gravenhage"); see
+    :data:`_PLACE_ALIASES`.
+    """
     if not wanted_place:
         return True
+    acceptable = _acceptable_place_keys(wanted_place)
     for name in (hit.woonplaatsnaam, hit.gemeentenaam):
-        if name and normalise_street(name) == wanted_place:
+        if name and normalise_street(name) in acceptable:
             return True
     # When the hit carries no place at all we cannot contradict the
     # request, so we do not reject it on that basis.
@@ -247,10 +274,13 @@ def resolve_address_extent(
         raise AddressResolutionError(f"could not geocode any anchor for {raw_query!r}")
 
     # A range normally anchors both endpoints, so their span sets the seed
-    # extent. When only one endpoint geocoded (the other house number does
-    # not exist), widen the buffer so the rest of the run is still covered.
+    # extent. When only one endpoint of a *true* range geocoded (the other house
+    # number does not exist), widen the buffer so the rest of the run is still
+    # covered. A single-house query (low == high) is not a range and must keep
+    # the default buffer, not fetch a needlessly large seed bbox.
+    is_true_range = query.number_high is not None and query.number_high != query.number_low
     buffer = seed_buffer_m
-    if query.has_number_range and len(anchor_points) < 2:
+    if is_true_range and len(anchor_points) < 2:
         buffer = max(buffer, 250.0)
     seed = _seed_bbox(anchor_points, buffer)
     _LOG.info("Seed bbox for BAG address selection: %s", seed)

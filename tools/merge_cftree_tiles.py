@@ -235,6 +235,21 @@ def _write_merged_cityjson(
     output_path.write_text(json.dumps(payload), encoding="utf-8")
 
 
+def write_empty_merged_cityjson(
+    output_path: Path,
+    *,
+    case_label: str = "",
+    boundary_label: str = "",
+) -> None:
+    """Write a valid, empty merged CityJSON (a treeless AOI is a valid result).
+
+    The on-demand runner calls this when a *completed* CFTree run produced no
+    per-tile tree files, so the empty result is cached as a parseable file
+    instead of raising :class:`FileNotFoundError` and regenerating every build.
+    """
+    _write_merged_cityjson([], output_path, case_label=case_label, boundary_label=boundary_label)
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------

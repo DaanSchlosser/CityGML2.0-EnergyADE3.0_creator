@@ -58,6 +58,7 @@ merge error returns ``False`` and the build proceeds without vegetation.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -315,23 +316,23 @@ def ensure_tree_file(
     merge) are injectable for tests.
     """
     out = Path(source.path)
-    if out.is_file():
-        return True
-
     spec = source.generate
+
+    # No generate spec: the file at ``path`` is a user-supplied input,
+    # authoritative when present and impossible to produce when absent.
     if spec is None:
-        return False
+        return out.is_file()
     if aoi_geom is None:
         _LOG.warning("Tree generation requested but no AOI geometry is available; skipping trees")
-        return False
+        return out.is_file()
 
     runner = runner if runner is not None else resolve_runner()
     if runner is None:
-        return False
+        return out.is_file()
 
     resolved = _resolve_merge()
     if resolved is None:
-        return False
+        return out.is_file()
     default_merge, tree_filename = resolved
     merge = merge if merge is not None else default_merge
 
@@ -346,9 +347,24 @@ def ensure_tree_file(
             "Refusing unsafe CFTree case name %r (must be a single path segment); skipping trees",
             case,
         )
-        return False
+        return out.is_file()
 
     _warn_if_large_aoi(aoi_geom)
+
+    data_dir = _data_dir(runner.repo, case)
+    fingerprint = _aoi_fingerprint(aoi_geom, spec, geometry_only=source.geometry_only)
+    manifest = _read_manifest(data_dir)
+    tiles = _existing_tiles(data_dir, tree_filename)
+
+    # An existing merged output is reused unless a completion manifest proves it
+    # was built for a *different* AOI. A user-supplied file (no manifest) and a
+    # matching prior run are both served as-is; a stale generated file (manifest
+    # for a different AOI/buffer/AHN/mode) is regenerated. This is the check that
+    # stops a reused output path -- two addresses pointed at one vegetation file
+    # -- from serving the first address's trees for the second.
+    if out.is_file() and (manifest is None or manifest == fingerprint):
+        _LOG.info("Reusing existing vegetation file %s for case %r", out, case)
+        return True
 
     geojson_path = _case_geojson_path(runner.repo, case)
     try:
@@ -357,24 +373,16 @@ def ensure_tree_file(
         _LOG.error(
             "Could not write CFTree case geometry %s (%s); skipping trees", geojson_path, exc
         )
-        return False
+        return out.is_file()
 
-    data_dir = _data_dir(runner.repo, case)
-    fingerprint = _aoi_fingerprint(aoi_geom, spec, geometry_only=source.geometry_only)
-    manifest = _read_manifest(data_dir)
-    tiles = _existing_tiles(data_dir, tree_filename)
-
-    if manifest == fingerprint and tiles:
-        _LOG.info(
-            "Reusing %d complete CFTree tile(s) for case %r (AOI bounds %s); skipping the CFTree run",
-            len(tiles),
-            case,
-            fingerprint["bounds"],
-        )
-    else:
+    # Reuse the heavy CFTree run when the manifest matches this AOI, even if no
+    # merged output is on disk yet (re-merge only) and even when the run was
+    # legitimately treeless (no tiles): a matching manifest is itself proof the
+    # run completed, so it must not be gated on a non-empty tile set.
+    if manifest != fingerprint:
         _log_regeneration_reason(manifest, tiles, fingerprint, case)
         if not _run_cftree(runner, spec, case, geometry_only=source.geometry_only, run=run):
-            return False
+            return out.is_file()
         try:
             _write_manifest(data_dir, fingerprint)
         except OSError as exc:
@@ -384,9 +392,13 @@ def ensure_tree_file(
                 case,
                 exc,
             )
+    else:
+        _LOG.info(
+            "Reusing complete CFTree run for case %r (AOI bounds %s)", case, fingerprint["bounds"]
+        )
 
     if not _merge_case(merge, data_dir, geojson_path, out, tree_filename=tree_filename):
-        return False
+        return out.is_file()
     return out.is_file()
 
 
@@ -532,7 +544,23 @@ def _merge_case(
     _LOG.info("Merging CFTree tiles from %s into %s", data_dir, output)
     try:
         merge(data_dir, boundary_geojson, output, tree_filename=tree_filename)
-    except Exception as exc:  # soft-fail any merge problem to a treeless build
+    except FileNotFoundError:
+        # A completed run with no per-tile tree files is a legitimately treeless
+        # AOI, not a merge error. Write a valid empty CityJSON so the result is
+        # cached (the matching manifest is already on disk) instead of
+        # re-running the whole pipeline on every build.
+        _LOG.info("CFTree case at %s produced no trees; writing an empty vegetation file", data_dir)
+        try:
+            from tools.merge_cftree_tiles import write_empty_merged_cityjson
+
+            write_empty_merged_cityjson(
+                output, case_label=data_dir.name, boundary_label=boundary_geojson.name
+            )
+        except Exception as exc:  # soft-fail to a treeless build
+            _LOG.error("Could not write empty vegetation file (%s); building without trees", exc)
+            return False
+        return True
+    except Exception as exc:  # soft-fail any other merge problem to a treeless build
         _LOG.error("CFTree tile merge failed (%s); building without trees", exc)
         return False
     return True
@@ -546,6 +574,25 @@ def _existing_tiles(data_dir: Path, tree_filename: str) -> list[Path]:
     return sorted(tiles_dir.glob(f"*/{tree_filename}"))
 
 
+def _geometry_digest(aoi_geom: BaseGeometry) -> str:
+    """Shape-sensitive, jitter-tolerant digest of the AOI geometry.
+
+    The bounds alone cannot distinguish two AOIs that share a bounding box but
+    differ in shape (an edited concave boundary, a different parcel union), so
+    a bounds-only fingerprint would reuse one shape's tiles for the other.
+    Coordinates are snapped to a 0.1 m grid first so float jitter on a re-read
+    of the same boundary does not flip the digest, matching the bounds
+    rounding.
+    """
+    try:
+        from shapely import set_precision
+
+        wkb = set_precision(aoi_geom, 0.1).wkb
+    except Exception:  # pragma: no cover - older shapely without set_precision
+        wkb = aoi_geom.wkb
+    return hashlib.sha256(wkb).hexdigest()
+
+
 def _aoi_fingerprint(
     aoi_geom: BaseGeometry,
     spec: VegetationGenerateSpec,
@@ -556,7 +603,9 @@ def _aoi_fingerprint(
 
     Bounds are rounded to 0.1 m so float jitter never forces a needless
     regenerate, while a real AOI change (different extent, edited
-    boundary) still flips the fingerprint and invalidates reuse.
+    boundary) still flips the fingerprint and invalidates reuse. The bounds
+    are paired with a shape digest so two AOIs that share a bounding box but
+    differ in shape do not collide on the same fingerprint.
 
     *geometry_only* is part of the identity because a geometry-only run
     writes null morphometrics: a tile set built one way must not be
@@ -567,6 +616,7 @@ def _aoi_fingerprint(
     minx, miny, maxx, maxy = aoi_geom.bounds
     return {
         "bounds": [round(minx, 1), round(miny, 1), round(maxx, 1), round(maxy, 1)],
+        "geometry": _geometry_digest(aoi_geom),
         "buffer_m": float(spec.buffer_m),
         "ahn_version": int(spec.ahn_version),
         "geometry_only": bool(geometry_only),

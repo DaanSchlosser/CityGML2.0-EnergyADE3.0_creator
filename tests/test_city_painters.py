@@ -92,4 +92,32 @@ def test_highlight_painter_all_surroundings_and_warns_when_target_absent(caplog)
     by_color = {tuple(m.diffuse_color): set(m.target) for m in materials}
     assert tuple(SURROUNDINGS_DIFFUSE_COLOR) in by_color
     assert tuple(TARGET_BUILDING_DIFFUSE_COLOR) not in by_color  # nothing highlighted
-    assert any("did not reach the extract" in r.message for r in caplog.records)
+    assert any("not highlighted" in r.message for r in caplog.records)
+
+
+def test_highlight_painter_warns_when_target_builds_no_surfaces(caplog) -> None:
+    """A target that reached the build but produced no colourable surface still warns.
+
+    It was previously counted as highlighted (excluded from the missing set), so
+    the run reported it as a target while it rendered identically to its
+    surroundings, with no warning.
+    """
+    model = CityModel()
+    target = build_building(make_parsed_building(pand_id="A"))
+    other = build_building(make_parsed_building(pand_id="B"))
+    model.add(target)
+    model.add(other)
+
+    artifacts = [
+        # The target reached the build but yielded no id-bearing surface.
+        PandArtifacts(pand_id="A", building=target, resolved=[], targets=[], coords=[]),
+        _artifact("B", other),
+    ]
+    with caplog.at_level(logging.WARNING):
+        HighlightPainter(target_pand_ids=frozenset({"A"})).paint(model, artifacts)
+
+    [member] = model.xsd.appearance_member
+    materials = [p.x3_dmaterial for p in member.appearance.surface_data_member]
+    by_color = {tuple(m.diffuse_color): set(m.target) for m in materials}
+    assert tuple(TARGET_BUILDING_DIFFUSE_COLOR) not in by_color  # nothing highlighted
+    assert any("A" in r.message and "not highlighted" in r.message for r in caplog.records)
