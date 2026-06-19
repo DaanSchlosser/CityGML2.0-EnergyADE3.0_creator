@@ -312,7 +312,12 @@ Optional `solar_panels`, `vegetation`, and `cbs_postcode6` blocks enable
 the corresponding inputs. Instead of `bbox`, a `boundary` block pointing
 at a GeoJSON polygon clips to a (possibly concave) area of interest, and
 `ep_online_api_key_file` points at a file holding the EP-Online key as an
-alternative to the `.env` variable. An optional top-level `file_header`
+alternative to the `.env` variable. Instead of `municipality` (+ `bbox` or
+`boundary`), an `address` block resolves the extent from a free-text Dutch
+address and highlights the matched buildings ([§4.5](#45-address-driven-extract)).
+A nested `vegetation.generate` block produces the CFTree tree file on demand
+when it is missing ([§4.6](#46-on-demand-tree-generation)) rather than
+skipping trees. An optional top-level `file_header`
 string is emitted as an XML comment in the generated GML, exactly as in
 the per-building pipeline (§3); the deposited
 `emmer-compascuum_small-area_no-energy-labels.json` config carries one.
@@ -386,6 +391,72 @@ data-source-to-XSD mapping and design rationale live in
   <br>
 </div>
 
+### 4.5 Address-driven extract
+
+The city-scale pipeline can take its extent from a free-text Dutch
+address instead of a municipality. Give it an address and it builds a
+square extract centred on the building(s) the address covers, painting
+those buildings a light yellow-orange and everything around them white,
+so the subject of the extract reads at a glance against its context.
+
+```powershell
+python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
+```
+
+The address may be a single house, a house-number range, or several
+streets, and it tolerates the loose formatting of a typical listing
+(`"Lange gracht 76-214 Leiden"`, `"Etta Palmstraat en Joke Smitstraat
+z.n. Leiden"`). Resolution splits the work between two services by what
+each does well: PDOK Locatieserver supplies only a coarse anchor
+coordinate and the authoritative gemeente / woonplaats name, and the BAG
+WFS then decides exactly which addresses, and therefore which Panden, the
+query covers. The fuzzy geocoder never decides membership.
+
+This is an extent mode of the city-scale pipeline, not a third pipeline
+(see [ADR-0003](docs/adr/0003-two-pipelines.md)): it reuses the same BAG,
+3DBAG, and EP-Online fetch and the same output shape, and only the extent
+resolution and the building colouring differ. Settings other than the
+address come from a profile JSON (`--profile`, default
+[inputs/address/leiden_example.json](inputs/address/leiden_example.json)),
+whose `address` block carries the `query`, the square `extent_m` side
+length, and the optional `target_color` / `surroundings_color`. The
+`address` block is mutually exclusive with `bbox` and `boundary`, and
+makes `municipality` optional since the gemeente comes from the geocode.
+
+### 4.6 On-demand tree generation
+
+A `vegetation` block normally points at a pre-merged CFTree file. Add a
+nested `generate` block and the build produces that file on demand when
+it is missing, instead of skipping trees:
+
+```jsonc
+"vegetation": {
+  "path": "../vegetation/leiden_250.city.json",
+  "geometry_only": true,
+  "generate": { "ahn_version": 5, "n_cores": 8, "buffer_m": 20 }
+}
+```
+
+The build writes the AOI as a CFTree case, runs
+[CFTree](https://github.com/NoahAlting/CFTree) for it (CGAL plus PDAL,
+minutes to a couple of hours) as a subprocess, then merges the result
+into `path`. CFTree is a heavy, separately-installed pipeline, so the
+machine-specific launch details stay in the environment rather than the
+config: `CFTREE_REPO`, `CFTREE_RUNNER` (`wsl` or `native`), and
+`CFTREE_PYTHON` in `.env` (see [.env.example](.env.example)). The
+build-intent knobs (`ahn_version`, `n_cores`, `buffer_m`, optional
+`timeout_min` and `case`) stay in the config so it remains shareable. A
+completion manifest records the AOI, buffer, AHN version, and
+geometry-only mode of a clean run, so an interrupted run or a changed AOI
+regenerates rather than reusing stale tiles. Setting `geometry_only`
+emits trees with CFTree geometry only, skips the BGT / BOR register
+cross-reference, and runs CFTree with `--geometry-only` for a several-
+times-faster reconstruction; it is the address extract's default.
+Generation soft-fails to a treeless build when CFTree is unavailable,
+matching the other optional inputs.
+[inputs/address/leiden_250.json](inputs/address/leiden_250.json) is the
+generate-enabled address profile.
+
 ---
 
 ## 5. Repository layout
@@ -412,6 +483,9 @@ citygml_energy/                Core package
 └── city_builder/               City-scale pipeline
     ├── pipeline.py             Orchestrator: build_city_model(config)
     ├── pand_executor.py        Per-Pand build executor (sequential or pool)
+    ├── extent.py, painters.py  Build-extent seam (gemeente / address) and building-painter seam (energy-label / highlight)
+    ├── address_query.py, address_extent.py    Free-text address → parsed query → centred extent + target Panden
+    ├── cftree_runner.py, _env.py    On-demand CFTree subprocess runner (WSL / native) and shared .env loader
     ├── config.py, http.py, boundary.py, pdok_wfs.py     Config, cached HTTP, AOI loader, WFS paginator
     ├── cityjson_parse.py, cityjson_trees_parse.py       CityJSON tile parsers
     ├── address_key.py, address_match.py                 VBO ↔ EP-online address join
@@ -420,11 +494,12 @@ citygml_energy/                Core package
     ├── postcode6.py            CBS Postcode6 → nrg3:UrbanFunctionArea
     ├── _helpers.py             Shared helpers (type coercion, cache keys, gml:id sanitisation)
     ├── builders/               Per-feature builders (building, address, epc, vegetation)
-    └── fetchers/               One module per remote source (BAG, 3DBAG, EP-online, BGT, Emmen BOR, CBS, PDOK)
+    └── fetchers/               One module per remote source (BAG, 3DBAG, EP-online, Locatieserver, BGT, Emmen BOR, CBS, PDOK)
 
 examples/
 ├── create_building.py          Per-building CLI + library entry point
-└── create_city.py              City-scale CLI + library entry point (default INFO; -v drops to DEBUG)
+├── create_city.py              City-scale CLI + library entry point (default INFO; -v drops to DEBUG)
+└── create_address.py           Address-driven extract CLI (city pipeline; highlights the matched buildings)
 
 tools/
 ├── generate_bindings.py            Regenerate bindings.py from XSD
@@ -445,6 +520,7 @@ inputs/                         See inputs/README.md
 ├── buildings/                  Per-building feature-collection JSONs
 ├── stp/                        STEP geometry for the per-building JSONs
 ├── cities/                     City-scale configs
+├── address/                    Address-driven extract profiles (city pipeline)
 ├── boundaries/                 GeoJSON AOI polygons
 ├── vegetation/                 CFTree LoD 3 tree meshes (CityJSON)
 └── solar_panels/                Solar panel GeoPackage (UoG Zenodo 14860030, CC-BY-4.0)
