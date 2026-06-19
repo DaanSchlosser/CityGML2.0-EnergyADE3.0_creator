@@ -9,6 +9,7 @@ that triggered them, matching the style of the per-building
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 from dataclasses import dataclass
@@ -17,8 +18,14 @@ from typing import Any
 
 from ..errors import CityBuildError
 from ..namespaces import DEFAULT_SRS_DIMENSION, DEFAULT_SRS_NAME
+from ._env import maybe_load_dotenv
 
 PathLike = str | Path
+
+# Private alias kept for in-module call sites; the implementation lives in
+# the leaf ``_env`` module so ``cftree_runner`` can share it without
+# reaching across this module's private surface (see ._env).
+_maybe_load_dotenv = maybe_load_dotenv
 
 
 # ``BuildContext`` is defined ahead of the per-source imports below
@@ -58,14 +65,23 @@ class BuildContext:
     municipality: str = ""
 
     @classmethod
-    def from_config(cls, config: CityBuildConfig) -> BuildContext:
-        """Build a :class:`BuildContext` from a fully-validated config."""
+    def from_config(
+        cls, config: CityBuildConfig, *, municipality: str | None = None
+    ) -> BuildContext:
+        """Build a :class:`BuildContext` from a fully-validated config.
+
+        *municipality* overrides ``config.municipality`` when given. The
+        address-driven build passes the gemeente name resolved from the
+        geocode here, so the resolved name reaches every builder without
+        the config ever being mutated; the gemeente family omits it and
+        inherits ``config.municipality``.
+        """
         return cls(
             gml_id_prefix=config.gml_id_prefix,
             lods=tuple(config.lods),
             srs_name=config.srs_name,
             srs_dimension=config.srs_dimension,
-            municipality=config.municipality,
+            municipality=municipality if municipality is not None else config.municipality,
         )
 
 
@@ -73,7 +89,31 @@ from .boundary import (  # noqa: E402
     BoundarySource,
 )
 from .solar_panels import SolarPanelsSource  # noqa: E402
-from .vegetation import VegetationSource  # noqa: E402
+from .vegetation import VegetationGenerateSpec, VegetationSource  # noqa: E402
+
+
+@dataclass(frozen=True, slots=True)
+class AddressSource:
+    """Validated ``address`` block for the address-driven input method.
+
+    Attributes:
+        query: free-text Dutch address, possibly a range or multiple
+            streets (for example ``"Annie Romeinsingel 72-152 Leiden"``
+            or ``"Etta Palmstraat en Joke Smitstraat z.n. Leiden"``). It
+            is geocoded and resolved against BAG at build time.
+        extent_m: side length, in metres, of the square fetch extent
+            centred on the matched buildings.
+        target_color / surroundings_color: ``(r, g, b)`` in ``[0, 1]``
+            painted onto the matched buildings and everything around
+            them. Defaults mirror the appearance module's
+            ``TARGET_BUILDING_DIFFUSE_COLOR`` (light yellow-orange) and
+            ``SURROUNDINGS_DIFFUSE_COLOR`` (white).
+    """
+
+    query: str
+    extent_m: float = 500.0
+    target_color: tuple[float, float, float] = (0.98, 0.78, 0.42)
+    surroundings_color: tuple[float, float, float] = (1.0, 1.0, 1.0)
 
 
 @dataclass(frozen=True)
@@ -184,6 +224,16 @@ class CityBuildConfig:
     and emits one ``nrg3:UrbanFunctionArea`` per postcode polygon
     intersecting the build extent. See
     :class:`citygml_energy.city_builder.config.CbsPostcode6Source`."""
+    address_source: AddressSource | None = None
+    """Optional address-driven extent. When set, the build extent is not
+    taken from ``municipality`` / ``bbox`` / ``boundary`` but resolved
+    from a free-text address: the address is geocoded, the buildings it
+    covers are found in BAG, and a square ``extent_m`` box is centred on
+    them. Those buildings are then painted distinctly from their
+    surroundings. Mutually exclusive with ``bbox`` and ``boundary``; it
+    also makes ``municipality`` optional, since the gemeente is derived
+    from the geocode. See
+    :class:`citygml_energy.city_builder.config.AddressSource`."""
 
     def build_context(self) -> BuildContext:
         """Return the immutable :class:`BuildContext` derived from this config.
@@ -244,14 +294,28 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
         "solar_panels",
         "vegetation",
         "cbs_postcode6",
+        "address",
     }
 )
 
 _ALLOWED_CITY_MODEL_KEYS: frozenset[str] = frozenset({"name", "description"})
 _ALLOWED_SOLAR_PANELS_KEYS: frozenset[str] = frozenset({"path", "layer", "z_offset_m"})
 _ALLOWED_BOUNDARY_KEYS: frozenset[str] = frozenset({"path"})
-_ALLOWED_VEGETATION_KEYS: frozenset[str] = frozenset({"path"})
+_ALLOWED_VEGETATION_KEYS: frozenset[str] = frozenset({"path", "generate", "geometry_only"})
+_ALLOWED_VEGETATION_GENERATE_KEYS: frozenset[str] = frozenset(
+    {"ahn_version", "n_cores", "buffer_m", "timeout_min", "case"}
+)
+_AHN_VERSIONS: frozenset[int] = frozenset({4, 5, 6})
 _ALLOWED_CBS_POSTCODE6_KEYS: frozenset[str] = frozenset({"year"})
+_ALLOWED_ADDRESS_KEYS: frozenset[str] = frozenset(
+    {"query", "extent_m", "target_color", "surroundings_color"}
+)
+
+# Bounds on the address extent's side length, in metres. Wide enough to
+# admit a single building close-up or a small neighbourhood, while
+# catching a value entered in the wrong unit (a "500000" typo).
+_ADDRESS_EXTENT_MIN_M: float = 50.0
+_ADDRESS_EXTENT_MAX_M: float = 5000.0
 
 # CBS publishes a year-versioned WFS endpoint. The acceptable values
 # are intentionally bounded: 2022 / 2023 / 2024 are live as of writing,
@@ -296,9 +360,20 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
     if "$schema" in data and not isinstance(data["$schema"], str):
         raise CityBuildError(f"{source}: $schema must be a string when provided")
 
-    municipality = data.get("municipality")
-    if not isinstance(municipality, str) or not municipality.strip():
-        raise CityBuildError(f"{source}: municipality must be a non-empty string")
+    address_source = _validate_address(data.get("address"), source=source)
+
+    municipality_raw = data.get("municipality")
+    if isinstance(municipality_raw, str) and municipality_raw.strip():
+        municipality = municipality_raw.strip()
+    elif municipality_raw is None and address_source is not None:
+        # Derived from the geocode at build time, so the user need not
+        # supply it when an address drives the extent.
+        municipality = ""
+    else:
+        raise CityBuildError(
+            f"{source}: municipality must be a non-empty string "
+            f"(or omit it and provide an 'address' block)"
+        )
 
     bbox = _validate_bbox(data.get("bbox"), source=source)
     lods = _validate_lods(data.get("lods"), source=source)
@@ -399,6 +474,11 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
             f"{source}: 'bbox' and 'boundary' are mutually exclusive; "
             f"the fetch extent is derived from the boundary polygon itself"
         )
+    if address_source is not None and (bbox is not None or boundary_source is not None):
+        raise CityBuildError(
+            f"{source}: 'address' is mutually exclusive with 'bbox' and 'boundary'; "
+            f"the fetch extent is derived from the resolved address"
+        )
 
     return CityBuildConfig(
         source_path=source_path,
@@ -420,6 +500,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         boundary_source=boundary_source,
         vegetation_source=vegetation_source,
         cbs_postcode6_source=cbs_postcode6_source,
+        address_source=address_source,
     )
 
 
@@ -535,7 +616,97 @@ def _validate_vegetation(value: Any, *, source: str, base_dir: Path) -> Vegetati
         raise CityBuildError(
             f"{source}: vegetation.path must end in .city.json (got {resolved_path.name!r})"
         )
-    return VegetationSource(path=resolved_path)
+    generate = _validate_vegetation_generate(value.get("generate"), source=source)
+    geometry_only = value.get("geometry_only", False)
+    if not isinstance(geometry_only, bool):
+        raise CityBuildError(
+            f"{source}: vegetation.geometry_only must be a boolean (got {geometry_only!r})"
+        )
+    return VegetationSource(path=resolved_path, generate=generate, geometry_only=geometry_only)
+
+
+def _validate_vegetation_generate(value: Any, *, source: str) -> VegetationGenerateSpec | None:
+    """Validate the optional ``vegetation.generate`` block.
+
+    Returns ``None`` when unset (the merged file must already exist).
+    When set, it switches on on-demand CFTree generation: a missing
+    ``vegetation.path`` is produced for the build AOI before loading. The
+    machine-specific launch details (CFTree checkout, runner, interpreter)
+    are resolved from the environment at build time in
+    :mod:`citygml_energy.city_builder.cftree_runner`, not here, so this
+    block stays free of absolute paths and shareable across machines.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise CityBuildError(f"{source}: vegetation.generate must be an object when provided")
+    unexpected = sorted(set(value) - _ALLOWED_VEGETATION_GENERATE_KEYS)
+    if unexpected:
+        raise CityBuildError(
+            f"{source}: unexpected vegetation.generate key(s): {', '.join(unexpected)}"
+        )
+
+    ahn_version = value.get("ahn_version", 5)
+    if isinstance(ahn_version, bool) or not isinstance(ahn_version, int):
+        ahn_version_ok = False
+    else:
+        ahn_version_ok = ahn_version in _AHN_VERSIONS
+    if not ahn_version_ok:
+        raise CityBuildError(
+            f"{source}: vegetation.generate.ahn_version must be one of "
+            f"{sorted(_AHN_VERSIONS)} (got {ahn_version!r})"
+        )
+
+    n_cores = value.get("n_cores", 8)
+    if isinstance(n_cores, bool) or not isinstance(n_cores, int) or n_cores < 1:
+        raise CityBuildError(
+            f"{source}: vegetation.generate.n_cores must be a positive integer (got {n_cores!r})"
+        )
+
+    buffer_m = value.get("buffer_m", 20.0)
+    if (
+        isinstance(buffer_m, bool)
+        or not isinstance(buffer_m, (int, float))
+        or not math.isfinite(buffer_m)
+        or buffer_m < 0
+    ):
+        raise CityBuildError(
+            f"{source}: vegetation.generate.buffer_m must be a finite non-negative number "
+            f"(got {buffer_m!r})"
+        )
+
+    timeout_min = value.get("timeout_min")
+    if timeout_min is not None and (
+        isinstance(timeout_min, bool) or not isinstance(timeout_min, int) or timeout_min < 1
+    ):
+        raise CityBuildError(
+            f"{source}: vegetation.generate.timeout_min must be a positive integer when provided "
+            f"(got {timeout_min!r})"
+        )
+
+    case = value.get("case")
+    if case is not None and (not isinstance(case, str) or not case.strip()):
+        raise CityBuildError(
+            f"{source}: vegetation.generate.case must be a non-empty string when provided"
+        )
+    if isinstance(case, str) and not _NCNAME_RE.match(case.strip()):
+        # ``case`` becomes a directory segment (cases/<case>/, data/<case>/)
+        # in the CFTree checkout, so restrict it to a safe single segment
+        # exactly as solar_panels.layer is restricted, blocking path
+        # traversal ("../") and separators.
+        raise CityBuildError(
+            f"{source}: vegetation.generate.case {case.strip()!r} must start with a letter or "
+            f"underscore and contain only letters, digits, underscores, dots, or hyphens "
+            f"(it becomes a directory name in the CFTree checkout)"
+        )
+
+    return VegetationGenerateSpec(
+        ahn_version=ahn_version,
+        n_cores=n_cores,
+        buffer_m=float(buffer_m),
+        timeout_min=timeout_min,
+        case=case.strip() if isinstance(case, str) else None,
+    )
 
 
 def _validate_cbs_postcode6(value: Any, *, source: str) -> CbsPostcode6Source | None:
@@ -572,6 +743,83 @@ def _validate_cbs_postcode6(value: Any, *, source: str) -> CbsPostcode6Source | 
             f"(got {year_raw!r})"
         )
     return CbsPostcode6Source(year=int(year_raw))
+
+
+def _validate_address(value: Any, *, source: str) -> AddressSource | None:
+    """Validate the optional ``address`` block.
+
+    Returns ``None`` when unset. The query itself is validated only for
+    presence here; whether it geocodes to a real place is a build-time
+    concern handled by
+    :func:`citygml_energy.city_builder.address_extent.resolve_address_extent`,
+    so a config authored offline still validates.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise CityBuildError(f"{source}: address must be an object when provided")
+    unexpected = sorted(set(value) - _ALLOWED_ADDRESS_KEYS)
+    if unexpected:
+        raise CityBuildError(f"{source}: unexpected address key(s): {', '.join(unexpected)}")
+
+    query = value.get("query")
+    if not isinstance(query, str) or not query.strip():
+        raise CityBuildError(f"{source}: address.query must be a non-empty string")
+
+    extent_m = value.get("extent_m", 500.0)
+    if (
+        isinstance(extent_m, bool)
+        or not isinstance(extent_m, (int, float))
+        or not (_ADDRESS_EXTENT_MIN_M <= extent_m <= _ADDRESS_EXTENT_MAX_M)
+    ):
+        raise CityBuildError(
+            f"{source}: address.extent_m must be a number in "
+            f"[{_ADDRESS_EXTENT_MIN_M}, {_ADDRESS_EXTENT_MAX_M}] metres (got {extent_m!r})"
+        )
+
+    target_color = _validate_color(
+        value.get("target_color"),
+        default=(0.98, 0.78, 0.42),
+        source=source,
+        field="address.target_color",
+    )
+    surroundings_color = _validate_color(
+        value.get("surroundings_color"),
+        default=(1.0, 1.0, 1.0),
+        source=source,
+        field="address.surroundings_color",
+    )
+    return AddressSource(
+        query=query.strip(),
+        extent_m=float(extent_m),
+        target_color=target_color,
+        surroundings_color=surroundings_color,
+    )
+
+
+def _validate_color(
+    value: Any,
+    *,
+    default: tuple[float, float, float],
+    source: str,
+    field: str,
+) -> tuple[float, float, float]:
+    """Validate an optional ``[r, g, b]`` colour in ``[0, 1]``, or return *default*."""
+    if value is None:
+        return default
+    if (
+        not isinstance(value, list)
+        or len(value) != 3
+        or any(
+            isinstance(c, bool) or not isinstance(c, (int, float)) or not (0.0 <= c <= 1.0)
+            for c in value
+        )
+    ):
+        raise CityBuildError(
+            f"{source}: {field} must be an array of 3 numbers in [0, 1] (got {value!r})"
+        )
+    r, g, b = (float(c) for c in value)
+    return (r, g, b)
 
 
 def _validate_boundary(value: Any, *, source: str, base_dir: Path) -> BoundarySource | None:
@@ -616,32 +864,6 @@ def _resolve_path(value: str, base_dir: Path) -> Path:
     if not candidate.is_absolute():
         candidate = base_dir / candidate
     return candidate.resolve()
-
-
-_DOTENV_LOADED_FROM: set[Path] = set()
-
-
-def _maybe_load_dotenv(start_dir: Path) -> None:
-    """Best-effort load of the nearest ``.env`` into ``os.environ``.
-
-    Walks *start_dir* and its ancestors looking for the first ``.env``
-    file, mirroring how ``python-dotenv``'s ``find_dotenv()`` behaves.
-    Silent no-op when ``python-dotenv`` is not installed. Each resolved
-    directory chain is searched at most once per process.
-    """
-    start_dir = start_dir.resolve()
-    if start_dir in _DOTENV_LOADED_FROM:
-        return
-    _DOTENV_LOADED_FROM.add(start_dir)
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        return
-    for candidate in [start_dir, *start_dir.parents]:
-        env_file = candidate / ".env"
-        if env_file.is_file():
-            load_dotenv(env_file, override=False)
-            return
 
 
 # Re-exported for downstream callers that want the frozenset directly.

@@ -36,7 +36,7 @@ from .builders import (
     build_building,
 )
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
-from .config import BuildContext, CityBuildConfig
+from .config import BuildContext
 from .fetchers import bag as bag_fetchers
 from .solar_panels import ProjectedPanel, attach_solar_collectors_to_building
 
@@ -56,13 +56,19 @@ _LOG = logging.getLogger(__name__)
 class PandArtifacts:
     """Per-pand build output the main process folds into the CityModel.
 
-    Frozen + slots so the four fields stay picklable across the
-    ``spawn`` worker-pool boundary at no extra cost relative to the
-    plain tuple this used to be. Adding a new per-pand output
-    (thermal zones, indicators, ...) is a one-line addition here
-    instead of re-plumbing every unpack site.
+    Frozen + slots so the fields stay picklable across the ``spawn``
+    worker-pool boundary at no extra cost relative to the plain tuple
+    this used to be. Adding a new per-pand output (thermal zones,
+    indicators, ...) is a one-line addition here instead of re-plumbing
+    every unpack site.
+
+    ``pand_id`` carries the BAG identificatie through to the assembly
+    step so an appearance painter can decide per building whether it is
+    one the run wants to single out (the address-driven highlight) from
+    its surroundings, without re-deriving the link from the gml:id.
     """
 
+    pand_id: str
     building: Any
     resolved: list[ResolvedAddress]
     targets: list[str]
@@ -137,7 +143,7 @@ def assembly_worker_count(n_panden: int) -> int:
 
 def run_per_pand_build(
     *,
-    config: CityBuildConfig,
+    build_context: BuildContext,
     panden: list[bag_fetchers.Pand],
     parsed_by_id: dict[str, ParsedBuilding],
     inputs_per_pand: dict[str, PandInputs],
@@ -145,22 +151,25 @@ def run_per_pand_build(
 ) -> list[PandArtifacts]:
     """Build the per-Pand artefacts, sequentially or via a worker pool.
 
-    *workers* of ``1`` runs in-process; any value > 1 spawns a
-    multiprocessing pool (caller is expected to have already passed
-    *workers* through :func:`assembly_worker_count`). Returns the same
-    list of :class:`PandArtifacts` records in either case so the caller
-    is agnostic to the execution strategy.
+    *build_context* is built once by the orchestrator (from the config
+    and the resolved gemeente name) and threaded into every builder, so
+    the executor never re-derives it from the config. *workers* of ``1``
+    runs in-process; any value > 1 spawns a multiprocessing pool (caller
+    is expected to have already passed *workers* through
+    :func:`assembly_worker_count`). Returns the same list of
+    :class:`PandArtifacts` records in either case so the caller is
+    agnostic to the execution strategy.
     """
     if workers > 1:
         return _build_pand_artifacts_parallel(
-            config=config,
+            build_context=build_context,
             panden=panden,
             parsed_by_id=parsed_by_id,
             inputs_per_pand=inputs_per_pand,
             workers=workers,
         )
     return _build_pand_artifacts_sequential(
-        config=config,
+        build_context=build_context,
         panden=panden,
         parsed_by_id=parsed_by_id,
         inputs_per_pand=inputs_per_pand,
@@ -174,13 +183,12 @@ def run_per_pand_build(
 
 def _build_pand_artifacts_sequential(
     *,
-    config: CityBuildConfig,
+    build_context: BuildContext,
     panden: list[bag_fetchers.Pand],
     parsed_by_id: dict[str, ParsedBuilding],
     inputs_per_pand: dict[str, PandInputs],
 ) -> list[PandArtifacts]:
     """Sequentially build the per-pand artifacts. Default path."""
-    build_context = BuildContext.from_config(config)
     return [
         _build_pand_artifacts(
             pand=pand,
@@ -195,7 +203,7 @@ def _build_pand_artifacts_sequential(
 
 def _build_pand_artifacts_parallel(
     *,
-    config: CityBuildConfig,
+    build_context: BuildContext,
     panden: list[bag_fetchers.Pand],
     parsed_by_id: dict[str, ParsedBuilding],
     inputs_per_pand: dict[str, PandInputs],
@@ -211,7 +219,6 @@ def _build_pand_artifacts_parallel(
     """
     import multiprocessing
 
-    build_context = BuildContext.from_config(config)
     jobs: list[tuple[Any, ...]] = [
         (
             pand,
@@ -309,6 +316,7 @@ def _build_pand_artifacts(
     _collect_solar_panel_coordinates(inputs.solar_panels, coords)
     _collect_address_coordinates(inputs.resolved, coords)
     return PandArtifacts(
+        pand_id=pand.identificatie,
         building=building,
         resolved=inputs.resolved,
         targets=targets,

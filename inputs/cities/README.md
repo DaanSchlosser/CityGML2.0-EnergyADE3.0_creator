@@ -29,6 +29,21 @@ Relative paths inside a config are resolved against the config file's own direct
 - `../../generated/<name>.gml`: output path at repo root
 - `../../../CFTree/data/<area>`: external CFTree tree reconstructions (CFTree repo is a sibling of this one)
 
+## On-demand tree generation
+
+A `vegetation` block normally points at a pre-merged CFTree file (produced by `tools/merge_cftree_tiles.py`). Add a nested `generate` block and the build produces that file on demand when it is missing, instead of skipping trees:
+
+```json
+"vegetation": {
+  "path": "../vegetation/leiden_250.city.json",
+  "generate": { "ahn_version": 5, "n_cores": 8, "buffer_m": 20 }
+}
+```
+
+The build writes the AOI as a CFTree case, runs CFTree for it (CGAL plus PDAL, minutes to a couple of hours), then merges the result into `path` in-process. `ahn_version` (4, 5, or 6) is the swappable LiDAR release; each version is cached under its own case, so to regenerate at a newer release, bump `ahn_version` and delete the merged file. A run is reused only when a completion manifest records that the same AOI, buffer, AHN version, and geometry-only mode finished cleanly, so an interrupted run or a changed AOI regenerates rather than merging stale tiles. Optional knobs: `timeout_min` caps the CFTree subprocess (default 360, so a stuck run cannot hang the build forever) and `case` overrides the derived case name. CFTree runs as a subprocess in its own environment: point the build at it with `CFTREE_REPO`, `CFTREE_RUNNER` (`wsl` or `native`), and `CFTREE_PYTHON` in `.env` (see `.env.example`). Generation soft-fails to a treeless build when CFTree is unavailable, matching the other optional inputs.
+
+Set `geometry_only: true` on the `vegetation` block (alongside or instead of `generate`) to emit trees with CFTree geometry only and skip the authoritative-register cross-reference (the national BGT `vegetatieobject_punt` layer) and its PDOK round-trip. When the file is generated on demand, the same flag runs CFTree with `--geometry-only`, which skips the descriptive morphometrics (r50, porosity) for a several-times-faster reconstruction. This is the address pipeline's default, since that workflow usually wants just the tree geometries.
+
 ## Adding a new config
 
 1. Copy the closest existing config and rename.

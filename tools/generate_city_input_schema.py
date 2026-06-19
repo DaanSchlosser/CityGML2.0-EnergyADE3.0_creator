@@ -20,6 +20,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from citygml_energy.city_builder.config import (
+    _ADDRESS_EXTENT_MAX_M,
+    _ADDRESS_EXTENT_MIN_M,
     _CBS_POSTCODE6_YEAR_MAX,
     _CBS_POSTCODE6_YEAR_MIN,
     ALLOWED_LODS,
@@ -39,7 +41,11 @@ def build_schema() -> dict[str, Any]:
             "tools/generate_city_input_schema.py; do not edit by hand."
         ),
         "type": "object",
-        "required": ["municipality", "output"],
+        "required": ["output"],
+        "anyOf": [
+            {"required": ["municipality"]},
+            {"required": ["address"]},
+        ],
         "additionalProperties": False,
         "properties": {
             "$schema": {"type": "string"},
@@ -239,6 +245,133 @@ def build_schema() -> dict[str, Any]:
                             "tools/merge_cftree_tiles.py from CFTree "
                             "per-tile output."
                         ),
+                    },
+                    "geometry_only": {
+                        "type": "boolean",
+                        "description": (
+                            "When true, emit trees with CFTree geometry "
+                            "only and skip the BGT / Emmen-BOR register "
+                            "cross-reference (and its PDOK round-trip). "
+                            "The address pipeline typically wants only the "
+                            "geometries. Defaults to false."
+                        ),
+                    },
+                    "generate": {
+                        "type": "object",
+                        "description": (
+                            "Optional on-demand CFTree generation. When "
+                            "present and 'path' is missing at build time, "
+                            "CFTree is run for the build AOI at the chosen "
+                            "AHN version and merged into 'path' before "
+                            "loading. Machine-specific launch details come "
+                            "from the environment (CFTREE_REPO, CFTREE_RUNNER, "
+                            "CFTREE_PYTHON), not this file. Generation "
+                            "soft-fails to a treeless build."
+                        ),
+                        "additionalProperties": False,
+                        "properties": {
+                            "ahn_version": {
+                                "type": "integer",
+                                "enum": [4, 5, 6],
+                                "description": (
+                                    "AHN LiDAR release CFTree downloads. "
+                                    "Defaults to 5 (full national coverage); "
+                                    "bump to 6 once it covers the AOI."
+                                ),
+                            },
+                            "n_cores": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "description": (
+                                    "Worker count for CFTree (--n-cores). Defaults to 8."
+                                ),
+                            },
+                            "buffer_m": {
+                                "type": "number",
+                                "minimum": 0,
+                                "description": (
+                                    "AOI buffer in metres for CFTree (--buffer). Defaults to 20."
+                                ),
+                            },
+                            "timeout_min": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "description": (
+                                    "Cap in minutes on the CFTree "
+                                    "subprocess before the build abandons "
+                                    "it and proceeds treeless. Defaults to "
+                                    "a generous 360 (6 h); raise it for an "
+                                    "AOI large enough to run longer."
+                                ),
+                            },
+                            "case": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": r"^[A-Za-z_][A-Za-z0-9_.\-]*$",
+                                "description": (
+                                    "CFTree case name (cases/<case>/, "
+                                    "data/<case>/). Must be a single safe "
+                                    "path segment (letters, digits, "
+                                    "underscores, dots, hyphens). Defaults "
+                                    "to the output file stem."
+                                ),
+                            },
+                        },
+                    },
+                },
+            },
+            "address": {
+                "type": "object",
+                "description": (
+                    "Optional address-driven extent. The query is geocoded "
+                    "(PDOK Locatieserver) and resolved against authoritative "
+                    "BAG; a square extent_m box is centred on the matched "
+                    "buildings, which are painted target_color while their "
+                    "surroundings are painted surroundings_color. Mutually "
+                    "exclusive with 'bbox' and 'boundary', and makes "
+                    "'municipality' optional (derived from the geocode)."
+                ),
+                "additionalProperties": False,
+                "required": ["query"],
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": (
+                            "Free-text Dutch address, optionally a house-number "
+                            "range or several streets, for example 'Annie "
+                            "Romeinsingel 72-152 Leiden' or 'Etta Palmstraat en "
+                            "Joke Smitstraat z.n. Leiden'."
+                        ),
+                    },
+                    "extent_m": {
+                        "type": "number",
+                        "minimum": _ADDRESS_EXTENT_MIN_M,
+                        "maximum": _ADDRESS_EXTENT_MAX_M,
+                        "description": (
+                            "Side length of the square fetch extent in metres, "
+                            "centred on the matched buildings. Defaults to 500."
+                        ),
+                    },
+                    "target_color": {
+                        "type": "array",
+                        "description": (
+                            "RGB colour [r, g, b] in [0, 1] for the matched "
+                            "buildings. Defaults to a light yellow-orange."
+                        ),
+                        "minItems": 3,
+                        "maxItems": 3,
+                        "items": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                    },
+                    "surroundings_color": {
+                        "type": "array",
+                        "description": (
+                            "RGB colour [r, g, b] in [0, 1] for the surrounding "
+                            "buildings. Defaults to white."
+                        ),
+                        "minItems": 3,
+                        "maxItems": 3,
+                        "items": {"type": "number", "minimum": 0.0, "maximum": 1.0},
                     },
                 },
             },

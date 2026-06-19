@@ -29,7 +29,7 @@ import pytest
 
 from citygml_energy.bindings import Building
 from citygml_energy.city_builder.address_match import ResolvedAddress
-from citygml_energy.city_builder.config import CityBuildConfig
+from citygml_energy.city_builder.config import BuildContext, CityBuildConfig
 from citygml_energy.city_builder.fetchers.bag import Pand, Verblijfsobject
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel
 from citygml_energy.city_builder.pand_executor import (
@@ -133,7 +133,7 @@ def test_run_per_pand_build_returns_one_artefact_per_pand(tmp_path: Path) -> Non
     panden = [_pand("PA"), _pand("PB"), _pand("PC")]
     parsed_by_id = {"PA": _parsed("PA"), "PB": _parsed("PB")}  # PC has no geometry
     artefacts = run_per_pand_build(
-        config=config,
+        build_context=BuildContext.from_config(config),
         panden=panden,
         parsed_by_id=parsed_by_id,
         inputs_per_pand={},  # empty: no addresses, no PV
@@ -168,7 +168,7 @@ def test_run_per_pand_build_threads_build_context_through_to_each_builder(
         )
     }
     artefacts = run_per_pand_build(
-        config=config,
+        build_context=BuildContext.from_config(config),
         panden=[_pand("PA")],
         parsed_by_id={"PA": _parsed("PA")},
         inputs_per_pand=inputs_per_pand,
@@ -224,7 +224,7 @@ def test_run_per_pand_build_lands_orchestration_outputs_on_building(
         )
     }
     [art] = run_per_pand_build(
-        config=config,
+        build_context=BuildContext.from_config(config),
         panden=[_pand("PA", bouwjaar=1985)],
         parsed_by_id={"PA": _parsed("PA", bouwjaar=1985)},
         inputs_per_pand=inputs_per_pand,
@@ -284,7 +284,7 @@ def test_run_per_pand_build_skips_pv_branch_when_panels_empty(
     """
     config = _config(tmp_path)
     [art] = run_per_pand_build(
-        config=config,
+        build_context=BuildContext.from_config(config),
         panden=[_pand("PA")],
         parsed_by_id={"PA": _parsed("PA")},
         inputs_per_pand={"PA": EMPTY_INPUTS},  # explicit empty

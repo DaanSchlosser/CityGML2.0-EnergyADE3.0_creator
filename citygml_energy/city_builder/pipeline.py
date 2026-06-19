@@ -33,18 +33,17 @@ from . import solar_panels as solar_panels_module
 from . import vegetation as vegetation_module
 from .address_match import LabelFilter, ResolvedAddress, match_addresses, wanted_label_filter
 from .appearance import (
-    append_energy_label_appearance,
     append_solar_panel_appearance,
     append_vegetation_appearance,
 )
-from .boundary import load_boundary_polygon
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
-from .config import CityBuildConfig, CityBuildError, load_city_config
+from .config import BuildContext, CityBuildConfig, CityBuildError, load_city_config
+from .extent import BuildExtent, resolve_build_extent
 from .fetchers import bag as bag_fetchers
 from .fetchers import eponline as eponline_fetchers
-from .fetchers import municipality as muni_fetchers
 from .fetchers import threedbag
 from .http import CachedSession
+from .painters import BuildingPainter, EnergyLabelPainter, HighlightPainter
 from .postcode6 import Postcode6Area
 from .solar_panels import ProjectedPanel
 from .vegetation import TreeBundle
@@ -82,37 +81,47 @@ def build_city_model(
     if session is None:
         session = CachedSession(cache_dir=config.cache_dir)
 
-    boundary_geom = _maybe_load_boundary(config)
-
-    _LOG.info("Fetching municipality outline: %s", config.municipality)
-    outline = muni_fetchers.fetch_municipality_outline(session, name=config.municipality)
-    bbox = _resolve_bbox(config, outline=outline, boundary_geom=boundary_geom)
-    cbs_code = outline.cbs_code or None
-    _LOG.info("CBS code: %r  bbox: %s", cbs_code, bbox)
+    # One seam decides the geography of the run: the fetch bbox, the
+    # geometry the 3DBAG query is clipped to, the BAG municipality
+    # restriction, the resolved gemeente name, an optional boundary
+    # polygon, and the Panden a query singled out. The orchestrator
+    # resolves it once and never branches on which kind of extent it is.
+    extent = resolve_build_extent(config, session)
+    _LOG.info("CBS code: %r  bbox: %s", extent.cbs_code, extent.bbox)
 
     # BAG panden, BAG VBOs (optional), 3DBAG tiles, and CBS Postcode6
     # statistics (optional) are all I/O-bound network fetches that
-    # depend only on bbox. Running them concurrently converts N serial
-    # waits into one, cutting cold-cache wall time by roughly the
-    # duration of the slowest fetches. The shared CachedSession is
-    # safe here: its underlying urllib3 connection pool is thread-safe
-    # for read-only GETs, and each fetcher's cache writes land under a
-    # disjoint cache-key prefix so there is no shared-file race.
+    # depend only on the resolved extent. Running them concurrently
+    # converts N serial waits into one, cutting cold-cache wall time by
+    # roughly the duration of the slowest fetches. The shared
+    # CachedSession is safe here: its underlying urllib3 connection pool
+    # is thread-safe for read-only GETs, and each fetcher's cache writes
+    # land under a disjoint cache-key prefix so there is no shared-file
+    # race.
     _LOG.info("Fetching BAG panden, VBOs, 3DBAG tiles, and CBS Postcode6 concurrently …")
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        fut_panden = pool.submit(bag_fetchers.fetch_panden, session, bbox=bbox, cbs_code=cbs_code)
+        fut_panden = pool.submit(
+            bag_fetchers.fetch_panden, session, bbox=extent.bbox, cbs_code=extent.cbs_code
+        )
         fut_vbos = (
-            pool.submit(bag_fetchers.fetch_verblijfsobjecten, session, bbox=bbox, cbs_code=cbs_code)
+            pool.submit(
+                bag_fetchers.fetch_verblijfsobjecten,
+                session,
+                bbox=extent.bbox,
+                cbs_code=extent.cbs_code,
+            )
             if config.include_addresses
             else None
         )
-        fut_3dbag = pool.submit(_fetch_parsed_buildings, session, outline=outline, bbox=bbox)
+        fut_3dbag = pool.submit(
+            _fetch_parsed_buildings, session, clip_geom=extent.clip_geom, bbox=extent.bbox
+        )
         fut_cbs = (
             pool.submit(
                 postcode6_step.safely_fetch_postcode6_areas,
                 session,
                 source=config.cbs_postcode6_source,
-                bbox=bbox,
+                bbox=extent.bbox,
             )
             if config.cbs_postcode6_source is not None
             else None
@@ -156,9 +165,9 @@ def build_city_model(
     if skipped:
         _LOG.info("%d panden have no 3DBAG geometry (skipped)", skipped)
 
-    if boundary_geom is not None:
+    if extent.boundary_geom is not None:
         before = len(parsed_by_id)
-        parsed_by_id = filter_buildings_by_boundary(parsed_by_id, boundary_geom)
+        parsed_by_id = filter_buildings_by_boundary(parsed_by_id, extent.boundary_geom)
         dropped = before - len(parsed_by_id)
         kept_ids = set(parsed_by_id)
         panden = [p for p in panden if p.identificatie in kept_ids]
@@ -171,27 +180,35 @@ def build_city_model(
 
     solar_matches_per_pand = _maybe_match_solar_panels(
         config=config,
-        bbox=bbox,
+        bbox=extent.bbox,
         parsed_by_id=parsed_by_id,
     )
 
     tree_bundle = vegetation_module.fetch_and_match_trees(
         session,
         source=config.vegetation_source,
-        bbox=bbox,
-        boundary_geom=boundary_geom,
+        bbox=extent.bbox,
+        boundary_geom=extent.boundary_geom,
+        # The AOI polygon CFTree reconstructs / the merge clips to when a
+        # vegetation.generate spec produces a missing file: the post-fetch
+        # boundary when set, else the 3DBAG clip geometry intersected with
+        # the fetch bbox. The bbox clip mirrors the building fetch, so a
+        # sub-municipality bbox does not trigger a whole-municipality
+        # reconstruction that the loader would then clip back away.
+        aoi_geom=extent.boundary_geom or _clip_geom_to_bbox(extent.clip_geom, extent.bbox),
     )
 
     _LOG.info("Assembling CityModel …")
     model = _assemble_city_model(
         config=config,
+        extent=extent,
+        painter=_select_building_painter(config, extent),
         panden=panden,
         parsed_by_id=parsed_by_id,
         resolved_per_pand=resolved_per_pand,
         solar_matches_per_pand=solar_matches_per_pand,
         tree_bundle=tree_bundle,
         postcode6_areas=postcode6_areas,
-        boundary_geom=boundary_geom,
     )
     building_count = sum(1 for m in model.xsd.city_object_member if m.building is not None)
     vegetation_count = sum(
@@ -254,37 +271,26 @@ def _maybe_match_solar_panels(
 # ---------------------------------------------------------------------------
 
 
-def _maybe_load_boundary(config: CityBuildConfig) -> BaseGeometry | None:
-    """Load the configured boundary polygon once, or return ``None``."""
-    source = config.boundary_source
-    if source is None:
-        return None
-    _LOG.info("Loading boundary polygon: %s", source.path.name)
-    return load_boundary_polygon(source)
+def _select_building_painter(config: CityBuildConfig, extent: BuildExtent) -> BuildingPainter:
+    """Pick the painter for this run from the resolved extent.
 
-
-def _resolve_bbox(
-    config: CityBuildConfig,
-    *,
-    outline: muni_fetchers.MunicipalityOutline,
-    boundary_geom: BaseGeometry | None,
-) -> tuple[float, float, float, float]:
-    """Return the fetch bbox, preferring the boundary polygon when set.
-
-    Resolution order, in plain words:
-
-    * If a boundary polygon is set, take its 2D bounds. The pipeline
-      later clips builds to the (concave) polygon itself, so this bbox
-      is just the rectangular fetch envelope.
-    * Else, fall back to the user-supplied ``bbox`` from the config.
-    * Else, use the municipality outline's own bbox.
+    An extent that singled out Panden (the address path) gets the
+    highlight painter, with the colours from the ``address`` block;
+    every other extent gets the energy-label painter. This is the only
+    place the appearance mode is decided, and it reads a meaningful
+    field (:attr:`BuildExtent.has_targets`) rather than re-deriving the
+    mode from a sentinel.
     """
-    if boundary_geom is not None:
-        minx, miny, maxx, maxy = boundary_geom.bounds
-        return (float(minx), float(miny), float(maxx), float(maxy))
-    if config.bbox is not None:
-        return config.bbox
-    return outline.bbox
+    if extent.has_targets:
+        source = config.address_source
+        if source is not None:
+            return HighlightPainter(
+                target_pand_ids=extent.target_pand_ids,
+                target_color=source.target_color,
+                surroundings_color=source.surroundings_color,
+            )
+        return HighlightPainter(target_pand_ids=extent.target_pand_ids)
+    return EnergyLabelPainter()
 
 
 def filter_buildings_by_boundary(
@@ -520,52 +526,63 @@ def _try_save_filtered_labels(
 def _fetch_parsed_buildings(
     session: CachedSession,
     *,
-    outline: muni_fetchers.MunicipalityOutline,
+    clip_geom: BaseGeometry,
     bbox: tuple[float, float, float, float] | None,
 ) -> list[ParsedBuilding]:
     """Pull intersecting 3DBAG tiles and parse per-pand geometry.
 
-    When *bbox* is provided, the municipality outline is clipped to it
-    before the tile query so only tiles that overlap the requested area
-    are downloaded; critical for sub-municipality smoke tests.
+    *clip_geom* is the extent's 3DBAG clip geometry (the real
+    municipality outline for the gemeente family, the square box for the
+    address path), already a shapely geometry. When *bbox* is provided,
+    *clip_geom* is intersected with it before the tile query so only
+    tiles that overlap the requested area are downloaded; critical for
+    sub-municipality smoke tests.
 
-    The clipped geometry is used only when the intersection is non-empty
-    and geometrically valid. A degenerate bbox (zero-area, entirely
-    outside the municipality, …) yields an empty or invalid result; we
-    fall back to the full outline in that case so the caller never sees
-    an empty geometry. Real shapely exceptions (invalid input geometry,
-    missing dependency, …) are deliberately **not** suppressed.
+    The clip falls back to the full *clip_geom* on a degenerate result;
+    see :func:`_clip_geom_to_bbox`.
     """
-    geom = _outline_to_shapely(outline.feature.get("geometry") or {})
-    if bbox is not None:
-        from shapely.geometry import box as shapely_box
-
-        clipped = geom.intersection(shapely_box(*bbox))
-        if not clipped.is_empty and clipped.is_valid:
-            geom = clipped
+    geom = _clip_geom_to_bbox(clip_geom, bbox)
     return threedbag.fetch_buildings_for_outline(session, outline=geom)
 
 
-def _outline_to_shapely(geometry: dict[str, Any]) -> BaseGeometry:
-    try:
-        from shapely.geometry import shape
-    except ImportError as exc:  # pragma: no cover, optional dep
-        raise RuntimeError(
-            "City build needs shapely; install with: pip install -e .[city]"
-        ) from exc
-    return shape(geometry)
+def _clip_geom_to_bbox(
+    geom: BaseGeometry, bbox: tuple[float, float, float, float] | None
+) -> BaseGeometry:
+    """Intersect *geom* with *bbox*, falling back to *geom* on a degenerate result.
+
+    Returns *geom* unchanged when *bbox* is ``None``. The clipped geometry
+    is used only when the intersection is non-empty and geometrically
+    valid. A degenerate bbox (zero-area, entirely outside *geom*, …) yields
+    an empty or invalid result; the full *geom* is kept in that case so the
+    caller never sees an empty geometry. Real shapely exceptions (invalid
+    input geometry, missing dependency, …) are deliberately **not**
+    suppressed.
+
+    Shared by the 3DBAG tile fetch and the on-demand CFTree AOI so a
+    sub-municipality ``bbox`` narrows both the same way, instead of one
+    path reconstructing the whole municipality the other clipped away.
+    """
+    if bbox is None:
+        return geom
+    from shapely.geometry import box as shapely_box
+
+    clipped = geom.intersection(shapely_box(*bbox))
+    if not clipped.is_empty and clipped.is_valid:
+        return clipped
+    return geom
 
 
 def _assemble_city_model(
     *,
     config: CityBuildConfig,
+    extent: BuildExtent,
+    painter: BuildingPainter,
     panden: list[bag_fetchers.Pand],
     parsed_by_id: dict[str, ParsedBuilding],
     resolved_per_pand: dict[str, list[ResolvedAddress]],
     solar_matches_per_pand: dict[str, list[ProjectedPanel]] | None = None,
     tree_bundle: TreeBundle | None = None,
     postcode6_areas: list[Postcode6Area] | None = None,
-    boundary_geom: BaseGeometry | None = None,
 ) -> CityModel:
     """Assemble a :class:`CityModel` from parsed BAG/3DBAG/EP-online inputs.
 
@@ -587,6 +604,11 @@ def _assemble_city_model(
     # emitted on write between the XML declaration and the root element.
     model.file_header = config.file_header
 
+    # The build context carries the resolved gemeente name from the
+    # extent (the address path learns it from the geocode), so the
+    # builders see the real name without the config ever being mutated.
+    build_context = BuildContext.from_config(config, municipality=extent.municipality)
+
     inputs_per_pand = pand_executor.bundle_per_pand_inputs(
         panden=panden,
         resolved_per_pand=resolved_per_pand,
@@ -594,7 +616,7 @@ def _assemble_city_model(
     )
     workers = pand_executor.assembly_worker_count(len(panden))
     build_results = pand_executor.run_per_pand_build(
-        config=config,
+        build_context=build_context,
         panden=panden,
         parsed_by_id=parsed_by_id,
         inputs_per_pand=inputs_per_pand,
@@ -602,24 +624,16 @@ def _assemble_city_model(
     )
 
     all_coords: list[Coord3D] = []
-    building_label_pairs: list[tuple[Any, list[ResolvedAddress]]] = []
-    # Capture colorable surface ids as each building is built so the
-    # appearance step doesn't need a second ``iter_instances`` tree walk.
-    targets_by_gml_id: dict[str, list[str]] = {}
     for art in build_results:
         model.add(art.building)
-        building_label_pairs.append((art.building, art.resolved))
-        targets_by_gml_id[art.building.id] = art.targets
         all_coords.extend(art.coords)
 
-    append_energy_label_appearance(
-        model,
-        building_label_pairs,
-        targets_by_gml_id=targets_by_gml_id,
-    )
+    # The painter chosen for this run (energy-label, or address-driven
+    # highlight) appends its theme. The solar-collector and vegetation
+    # appearances are always-on and toggle independently of it.
+    painter.paint(model, build_results)
     append_solar_panel_appearance(model)
 
-    build_context = config.build_context()
     tree_targets = vegetation_module.attach_trees_to_model(
         model,
         tree_bundle if tree_bundle is not None else vegetation_module.EMPTY_BUNDLE,
@@ -634,7 +648,7 @@ def _assemble_city_model(
         build_context,
         areas=postcode6_areas or [],
         parsed_by_id=parsed_by_id,
-        boundary_geom=boundary_geom,
+        boundary_geom=extent.boundary_geom,
         coords_sink=all_coords,
     )
 
@@ -649,6 +663,15 @@ def _assemble_city_model(
     return model
 
 
+# The orchestrator resolves two decisions through seams rather than
+# branching on the run mode inline. Build-extent resolution (the fetch
+# bbox, the 3DBAG clip geometry, the BAG restriction, the gemeente name,
+# the boundary polygon, and the singled-out Panden) lives in
+# ``extent.py`` behind ``resolve_build_extent``; the building appearance
+# (energy-label vs address-driven highlight) lives in ``painters.py``
+# behind ``BuildingPainter``. Each has two adapters today and grows by
+# adding one more, with no new branch here.
+#
 # Per-Pand build execution (sequential vs multiprocessing pool) lives
 # in ``pand_executor`` so this module stays a recipe-style orchestrator.
 # The CBS Postcode6 step lives in ``postcode6.py`` and the CFTree +
