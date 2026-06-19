@@ -62,6 +62,7 @@ if TYPE_CHECKING:
 __all__ = [
     "EMPTY_BUNDLE",
     "TreeBundle",
+    "VegetationGenerateSpec",
     "VegetationSource",
     "attach_trees_to_model",
     "fetch_and_match_trees",
@@ -70,6 +71,47 @@ __all__ = [
 ]
 
 _LOG = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class VegetationGenerateSpec:
+    """On-demand CFTree generation knobs for a vegetation source.
+
+    Present on a :class:`VegetationSource` when the config carries a
+    ``vegetation.generate`` block. It means: when :attr:`VegetationSource.path`
+    is missing at build time, run CFTree for the build AOI, then merge
+    its per-tile output into that path before loading. Absent (``None``),
+    a missing file simply yields a treeless build, the original behaviour.
+
+    These are build-intent knobs, free of absolute paths so a config is
+    shareable across machines. The genuinely machine-specific bits (where
+    CFTree is checked out, how it is launched, which interpreter runs it)
+    come from the environment in
+    :mod:`citygml_energy.city_builder.cftree_runner` instead.
+
+    :attr:`ahn_version`: the AHN release CFTree downloads (4, 5, or 6).
+        Defaults to 5 (full national coverage today); bump to 6 once it
+        covers the AOI and the next missing-file build regenerates.
+    :attr:`n_cores`: worker count passed to CFTree's ``--n-cores``. This
+        is the one CPU-tuning knob that depends on the build machine, not
+        the AOI; it lives here (rather than in the environment) only
+        because it carries a sensible portable default and does not break
+        cross-machine shareability the way an absolute path would.
+    :attr:`buffer_m`: AOI buffer in metres passed to CFTree's ``--buffer``.
+    :attr:`timeout_min`: cap on how long the CFTree subprocess may run
+        before the build abandons it and proceeds treeless. ``None`` uses
+        a generous default (:data:`cftree_runner._DEFAULT_CFTREE_TIMEOUT_S`);
+        raise it for an AOI large enough to legitimately run longer.
+    :attr:`case`: CFTree case name (the ``cases/<case>/`` and
+        ``data/<case>/`` directories). ``None`` derives it from the
+        output file stem, so one AOI maps to one stable case.
+    """
+
+    ahn_version: int = 5
+    n_cores: int = 8
+    buffer_m: float = 20.0
+    timeout_min: int | None = None
+    case: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,9 +126,21 @@ class VegetationSource:
         file produced by :mod:`tools.merge_cftree_tiles`, holding every
         ``SolitaryVegetationObject`` for the AOI with globally-unique
         ``T_<n>`` ids.
+    :attr:`generate`: optional on-demand CFTree generation spec. When
+        set and :attr:`path` is missing, the build produces the file for
+        its AOI before loading; see :class:`VegetationGenerateSpec`.
+    :attr:`geometry_only`: when ``True``, emit trees with CFTree geometry
+        only and skip the authoritative-register cross-reference (and its
+        PDOK round-trip). If the file is generated on demand, the same
+        flag also runs CFTree with ``--geometry-only``, which skips the
+        descriptive morphometrics (r50, porosity) for a several-times-
+        faster reconstruction. The address pipeline typically wants only
+        the geometries; the city pipeline keeps the enrichment by default.
     """
 
     path: Path
+    generate: VegetationGenerateSpec | None = None
+    geometry_only: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -221,22 +275,39 @@ def fetch_and_match_trees(
     source: VegetationSource | None,
     bbox: tuple[float, float, float, float],
     boundary_geom: BaseGeometry | None,
+    aoi_geom: BaseGeometry | None = None,
 ) -> TreeBundle:
     """Load CFTree, clip to extent, and cross-reference BGT + Emmen BOR concurrently.
 
-    A null *source* short-circuits to :data:`EMPTY_BUNDLE`. The CFTree
-    load runs first (file I/O, no network) so the BGT/BOR fetches are
-    skipped entirely when the bbox or boundary leaves zero trees.
+    A null *source* short-circuits to :data:`EMPTY_BUNDLE`. When the
+    source carries a ``generate`` spec and its file is missing, CFTree is
+    run on demand for *aoi_geom* (the build AOI polygon) and merged into
+    place first; see
+    :func:`citygml_energy.city_builder.cftree_runner.ensure_tree_file`.
+    That step soft-fails to a treeless build, so the load below still
+    handles a missing file. The CFTree load then runs first (file I/O, no
+    network) so the BGT/BOR fetches are skipped entirely when the bbox or
+    boundary leaves zero trees.
 
     BGT and BOR fetches run on a 2-thread pool: they are independent
     network calls keyed on the same bbox, so concurrency converts two
     serial waits into one. Soft-fail semantics match the underlying
     fetchers: a PDOK or Emmen-portal outage degrades to an empty
     register dict (and, by extension, plain CFTree geometry) rather
-    than failing the build.
+    than failing the build. When ``source.geometry_only`` is set the
+    cross-reference is skipped entirely (no PDOK round-trip) and trees
+    carry CFTree geometry alone, which is what the address pipeline wants.
     """
     if source is None:
         return EMPTY_BUNDLE
+
+    if source.generate is not None:
+        from .cftree_runner import ensure_tree_file
+
+        # Return value intentionally unused: ensure_tree_file logs its own
+        # failures, and load_trees_in_bbox below already degrades a missing
+        # file to a treeless build, so there is nothing extra to branch on.
+        ensure_tree_file(source, aoi_geom)
 
     _LOG.info("Loading CFTree vegetation: %s", source.path)
     trees = load_trees_in_bbox(source, bbox)
@@ -247,6 +318,14 @@ def fetch_and_match_trees(
 
     if not trees:
         return EMPTY_BUNDLE
+
+    if source.geometry_only:
+        _LOG.info(
+            "Vegetation geometry_only: keeping %d CFTree tree(s) without the "
+            "authoritative-register cross-reference",
+            len(trees),
+        )
+        return TreeBundle(trees=tuple(trees), bgt_matches={}, bor_matches={})
 
     bgt_matches, bor_matches = _match_to_registers(session, trees, bbox)
     return TreeBundle(

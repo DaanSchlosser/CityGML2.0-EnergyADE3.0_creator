@@ -1,0 +1,18 @@
+{
+  "$schema": "../../schemas/city_input.schema.json",
+  "address": {
+    "query": "Annie Romeinsingel 72-152 Leiden",
+    "extent_m": 500
+  },
+  "lods": [0, 1, 2],
+  "include_addresses": true,
+  "include_energy_labels": true,
+  "cache_dir": "../../.cache/citygml_energy_city",
+  "output": "../../generated/address_leiden.gml",
+  "srs_name": "urn:ogc:def:crs,crs:EPSG::28992,crs:EPSG::5109",
+  "srs_dimension": 3,
+  "city_model": {
+    "name": "Address extract, Leiden",
+    "description": "Address-driven CityGML 2.0 extract with Energy ADE 3.0. A square area is centred on the building(s) the address covers; those buildings are painted light yellow-orange and their surroundings white. Buildings come from BAG and 3DBAG (LoD 0/1/2) with EP-Online energy labels. The address is resolved through PDOK Locatieserver for a coarse anchor and authoritative BAG for the exact building match."
+  }
+}

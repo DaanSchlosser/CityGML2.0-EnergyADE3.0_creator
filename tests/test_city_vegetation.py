@@ -27,12 +27,14 @@ import pytest
 pytest.importorskip("shapely")
 
 from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.geometry import box
 
 from citygml_energy.bindings import (
     LengthType,
     MultiSurface,
     SolitaryVegetationObject,
 )
+from citygml_energy.city_builder import cftree_runner
 from citygml_energy.city_builder.appearance import (
     VEGETATION_DIFFUSE_COLOR,
     VEGETATION_THEME,
@@ -46,7 +48,10 @@ from citygml_energy.city_builder.cityjson_trees_parse import (
 )
 from citygml_energy.city_builder.config import BuildContext, CityBuildError, load_city_config
 from citygml_energy.city_builder.vegetation import (
+    EMPTY_BUNDLE,
+    VegetationGenerateSpec,
     VegetationSource,
+    fetch_and_match_trees,
     filter_trees_by_boundary,
     load_trees_in_bbox,
 )
@@ -630,3 +635,254 @@ def test_config_rejects_vegetation_missing_path(tmp_path: Path) -> None:
     cfg = _write_config(tmp_path, {"vegetation": {}})
     with pytest.raises(CityBuildError, match=r"vegetation\.path"):
         load_city_config(cfg)
+
+
+def test_config_accepts_vegetation_generate(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {
+            "vegetation": {
+                "path": "./trees.city.json",
+                "generate": {"ahn_version": 5, "n_cores": 8, "buffer_m": 20},
+            }
+        },
+    )
+    gen = load_city_config(cfg).vegetation_source.generate
+    assert gen is not None
+    assert gen.ahn_version == 5
+    assert gen.n_cores == 8
+    assert gen.buffer_m == 20.0
+    assert gen.case is None
+
+
+def test_config_vegetation_generate_defaults(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {}}},
+    )
+    gen = load_city_config(cfg).vegetation_source.generate
+    assert gen is not None
+    assert (gen.ahn_version, gen.n_cores, gen.buffer_m) == (5, 8, 20.0)
+
+
+def test_config_rejects_bad_ahn_version(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {"ahn_version": 7}}},
+    )
+    with pytest.raises(CityBuildError, match="ahn_version"):
+        load_city_config(cfg)
+
+
+def test_config_rejects_unknown_generate_key(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {"bogus": 1}}},
+    )
+    with pytest.raises(CityBuildError, match=r"unexpected vegetation\.generate key"):
+        load_city_config(cfg)
+
+
+def test_config_rejects_bad_n_cores(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {"n_cores": 0}}},
+    )
+    with pytest.raises(CityBuildError, match="n_cores"):
+        load_city_config(cfg)
+
+
+def test_config_accepts_float_buffer_m(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {"buffer_m": 12.5}}},
+    )
+    gen = load_city_config(cfg).vegetation_source.generate
+    assert gen is not None
+    assert gen.buffer_m == 12.5
+
+
+def test_config_rejects_negative_buffer_m(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {"buffer_m": -1}}},
+    )
+    with pytest.raises(CityBuildError, match="buffer_m"):
+        load_city_config(cfg)
+
+
+def test_config_rejects_non_finite_buffer_m(tmp_path: Path) -> None:
+    """A NaN/Infinity buffer (legal JSON for Python's parser) is rejected."""
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {"buffer_m": float("nan")}}},
+    )
+    with pytest.raises(CityBuildError, match="buffer_m"):
+        load_city_config(cfg)
+
+
+def test_config_accepts_case_and_timeout(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {
+            "vegetation": {
+                "path": "./trees.city.json",
+                "generate": {"case": "my_case", "timeout_min": 30},
+            }
+        },
+    )
+    gen = load_city_config(cfg).vegetation_source.generate
+    assert gen is not None
+    assert gen.case == "my_case"
+    assert gen.timeout_min == 30
+
+
+def test_config_rejects_whitespace_case(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {"case": "   "}}},
+    )
+    with pytest.raises(CityBuildError, match="case"):
+        load_city_config(cfg)
+
+
+def test_config_rejects_traversal_case(tmp_path: Path) -> None:
+    """A case with path separators / traversal is rejected before it reaches the runner."""
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {"case": "../escape"}}},
+    )
+    with pytest.raises(CityBuildError, match="case"):
+        load_city_config(cfg)
+
+
+def test_config_rejects_bad_timeout_min(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "generate": {"timeout_min": 0}}},
+    )
+    with pytest.raises(CityBuildError, match="timeout_min"):
+        load_city_config(cfg)
+
+
+# ---------------------------------------------------------------------------
+# fetch_and_match_trees -> ensure_tree_file wiring
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_triggers_generation_when_spec_present(tmp_path: Path, monkeypatch) -> None:
+    """A generate spec routes the AOI to ensure_tree_file before loading."""
+    calls: list[tuple[Any, Any]] = []
+
+    def _spy(source: Any, aoi_geom: Any, **_kw: Any) -> bool:
+        calls.append((source, aoi_geom))
+        return False  # nothing produced; load below degrades to a treeless build
+
+    monkeypatch.setattr(cftree_runner, "ensure_tree_file", _spy)
+
+    missing = tmp_path / "trees.city.json"  # absent -> load returns []
+    source = VegetationSource(path=missing, generate=VegetationGenerateSpec())
+    aoi = box(0, 0, 250, 250)
+
+    bundle = fetch_and_match_trees(
+        None,  # session unused: zero trees short-circuits before any fetch
+        source=source,
+        bbox=(0, 0, 250, 250),
+        boundary_geom=None,
+        aoi_geom=aoi,
+    )
+    assert len(calls) == 1
+    assert calls[0][0] is source
+    assert calls[0][1] is aoi
+    assert bundle is EMPTY_BUNDLE  # soft-failed generation never raises
+
+
+def test_fetch_skips_generation_without_spec(tmp_path: Path, monkeypatch) -> None:
+    calls: list[Any] = []
+
+    def _spy(*a: Any, **_k: Any) -> bool:
+        calls.append(a)
+        return False
+
+    monkeypatch.setattr(cftree_runner, "ensure_tree_file", _spy)
+    missing = tmp_path / "trees.city.json"
+    source = VegetationSource(path=missing, generate=None)
+    bundle = fetch_and_match_trees(
+        None,
+        source=source,
+        bbox=(0, 0, 250, 250),
+        boundary_geom=None,
+        aoi_geom=box(0, 0, 250, 250),
+    )
+    assert calls == []
+    assert bundle is EMPTY_BUNDLE
+
+
+# ---------------------------------------------------------------------------
+# geometry_only
+# ---------------------------------------------------------------------------
+
+
+def test_config_accepts_geometry_only(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "geometry_only": True}},
+    )
+    source = load_city_config(cfg).vegetation_source
+    assert source is not None
+    assert source.geometry_only is True
+
+
+def test_config_rejects_non_bool_geometry_only(tmp_path: Path) -> None:
+    cfg = _write_config(
+        tmp_path,
+        {"vegetation": {"path": "./trees.city.json", "geometry_only": "yes"}},
+    )
+    with pytest.raises(CityBuildError, match="geometry_only"):
+        load_city_config(cfg)
+
+
+def test_fetch_geometry_only_skips_register_crossref(tmp_path: Path, monkeypatch) -> None:
+    """geometry_only keeps the trees but never touches the BGT/BOR registers."""
+    path = tmp_path / "trees.city.json"
+    path.write_text(json.dumps(_cftree_cityjson(gtid=1)), encoding="utf-8")
+    called: list[Any] = []
+
+    def _no_match(*a: Any, **_k: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+        called.append(a)
+        return {}, {}
+
+    monkeypatch.setattr("citygml_energy.city_builder.vegetation._match_to_registers", _no_match)
+    source = VegetationSource(path=path, geometry_only=True)
+    bundle = fetch_and_match_trees(
+        None,
+        source=source,
+        bbox=(267000, 537700, 267100, 537800),
+        boundary_geom=None,
+    )
+    assert not bundle.is_empty  # the tree is still emitted
+    assert called == []  # enrichment skipped entirely
+    assert bundle.bgt_matches == {}
+    assert bundle.bor_matches == {}
+
+
+def test_fetch_enriches_when_not_geometry_only(tmp_path: Path, monkeypatch) -> None:
+    """The default (geometry_only False) still runs the register cross-reference."""
+    path = tmp_path / "trees.city.json"
+    path.write_text(json.dumps(_cftree_cityjson(gtid=1)), encoding="utf-8")
+    called: list[Any] = []
+
+    def _match(*a: Any, **_k: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+        called.append(a)
+        return {}, {}
+
+    monkeypatch.setattr("citygml_energy.city_builder.vegetation._match_to_registers", _match)
+    source = VegetationSource(path=path, geometry_only=False)
+    bundle = fetch_and_match_trees(
+        None,
+        source=source,
+        bbox=(267000, 537700, 267100, 537800),
+        boundary_geom=None,
+    )
+    assert not bundle.is_empty
+    assert len(called) == 1  # enrichment ran

@@ -62,11 +62,15 @@ from .address_match import ResolvedAddress
 from .epc_score import LABEL_TO_KWH, average_labels, label_to_rgb
 
 __all__ = [
+    "BUILDING_HIGHLIGHT_THEME",
     "ENERGY_LABEL_THEME",
     "SOLAR_PANEL_DIFFUSE_COLOR",
     "SOLAR_PANEL_THEME",
+    "SURROUNDINGS_DIFFUSE_COLOR",
+    "TARGET_BUILDING_DIFFUSE_COLOR",
     "VEGETATION_DIFFUSE_COLOR",
     "VEGETATION_THEME",
+    "append_building_highlight_appearance",
     "append_energy_label_appearance",
     "append_solar_panel_appearance",
     "append_vegetation_appearance",
@@ -75,6 +79,15 @@ __all__ = [
 
 
 ENERGY_LABEL_THEME = "energyLabel"
+
+# Building-highlight appearance: paints the buildings a query singled out
+# in a light yellow-orange and everything around them white, so the
+# subject of an address-driven extract reads at a glance against its
+# context. Lives under its own theme so a viewer can toggle it apart from
+# the energy-label painting.
+BUILDING_HIGHLIGHT_THEME = "buildingHighlight"
+TARGET_BUILDING_DIFFUSE_COLOR: tuple[float, float, float] = (0.98, 0.78, 0.42)
+SURROUNDINGS_DIFFUSE_COLOR: tuple[float, float, float] = (1.0, 1.0, 1.0)
 
 # Solar-panel appearance: "very dark blue, almost black". Darker than any
 # EPC-palette blue, still readable as blue rather than pure black.
@@ -231,6 +244,51 @@ def append_vegetation_appearance(
         diffuse_color=VEGETATION_DIFFUSE_COLOR,
         targets=targets,
     )
+
+
+def append_building_highlight_appearance(
+    city_model: Any,
+    *,
+    target_surface_ids: list[str],
+    surrounding_surface_ids: list[str],
+    target_color: tuple[float, float, float] = TARGET_BUILDING_DIFFUSE_COLOR,
+    surroundings_color: tuple[float, float, float] = SURROUNDINGS_DIFFUSE_COLOR,
+) -> None:
+    """Attach one ``app:Appearance`` that contrasts target buildings with their surroundings.
+
+    *target_surface_ids* and *surrounding_surface_ids* are the
+    ``#<gml:id>`` surface-container refs collected during the per-pand
+    build (the same ids :func:`collect_surface_target_ids` produces),
+    partitioned by whether the building is one the run singled out. The
+    appearance carries up to two ``app:X3DMaterial`` entries, the
+    surroundings color and the target color, under a single
+    ``"buildingHighlight"`` theme so a viewer toggles the whole contrast
+    at once.
+
+    A no-op when neither set has any targets.
+    """
+    materials: list[tuple[tuple[float, float, float], list[str]]] = []
+    if surrounding_surface_ids:
+        materials.append((surroundings_color, surrounding_surface_ids))
+    if target_surface_ids:
+        materials.append((target_color, target_surface_ids))
+    if not materials:
+        return
+
+    appearance_cls = resolve_class(APPEARANCE)
+    material_cls = resolve_class(X3D_MATERIAL)
+    surface_data_inner = _surface_data_property_type(appearance_cls)
+
+    surface_data = [
+        surface_data_inner(x3_dmaterial=material_cls(diffuse_color=list(color), target=targets))
+        for color, targets in materials
+    ]
+    appearance = appearance_cls(
+        id=f"appearance_{BUILDING_HIGHLIGHT_THEME}",
+        theme=BUILDING_HIGHLIGHT_THEME,
+        surface_data_member=surface_data,
+    )
+    city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
 
 
 # ---------------------------------------------------------------------------

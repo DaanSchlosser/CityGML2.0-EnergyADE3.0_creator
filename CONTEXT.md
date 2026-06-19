@@ -103,7 +103,24 @@ The BAG residential-place unit (a named town or settlement), e.g. Emmer-Compascu
 _Avoid_: city; do not use interchangeably with gemeente.
 
 **Build extent (AOI)**:
-The geographic area one city-scale run emits as a single GML: the gemeente named by `municipality`, optionally clipped by a `boundary` polygon or `bbox` to a woonplaats or a smaller area of interest. Uncropped it is the whole gemeente (delft / groningen / zwolle); clipped it is a woonplaats (emmer-compascuum) or a sub-woonplaats AOI (emmer-compascuum_small-area).
+The geographic area one city-scale run emits as a single GML, resolved once before any fetch by [`extent.resolve_build_extent`](citygml_energy/city_builder/extent.py) into a `BuildExtent` the orchestrator never branches on. Two extent kinds resolve into it. The **gemeente** kind takes the gemeente named by `municipality`, optionally clipped by a `boundary` polygon or `bbox` to a woonplaats or a smaller area of interest; uncropped it is the whole gemeente (delft / groningen / zwolle), clipped it is a woonplaats (emmer-compascuum) or a sub-woonplaats AOI (emmer-compascuum_small-area). The **address** kind (defined below) derives a square box centred on the buildings a free-text address resolves to. Both reach the same city-scale pipeline; the address kind is not a separate pipeline (see ADR-0003).
+_Avoid_: treating the address kind as a third pipeline (it is an extent adapter on the city-scale pipeline).
+
+**Address extract**:
+A city-scale run whose [Build extent](#city-pipeline) is resolved from a free-text Dutch address (the optional `address` config block, entry point `examples/create_address.py`). [`address_extent.resolve_address_extent`](citygml_energy/city_builder/address_extent.py) parses the address, geocodes a coarse anchor through PDOK Locatieserver, selects the matching VBOs from authoritative BAG, and centres a square `extent_m` box on the matched buildings. The Panden those buildings sit on become the **target Panden**.
+_Avoid_: "address pipeline" in the ADR sense (it is an extent kind, not a pipeline).
+
+**Target Panden**:
+The set of BAG Pand identifiers an [Address extract](#city-pipeline) singled out (`BuildExtent.target_pand_ids`), empty for every gemeente extent. When non-empty the run paints with the highlight painter rather than the energy-label painter.
+_Avoid_: conflating with the full set of Panden inside the extent; the targets are the subset the query named.
+
+**Building painter**:
+The seam ([`painters.BuildingPainter`](citygml_energy/city_builder/painters.py)) that chooses how the Buildings are coloured, selected once from the resolved extent. The **energy-label painter** (the default) colours every Building by the averaged EP-Online label of its BuildingUnits; the **highlight painter** (chosen when the extent has [target Panden](#city-pipeline)) paints the target Panden one colour and their surroundings another under a separate toggleable theme. The solar-collector and vegetation appearances are always-on and orthogonal, so they are not painters.
+_Avoid_: deriving the colouring mode from a sentinel; the painter is chosen from `BuildExtent.has_targets`.
+
+**On-demand tree generation**:
+The optional `vegetation.generate` block ([`VegetationGenerateSpec`](citygml_energy/city_builder/vegetation.py)) that produces the merged CFTree file for the build AOI when it is missing, rather than skipping trees. It runs CFTree as a subprocess ([`cftree_runner.ensure_tree_file`](citygml_energy/city_builder/cftree_runner.py)) at the requested AHN version, then merges the per-tile output into `vegetation.path`. The build-intent knobs (ahn_version, n_cores, buffer_m, timeout_min, case) live in the config; the machine-specific launch details (`CFTREE_REPO`, `CFTREE_RUNNER`, `CFTREE_PYTHON`) come from the environment, so a config stays shareable across machines. Generation soft-fails to a treeless build, matching the other optional inputs.
+_Avoid_: putting the CFTree checkout path or interpreter in the config.
 
 **Matchable VBO**:
 A VBO whose BAG record carries both a postcode and a huisnummer, the precondition for emitting a CityGML `bldg:address` and for taking part in the EP-Online join. The predicate lives in [`address_match`](citygml_energy/city_builder/address_match.py), where one `LabelFilter` built from the matchable set drives both the EP-Online CSV row filter and the address join, so a label is only fetched when the join can use it. A VBO that is not matchable is dropped from the city output entirely (no BuildingUnit, no EPC), even when EP-Online carries a label for its BAG id.

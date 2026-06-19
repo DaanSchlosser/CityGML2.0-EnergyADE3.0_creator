@@ -247,7 +247,7 @@ def mocked_fetchers(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         pipeline_module,
         "_fetch_parsed_buildings",
-        lambda session, *, outline, bbox: [_fixture_parsed_building()],
+        lambda session, *, clip_geom, bbox: [_fixture_parsed_building()],
     )
 
 
