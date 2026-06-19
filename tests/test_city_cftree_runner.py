@@ -439,15 +439,14 @@ def test_ensure_runs_cftree_then_merges(tmp_path) -> None:
     feature_collection = json.loads(geo.read_text(encoding="utf-8"))
     assert feature_collection["type"] == "FeatureCollection"
     assert feature_collection["features"][0]["geometry"]["type"] == "Polygon"
-    # A completion manifest is written after the clean run.
+    # A completion manifest is written after the clean run, holding the full
+    # AOI fingerprint (bounds + shape digest + buffer + AHN + mode).
     manifest = repo / "data" / "leiden_250_AHN5" / ".cftree_manifest.json"
     assert manifest.is_file()
-    assert json.loads(manifest.read_text(encoding="utf-8")) == {
-        "bounds": [1000.0, 2000.0, 1250.0, 2250.0],
-        "buffer_m": 20.0,
-        "ahn_version": 5,
-        "geometry_only": False,
-    }
+    spec = VegetationGenerateSpec(ahn_version=5, n_cores=8, buffer_m=20.0)
+    assert json.loads(manifest.read_text(encoding="utf-8")) == _aoi_fingerprint(
+        box(1000, 2000, 1250, 2250), spec
+    )
     # CFTree ran once, the merge ran once.
     assert len(run_calls) == 1
     assert len(merge_calls) == 1
@@ -536,7 +535,7 @@ def test_ensure_regenerates_on_changed_aoi(tmp_path) -> None:
 
 
 def test_ensure_runs_when_tiles_dir_empty(tmp_path) -> None:
-    """An empty tiles/ directory is not mistaken for reusable output."""
+    """An empty tiles/ directory with no manifest is not reusable output."""
     repo = tmp_path / "cftree"
     (_data_dir(repo, "leiden_250_AHN5") / "tiles").mkdir(parents=True)
     out = tmp_path / "veg" / "leiden_250.city.json"
@@ -550,6 +549,101 @@ def test_ensure_runs_when_tiles_dir_empty(tmp_path) -> None:
     )
     assert ok is True
     assert len(run_calls) == 1
+
+
+def test_ensure_regenerates_existing_file_built_for_other_aoi(tmp_path) -> None:
+    """An existing merged file is NOT trusted when its manifest is for another AOI.
+
+    The reuse bug: a vegetation path shared across two addresses served the
+    first address's trees for the second because the existing file short-
+    circuited before the AOI was ever checked.
+    """
+    repo = tmp_path / "cftree"
+    spec = VegetationGenerateSpec(ahn_version=5, n_cores=8, buffer_m=20.0)
+    _seed_tile(repo, "leiden_250_AHN5")
+    # Manifest + merged file left by a prior build for a different (smaller) AOI.
+    _write_manifest(_data_dir(repo, "leiden_250_AHN5"), _aoi_fingerprint(box(0, 0, 100, 100), spec))
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    out.parent.mkdir(parents=True)
+    out.write_text('{"stale": true}', encoding="utf-8")
+    run_calls: list[list[str]] = []
+    ok = ensure_tree_file(
+        _source(out),
+        box(0, 0, 250, 250),  # the current build's AOI differs from the manifest
+        run=_make_run(calls=run_calls),
+        merge=_make_merge(out),
+        runner=_FakeRunner(repo=repo),
+    )
+    assert ok is True
+    assert len(run_calls) == 1  # regenerated rather than serving the stale file
+
+
+def test_ensure_reuses_existing_file_when_manifest_matches(tmp_path) -> None:
+    """An existing merged file IS served as-is when its manifest matches the AOI."""
+    repo = tmp_path / "cftree"
+    spec = VegetationGenerateSpec(ahn_version=5, n_cores=8, buffer_m=20.0)
+    aoi = box(0, 0, 250, 250)
+    _write_manifest(_data_dir(repo, "leiden_250_AHN5"), _aoi_fingerprint(aoi, spec))
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    out.parent.mkdir(parents=True)
+    out.write_text("{}", encoding="utf-8")
+    run_calls: list[list[str]] = []
+    merge_calls: list[tuple[str, ...]] = []
+    ok = ensure_tree_file(
+        _source(out),
+        aoi,
+        run=_make_run(calls=run_calls),
+        merge=_make_merge(out, calls=merge_calls),
+        runner=_FakeRunner(repo=repo),
+    )
+    assert ok is True
+    assert run_calls == [] and merge_calls == []  # neither re-ran nor re-merged
+
+
+def test_aoi_fingerprint_distinguishes_same_bbox_different_shape() -> None:
+    """Two AOIs sharing a bounding box but differing in shape must not collide."""
+    spec = VegetationGenerateSpec(ahn_version=5, n_cores=8, buffer_m=20.0)
+    full = box(0, 0, 250, 250)
+    l_shape = Polygon([(0, 0), (250, 0), (250, 100), (100, 100), (100, 250), (0, 250)])
+    assert full.bounds == l_shape.bounds
+    assert _aoi_fingerprint(full, spec) != _aoi_fingerprint(l_shape, spec)
+
+
+def test_ensure_caches_treeless_completed_run(tmp_path) -> None:
+    """A completed-but-treeless run caches a valid empty file instead of looping.
+
+    The bug: reuse required a non-empty tile set, so a legitimately treeless AOI
+    re-ran CFTree every build and the merge raised FileNotFoundError, so no
+    output was ever cached. Here a matching manifest with an empty tiles/ dir
+    must skip the run and write a valid empty CityJSON.
+    """
+    repo = tmp_path / "cftree"
+    spec = VegetationGenerateSpec(ahn_version=5, n_cores=8, buffer_m=20.0)
+    aoi = box(0, 0, 250, 250)
+    (_data_dir(repo, "leiden_250_AHN5") / "tiles").mkdir(parents=True)
+    _write_manifest(_data_dir(repo, "leiden_250_AHN5"), _aoi_fingerprint(aoi, spec))
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    run_calls: list[list[str]] = []
+
+    def _merge_raises_no_tiles(
+        case_dir: Any, boundary: Any, output: Any, *, tree_filename: str = TILE_FILENAME, **_kw: Any
+    ) -> int:
+        # Mirrors the real merge_case on a tile set with no tree files.
+        raise FileNotFoundError(f"No {tree_filename} files found under {case_dir}/tiles/")
+
+    ok = ensure_tree_file(
+        _source(out),
+        aoi,
+        run=_make_run(calls=run_calls),
+        merge=_merge_raises_no_tiles,
+        runner=_FakeRunner(repo=repo),
+    )
+    assert ok is True
+    assert run_calls == []  # the completed run was reused, not re-run
+    assert out.is_file()
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["type"] == "CityJSON"
+    assert payload["CityObjects"] == {}
 
 
 # ---------------------------------------------------------------------------

@@ -86,7 +86,12 @@ class HighlightPainter:
         for art in build_results:
             if art.pand_id in self.target_pand_ids:
                 target_surface_ids.extend(art.targets)
-                built_target_ids.add(art.pand_id)
+                # Count the pand as highlighted only when it actually
+                # contributed surfaces. A target that reached the build but
+                # produced no id-bearing surface would otherwise be reported as
+                # highlighted while rendering identically to its surroundings.
+                if art.targets:
+                    built_target_ids.add(art.pand_id)
             else:
                 surrounding_surface_ids.extend(art.targets)
         target_count = len(built_target_ids)
@@ -95,16 +100,17 @@ class HighlightPainter:
             target_count,
             len(build_results) - target_count,
         )
-        # A pand the query singled out can be resolved against BAG yet never
-        # reach the build: it can fall outside the final extent box, or have
-        # no 3DBAG geometry. Warn (not just INFO) so a user who asked to
-        # highlight a building learns it is missing rather than getting an
-        # all-surroundings model with nothing standing out.
+        # A pand the query singled out might never get highlighted: it can be
+        # clipped out of the final extent, have no 3DBAG record, or reach the
+        # build but yield no id-bearing surface for the requested LoDs (so there
+        # is nothing to colour). Warn (not just INFO) in every case so a user
+        # who asked to highlight a building learns it is missing rather than
+        # getting an all-surroundings model with nothing standing out.
         missing = self.target_pand_ids - built_target_ids
         if missing:
             _LOG.warning(
-                "%d of %d singled-out building(s) did not reach the extract and are not "
-                "highlighted (outside the extent box, or no 3DBAG geometry): %s",
+                "%d of %d singled-out building(s) are not highlighted (clipped out, no "
+                "3DBAG geometry, or no colourable surface): %s",
                 len(missing),
                 len(self.target_pand_ids),
                 ", ".join(sorted(missing)),

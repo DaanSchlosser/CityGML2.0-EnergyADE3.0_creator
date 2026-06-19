@@ -272,6 +272,39 @@ def test_resolve_widens_seed_when_only_one_endpoint_geocodes(monkeypatch, tmp_pa
     assert (minx, maxx) == pytest.approx((750.0, 1250.0))
 
 
+def test_resolve_does_not_widen_for_single_number(monkeypatch, tmp_path) -> None:
+    """A single-house query keeps the default seed buffer, not the range widening.
+
+    has_number_range is true for any number, so the widening (meant for a range
+    with one endpoint missing) used to fire for every single-house lookup and
+    fetch a needlessly large seed bbox.
+    """
+    monkeypatch.setattr(address_extent, "_best_hit", lambda *a, **k: _hit((1000.0, 2000.0)))
+
+    seen: dict[str, Any] = {}
+
+    def fake_fetch(session, *, bbox):
+        seen["bbox"] = bbox
+        return [
+            make_vbo(
+                identificatie="v",
+                pand_identificatie="pandA",
+                huisnummer=12,
+                street="Annie Romeinsingel",
+                point=(1000.0, 2000.0),
+            )
+        ]
+
+    monkeypatch.setattr(address_extent, "fetch_verblijfsobjecten", fake_fetch)
+
+    resolve_address_extent(
+        _session(tmp_path), "Annie Romeinsingel 12 Leiden", extent_m=500.0, seed_buffer_m=80.0
+    )
+    minx, _miny, maxx, _maxy = seen["bbox"]
+    # One anchor at x=1000 padded by the 80 m default (160 m wide), not 250 m.
+    assert (minx, maxx) == pytest.approx((920.0, 1080.0))
+
+
 def test_best_hit_rejects_street_match_in_wrong_place(monkeypatch, tmp_path) -> None:
     """A same-named street in another gemeente is not accepted as the anchor."""
 
@@ -290,6 +323,32 @@ def test_best_hit_rejects_street_match_in_wrong_place(monkeypatch, tmp_path) -> 
 
     monkeypatch.setattr(address_extent.locatieserver, "geocode_free", fake_geocode)
     assert address_extent._best_hit(_session(tmp_path), "Kerkstraat", 1, "Leiden") is None
+
+
+def test_best_hit_accepts_colloquial_place_alias(monkeypatch, tmp_path) -> None:
+    """A colloquial place hint ("Den Haag") matches the official woonplaats.
+
+    PDOK returns "'s-Gravenhage", which never equals the normalised "Den Haag",
+    so a strict place check rejected every hit for a valid The Hague address.
+    """
+
+    def fake_geocode(session, text, *, type_filter="adres", rows=10):
+        return [
+            GeocodeHit(
+                type="adres",
+                weergavenaam="Lange Voorhout 1, 's-Gravenhage",
+                point_rd=(80000.0, 455000.0),
+                straatnaam="Lange Voorhout",
+                huisnummer=1,
+                woonplaatsnaam="'s-Gravenhage",
+                gemeentenaam="'s-Gravenhage",
+            )
+        ]
+
+    monkeypatch.setattr(address_extent.locatieserver, "geocode_free", fake_geocode)
+    hit = address_extent._best_hit(_session(tmp_path), "Lange Voorhout", 1, "Den Haag")
+    assert hit is not None
+    assert hit.woonplaatsnaam == "'s-Gravenhage"
 
 
 def test_best_hit_accepts_place_less_hit(monkeypatch, tmp_path) -> None:

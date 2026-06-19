@@ -109,7 +109,16 @@ def parse_address_query(raw: str) -> AddressQuery:
     range_match = _RANGE_RE.search(text)
     # Only look for a lone number when there is no range, so the digits
     # inside a range ("72-152") are not also picked up as a single number.
-    single_match = None if range_match else _SINGLE_RE.search(text)
+    # Skip a number at the very start of the string (nothing but the number
+    # before it): Dutch streets routinely begin with an ordinal token ("1e
+    # Binnenvestgracht", "2e Helmersstraat"), which must stay part of the
+    # street name, with the real house number taken from later in the string.
+    single_match = None
+    if not range_match:
+        for candidate in _SINGLE_RE.finditer(text):
+            if text[: candidate.start()].strip(" ,"):
+                single_match = candidate
+                break
 
     number_low: int | None = None
     number_high: int | None = None

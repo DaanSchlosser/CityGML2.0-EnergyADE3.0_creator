@@ -93,6 +93,28 @@ def test_embedded_street_number_is_taken_as_house_number() -> None:
     assert q.place == "Rotterdam"
 
 
+def test_leading_ordinal_street_with_single_number() -> None:
+    # Dutch streets often begin with an ordinal ("1e Binnenvestgracht"). The
+    # leading "1e" must stay in the street, with the real house number taken
+    # from later in the string, not parsed as the house number (which left an
+    # empty street and raised ValueError).
+    q = parse_address_query("1e Binnenvestgracht 5 Leiden")
+    assert q.streets == ("1e Binnenvestgracht",)
+    assert q.number_low == 5
+    assert q.number_high == 5
+    assert q.place == "Leiden"
+
+
+def test_leading_ordinal_street_with_range() -> None:
+    # The range arm already worked (the range pre-empts the single-number
+    # search); pinned alongside the single-number arm so both stay consistent.
+    q = parse_address_query("2e Helmersstraat 10-20 Amsterdam")
+    assert q.streets == ("2e Helmersstraat",)
+    assert q.number_low == 10
+    assert q.number_high == 20
+    assert q.place == "Amsterdam"
+
+
 @pytest.mark.parametrize("bad", ["", "   "])
 def test_empty_query_raises(bad: str) -> None:
     with pytest.raises(ValueError):
