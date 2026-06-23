@@ -6,7 +6,7 @@
 
 **Drift guard.** [`tests/test_mapping_index_in_sync.py`](../tests/test_mapping_index_in_sync.py) asserts that every module path linked in this document exists, that a curated list of cited symbols is reachable in its module, and that every enrichment helper in [`citygml_energy/city_builder/`](../citygml_energy/city_builder/), private (`_apply_bgt_*`, `_apply_bor_*`, `_apply_cftree_*`, `_apply_eponline_*`) and public (`apply_bag_*`, `apply_eponline_*`, `build_building*`, `build_address`, `build_solitary_vegetation_object`), is mentioned at least once below. A merge that adds a new helper or renames an existing one will fail that test until this doc is updated. Inline line-number citations are not enforced by the test and may drift; the symbol names are authoritative.
 
-**Completeness method.** Every "supply" row was obtained by parsing a real cached response (BAG, 3DBAG, EP-Online, municipality, CFTree, BGT), the actual GeoPackage schema (solar panels), or a sample GeoJSON (boundary). Field names reflect what the source actually emits; the commentary notes where the source documentation uses a different name or alias. Counts come from a fresh end-to-end run on the Emmer-Compascuum small-area AOI (41.5 ha, 951 buildings, 702 trees) using [`inputs/cities/emmer-compascuum_small-area.json`](../inputs/cities/emmer-compascuum_small-area.json).
+**Completeness method.** Every "supply" row was obtained by parsing a real cached response (BAG, 3DBAG, EP-Online, municipality, CFTree, BGT), the actual GeoPackage schema (solar panels), or a sample GeoJSON (boundary). Field names reflect what the source actually emits; the commentary notes where the source documentation uses a different name or alias. Counts come from a fresh end-to-end run on the Emmer-Compascuum small-area AOI (50 ha, 951 buildings, 702 trees) using [`inputs/cities/emmer-compascuum_small-area.json`](../inputs/cities/emmer-compascuum_small-area.json).
 
 **Snapshot vintages.** Concrete counts in this document (building / tree counts, EP-Online row distributions, BGT match ratios) were recorded against the **EP-Online v20260401 mutatiebestand** and the BAG / 3DBAG / BGT responses cached on **2026-04-29**. Run `tests/test_mapping_index_in_sync.py` to verify the symbol-level invariants, but expect the absolute counts to drift with each upstream republication; the *shapes* (proportions, regime distributions) are stable.
 
@@ -221,7 +221,7 @@ EP-Online ships one row per certificate, keyed on `BAGVerblijfsobjectID` or addr
 | Secondary qualifier (Gebouwsubtype) | `nrg3:BuildingUnit` via `gen:stringAttribute name="bdgSubtypeEPOnline"` (Dutch RVO term verbatim) | Two VBOs in one Pand can carry different subtypes (mixed-use, partial conversion). Energy ADE 3.0 has no native `nrg3:bdgSubtype` element. The `EPOnline` suffix flags the source vocabulary so a downstream reader does not mistake the Dutch term for an Energy-ADE codelist member. |
 | Year of construction | `bldg:yearOfConstruction` (BAG, existing) **and** `gen:intAttribute name="yearOfConstructionEPOnline"` (EP-Online), both on the Building. Two `nrg3:Metadata` blocks on the Building, one per source. The EP-Online block also covers `nrg3:bdgType` since both Pand-level emissions share the source. | A building is constructed once: year of construction is a Pand-level fact regardless of how many VBOs sit inside. Multi-VBO Pands take the most-recently-registered cert's `Bouwjaar` (mirroring `address_match._label_timestamp`); inter-VBO disagreement shows up as data-quality noise but the canonical pick stays single-valued. `Bouwjaar` and `Gebouwtype` canonical picks are independent (per-field) so each can come from a different cert when one cert leaves the field empty. |
 | Thermal-zone area (`GebruiksoppervlakteThermischeZone`) | second `nrg3:QualifiedArea` on the BuildingUnit (sibling of the BAG `oppervlakte`), `type="netFloorArea"` and `source="EP-online Mutatiebestand v4 (RVO)"` | The schema lets `BuildingUnit/area` repeat: emitting the EP-Online thermal-zone area as a sibling QualifiedArea (same type, distinct source) keeps both numbers queryable without an intermediate `nrg3:Zone` wrapper. Every per-m² energy metric on that BuildingUnit normalises against this same area. |
-| Energy-flow metrics (Energiebehoefte, primary, renewable share, CO₂) | `nrg3:Energy` attached to the BuildingUnit via the `nrg3:resource` substitution slot | The XSD lets any AbstractCityObject host an Energy resource (line 1277); the BuildingUnit is the right scope because EP-Online ships these as per-VBO numbers. The renewable-share `gen:measureAttribute` also lives on the BuildingUnit (the EPC cannot host generic attributes; see § 6.5j). |
+| Energy-flow metrics (Energiebehoefte, primary, renewable share, CO₂) | `nrg3:Energy` attached to the BuildingUnit via the `nrg3:resource` substitution slot | The XSD lets any AbstractCityObject host an Energy resource (line 1277); the BuildingUnit is the right scope because EP-Online ships these as per-VBO numbers. The renewable-share `gen:measureAttribute` lives on the EPC, which since beta8 hosts `gen:_GenericApplicationPropertyOfCityObject` substitutions directly (see § 6.5j). |
 
 This mirrors how RVO publishes the data: a certificate is a per-VBO event. **No Pand-level reduction or tiebreak** for the per-VBO fields: each VBO reports its own EP-Online classification independently.
 
@@ -325,7 +325,7 @@ For every column, one verdict:
 
 | Column | Meaning | Target | Verdict | Rationale |
 |---|---|---|---|---|
-| `Berekeningstype` | NTA 8800 calculation variant string | `nrg3:EnergyPerformanceCertificate.certificationMethod` | Native | Verbatim string; no codelist in NTA 8800 maps cleanly. Joined with `SoortOpname` via ` / ` (no em dash). Implementation: [`builders/epc.py::_certification_method_string`](../citygml_energy/city_builder/builders/epc.py). |
+| `Berekeningstype` | NTA 8800 calculation variant string | `nrg3:EnergyPerformanceCertificate.certificationMethod` | Native | Verbatim string; no codelist in NTA 8800 maps cleanly. Prefixed with `SoortOpname` and joined via ` / ` (i.e. `SoortOpname / Berekeningstype`; a forward slash, not an em dash). Implementation: [`builders/epc.py::_certification_method_string`](../citygml_energy/city_builder/builders/epc.py). |
 | `SoortOpname` | `Basisopname` / `Detailopname` | concatenated into `certificationMethod` (e.g. `"Basisopname / NTA 8800:2024 (basisopname woningbouw)"`) | Native (derived) | Inspection-rigour qualifier. Concatenation chosen over a separate field. |
 | (no source column) | XSD-required cert validity flag | `nrg3:EnergyPerformanceCertificate.status` (`gml:CodeType`, codeSpace = `EPCStatusValue.xml`; in beta8 status is an ADE-hook list element substituting into `core:_GenericApplicationPropertyOfCityObject`, list-valued on every CityObject; the EPC populates it with a single member) | Native (constant) | Hard-coded `"actual"` for every emitted cert. Every row in the EP-Online Mutatiebestand is by definition the registered, legally-valid certificate for the VBO ("alleen deze geregistreerde labels zijn rechtsgeldig", RVO Handleiding EP-Online: opvragen van bestanden, v1.0 feb 2025, §1), so the codelist member `actual` (vs. `potential` / `unknown`) is correct unconditionally. Implementation: [`builders/epc.py::build_epc`](../citygml_energy/city_builder/builders/epc.py). Distinct from EP-Online's `Status` column (Bestaand / Nieuwbouw / Verbouw) directly below: that is a *lifecycle* signal, not a *cert-validity* one. |
 | `Status` | `Bestaand` / `Nieuwbouw` / `Verbouw` | none today; potential target = `gen:stringAttribute name="epOnlineStatus"` on the BuildingUnit, OR a future `bldg:condition`-style lifecycle field | Skip (latent) | Lifecycle signal at certification time. SIG3D's `bldg:class` is a CityGML usage codelist (residential / commercial), not a lifecycle one. No native Energy ADE lifecycle slot. The cert-level `nrg3:status` row above is a *different* field and is always emitted. |
@@ -522,9 +522,6 @@ The snippet below is **schema-derived, not byte-verified against a city-pipeline
 
       <nrg3:identifier codeSpace="http://bag.basisregistraties.overheid.nl/bag/id/verblijfsobject/">0114010000274521</nrg3:identifier>
 
-      <gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie">
-        <gen:value uom="percent">42.0</gen:value>
-      </gen:measureAttribute>
       <gen:stringAttribute name="bdgSubtypeEPOnline">
         <gen:value>rijwoning-hoek-kopgevel</gen:value>
       </gen:stringAttribute>
@@ -582,6 +579,13 @@ The snippet below is **schema-derived, not byte-verified against a city-pipeline
                BerekendeEnergieverbruik with regime-aware uom. -->
           <nrg3:value uom="kWh/m2/a">35.4</nrg3:value>
           <nrg3:certificationMethod>Detailopname / NTA 8800:2024 (detailopname woningbouw)</nrg3:certificationMethod>
+          <!-- BENG-3 renewable-energy share. No native Energy ADE slot, so it
+               rides the gen: ADE hook on the EPC itself: beta8 re-rooted the
+               EPC under core:AbstractCityObject, so it hosts
+               gen:_GenericApplicationPropertyOfCityObject directly. See §6.5j. -->
+          <gen:measureAttribute name="epOnlineAandeelHernieuwbareEnergie">
+            <gen:value uom="percent">42.0</gen:value>
+          </gen:measureAttribute>
         </nrg3:EnergyPerformanceCertificate>
       </nrg3:energyPerformanceCertificate>
     </nrg3:BuildingUnit>
@@ -720,8 +724,8 @@ Derived solar-collector fields (computed in-pipeline from the geometry + roof fa
 | `nrg3:inclination` | angle between roof Newell normal and vertical | `deg` |
 | `nrg3:azimuth` | compass bearing of horizontal projection of roof normal (0° = N) | `deg`; `None` on flat roofs |
 | `nrg3:referencePoint` (single `gml:Point`) | panel centroid lifted to the roof plane + `z_offset_m` (default 0.1 m) | - |
-| `nrg3:CityObjectRelation` with `type="installedOn"` | the `gml:id` of the matched `bldg:RoofSurface` | xlink only |
-| `nrg3:CityObjectRelation` with `type="serving"` | the `gml:id` of the sole `nrg3:BuildingUnit`, emitted **only on single-VBO Pands** (the aerial source carries no per-array consumer metadata, so the served set is only knowable by elimination; multi-VBO Pands leave it implicit) | xlink only |
+| `nrg3:relatedTo` / `nrg3:CityObjectRelation` with `relationType="installedOn"` | the `gml:id` of the matched `bldg:RoofSurface` | xlink only |
+| `nrg3:relatedTo` / `nrg3:CityObjectRelation` with `relationType="serving"` | the `gml:id` of the sole `nrg3:BuildingUnit`, emitted **only on single-VBO Pands** (the aerial source carries no per-array consumer metadata, so the served set is only knowable by elimination; multi-VBO Pands leave it implicit) | xlink only |
 | every other `nrg3:*Collector` field (`model`, `yearOfManufacture`, `installedPower`, `nominalEfficiency`, `apertureArea`, `heatDissipation*`, `validFrom/validTo`, ...) | - | Deliberately unset: a single 2D aerial polygon carries no information about any of them. `nrg3:cellType` does not exist on `GenericSolarCollectorType` at all (it is photovoltaic-specific), so there is nothing to emit. |
 
 **Coverage:** 4 389 panels in the full GPKG; the AOI bbox returns 512 panels (the remaining 3 877 fall outside the small-area extent and are clipped at load time by `load_panels_in_bbox`); of those 512, 334 project onto 168 LoD2 roofs and 178 are skipped because they have no LoD2 roof overlap (building classified too low to receive them, or no 3DBAG match).
@@ -925,7 +929,7 @@ The type-to-feature membership and paint order live in one ordered registry (`la
 
 ### 13a. Geometry
 
-Each kept object's draped LoD 1.2 `MultiSurface` is decoded through the shared [`cityjson_parse.iter_object_polygons`](../citygml_energy/city_builder/cityjson_parse.py) (the same decoder the 3DBAG building path uses) and attached as `lod1MultiSurface`, except the generic fallback: `gen:lod1Geometry` is an open `gml:GeometryPropertyType`, so it re-wraps the same `MultiSurface`. A rectangular viewport (the address extract or an explicit `bbox`) hard-clips each surface to the AOI box so the ground shares the buildings' edge; a whole-gemeente build keeps each overlapping object whole. Both layers read the one `BuildExtent.clip_to_box` flag, so they cannot disagree at the boundary. The clip is a draped-backdrop tolerance, not analysis-grade: a building cut at the box keeps its original 3DBAG `bdgVolume` / area / height attributes, which then describe the uncut geometry, so a clipped extract is visual context rather than a measurement dataset.
+Each kept object's draped LoD1.2 `MultiSurface` is decoded through the shared [`cityjson_parse.iter_object_polygons`](../citygml_energy/city_builder/cityjson_parse.py) (the same decoder the 3DBAG building path uses) and attached as `lod1MultiSurface`, except the generic fallback: `gen:lod1Geometry` is an open `gml:GeometryPropertyType`, so it re-wraps the same `MultiSurface`. A rectangular viewport (the address extract or an explicit `bbox`) hard-clips each surface to the AOI box so the ground shares the buildings' edge; a whole-gemeente build keeps each overlapping object whole. Both layers read the one `BuildExtent.clip_to_box` flag, so they cannot disagree at the boundary. The clip is a draped-backdrop tolerance, not analysis-grade: a building cut at the box keeps its original 3DBAG `bdgVolume` / area / height attributes, which then describe the uncut geometry, so a clipped extract is visual context rather than a measurement dataset.
 
 ### 13b. Classification and provenance
 
@@ -954,8 +958,8 @@ A small number of output fields are not read from any source; they are computed 
 | `app:Appearance` theme `"vegetation"` | constant `(0.15, 0.55, 0.15)` foliage green, `transparency` `0.3` (lightly see-through so a canopy does not fully occlude what is behind it), targeting the `gml:MultiSurface` container of every `veg:SolitaryVegetationObject` (the colour propagates to its member polygons per the CityGML 2.0 Appearance model). |
 | `app:Appearance` theme `"landcover"` | a natural map palette, one `app:X3DMaterial` per 3DBV ground class present (terrain `(0.76, 0.70, 0.50)`, road `(0.55, 0.55, 0.55)`, water `(0.27, 0.51, 0.71)`, plant cover `(0.45, 0.70, 0.30)`, bridge `(0.62, 0.60, 0.56)`, generic `(0.70, 0.70, 0.72)`), each targeting the `gml:MultiSurface` container of its features (§ 13). The colour map keys on the same `LANDCOVER_FEATURE_QNAMES` registry the classifier uses, so the palette can never enumerate a different class set than the classifier emits. |
 | `app:Appearance` theme `"buildingHighlight"` | on an address extract only: target Panden in `(0.98, 0.78, 0.42)` light yellow-orange and their surroundings in `(1.0, 1.0, 1.0)` white, so the subject of the query reads at a glance against its context (`painters.HighlightPainter`). Two `app:X3DMaterial` entries under one theme. The gemeente family uses the `energyLabel` theme instead. |
-| `nrg3:CityObjectRelation` with `type="installedOn"` | the solar panel's 2D max-overlap with a specific LoD2 `bldg:RoofSurface` (xlink only, no geometry). |
-| `nrg3:CityObjectRelation` with `type="serving"` | the sole `nrg3:BuildingUnit` on a single-VBO Pand (xlink only); omitted on multi-VBO Pands, where the served set is unknowable from the aerial source. |
+| `nrg3:relatedTo` / `nrg3:CityObjectRelation` with `relationType="installedOn"` | the solar panel's 2D max-overlap with a specific LoD2 `bldg:RoofSurface` (xlink only, no geometry). |
+| `nrg3:relatedTo` / `nrg3:CityObjectRelation` with `relationType="serving"` | the sole `nrg3:BuildingUnit` on a single-VBO Pand (xlink only); omitted on multi-VBO Pands, where the served set is unknowable from the aerial source. |
 | `nrg3:bdgBdrySurfTotalSurfaceArea` / `Inclination` / `Azimuth` on every LoD2 BoundarySurface | computed from the polygon geometry by `_attach_planar_surface_ade_attributes`. |
 
 ---
@@ -990,9 +994,9 @@ This section exists so a future contributor does not re-propose a removed or rej
 |---|---|
 | **OpenStreetMap** `natural=tree` | On the Emmer-Compascuum small-area run, 20 OSM nodes fell inside the AOI; every single one carried *only* the `natural=tree` tag and no species / leaf_type / leaf_cycle / start_date. Zero semantic data, and non-Dutch-government source. |
 | **Landelijk Register Monumentale Bomen** (Bomenstichting) | 0 entries in the Emmer-Compascuum AOI (expected: a typical village has no nationally-listed specimens). Also: the Bomenstichting is an NGO, not a government register, so out of scope. |
-| **Boomregister.nl** (Geodan / NEO / COBRA / WUR cooperative) | The only candidate with crown polygons + heights per tree nationwide. License-gated; no public API; redistribution prohibited. Incompatible with a publicly-reproducible pipeline. |
+| **Boomregister.nl** (Geodan / NEO / COBRA / WUR cooperative) | The only candidate with crown polygons + heights per tree nationwide. Licence-gated; no public API; redistribution prohibited. Incompatible with a publicly-reproducible pipeline. |
 | **AHN5 LAZ for NE Netherlands** | AHN5 skipped the NE (verified against `bladwijzer.gpkg`), so CFTree reconstructs from AHN6 (2025, the current input) or AHN4 (2020, CC-0 fallback). |
-| **BGT `vegetatieobject_vlak`** (hedges) | Would map to `veg:PlantCover`, not `veg:SolitaryVegetationObject`. Redundant as a dedicated input now that the 3DBV landcover path (§ 13) already emits `veg:PlantCover` for the green ground, draped at LoD 1.2 with a real z that flat BGT polygons lack and for which BGT supplies no `averageHeight`. |
+| **BGT `vegetatieobject_vlak`** (hedges) | Would map to `veg:PlantCover`, not `veg:SolitaryVegetationObject`. Redundant as a dedicated input now that the 3DBV landcover path (§ 13) already emits `veg:PlantCover` for the green ground, draped at LoD1.2 with a real z that flat BGT polygons lack and for which BGT supplies no `averageHeight`. |
 | **BGT `begroeidterreindeel`** | Vegetation *surfaces* (parks, forests as continuous areas), also `veg:PlantCover`. Same reasoning: the 3DBV landcover path (§ 13) already supplies this green ground, so a separate BGT surface source would duplicate it. |
 | **Top10NL** tree points | Coarser than BGT, no additional attributes, already covered by the BGT cross-reference. |
 | **PDOK BAG `bag:nummeraanduiding`, `bag:openbareruimte`** | Server-side joined into each VBO response by PDOK, so fetching them separately would duplicate the same data. |

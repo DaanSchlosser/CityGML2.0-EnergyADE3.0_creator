@@ -23,7 +23,7 @@ These vendored copies are **not** guaranteed byte-for-byte identical to the
 upstream distributions. Two deliberate changes were made for offline,
 strict-validator compatibility:
 
-1. **`xsd/gml/3.1.1/base/gmlBase.xsd` — `MetaDataPropertyType`.** The bundled
+1. **`xsd/gml/3.1.1/base/gmlBase.xsd`: `MetaDataPropertyType`.** The bundled
    copy carried a local `<any processContents="lax"/>` in this type's content
    model. Because `nrg3:MetadataType` (Energy ADE) extends this type with
    explicit elements (`author`, `owner`, ...), the lax wildcard makes the
@@ -33,7 +33,7 @@ strict-validator compatibility:
    site. No instance content relies on the wildcard, so all existing documents
    stay valid.
 
-2. **`tools/schemas/xml.xsd` — added.** The W3C XML-namespace schema (`xml:lang`,
+2. **`tools/schemas/xml.xsd`: added.** The W3C XML-namespace schema (`xml:lang`,
    `xml:space`, `xml:base`, `xml:id`) was vendored from
    https://www.w3.org/2001/xml.xsd so that `xml:lang` resolves during offline
    schema compilation. It lives under `tools/` rather than `xsd/` because `xsd/`

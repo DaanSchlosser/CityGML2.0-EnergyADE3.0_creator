@@ -23,14 +23,14 @@ the building.
 
 The pipeline already drops fully-collapsed rings (those whose vertex
 indices resolve to fewer than three distinct points at 1 µm precision,
-see [`cityjson_parse._ring_from_indices`](../citygml_energy/city_builder/cityjson_parse.py#L327)).
+see [`cityjson_parse._ring_from_indices`](../citygml_energy/city_builder/cityjson_parse.py#L349)).
 Slivers with three or four distinct points but area below 1000 mm²
 are still geometrically valid, so they pass through and reach the
 output unless the sliver-area filter described below removes them.
 
 ## Reproducer
 
-Tile cache used: 3DBAG release fetched on **2026-05-27**. The
+Tile cache used: 3DBAG release fetched on **May 27, 2026**. The
 [`threedbag` fetcher](../citygml_energy/city_builder/fetchers/threedbag.py)
 reads the tile index from `https://data.3dbag.nl/latest/tile_index.fgb`
 and downloads each intersecting tile from the `cj_download` URL carried
@@ -131,7 +131,7 @@ Two upstream filters would each remove the class:
 ## What this repo does anyway
 
 Independent of any upstream change, the parser at
-[`cityjson_parse._parse_semantic_faces`](../citygml_energy/city_builder/cityjson_parse.py#L259)
+[`cityjson_parse._parse_semantic_faces`](../citygml_energy/city_builder/cityjson_parse.py#L281)
 drops sliver faces in addition to fully-degenerate rings. The
 threshold is **10 cm² (`MIN_FACE_AREA_M2 = 1e-3` m²)**, about `2x`
 above the largest observed sliver (`0.000481 m² ≈ 481 mm²`) and
@@ -146,7 +146,7 @@ constant is also re-used as the build-time gate inside
 so the parse-time filter and the boundedBy/solar-panel matcher gate
 share a single source of truth and cannot drift apart.
 
-The threshold was raised to its current value on 2026-05-27 after an
+The threshold was raised to its current value on May 27, 2026 after an
 empirical sweep of cached 3DBAG tiles showed 26 documented slivers
 sitting in the previous `[1e-4, 5e-4]` m² band, above the earlier
 `1e-4` parse threshold and only caught by the build-time `round(area,
