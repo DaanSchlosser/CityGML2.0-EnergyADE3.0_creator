@@ -13,8 +13,8 @@ authors:
     given-names: Daan
     affiliation: "Delft University of Technology"
     email: daan.schlosser@gmail.com
-version: "1.0.1"
-date-released: "2026-06-12"
+version: "1.1.0"
+date-released: "2026-06-23"
 license: MIT
 repository-code: "https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator"
 keywords:
