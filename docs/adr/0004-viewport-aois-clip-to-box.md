@@ -22,7 +22,7 @@ A city build carries one `clip_to_box` flag on `BuildExtent` (`citygml_energy/ci
 
 ## Consequences
 
-A box-clipped building keeps the 3DBAG volume, area, and height attributes it had before the cut, so on a straddling building those numbers describe the uncut geometry. A clipped extract is therefore visual context, not an analysis-grade dataset, and a consumer must not measure off a cut building. This is recorded as a user-facing limitation in the README (§ 4.5) and the CHANGELOG "Known limitations", which is why the trade was accepted rather than treated as a defect.
+A box-clipped building keeps the 3DBAG volume, area, and height attributes it had before the cut, so on a straddling building those numbers describe the uncut geometry. A clipped extract is therefore visual context, not an analysis-grade dataset, and a consumer must not measure off a cut building. This is recorded as a user-facing limitation in the README (§ 4.5), which is why the trade was accepted rather than treated as a defect.
 
 The one shared flag is also a small seam: a future extent kind (a postcode, a cadastral parcel) declares its clip behaviour with one boolean and inherits both clips, rather than wiring the building clip and the ground clip independently and risking a boundary mismatch.
 
@@ -30,4 +30,4 @@ A reader who meets a cut building whose size attributes do not match its geometr
 
 ## References
 
-`citygml_energy/city_builder/extent.py` (`BuildExtent.clip_to_box` and the two adapters), `citygml_energy/city_builder/box_clip.py` (`clip_building_to_box`, `clip_landcover_polygons`), README § 4.5 (address extract) and § 4.7 (semantic landcover), the CHANGELOG "Known limitations" of release 1.1.0, and the "Build extent (AOI)" entry in `CONTEXT.md`.
+`citygml_energy/city_builder/extent.py` (`BuildExtent.clip_to_box` and the two adapters), `citygml_energy/city_builder/box_clip.py` (`clip_building_to_box`, `clip_landcover_polygons`), README § 4.5 (address extract) and § 4.7 (semantic landcover), and the "Build extent (AOI)" entry in `CONTEXT.md`.
