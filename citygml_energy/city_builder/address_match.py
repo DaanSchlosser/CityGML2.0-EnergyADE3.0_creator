@@ -1,9 +1,13 @@
 """Join BAG VBO addresses to EP-online labels.
 
-All matching is local, keyed by the normalised
-``(postcode, huisnummer, huisletter, toevoeging)`` tuple. BAG is the
-source of truth for addresses; EP-online is joined **into** the VBO
-set and missing labels simply leave the VBO without an EPC record.
+All matching is local. Every VBO is matched primarily on its BAG
+``verblijfsobject_id`` (the EP-online v5+ ``BAGVerblijfsobjectID``), with
+the normalised ``(postcode, huisnummer, huisletter, toevoeging)`` tuple
+as the fallback for labels that predate that enrichment. BAG is the
+source of truth for addresses; EP-online is joined **into** the VBO set
+and missing labels simply leave the VBO without an EPC record. Every VBO
+is emitted as a BuildingUnit regardless of its address (ADR-0005); the
+matcher never drops one.
 
 Address data (street, postcode, huisnummer) is embedded directly in the
 PDOK BAG WFS VBO response, so no separate Nummeraanduiding or
@@ -58,15 +62,18 @@ class ResolvedAddress:
 
 @dataclass(frozen=True)
 class LabelFilter:
-    """The EP-online row filter derived from the matchable VBO set.
+    """The EP-online row filter for a VBO set.
 
-    ``ids`` holds BAG VBO ids (the EP-online v5+ ``BAGVerblijfsobjectID``
-    match); ``keys`` holds the normalised address-key fallback. Both are
-    built from the same matchable VBOs that :func:`match_addresses`
-    joins, so a label survives the CSV filter only when the join can
-    actually use it. Frozensets keep the filter hashable and
-    order-independent; the pipeline's filtered-labels cache digest
-    relies on that.
+    ``ids`` holds the BAG VBO id of *every* VBO (the EP-online v5+
+    ``BAGVerblijfsobjectID`` match): every VBO carries one and the id
+    match is primary, so a label can be fetched for any unit the register
+    holds one for. ``keys`` holds the normalised address-key fallback,
+    built only from the *address-key VBOs* (those with both a postcode and
+    a huisnummer), since a partial address cannot form a usable key. A
+    label survives the CSV filter when it matches either set, mirroring
+    the two-key join in :func:`match_addresses`. Frozensets keep the
+    filter hashable and order-independent; the pipeline's filtered-labels
+    cache digest relies on that.
     """
 
     ids: frozenset[str]
@@ -74,18 +81,20 @@ class LabelFilter:
 
 
 def wanted_label_filter(vbos: list[Verblijfsobject]) -> LabelFilter:
-    """Return the :class:`LabelFilter` for the matchable subset of *vbos*.
+    """Return the :class:`LabelFilter` for *vbos*.
 
-    A VBO without a postcode or huisnummer never becomes a BuildingUnit
-    (:func:`match_addresses` drops it before the join), so neither its
-    BAG id nor its address key belongs in the fetch filter. This is the
-    only place the wanted sets are built; the fetch filter and the join
-    sharing one predicate is the point of this function. (The pipeline
-    used to build its own id set from *all* VBOs, fetching labels the
-    join then discarded and poisoning the filter-cache digest with
-    unmatchable ids.)
+    The ``ids`` set covers every VBO, because every VBO has a BAG id and
+    the id match is primary, so a label can be fetched for any unit the
+    register holds one for. The ``keys`` set covers only the address-key
+    VBOs, because a VBO without a postcode or huisnummer cannot form a
+    usable address key. This is the only place the wanted sets are built;
+    the fetch filter and the join sharing one definition is the point of
+    this function.
     """
-    return _filter_from_matchable(_matchable_vbos(vbos))
+    return LabelFilter(
+        ids=frozenset(v.identificatie for v in vbos),
+        keys=frozenset(address_key_from_vbo(v) for v in _address_key_vbos(vbos)),
+    )
 
 
 def match_addresses(
@@ -93,35 +102,38 @@ def match_addresses(
     vbos: list[Verblijfsobject],
     energy_labels: list[EnergyLabel] | None = None,
 ) -> dict[str, list[ResolvedAddress]]:
-    """Return ``{pand_id: [ResolvedAddress, ...]}``: VBOs grouped by Pand.
+    """Return ``{pand_id: [ResolvedAddress, ...]}``: every VBO grouped by Pand.
+
+    Every VBO becomes one :class:`ResolvedAddress`, keyed by its BAG
+    ``verblijfsobject_id``; none is dropped for a missing or partial
+    address (ADR-0005). A VBO such as a garage or storage box that carries
+    no postcode is still emitted, simply with no energy label unless it
+    matches by BAG id.
 
     Matching strategy (in priority order):
 
     1. ``BAGVerblijfsobjectID``: direct BAG VBO id match. Available in
-       EP-online v5+ CSV, far more reliable than address-key matching and
-       covers institutions/university buildings that have irregular addresses.
+       EP-online v5+ CSV, far more reliable than address-key matching, and
+       covers every VBO, including institutions and address-incomplete
+       units that have no usable address key.
     2. ``(postcode, huisnummer, huisletter, toevoeging)``: address-key
-       fallback for labels that predate the BAG-id enrichment.
-
-    VBOs that lack a postcode or huisnummer are silently dropped: they
-    cannot produce a valid CityGML ``bldg:address``.
+       fallback for labels that predate the BAG-id enrichment. Only the
+       address-key VBOs take part; an address-incomplete VBO is never
+       given a label by a partial-address guess.
     """
-    # Only the matchable VBOs take part; dropping the rest up front
-    # means the label index is built against a *tight* filter. With 5M+
-    # labels and ~500 VBOs, that filter turns the label scan from
-    # "index everything" to "keep ~0.01% of rows".
-    matchable = _matchable_vbos(vbos)
-
+    # The id set covers every VBO, the key set only the address-key ones.
+    # With 5M+ labels and ~500 VBOs, that filter still turns the label
+    # scan from "index everything" to "keep ~0.01% of rows".
     labels_by_vbo_id, labels_by_key = _index_labels(
         energy_labels or [],
-        wanted=_filter_from_matchable(matchable),
+        wanted=wanted_label_filter(vbos),
     )
 
     grouped: dict[str, list[ResolvedAddress]] = {}
-    for vbo in matchable:
-        label = labels_by_vbo_id.get(vbo.identificatie) or labels_by_key.get(
-            address_key_from_vbo(vbo)
-        )
+    for vbo in vbos:
+        label = labels_by_vbo_id.get(vbo.identificatie)
+        if label is None and _is_address_key_vbo(vbo):
+            label = labels_by_key.get(address_key_from_vbo(vbo))
         grouped.setdefault(vbo.pand_identificatie, []).append(
             ResolvedAddress(vbo=vbo, energy_label=label)
         )
@@ -133,17 +145,21 @@ def match_addresses(
 # ---------------------------------------------------------------------------
 
 
-def _matchable_vbos(vbos: list[Verblijfsobject]) -> list[Verblijfsobject]:
-    """The VBOs that can take part in the join (postcode and huisnummer set)."""
-    return [v for v in vbos if v.postcode is not None and v.huisnummer is not None]
+def _is_address_key_vbo(vbo: Verblijfsobject) -> bool:
+    """True when *vbo* has both a postcode and a huisnummer.
+
+    Only such a VBO can form a usable ``(postcode, huisnummer, ...)``
+    address key, so only it takes part in the EP-online address-key
+    fallback. The predicate gates that fallback alone, never whether the
+    VBO is emitted as a BuildingUnit (see ADR-0005 and the "Address-key
+    VBO" entry in ``CONTEXT.md``).
+    """
+    return vbo.postcode is not None and vbo.huisnummer is not None
 
 
-def _filter_from_matchable(matchable: list[Verblijfsobject]) -> LabelFilter:
-    """Build the :class:`LabelFilter` from an already-matchable VBO list."""
-    return LabelFilter(
-        ids=frozenset(v.identificatie for v in matchable),
-        keys=frozenset(address_key_from_vbo(v) for v in matchable),
-    )
+def _address_key_vbos(vbos: list[Verblijfsobject]) -> list[Verblijfsobject]:
+    """The VBOs that can take part in the address-key fallback."""
+    return [v for v in vbos if _is_address_key_vbo(v)]
 
 
 def _index_labels(

@@ -443,11 +443,12 @@ def _maybe_fetch_energy_labels(
     """Fetch only the EP-online labels that could possibly match *vbos*.
 
     The 5 M-row EP-online mutation file dwarfs the ~10³ addresses inside
-    a typical city-builder BBOX. The :func:`wanted_label_filter` derived
-    from the matchable VBOs lets the CSV parser drop non-matching rows
-    immediately, so the pipeline sees only the subset the address join
-    can use. The filter is built by :mod:`.address_match` (never here)
-    so the fetch filter and the join cannot drift apart.
+    a typical city-builder BBOX. The :func:`wanted_label_filter` (the BAG
+    id of every VBO, plus the address keys of the address-key VBOs) lets
+    the CSV parser drop non-matching rows immediately, so the pipeline
+    sees only the subset the address join can use. The filter is built by
+    :mod:`.address_match` (never here) so the fetch filter and the join
+    cannot drift apart.
 
     A second caching layer persists the *filtered* label list to disk
     keyed by ``(filter, ep-online-ZIP-vintage)``. Cache entries
