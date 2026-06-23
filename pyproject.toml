@@ -1,6 +1,6 @@
 [project]
 name = "citygml2.0-energyade3.0-beta8-creator"
-version = "1.0.0"
+version = "1.1.0"
 description = "CityGML 2.0 + Energy ADE 3.0 creator: generate standards-compliant GML from flat JSON input."
 requires-python = ">=3.12"
 dependencies = [

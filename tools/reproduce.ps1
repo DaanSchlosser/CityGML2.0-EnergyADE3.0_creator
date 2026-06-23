@@ -9,7 +9,7 @@
 #   .\tools\reproduce.ps1 -Image other:tag
 param(
   [switch]$Build,
-  [string]$Image = "ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0"
+  [string]$Image = "ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.1.0"
 )
 $ErrorActionPreference = "Stop"
 
