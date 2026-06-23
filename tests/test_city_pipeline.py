@@ -257,7 +257,7 @@ def test_pipeline_output_validates_against_xsd(tmp_path: Path, mocked_pipeline) 
 def test_pipeline_attaches_semantic_landcover(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mocked_pipeline
 ) -> None:
-    # Drives terrain through build_city_model so the fetch->attach wiring, the
+    # Drives landcover through build_city_model so the fetch->attach wiring, the
     # landcover_count done-log basis, the attach-before-set_envelope ordering,
     # and the XSD validity of a building+landcover document are all exercised
     # together (the landcover unit tests cover the seams in isolation only).
@@ -265,13 +265,13 @@ def test_pipeline_attaches_semantic_landcover(
 
     from citygml_energy._step import GeometryPolygon
     from citygml_energy.city_builder.cityjson_landcover_parse import ParsedLandcover
+    from citygml_energy.city_builder.landcover import LandcoverSource
     from citygml_energy.city_builder.landcover_class import classify_landcover
-    from citygml_energy.city_builder.terrain import TerrainSource
     from citygml_energy.core import _resolve_bounded_by_field
 
     # A surface at z=4.0 sits ABOVE the fixture building's 0..3 z-range, so an
     # envelope upper-z of 4 proves the landcover's bbox corners reached
-    # coords_sink, i.e. the terrain attach ran before set_envelope. Patch the
+    # coords_sink, i.e. the landcover attach ran before set_envelope. Patch the
     # fetch so no network is needed; the build + attach still run for real.
     ring = [(0.0, 0.0, 4.0), (2.0, 0.0, 4.0), (2.0, 2.0, 4.0), (0.0, 2.0, 4.0)]
     landuse_attrs = {"3df_class": "Terrain", "bgt_type": "groenvoorziening"}
@@ -292,9 +292,11 @@ def test_pipeline_attaches_semantic_landcover(
             disposition=classify_landcover("WaterBody", water_attrs),
         ),
     ]
-    monkeypatch.setattr(pipeline_module.terrain_module, "fetch_landcover", lambda *a, **k: objects)
+    monkeypatch.setattr(
+        pipeline_module.landcover_module, "fetch_landcover", lambda *a, **k: objects
+    )
 
-    config = dataclasses.replace(_config(tmp_path), terrain_source=TerrainSource())
+    config = dataclasses.replace(_config(tmp_path), landcover_source=LandcoverSource())
     model = build_city_model(config)
 
     members = model.xsd.city_object_member
@@ -310,8 +312,10 @@ def test_pipeline_attaches_semantic_landcover(
     schema.assertValid(etree.fromstring(model.to_string().encode("utf-8")))
 
 
-def test_pipeline_emits_no_landcover_without_terrain_block(tmp_path: Path, mocked_pipeline) -> None:
-    # Terrain is opt-in: with no terrain block, fetch_landcover short-circuits
+def test_pipeline_emits_no_landcover_without_landcover_block(
+    tmp_path: Path, mocked_pipeline
+) -> None:
+    # Landcover is opt-in: with no landcover block, fetch_landcover short-circuits
     # and no landcover surface is emitted (independent of addresses/vegetation).
     config = _config(tmp_path)
     model = build_city_model(config)

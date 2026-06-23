@@ -1,4 +1,4 @@
-"""Tests for the 3D Basisvoorziening semantic-terrain path.
+"""Tests for the 3D Basisvoorziening semantic-landcover path.
 
 Covers the five seams in isolation, no network:
 
@@ -10,7 +10,7 @@ Covers the five seams in isolation, no network:
   transform, building skip, AOI clip, and attribute pass-through.
 * :mod:`citygml_energy.city_builder.builders.landcover` disposition
   rendering, BGT-to-CodeType classification, provenance, and XSD validity.
-* :mod:`citygml_energy.city_builder.terrain` seam (null-source short
+* :mod:`citygml_energy.city_builder.landcover` seam (null-source short
   circuit; attach count + envelope corners).
 """
 
@@ -42,14 +42,14 @@ from citygml_energy.city_builder.cityjson_landcover_parse import ParsedLandcover
 from citygml_energy.city_builder.config import BuildContext
 from citygml_energy.city_builder.fetchers import threedbv
 from citygml_energy.city_builder.http import CachedSession
+from citygml_energy.city_builder.landcover import (
+    LandcoverSource,
+    attach_landcover_to_model,
+    fetch_landcover,
+)
 from citygml_energy.city_builder.landcover_class import (
     LANDCOVER_FEATURE_QNAMES,
     classify_landcover,
-)
-from citygml_energy.city_builder.terrain import (
-    TerrainSource,
-    attach_landcover_to_model,
-    fetch_landcover,
 )
 from citygml_energy.core import CityModel
 from citygml_energy.gml_builders import build_envelope
@@ -601,16 +601,16 @@ def test_fetch_landcover_soft_fails_and_evicts_on_unusable_tile(
     # An opt-in input must degrade, not crash: a magic-valid archive whose
     # member is valid JSON but not a usable CityJSON document used to raise out
     # of fetch_landcover and abort the whole city build.
-    import citygml_energy.city_builder.terrain as terrain_mod
+    import citygml_energy.city_builder.landcover as landcover_mod
 
     session = _session(tmp_path)
     ref = threedbv.LandcoverTileRef("x", 2022, "https://x/v.zip", 100)
-    monkeypatch.setattr(terrain_mod, "discover_landcover_tiles", lambda *a, **k: [ref])
-    monkeypatch.setattr(terrain_mod, "fetch_tile_cityjson", lambda *a, **k: member_json)
+    monkeypatch.setattr(landcover_mod, "discover_landcover_tiles", lambda *a, **k: [ref])
+    monkeypatch.setattr(landcover_mod, "fetch_tile_cityjson", lambda *a, **k: member_json)
     evicted: list[str] = []
     monkeypatch.setattr(session, "evict", lambda key: evicted.append(key))
 
-    result = fetch_landcover(session, source=TerrainSource(), bbox=(0, 0, 1, 1))
+    result = fetch_landcover(session, source=LandcoverSource(), bbox=(0, 0, 1, 1))
 
     assert result == []  # soft-failed the sheet instead of raising
     # The poisoned cache entry is evicted so the next run re-fetches.
@@ -624,7 +624,7 @@ def test_fetch_landcover_clip_to_box_cuts_only_for_a_viewport(
     # (clip_to_box=True) cuts it at the box; a whole-area build keeps it whole,
     # mirroring the building clip on BuildExtent.clip_to_box so the two layers
     # cannot drift apart.
-    import citygml_energy.city_builder.terrain as terrain_mod
+    import citygml_energy.city_builder.landcover as landcover_mod
 
     tile = {
         "type": "CityJSON",
@@ -643,12 +643,12 @@ def test_fetch_landcover_clip_to_box_cuts_only_for_a_viewport(
     }
     session = _session(tmp_path)
     ref = threedbv.LandcoverTileRef("x", 2022, "https://x/v.zip", 100)
-    monkeypatch.setattr(terrain_mod, "discover_landcover_tiles", lambda *a, **k: [ref])
-    monkeypatch.setattr(terrain_mod, "fetch_tile_cityjson", lambda *a, **k: _tile_bytes(tile))
+    monkeypatch.setattr(landcover_mod, "discover_landcover_tiles", lambda *a, **k: [ref])
+    monkeypatch.setattr(landcover_mod, "fetch_tile_cityjson", lambda *a, **k: _tile_bytes(tile))
     bbox = (0.0, 0.0, 20.0, 20.0)
 
-    clipped = fetch_landcover(session, source=TerrainSource(), bbox=bbox, clip_to_box=True)
-    whole = fetch_landcover(session, source=TerrainSource(), bbox=bbox, clip_to_box=False)
+    clipped = fetch_landcover(session, source=LandcoverSource(), bbox=bbox, clip_to_box=True)
+    whole = fetch_landcover(session, source=LandcoverSource(), bbox=bbox, clip_to_box=False)
 
     assert clipped is not None and whole is not None
     [clipped_obj] = clipped

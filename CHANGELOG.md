@@ -20,7 +20,7 @@ badge in the [README](README.md)).
   CFTree as a subprocess at the requested AHN version and merging the per-tile
   output (`cftree_runner`). It soft-fails to a treeless build, like the other
   optional inputs.
-- **Semantic terrain from the 3D Basisvoorziening.** The optional `terrain`
+- **Semantic landcover from the 3D Basisvoorziening.** The optional `landcover`
   block emits the Dutch ground as classified, draped CityGML 2.0 features
   (`luse:LandUse`, `tran:Road`, `wtr:WaterBody`, `veg:PlantCover`, `brid:Bridge`,
   and `gen:GenericCityObject` for anything else), parsed from the 3DBV CityJSON
@@ -49,9 +49,9 @@ badge in the [README](README.md)).
 
 ### Fixed
 
-- An opt-in terrain build no longer crashes on a 3DBV tile that is valid JSON
+- An opt-in landcover build no longer crashes on a 3DBV tile that is valid JSON
   but not a usable CityJSON document (a sidecar member, a truncated tile, or a
-  future format change). The sheet is skipped, the build degrades to terrainless
+  future format change). The sheet is skipped, the build degrades to landcover-free
   with a warning, and the poisoned cache entry is evicted so the next run
   re-fetches a good one.
 - `_unzip_cityjson` prefers a `*.city.json` member over a bare `*.json`, so a
@@ -64,7 +64,7 @@ badge in the [README](README.md)).
   attributes, which then describe the uncut geometry.
 - 3DBV tile discovery takes the latest-vintage covering sheets without following
   OGC index pagination (cap 100). This is ample for an address or small-area
-  AOI, but would truncate a whole-municipality terrain fetch.
+  AOI, but would truncate a whole-municipality landcover fetch.
 
 ## [1.0.1] - 2026-06-12
 

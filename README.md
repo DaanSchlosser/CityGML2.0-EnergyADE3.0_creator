@@ -308,10 +308,10 @@ subsequent runs read from cache instead of refetching.
 }
 ```
 
-Optional `solar_panels`, `vegetation`, `terrain`, and `cbs_postcode6`
-blocks enable the corresponding inputs. A `terrain` block adds the
+Optional `solar_panels`, `vegetation`, `landcover`, and `cbs_postcode6`
+blocks enable the corresponding inputs. A `landcover` block adds the
 semantic ground (roads, water, land use, vegetation) from the 3D
-Basisvoorziening ([§4.7](#47-semantic-terrain)).
+Basisvoorziening ([§4.7](#47-semantic-landcover)).
 Instead of `bbox`, a `boundary` block pointing
 at a GeoJSON polygon clips to a (possibly concave) area of interest, and
 `ep_online_api_key_file` points at a file holding the EP-Online key as an
@@ -356,10 +356,10 @@ configs live in [inputs/cities/](inputs/cities/).
 - When `vegetation` is configured: one `veg:SolitaryVegetationObject`
   per CFTree mesh with LoD3 geometry and CFTree / BGT / BOR
   morphometrics.
-- When `terrain` is configured: the semantic ground for the build extent
+- When `landcover` is configured: the semantic ground for the build extent
   from the 3D Basisvoorziening, as `luse:LandUse` / `tran:Road` /
   `wtr:WaterBody` / `veg:PlantCover` / `brid:Bridge` /
-  `gen:GenericCityObject` features ([§4.7](#47-semantic-terrain)).
+  `gen:GenericCityObject` features ([§4.7](#47-semantic-landcover)).
 - When `include_energy_labels` is enabled: a single
   `app:Appearance` colouring every building's surfaces by the averaged
   EPC label of its BuildingUnits (EU energy-label palette; buildings
@@ -413,7 +413,7 @@ python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
 The extract is a clean cut-out of the square. A building that straddles the
 edge is cut at the box and the exposed cross-section is capped, so the
 solid stays closed; a building wholly outside is dropped; and the draped
-terrain surfaces are clipped to the same square. A cut building's geometry
+landcover surfaces are clipped to the same square. A cut building's geometry
 no longer matches its 3DBAG area and volume attributes, the accepted trade
 for a visualisation extract. Trees stay clipped by trunk position, so a
 crown near the edge can overhang the line by its radius.
@@ -472,13 +472,13 @@ matching the other optional inputs.
 [inputs/address/leiden_250.json](inputs/address/leiden_250.json) is the
 generate-enabled address profile.
 
-### 4.7 Semantic terrain
+### 4.7 Semantic landcover
 
-A `terrain` block adds the ground around the buildings as classified,
+A `landcover` block adds the ground around the buildings as classified,
 draped surfaces. It is a knob-less opt-in:
 
 ```jsonc
-"terrain": {}
+"landcover": {}
 ```
 
 The build queries PDOK's 3D Basisvoorziening OGC API for the CityJSON
@@ -501,9 +501,9 @@ widens the model envelope by its bounding box only, so the coordinate sink
 does not swell by every surface vertex.
 
 The PDOK endpoints are public, so unlike the on-demand tree generation the
-terrain step needs nothing in `.env`, and the data is plain CityJSON, so it
+landcover step needs nothing in `.env`, and the data is plain CityJSON, so it
 needs no extra geospatial dependency. A PDOK outage, an area outside
-coverage, or a corrupt sheet soft-fails to a terrainless build, matching
+coverage, or a corrupt sheet soft-fails to a landcover-free build, matching
 the other optional inputs. The newest 3D Basisvoorziening vintage is 2022,
 which differs from the AHN5 the trees use; that is immaterial for a ground
 backdrop.
@@ -542,7 +542,7 @@ citygml_energy/                Core package
     ├── address_key.py, address_match.py                 VBO ↔ EP-online address join
     ├── epc_score.py, energy_resources.py, appearance.py EPC palette, regime-aware Energy, app:Appearance
     ├── solar_panels.py, vegetation.py, tree_matching.py    Optional input loaders + nearest-neighbour join
-    ├── terrain.py              Optional 3D Basisvoorziening → luse / tran / wtr / veg / brid landcover
+    ├── landcover.py            Optional 3D Basisvoorziening → luse / tran / wtr / veg / brid landcover
     ├── box_clip.py             Cut the scene to the AOI box: cap building solids, clip landcover surfaces
     ├── postcode6.py            CBS Postcode6 → nrg3:UrbanFunctionArea
     ├── _helpers.py             Shared helpers (type coercion, cache keys, gml:id sanitisation)

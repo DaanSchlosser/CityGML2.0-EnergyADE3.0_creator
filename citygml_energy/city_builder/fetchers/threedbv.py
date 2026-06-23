@@ -4,7 +4,7 @@ PDOK's 3D Basisvoorziening OGC API exposes a CityJSON product
 (``basisbestand_gebouwen_terreinen``) that carries the Dutch ground as
 classified, draped surfaces: terrain (``LandUse``), roads, water,
 vegetation, and bridges, each tagged with its BGT class. That product is
-the source of the pipeline's semantic terrain.
+the source of the pipeline's semantic landcover.
 
 The ``/items`` endpoint is **not** a feature stream, it is a download
 index: each feature is a map-sheet polygon carrying a ``download_link`` to
@@ -138,14 +138,14 @@ def discover_landcover_tiles(
         )
     except (_requests.RequestException, OSError, ValueError, KeyError) as exc:
         _LOG.warning(
-            "3DBV index fetch failed (%s); skipping semantic terrain for this build",
+            "3DBV index fetch failed (%s); skipping semantic landcover for this build",
             exc,
         )
         return None
 
     refs = _parse_index(index)
     if not refs:
-        _LOG.warning("3DBV index returned no usable sheet for the AOI; skipping semantic terrain")
+        _LOG.warning("3DBV index returned no usable sheet for the AOI; skipping semantic landcover")
         return None
 
     latest = max(ref.year for ref in refs)

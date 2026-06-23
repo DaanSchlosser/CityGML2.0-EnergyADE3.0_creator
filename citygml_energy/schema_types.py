@@ -37,9 +37,9 @@ SOLITARY_VEGETATION_OBJECT = "veg:SolitaryVegetationObject"
 PLANT_COVER = "veg:PlantCover"
 
 # ---------------------------------------------------------------------------
-# CityGML 2.0: Semantic landcover (the 3D Basisvoorziening terrain surfaces)
+# CityGML 2.0: Semantic landcover (the 3D Basisvoorziening ground surfaces)
 # ---------------------------------------------------------------------------
-# The terrain is carried as classified ground surfaces draped from the 3D
+# The landcover is carried as classified ground surfaces draped from the 3D
 # Basisvoorziening, not a bare-earth relief: each BGT ground object maps onto
 # its idiomatic CityGML 2.0 feature. ``veg:PlantCover`` is declared once in the
 # vegetation section above and reused here for the 3DBV ``PlantCover`` objects.
