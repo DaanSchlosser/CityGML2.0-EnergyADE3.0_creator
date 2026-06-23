@@ -71,10 +71,10 @@ because it is published by a Dutch municipality (`ago@emmen`),
 which keeps the pipeline within the "Dutch government open data
 only" policy that excluded the OSM and Bomenstichting sources.
 
-| # | Source | What it provides | License | Access method used |
+| # | Source | What it provides | Licence | Access method used |
 |---|---|---|---|---|
 | 1 | **CFTree** ([NoahAlting/CFTree](https://github.com/NoahAlting/CFTree)) | LoD3 watertight crown + trunk triangle meshes, per-tree morphometrics (height, DBH, crown width, porosity, r50) | GPL-3.0 (the tool; outputs are derivatives of AHN, which is open government data) | External preprocessor in a WSL conda env; outputs consumed as `trees_lod3.city.json` tiles |
-| 2 | **AHN6** (Actueel Hoogtebestand Nederland, 2025 flight) — with **AHN4** (2020) as the CC-0 fallback | Raw LiDAR point cloud; input to CFTree | AHN6 CC-BY-4.0 / AHN4 CC-0 | Downloaded per tile via CFTree's `get_data` stage. AHN6 (2025) is the current default; AHN4 (2020) is mirrored per sub-tile at the TU Delft GeoTiles service (`https://geotiles.citg.tudelft.nl/AHN4_T/<kaartblad>_<subtile>.LAZ`) |
+| 2 | **AHN6** (Actueel Hoogtebestand Nederland, 2025 flight), with **AHN4** (2020) as the CC-0 fallback | Raw LiDAR point cloud; input to CFTree | AHN6 CC-BY-4.0 / AHN4 CC-0 | Downloaded per tile via CFTree's `get_data` stage. AHN6 (2025) is the current default; AHN4 (2020) is mirrored per sub-tile at the TU Delft GeoTiles service (`https://geotiles.citg.tudelft.nl/AHN4_T/<kaartblad>_<subtile>.LAZ`) |
 | 3 | **BGT / IMGeo 2.2** `vegetatieobject_punt` (plus_type `boom`) | Authoritative per-tree point register maintained by municipalities / provinces / water boards. No semantic attributes (no species, no leaf class, no planting year, no dimensions), only an authoritative handle plus registry metadata. | CC-0 (PDOK) | PDOK OGC API Features: `https://api.pdok.nl/lv/bgt/ogc/v1/collections/vegetatieobject_punt/items?bbox=…&bbox-crs=EPSG::28992`. Pagination via `rel="next"` links. Cached in the pipeline's `CachedSession`. |
 | 4 | **Gemeente Emmen `bor_groen_bomen_beschermd`** | Per-tree register of trees registered under Emmen's public-space management (~58 k records: 57 503 `Bijzondere boom` + 466 `Monumentale boom`). Carries Latin and Dutch species name, planting year, height and trunk-diameter classes, protection status, growth form, and ecological standplaats. ~26 % of records have a populated species, ~93 % have a planting year. | Free use with attribution (per the layer's `licenseInfo` field; "Bij het overnemen van (delen van) de kaart, moet de bron worden vermeld") | ArcGIS REST FeatureServer query: `https://services3.arcgis.com/YaBq8GMTp0Kh437n/arcgis/rest/services/bor_groen_bomen_beschermd/FeatureServer/0/query?geometry=…&inSR=28992&outSR=28992&f=json`. Bbox-filtered, paged via `resultOffset`, cached by the same `CachedSession`. |
 
@@ -151,7 +151,7 @@ plus everything inherited from `core:AbstractCityObjectType`
 | `trunk_H_m` | `veg:height` (`gml:LengthType`, uom `m`) | Direct |
 | `trunk_DBH_m` | `veg:trunkDiameter` (`gml:LengthType`, uom `m`) | Direct |
 | `crown_width_m` | `veg:crownDiameter` (`gml:LengthType`, uom `m`) | Direct |
-| `crown_median_z`, `crown_r50_m`, `crown_porosity`, `trunk_radius_m`, `trunk_base_height_m` | `gen:doubleAttribute name="<cftree_key>"` | No native CityGML slot; preserved so CFD / microclimate tools can still reach them |
+| `crown_median_z`, `crown_r50_m`, `crown_porosity`, `trunk_base_height_m` | `gen:doubleAttribute name="<cftree_key>"` | No native CityGML slot; preserved so CFD / microclimate tools can still reach them. `trunk_radius_m` is omitted on purpose: CFTree derives it as `0.5 * trunk_DBH_m`, and `veg:trunkDiameter` already carries that measurement |
 
 ### 3.2 BGT cross-reference → CityGML
 
@@ -245,7 +245,7 @@ from the container target. This matches the Alderaan reference data,
 whose `app:target` list holds only container ids.
 
 Built by
-[`append_vegetation_appearance`](../citygml_energy/city_builder/appearance.py#L198)
+[`append_vegetation_appearance`](../citygml_energy/city_builder/appearance.py#L238)
 alongside the existing energy-label and solar-panel appearance steps.
 
 ### 3.5 What the XML looks like
@@ -266,7 +266,6 @@ A BGT-matched tree serialises to the following CityGML 2.0 fragment
   <gen:doubleAttribute name="crown_porosity"><gen:value>0.35</gen:value></gen:doubleAttribute>
   <gen:doubleAttribute name="crown_r50_m"><gen:value>0.14</gen:value></gen:doubleAttribute>
   <gen:doubleAttribute name="crown_median_z"><gen:value>16.27</gen:value></gen:doubleAttribute>
-  <gen:doubleAttribute name="trunk_radius_m"><gen:value>0.07</gen:value></gen:doubleAttribute>
   <gen:doubleAttribute name="trunk_base_height_m"><gen:value>12.26</gen:value></gen:doubleAttribute>
   <veg:height uom="m">12.5</veg:height>
   <veg:trunkDiameter uom="m">0.4</veg:trunkDiameter>
@@ -571,6 +570,6 @@ share.
 * **GPL-3.0 contagion.** CFTree is GPL-3.0. We treat it as an external
   preprocessor (subprocess at build time) and do not import from it;
   the CityJSON output is a derivative of AHN (CC-0), not of CFTree
-  code, so the generator's own code stays at its permissive license.
+  code, so the generator's own code stays at its permissive licence.
   If CFTree were ever imported as a Python library, the project
-  license would have to re-align.
+  licence would have to re-align.

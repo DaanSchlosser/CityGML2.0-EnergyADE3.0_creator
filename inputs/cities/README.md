@@ -8,15 +8,15 @@ The JSON schema is at [`../../schemas/city_input.schema.json`](../../schemas/cit
 
 | Config | Area | Notes |
 |---|---|---|
-| `emmer-compascuum_small-area.json` | Emmer-Compascuum (~41.5 ha AOI) | Uses every optional input: `boundary` (GeoJSON), `solar_panels`, and `vegetation` (CFTree LoD3 trees). Doubles as the canonical smoke test. |
-| `emmer-compascuum_small-area_solar-only.json` | Emmer-Compascuum (~41.5 ha AOI) | Same boundary and solar panels, no vegetation input. |
-| `emmer-compascuum_small-area_no-energy-labels.json` | Emmer-Compascuum (~41.5 ha AOI) | Same small-area build but `include_energy_labels: false`, so no EP-Online labels are fetched or emitted. Source config for the openly-shareable city GML in the 4TU deposit; carries a `file_header` banner. |
+| `emmer-compascuum_small-area.json` | Emmer-Compascuum (~50 ha AOI) | Uses the optional inputs `boundary` (GeoJSON), `solar_panels`, `vegetation` (CFTree LoD3 trees), and `cbs_postcode6` (CBS Postcode-6 aggregates). Doubles as the canonical smoke test. |
+| `emmer-compascuum_small-area_solar-only.json` | Emmer-Compascuum (~50 ha AOI) | Same boundary and solar panels, no vegetation input. |
+| `emmer-compascuum_small-area_no-energy-labels.json` | Emmer-Compascuum (~50 ha AOI) | Same small-area build but `include_energy_labels: false`, so no EP-Online labels are fetched or emitted. Adds `cbs_postcode6`. Source config for the openly-shareable city GML in the 4TU deposit; carries a `file_header` banner. |
 | `emmer-compascuum.json` | Emmer-Compascuum woonplaats (within Emmen) | Full settlement clipped to the BAG woonplaats boundary: BAG + 3DBAG LoD0 + EP-Online. |
 | `emmer-compascuum_solar.json` | Emmer-Compascuum woonplaats (within Emmen) | Full woonplaats with LoD2 roofs so University of Groningen solar panels project as `nrg3:GenericSolarCollector` across the whole panel population. |
 | `delft.json` | Delft (full municipality) | |
 | `groningen.json` | Groningen (full municipality) |  |
 | `zwolle.json` | Zwolle (full municipality) |  |
-| `city_example.json`, `city_smoke_test.json`, `emmer_compascuum_solar_smoke.json` | — | Minimal example and smoke-test fixtures. |
+| `city_example.json`, `city_smoke_test.json`, `emmer_compascuum_solar_smoke.json` | n/a | Minimal example and smoke-test fixtures. |
 
 ## Path conventions
 
@@ -35,7 +35,7 @@ A `vegetation` block normally points at a pre-merged CFTree file (produced by `t
 
 ```json
 "vegetation": {
-  "path": "../vegetation/leiden_250.city.json",
+  "path": "../vegetation/<area>.city.json",
   "generate": { "ahn_version": 5, "n_cores": 8, "buffer_m": 20 }
 }
 ```

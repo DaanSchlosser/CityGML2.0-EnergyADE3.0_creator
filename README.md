@@ -286,7 +286,7 @@ python -m pip install -e ".[city]"
 python examples/create_city.py --input inputs/cities/emmer-compascuum_small-area.json
 ```
 
-The default config (~41.5 ha Emmer-Compascuum AOI) doubles as the canonical
+The default config (~50 ha Emmer-Compascuum AOI) doubles as the canonical
 smoke test. The first run fills `cache_dir` with BAG/3DBAG/EP-Online responses;
 subsequent runs read from cache instead of refetching.
 
@@ -505,7 +505,7 @@ area of interest, and each ground object becomes its idiomatic CityGML 2.0
 feature: 3DBV `LandUse` to `luse:LandUse`, `Road` to `tran:Road`,
 `WaterBody` to `wtr:WaterBody`, `PlantCover` to `veg:PlantCover`, `Bridge`
 to `brid:Bridge`, and anything else to `gen:GenericCityObject`. The 3DBV
-buildings are skipped, since the 3DBAG path ([§4.1](#41-buildings))
+buildings are skipped, since the 3DBAG path ([§4.1](#41-quick-start))
 already supplies richer ones. Each surface keeps its draped `lod1MultiSurface`
 geometry, so the ground sits at real NAP heights, and the BGT
 classification (`bgt_type`, `bgt_functie`, `bgt_fysiekvoorkomen`,
@@ -542,6 +542,7 @@ citygml_energy/                Core package
 ├── serialization.py            XmlSerializer wrapper (NSMAP + tab indent)
 ├── namespaces.py               NSMAP from bindings + namespace_prefixes.json
 ├── schema_types.py             "prefix:LocalName" constants used in Python
+├── units.py                    uom-token vocabulary + read-side unit normalisation (xsdata-independent)
 ├── generation.py               generate_city_model / generate_gml_file
 ├── errors.py                   CityGMLError → InputFileError / CityBuildError
 ├── _xsdata_patches.py          Runtime patches for xsdata edge cases
@@ -553,15 +554,15 @@ citygml_energy/                Core package
     ├── cftree_runner.py, _env.py    On-demand CFTree subprocess runner (WSL / native) and shared .env loader
     ├── config.py, http.py, boundary.py, pdok_wfs.py     Config, cached HTTP, AOI loader, WFS paginator
     ├── cityjson_parse.py, cityjson_trees_parse.py, cityjson_landcover_parse.py    CityJSON tile parsers
-    ├── address_key.py, address_match.py                 VBO ↔ EP-online address join
+    ├── address_key.py, address_match.py                 VBO ↔ EP-Online address join
     ├── epc_score.py, energy_resources.py, appearance.py EPC palette, regime-aware Energy, app:Appearance
     ├── solar_panels.py, vegetation.py, tree_matching.py    Optional input loaders + nearest-neighbour join
-    ├── landcover.py            Optional 3D Basisvoorziening → luse / tran / wtr / veg / brid landcover
+    ├── landcover.py, landcover_class.py    Optional 3D Basisvoorziening → luse / tran / wtr / veg / brid landcover (+ class / skip / codeSpace resolver)
     ├── box_clip.py             Cut the scene to the AOI box: cap building solids, clip landcover surfaces
     ├── postcode6.py            CBS Postcode6 → nrg3:UrbanFunctionArea
     ├── _helpers.py             Shared helpers (type coercion, cache keys, gml:id sanitisation)
     ├── builders/               Per-feature builders (building, address, epc, vegetation, landcover)
-    └── fetchers/               One module per remote source (BAG, 3DBAG, EP-online, Locatieserver, BGT, Emmen BOR, CBS, 3D Basisvoorziening, PDOK)
+    └── fetchers/               One module per remote source (BAG, 3DBAG, EP-Online, Locatieserver, BGT, Emmen BOR, CBS, 3D Basisvoorziening, municipality outline)
 
 examples/
 ├── create_building.py          Per-building CLI + library entry point
@@ -589,7 +590,7 @@ inputs/                         See inputs/README.md
 ├── cities/                     City-scale configs
 ├── address/                    Address-driven extract profiles (city pipeline)
 ├── boundaries/                 GeoJSON AOI polygons
-├── vegetation/                 CFTree LoD 3 tree meshes (CityJSON)
+├── vegetation/                 CFTree LoD3 tree meshes (CityJSON)
 └── solar_panels/                Solar panel GeoPackage (UoG Zenodo 14860030, CC-BY-4.0)
 
 schemas/
@@ -602,8 +603,8 @@ Energy_ADE-3.0beta8/            Energy ADE 3.0 beta8 XSD + Alderaan reference (A
 
 tests/                          Per-building, city-scale, and infra tests
 docs/
-├── adr/                        Architecture decision records (0001-0003)
-├── mapping_building.md         Per-building BAG / EP-online field-to-XSD mapping notes
+├── adr/                        Architecture decision records (0001-0005)
+├── mapping_building.md         Per-building BAG / EP-Online field-to-XSD mapping notes
 ├── mapping_city.md             City-scale data-source mapping + design notes
 ├── kitmodelviewer.md           One-time Energy ADE 3.0 schema swap for the KIT viewer
 ├── threedbag_sliver_walls.md   3DBAG near-zero-area wall handling
@@ -787,8 +788,8 @@ Bundled third-party components keep their own licences:
   [Energy_ADE-3.0beta8/PROVENANCE.md](Energy_ADE-3.0beta8/PROVENANCE.md)).
 - The two tracked files under `KITModelViewer_V7.5.2_Build-3777/` support the
   Energy ADE 3.0 upgrade for the KIT viewer (see §6). `EnergyADE-local.xsd` is
-  the same Apache-2.0 schema by Dr. Giorgio Agugiaro (an earlier beta 8
-  vintage, with `<import>` URLs rewritten to local paths); `UOMList.xml` is the
+  the same Apache-2.0 schema by Dr. Giorgio Agugiaro, an earlier beta 8 vintage
+  renamed for the viewer (its `<import>` URLs are the upstream online URLs); `UOMList.xml` is the
   KITModelViewer's unit-of-measurement config, tracked in the version this
   project's emitted `@uom` tokens are checked against. The viewer itself is a
   separate KIT download and is not part of this repository. See

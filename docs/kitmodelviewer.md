@@ -43,9 +43,9 @@ included.
   Delft), the same upstream as [`../Energy_ADE-3.0beta8/`](../Energy_ADE-3.0beta8/),
   under the **Apache License 2.0**. It is a slightly earlier beta 8 vintage
   (header `Last update: 2026-05-06`) renamed to `EnergyADE-local.xsd` for the
-  viewer, with the online `<import>` `schemaLocation` URLs rewritten to local
-  relative paths (the fix above). It is therefore a modified copy in Apache-2.0
-  terms.
+  viewer. Its `<import>` `schemaLocation` URLs are kept as the upstream online
+  URLs; the rewrite to local relative paths in the fix above is applied by the
+  user to their own viewer copy, not to this tracked file.
 - `Data/UOMList.xml` is the KITModelViewer's unit-of-measurement configuration
   file (KIT IAI), tracked in the version this project checks its emitted `@uom`
   tokens against (audit check H6 and `tests/test_units.py`), so a viewer
