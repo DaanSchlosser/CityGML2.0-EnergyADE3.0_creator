@@ -27,10 +27,10 @@ from typing import TYPE_CHECKING, Any
 from .._step import Coord3D
 from ..core import CityModel
 from ..gml_builders import build_envelope
+from . import landcover as landcover_module
 from . import pand_executor
 from . import postcode6 as postcode6_step
 from . import solar_panels as solar_panels_module
-from . import terrain as terrain_module
 from . import vegetation as vegetation_module
 from .address_match import LabelFilter, ResolvedAddress, match_addresses, wanted_label_filter
 from .appearance import (
@@ -223,14 +223,14 @@ def build_city_model(
         aoi_geom=extent.boundary_geom or _clip_geom_to_bbox(extent.clip_geom, extent.bbox),
     )
 
-    # Semantic terrain: fetch + parse the 3D Basisvoorziening landcover for
+    # Semantic landcover: fetch + parse the 3D Basisvoorziening ground for
     # the AOI bbox. The fetcher discovers the covering sheet(s), downloads +
     # unzips them, and clips the CityJSON to the bbox. Soft-fails to None
-    # (terrainless build) on a PDOK outage or out-of-coverage AOI. Skipped
-    # entirely when no terrain block is configured.
-    landcover_objects = terrain_module.fetch_landcover(
+    # (landcover-free build) on a PDOK outage or out-of-coverage AOI. Skipped
+    # entirely when no landcover block is configured.
+    landcover_objects = landcover_module.fetch_landcover(
         session,
-        source=config.terrain_source,
+        source=config.landcover_source,
         bbox=extent.bbox,
         clip_to_box=extent.clip_to_box,
     )
@@ -720,12 +720,12 @@ def _assemble_city_model(
         coords_sink=all_coords,
     )
 
-    # Semantic terrain: one CityGML feature per 3D Basisvoorziening ground
+    # Semantic landcover: one CityGML feature per 3D Basisvoorziening ground
     # object (LandUse / Road / WaterBody / PlantCover / Bridge / generic).
     # Each contributes only its bounding-box corners to coords_sink, so the
     # envelope grows without the sink swelling by every surface vertex. No-op
-    # when no terrain was fetched.
-    terrain_module.attach_landcover_to_model(
+    # when no landcover was fetched.
+    landcover_module.attach_landcover_to_model(
         model,
         build_context,
         objects=landcover_objects,

@@ -320,17 +320,17 @@ def build_schema() -> dict[str, Any]:
                     },
                 },
             },
-            "terrain": {
+            "landcover": {
                 "type": "object",
                 "description": (
-                    "Optional semantic terrain. When set, the pipeline fetches "
+                    "Optional semantic landcover. When set, the pipeline fetches "
                     "the 3D Basisvoorziening CityJSON for the build AOI from "
                     "PDOK and emits the ground as classified surfaces "
                     "(luse:LandUse, tran:Road, wtr:WaterBody, veg:PlantCover, "
                     "brid:Bridge, gen:GenericCityObject), each carrying its BGT "
                     "classification. A knob-less opt-in: an empty object enables "
                     "it. The PDOK endpoints are public so no API key is "
-                    "required. Soft-fails to a terrainless build on a PDOK "
+                    "required. Soft-fails to a landcover-free build on a PDOK "
                     "outage or an AOI outside coverage."
                 ),
                 "additionalProperties": False,
