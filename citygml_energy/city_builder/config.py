@@ -89,6 +89,7 @@ from .boundary import (  # noqa: E402
     BoundarySource,
 )
 from .solar_panels import SolarPanelsSource  # noqa: E402
+from .terrain import TerrainSource  # noqa: E402
 from .vegetation import VegetationGenerateSpec, VegetationSource  # noqa: E402
 
 
@@ -224,6 +225,14 @@ class CityBuildConfig:
     and emits one ``nrg3:UrbanFunctionArea`` per postcode polygon
     intersecting the build extent. See
     :class:`citygml_energy.city_builder.config.CbsPostcode6Source`."""
+    terrain_source: TerrainSource | None = None
+    """Optional semantic-terrain source. When set, the pipeline fetches the
+    3D Basisvoorziening CityJSON for the build AOI from PDOK and emits the
+    ground as classified surfaces (``luse:LandUse`` / ``tran:Road`` /
+    ``wtr:WaterBody`` / ``veg:PlantCover`` / ``brid:Bridge`` /
+    ``gen:GenericCityObject``). The block is a knob-less opt-in and the PDOK
+    endpoints are public, so no ``.env`` entry is needed. See
+    :class:`citygml_energy.city_builder.terrain.TerrainSource`."""
     address_source: AddressSource | None = None
     """Optional address-driven extent. When set, the build extent is not
     taken from ``municipality`` / ``bbox`` / ``boundary`` but resolved
@@ -293,6 +302,7 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
         "gml_id_prefix",
         "solar_panels",
         "vegetation",
+        "terrain",
         "cbs_postcode6",
         "address",
     }
@@ -306,6 +316,11 @@ _ALLOWED_VEGETATION_GENERATE_KEYS: frozenset[str] = frozenset(
     {"ahn_version", "n_cores", "buffer_m", "timeout_min", "case"}
 )
 _AHN_VERSIONS: frozenset[int] = frozenset({4, 5, 6})
+# The 3D Basisvoorziening terrain is a knob-less opt-in: a present
+# ``terrain`` block (even ``{}``) enables it, an absent one skips it. The
+# national product fixes the LoD and carries every ground class, so there is
+# nothing to tune; the empty allow-set rejects any stray key clearly.
+_ALLOWED_TERRAIN_KEYS: frozenset[str] = frozenset()
 _ALLOWED_CBS_POSTCODE6_KEYS: frozenset[str] = frozenset({"year"})
 _ALLOWED_ADDRESS_KEYS: frozenset[str] = frozenset(
     {"query", "extent_m", "target_color", "surroundings_color"}
@@ -465,6 +480,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
     vegetation_source = _validate_vegetation(
         data.get("vegetation"), source=source, base_dir=base_dir
     )
+    terrain_source = _validate_terrain(data.get("terrain"), source=source)
     cbs_postcode6_source = _validate_cbs_postcode6(
         data.get("cbs_postcode6"),
         source=source,
@@ -499,6 +515,7 @@ def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:
         solar_panels_source=solar_panels_source,
         boundary_source=boundary_source,
         vegetation_source=vegetation_source,
+        terrain_source=terrain_source,
         cbs_postcode6_source=cbs_postcode6_source,
         address_source=address_source,
     )
@@ -707,6 +724,32 @@ def _validate_vegetation_generate(value: Any, *, source: str) -> VegetationGener
         timeout_min=timeout_min,
         case=case.strip() if isinstance(case, str) else None,
     )
+
+
+def _validate_terrain(value: Any, *, source: str) -> TerrainSource | None:
+    """Validate the optional ``terrain`` block.
+
+    Returns ``None`` when unset (terrain not requested) and a
+    :class:`TerrainSource` marker when present. The block is a knob-less
+    opt-in: the semantic terrain comes from the national 3D Basisvoorziening
+    CityJSON product (fetched from PDOK at build time in
+    :func:`citygml_energy.city_builder.terrain.fetch_landcover`), which fixes
+    the LoD and carries every ground class, so the only valid form is an empty
+    object. Any key is rejected so a stale ``resolution_m`` / ``lod`` from the
+    old AHN relief block fails loudly rather than being silently ignored.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise CityBuildError(f"{source}: terrain must be an object when provided")
+    unexpected = sorted(set(value) - _ALLOWED_TERRAIN_KEYS)
+    if unexpected:
+        raise CityBuildError(
+            f"{source}: unexpected terrain key(s): {', '.join(unexpected)}. "
+            f"The terrain block is now a knob-less opt-in (semantic terrain from "
+            f"the 3D Basisvoorziening); use an empty object."
+        )
+    return TerrainSource()
 
 
 def _validate_cbs_postcode6(value: Any, *, source: str) -> CbsPostcode6Source | None:

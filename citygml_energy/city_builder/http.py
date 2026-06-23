@@ -15,6 +15,7 @@ deps raise a clear error at construction time, not at import time.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -191,6 +192,22 @@ class CachedSession:
             )
             return cache_path.read_bytes()
         return None
+
+    def evict(self, cache_key: str) -> None:
+        """Remove the cached entry for *cache_key* so the next call re-fetches.
+
+        Self-heals a poisoned entry: a body that passed a lightweight
+        validate hook (e.g. a TIFF magic sniff) but later proves
+        undecodable should not be re-served verbatim on every subsequent
+        run. A no-op when caching is off or the entry is already absent;
+        a filesystem error while unlinking is swallowed (the goal is best-
+        effort cleanup, not a hard guarantee).
+        """
+        cache_path = self._cache_path("GET", "", None, cache_key)
+        if cache_path is None:
+            return
+        with contextlib.suppress(OSError):  # best-effort cleanup, not a guarantee
+            cache_path.unlink(missing_ok=True)
 
     def get_json(
         self,

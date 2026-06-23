@@ -159,6 +159,28 @@ def parse_buildings(tile_data: dict[str, Any]) -> list[ParsedBuilding]:
     return buildings
 
 
+def iter_object_polygons(
+    obj: dict[str, Any],
+    vertices: list[Coord3D],
+    *,
+    lod: str = "1",
+) -> list[GeometryPolygon]:
+    """Return every polygon of *obj*'s geometries at *lod*, semantics dropped.
+
+    A thin public wrapper over :func:`_parse_geometry` for callers that want
+    the bare surfaces of a CityObject (the 3D Basisvoorziening landcover
+    objects are draped ``MultiSurface``es at LoD 1.2 with no per-face
+    semantics, so the :class:`SemanticPolygon` ``surface_type`` is always
+    ``None`` and only the geometry matters). All the ring resolution, sliver
+    rejection, and degenerate-ring dedup of the building path are reused, so a
+    3DBV tile and a 3DBAG tile go through one battle-tested geometry decoder.
+    """
+    out: list[GeometryPolygon] = []
+    for geom in obj.get("geometry") or []:
+        out.extend(sp.polygon for sp in _parse_geometry(geom, vertices).get(lod, []))
+    return out
+
+
 def _collect_building_geometries(
     *,
     tile: CityJSONTile,

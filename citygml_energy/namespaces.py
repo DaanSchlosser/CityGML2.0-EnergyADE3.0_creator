@@ -336,6 +336,23 @@ CBS_POSTCODE6_INFORMATION_SYSTEM_URL = (
     "#/metadata/ed2f2381-873b-4d88-9c55-616e3a78d711"
 )
 
+# 3D Basisvoorziening (Kadaster/PDOK) semantic landcover. The CityJSON
+# product carries each ground surface (terrain, road, water, vegetation)
+# with BGT-derived classification: ``bgt_type``, ``bgt_functie`` and
+# ``bgt_fysiekvoorkomen`` come straight from the IMGeo / BGT vocabulary,
+# while ``3df_class`` is the coarse 3DBV class (Terrain / Road / Water /
+# Forest / Bridge). These are open ``gml:CodeType`` vocabularies, so the
+# values ship verbatim and the codeSpace names the vocabulary they belong
+# to (see the codelist convention in docs/mapping_city.md).
+#
+# CS_IMGEO_BGT points at the IMGeo objectenhandboek, the dereferenceable
+# definition of the BGT object/attribute vocabulary that supplies
+# ``bgt_type`` / ``bgt_functie`` / ``bgt_fysiekvoorkomen``. CS_3DBV_CLASS
+# points at the 3D Basisvoorziening product description, which documents
+# the ``3df_class`` enumeration the Kadaster pipeline assigns.
+CS_IMGEO_BGT = "https://geonovum.github.io/IMGeo-objectenhandboek/"
+CS_3DBV_CLASS = "https://docs.geostandaarden.nl/3dbv/basis-al-prod-20211222/"
+
 
 def _nrg3_cs_base() -> str:
     """Codespace base URL for Energy-ADE 3.0 codelists.

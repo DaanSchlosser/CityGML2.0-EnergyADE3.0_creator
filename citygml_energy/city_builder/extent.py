@@ -78,6 +78,14 @@ class BuildExtent:
             every non-address extent. :attr:`has_targets` is the single
             switch the painter seam reads; emptiness (not ``None``) is
             the signal, so the field stays total.
+        clip_to_box: True when this build is a rectangular viewport whose
+            scene is hard-cut to :attr:`bbox` (the address extract and an
+            explicit ``bbox`` AOI). Both the building clip and the 3DBV
+            ground clip read this one field, so a viewport cuts both layers
+            at the same box and they cannot drift apart. False for a
+            whole-gemeente run and for a boundary-polygon AOI (whose
+            buildings already take their edge from :attr:`boundary_geom`);
+            neither hard-cuts a straddling object.
     """
 
     bbox: Bbox
@@ -86,6 +94,7 @@ class BuildExtent:
     municipality: str
     boundary_geom: BaseGeometry | None = None
     target_pand_ids: frozenset[str] = field(default_factory=frozenset)
+    clip_to_box: bool = False
 
     @property
     def has_targets(self) -> bool:
@@ -125,6 +134,10 @@ def _resolve_municipality_extent(config: CityBuildConfig, session: CachedSession
         cbs_code=outline.cbs_code or None,
         municipality=config.municipality,
         boundary_geom=boundary_geom,
+        # An explicit bbox is a rectangular viewport, so cut both buildings and
+        # ground to it; a whole-gemeente run keeps both whole, and a boundary
+        # AOI takes its building edge from the polygon, not a box.
+        clip_to_box=config.bbox is not None and boundary_geom is None,
     )
 
 
@@ -158,6 +171,8 @@ def _resolve_address_extent(config: CityBuildConfig, session: CachedSession) -> 
         municipality=config.municipality or resolution.municipality or "",
         boundary_geom=None,
         target_pand_ids=resolution.target_pand_ids,
+        # The address extract is the cut-out the box is for: clip both layers.
+        clip_to_box=True,
     )
 
 

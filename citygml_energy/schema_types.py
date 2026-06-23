@@ -37,6 +37,19 @@ SOLITARY_VEGETATION_OBJECT = "veg:SolitaryVegetationObject"
 PLANT_COVER = "veg:PlantCover"
 
 # ---------------------------------------------------------------------------
+# CityGML 2.0: Semantic landcover (the 3D Basisvoorziening terrain surfaces)
+# ---------------------------------------------------------------------------
+# The terrain is carried as classified ground surfaces draped from the 3D
+# Basisvoorziening, not a bare-earth relief: each BGT ground object maps onto
+# its idiomatic CityGML 2.0 feature. ``veg:PlantCover`` is declared once in the
+# vegetation section above and reused here for the 3DBV ``PlantCover`` objects.
+LAND_USE = "luse:LandUse"
+ROAD = "tran:Road"
+WATER_BODY = "wtr:WaterBody"
+BRIDGE = "brid:Bridge"
+GENERIC_CITY_OBJECT = "gen:GenericCityObject"
+
+# ---------------------------------------------------------------------------
 # CityGML 2.0: Generics (used for attributes without a native schema field)
 # ---------------------------------------------------------------------------
 GEN_STRING_ATTRIBUTE = "gen:stringAttribute"

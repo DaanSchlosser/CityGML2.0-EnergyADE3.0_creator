@@ -38,6 +38,7 @@ from citygml_energy.city_builder import cftree_runner
 from citygml_energy.city_builder.appearance import (
     VEGETATION_DIFFUSE_COLOR,
     VEGETATION_THEME,
+    VEGETATION_TRANSPARENCY,
     append_vegetation_appearance,
 )
 from citygml_energy.city_builder.builders import build_solitary_vegetation_object
@@ -576,6 +577,8 @@ def test_append_vegetation_appearance_targets_container_only() -> None:
     assert len(materials) == 1
     material = materials[0].x3_dmaterial
     assert material.diffuse_color == list(VEGETATION_DIFFUSE_COLOR)
+    # Trees are painted slightly transparent so a canopy does not fully occlude.
+    assert material.transparency == VEGETATION_TRANSPARENCY
     # Exactly one target: the tree's MultiSurface container, no polygons.
     assert len(material.target) == 1
     assert material.target[0].startswith("#")
