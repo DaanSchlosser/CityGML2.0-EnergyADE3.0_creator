@@ -39,6 +39,15 @@ Desktop.ini
 /KITModelViewer_V7.5.2_Build-3777/GMLSchemata/CityGML_2_0/CityGML/*
 !/KITModelViewer_V7.5.2_Build-3777/GMLSchemata/CityGML_2_0/CityGML/EnergyADE-local.xsd
 /generated
+# CFTree tree reconstructions land in inputs/vegetation/. An ad-hoc
+# create_address.py run drops one merged file per address here; ignore
+# those the same way /generated ignores the GML outputs, and track only
+# the reconstructions a checked-in profile or city config references
+# (the rule stated in inputs/vegetation/README.md).
+/inputs/vegetation/*.city.json
+!/inputs/vegetation/emmer-compascuum_small-area_AHN4.city.json
+!/inputs/vegetation/emmer-compascuum_small-area_AHN6.city.json
+!/inputs/vegetation/annie-romeinsingel-72-152-leiden_400m.city.json
 # 4TU deposit staging bundle (assembled by hand for upload; not part of the repo)
 /deposit
 
