@@ -65,7 +65,10 @@ def test_vbo_is_grouped_by_pand() -> None:
     assert len(grouped["P1"]) == 2
 
 
-def test_vbo_without_postcode_is_dropped() -> None:
+def test_vbo_without_postcode_is_emitted_without_label() -> None:
+    """A postcode-less VBO (a garage or storage box) is still a
+    BuildingUnit. It is emitted, grouped under its Pand, with no energy
+    label, and is never dropped (ADR-0005)."""
     vbo = Verblijfsobject(
         identificatie="V1",
         pand_identificatie="P1",
@@ -81,10 +84,16 @@ def test_vbo_without_postcode_is_dropped() -> None:
         point=None,
         properties={},
     )
-    assert match_addresses(vbos=[vbo]) == {}
+    grouped = match_addresses(vbos=[vbo])
+    [resolved] = grouped["P1"]
+    assert resolved.vbo.identificatie == "V1"
+    assert resolved.energy_label is None
 
 
-def test_vbo_without_huisnummer_is_dropped() -> None:
+def test_vbo_without_huisnummer_is_emitted_without_label() -> None:
+    """A VBO with no huisnummer is still emitted as a BuildingUnit with
+    no energy label; it simply cannot take part in the address-key
+    fallback (ADR-0005)."""
     vbo = Verblijfsobject(
         identificatie="V1",
         pand_identificatie="P1",
@@ -100,7 +109,10 @@ def test_vbo_without_huisnummer_is_dropped() -> None:
         point=None,
         properties={},
     )
-    assert match_addresses(vbos=[vbo]) == {}
+    grouped = match_addresses(vbos=[vbo])
+    [resolved] = grouped["P1"]
+    assert resolved.vbo.identificatie == "V1"
+    assert resolved.energy_label is None
 
 
 def test_energy_label_is_joined_by_postcode_and_number() -> None:
@@ -277,8 +289,12 @@ def test_two_vbos_in_one_pand_can_carry_different_regimes() -> None:
     assert label_43 is not None and label_43.calculation_regime() == "legacy_total"
 
 
-def _unaddressable_vbo(identificatie: str, pand_id: str) -> Verblijfsobject:
-    """A VBO with no postcode: match_addresses drops it before the join."""
+def _postcode_less_vbo(identificatie: str, pand_id: str) -> Verblijfsobject:
+    """A VBO with no postcode (a garage or storage box).
+
+    It is still emitted as a BuildingUnit; it just cannot form an address
+    key, so it never reaches the EP-online address-key fallback.
+    """
     return Verblijfsobject(
         identificatie=identificatie,
         pand_identificatie=pand_id,
@@ -296,30 +312,53 @@ def _unaddressable_vbo(identificatie: str, pand_id: str) -> Verblijfsobject:
     )
 
 
-def test_label_filter_excludes_unaddressable_vbos() -> None:
-    """An unaddressable VBO's BAG id must not reach the CSV filter.
+def test_postcode_less_vbo_is_emitted_and_matchable_by_bag_id() -> None:
+    """A postcode-less VBO is emitted and can still receive a label by
+    BAG id.
 
-    Its label could never be used: match_addresses drops the VBO before
-    the join. The pipeline used to build wanted ids from all VBOs, so a
-    label could be fetched, then silently discarded.
+    The BAG-id match does not depend on the address, so a garage that
+    EP-online holds a certificate for (keyed on its ``verblijfsobject_id``)
+    still gets it, even though it has no postcode and no address key. This
+    is the regression guard for ADR-0005: the old code dropped this VBO
+    before the join, losing both the unit and a matchable label.
     """
-    vbos = [_vbo("V1", "P1"), _unaddressable_vbo("V2", "P1")]
+    vbos = [_postcode_less_vbo("V2", "P1")]
+    label = _label("9999ZZ", 9, "C", bag_verblijfsobject_id="V2")
+    grouped = match_addresses(vbos=vbos, energy_labels=[label])
+    [resolved] = grouped["P1"]
+    assert resolved.vbo.identificatie == "V2"
+    assert resolved.energy_label is not None
+    assert resolved.energy_label.energieklasse == "C"
+
+
+def test_label_filter_covers_every_id_but_only_address_key_keys() -> None:
+    """Every VBO id reaches the CSV filter (the id match is primary, and
+    every VBO has a BAG id), but only the address-key VBOs contribute a
+    fallback address key.
+
+    The postcode-less VBO's id must be present so EP-online can match it
+    by ``BAGVerblijfsobjectID``; its (absent) address key must not be,
+    because a partial key cannot join reliably.
+    """
+    vbos = [_vbo("V1", "P1"), _postcode_less_vbo("V2", "P1")]
     flt = wanted_label_filter(vbos)
-    assert flt.ids == frozenset({"V1"})
+    assert flt.ids == frozenset({"V1", "V2"})
     assert len(flt.keys) == 1
 
 
-def test_label_filter_population_equals_the_join_population() -> None:
-    """The fetch filter and the join share one matchable predicate."""
+def test_label_filter_id_population_equals_the_join_population() -> None:
+    """The fetch filter's id set covers exactly the joined units: every
+    VBO is both filtered for and emitted, so the two populations match."""
     vbos = [
         _vbo("V1", "P1"),
         _vbo("V2", "P2", huisnummer=7),
-        _unaddressable_vbo("V3", "P3"),
+        _postcode_less_vbo("V3", "P3"),
     ]
     flt = wanted_label_filter(vbos)
     grouped = match_addresses(vbos=vbos)
     joined_ids = {r.vbo.identificatie for group in grouped.values() for r in group}
     assert flt.ids == frozenset(joined_ids)
+    assert joined_ids == {"V1", "V2", "V3"}
 
 
 def test_label_filter_is_order_independent() -> None:
