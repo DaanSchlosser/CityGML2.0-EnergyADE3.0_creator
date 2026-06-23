@@ -11,6 +11,9 @@ Sub-modules:
   ``nrg3:EnergyPerformanceCertificate`` + EP-online classification.
 * :mod:`.vegetation`: ``veg:SolitaryVegetationObject``, including
   CFTree morphometric mapping and BGT / Emmen-BOR enrichment.
+* :mod:`.landcover`: the 3D Basisvoorziening ground surfaces
+  (``luse:LandUse`` / ``tran:Road`` / ``wtr:WaterBody`` /
+  ``veg:PlantCover`` / ``brid:Bridge`` / ``gen:GenericCityObject``).
 * :mod:`._common`: cross-domain xsdata-aware helpers
   (:func:`_common.inner_type`, UOM constants).
 
@@ -46,6 +49,7 @@ from .epc import (
     apply_eponline_pand_attribution_to_building,
     build_epc,
 )
+from .landcover import build_landcover_object
 from .vegetation import build_solitary_vegetation_object
 
 __all__ = [
@@ -57,6 +61,7 @@ __all__ = [
     "build_building",
     "build_building_unit",
     "build_epc",
+    "build_landcover_object",
     "build_solitary_vegetation_object",
     "iter_lod2_thematic_classification",
     "lod2_thematic_surface_gml_id",

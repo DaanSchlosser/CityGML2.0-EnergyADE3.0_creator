@@ -30,12 +30,17 @@ from ..gml_builders import build_envelope
 from . import pand_executor
 from . import postcode6 as postcode6_step
 from . import solar_panels as solar_panels_module
+from . import terrain as terrain_module
 from . import vegetation as vegetation_module
 from .address_match import LabelFilter, ResolvedAddress, match_addresses, wanted_label_filter
 from .appearance import (
+    append_landcover_appearance,
     append_solar_panel_appearance,
     append_vegetation_appearance,
+    count_landcover_members,
 )
+from .box_clip import clip_building_to_box
+from .cityjson_landcover_parse import ParsedLandcover
 from .cityjson_parse import ParsedBuilding, SemanticPolygon
 from .config import BuildContext, CityBuildConfig, CityBuildError, load_city_config
 from .extent import BuildExtent, resolve_build_extent
@@ -178,6 +183,26 @@ def build_city_model(
             dropped,
         )
 
+    # Rectangular viewport (the address extract or an explicit bbox AOI):
+    # hard-clip the scene to the fetch box. A building wholly inside is
+    # untouched, one wholly outside is dropped, and a straddler is cut at the
+    # box and capped so its solid stays closed. The 3DBV ground reads the same
+    # extent.clip_to_box below, so the two layers share one edge. A
+    # whole-gemeente run keeps whole buildings, and a boundary AOI takes its
+    # edge from the boundary-polygon filter above.
+    if extent.clip_to_box:
+        before = len(parsed_by_id)
+        parsed_by_id, cut, dropped = clip_buildings_to_box(parsed_by_id, extent.bbox)
+        kept_ids = set(parsed_by_id)
+        panden = [p for p in panden if p.identificatie in kept_ids]
+        _LOG.info(
+            "Box clip kept %d / %d buildings (%d cut and capped at the boundary, %d dropped outside)",
+            len(parsed_by_id),
+            before,
+            cut,
+            dropped,
+        )
+
     solar_matches_per_pand = _maybe_match_solar_panels(
         config=config,
         bbox=extent.bbox,
@@ -198,6 +223,18 @@ def build_city_model(
         aoi_geom=extent.boundary_geom or _clip_geom_to_bbox(extent.clip_geom, extent.bbox),
     )
 
+    # Semantic terrain: fetch + parse the 3D Basisvoorziening landcover for
+    # the AOI bbox. The fetcher discovers the covering sheet(s), downloads +
+    # unzips them, and clips the CityJSON to the bbox. Soft-fails to None
+    # (terrainless build) on a PDOK outage or out-of-coverage AOI. Skipped
+    # entirely when no terrain block is configured.
+    landcover_objects = terrain_module.fetch_landcover(
+        session,
+        source=config.terrain_source,
+        bbox=extent.bbox,
+        clip_to_box=extent.clip_to_box,
+    )
+
     _LOG.info("Assembling CityModel …")
     model = _assemble_city_model(
         config=config,
@@ -209,6 +246,7 @@ def build_city_model(
         solar_matches_per_pand=solar_matches_per_pand,
         tree_bundle=tree_bundle,
         postcode6_areas=postcode6_areas,
+        landcover_objects=landcover_objects,
     )
     building_count = sum(1 for m in model.xsd.city_object_member if m.building is not None)
     vegetation_count = sum(
@@ -217,11 +255,13 @@ def build_city_model(
     postcode_count = sum(
         1 for m in model.xsd.city_object_member if m.urban_function_area is not None
     )
+    landcover_count = count_landcover_members(model)
     _LOG.info(
-        "Done: %d buildings + %d trees + %d postcode areas in model",
+        "Done: %d buildings + %d trees + %d postcode areas + %d landcover surface(s) in model",
         building_count,
         vegetation_count,
         postcode_count,
+        landcover_count,
     )
     return model
 
@@ -338,6 +378,33 @@ def filter_buildings_by_boundary(
         if boundary_geom.intersects(footprint):
             kept[pand_id] = pb
     return kept
+
+
+def clip_buildings_to_box(
+    parsed_by_id: dict[str, ParsedBuilding],
+    box: tuple[float, float, float, float],
+) -> tuple[dict[str, ParsedBuilding], int, int]:
+    """Cut every building to *box*; return ``(kept, n_cut, n_dropped)``.
+
+    A wrapper over :func:`citygml_energy.city_builder.box_clip.clip_building_to_box`
+    that runs it across the build's buildings. A building inside *box* is kept
+    unchanged (returned identical), one outside is dropped, and a straddler is
+    cut at the box and capped (see :mod:`box_clip`). ``n_cut`` counts the
+    straddlers that were cut, ``n_dropped`` the buildings that fell wholly
+    outside. The kept dict preserves insertion order for stable output.
+    """
+    kept: dict[str, ParsedBuilding] = {}
+    n_cut = 0
+    n_dropped = 0
+    for pand_id, pb in parsed_by_id.items():
+        clipped = clip_building_to_box(pb, box)
+        if clipped is None:
+            n_dropped += 1
+        else:
+            kept[pand_id] = clipped
+            if clipped is not pb:
+                n_cut += 1
+    return kept, n_cut, n_dropped
 
 
 def _footprint_xy(sp: SemanticPolygon, polygon_cls: Any) -> Any:
@@ -583,6 +650,7 @@ def _assemble_city_model(
     solar_matches_per_pand: dict[str, list[ProjectedPanel]] | None = None,
     tree_bundle: TreeBundle | None = None,
     postcode6_areas: list[Postcode6Area] | None = None,
+    landcover_objects: list[ParsedLandcover] | None = None,
 ) -> CityModel:
     """Assemble a :class:`CityModel` from parsed BAG/3DBAG/EP-online inputs.
 
@@ -651,6 +719,21 @@ def _assemble_city_model(
         boundary_geom=extent.boundary_geom,
         coords_sink=all_coords,
     )
+
+    # Semantic terrain: one CityGML feature per 3D Basisvoorziening ground
+    # object (LandUse / Road / WaterBody / PlantCover / Bridge / generic).
+    # Each contributes only its bounding-box corners to coords_sink, so the
+    # envelope grows without the sink swelling by every surface vertex. No-op
+    # when no terrain was fetched.
+    terrain_module.attach_landcover_to_model(
+        model,
+        build_context,
+        objects=landcover_objects,
+        coords_sink=all_coords,
+    )
+    # Paint the 3DBV ground by feature class under the "landcover" theme. Runs
+    # after the attach so every landcover surface is in the model to target.
+    append_landcover_appearance(model)
 
     if all_coords:
         model.set_envelope(

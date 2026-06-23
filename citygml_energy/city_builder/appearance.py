@@ -1,6 +1,6 @@
 """CityGML Appearance builders: one ``app:Appearance`` per visual theme.
 
-The module emits up to three independent appearances on the same
+The module emits up to four independent appearances on the same
 :class:`CityModel`, each attached via ``app:appearanceMember`` and
 each carrying its own ``app:theme`` so a viewer's theme switcher can
 toggle them in isolation:
@@ -13,13 +13,19 @@ toggle them in isolation:
 * :func:`append_solar_panel_appearance` (theme ``"solarPanels"``) — paints
   every solar collector (``nrg3:GenericSolarCollector``) dark blue.
 * :func:`append_vegetation_appearance` (theme ``"vegetation"``) —
-  paints every solitary-vegetation object foliage-green.
+  paints every solitary-vegetation object foliage-green and slightly
+  transparent, so a canopy does not fully occlude what is behind it.
+* :func:`append_landcover_appearance` (theme ``"landcover"``) — paints
+  the 3D Basisvoorziening ground by CityGML feature class (terrain,
+  road, water, plant cover, bridge, generic) from a natural map palette,
+  one ``app:X3DMaterial`` per class present.
 
 Solar collectors and vegetation share the same shape (one color, one theme, one
 material over a set of targets) and route through
-:func:`_append_uniform_appearance`; the energy-label painter is
-genuinely different (per-letter grouping, multiple materials) and
-constructs its appearance inline.
+:func:`_append_uniform_appearance`; the energy-label, building-highlight, and
+landcover painters paint several target sets in different colors under one
+theme and route through :func:`_append_multi_material_appearance` (the
+energy-label painter groups by averaged letter before doing so).
 
 Targeting rule (used by every theme): we target the outermost surface
 aggregate of each colorable geometry and let the color propagate to its
@@ -57,24 +63,44 @@ from ..bindings import (
     SolitaryVegetationObject,
 )
 from ..mapping import get_fields, iter_instances, resolve_class
-from ..schema_types import APPEARANCE, X3D_MATERIAL
+from ..schema_types import (
+    APPEARANCE,
+    BRIDGE,
+    GENERIC_CITY_OBJECT,
+    LAND_USE,
+    PLANT_COVER,
+    ROAD,
+    WATER_BODY,
+    X3D_MATERIAL,
+)
 from .address_match import ResolvedAddress
 from .epc_score import LABEL_TO_KWH, average_labels, label_to_rgb
+from .landcover_class import LANDCOVER_FEATURE_QNAMES
 
 __all__ = [
     "BUILDING_HIGHLIGHT_THEME",
     "ENERGY_LABEL_THEME",
+    "LANDCOVER_BRIDGE_DIFFUSE_COLOR",
+    "LANDCOVER_GENERIC_DIFFUSE_COLOR",
+    "LANDCOVER_PLANT_DIFFUSE_COLOR",
+    "LANDCOVER_ROAD_DIFFUSE_COLOR",
+    "LANDCOVER_TERRAIN_DIFFUSE_COLOR",
+    "LANDCOVER_THEME",
+    "LANDCOVER_WATER_DIFFUSE_COLOR",
     "SOLAR_PANEL_DIFFUSE_COLOR",
     "SOLAR_PANEL_THEME",
     "SURROUNDINGS_DIFFUSE_COLOR",
     "TARGET_BUILDING_DIFFUSE_COLOR",
     "VEGETATION_DIFFUSE_COLOR",
     "VEGETATION_THEME",
+    "VEGETATION_TRANSPARENCY",
     "append_building_highlight_appearance",
     "append_energy_label_appearance",
+    "append_landcover_appearance",
     "append_solar_panel_appearance",
     "append_vegetation_appearance",
     "collect_surface_target_ids",
+    "count_landcover_members",
 ]
 
 
@@ -98,6 +124,23 @@ SOLAR_PANEL_DIFFUSE_COLOR: tuple[float, float, float] = (0.03, 0.05, 0.15)
 # both the EU-palette building colors and the dark-blue solar panels.
 VEGETATION_THEME = "vegetation"
 VEGETATION_DIFFUSE_COLOR: tuple[float, float, float] = (0.15, 0.55, 0.15)
+# Trees render slightly see-through so a viewer can read the buildings, terrain,
+# and other trees behind a canopy rather than having it fully occlude them. 0.0
+# is opaque and 1.0 fully transparent; ~0.3 reads as lightly transparent.
+VEGETATION_TRANSPARENCY: float = 0.3
+
+# Landcover appearance: a natural map palette, one diffuse color per CityGML
+# feature class the 3D Basisvoorziening ground produces (terrain a grassed tan,
+# road asphalt grey, water steel blue, plant cover grass green, bridge warm
+# concrete, and the generic fallback a neutral grey), so the ground reads like a
+# basemap. One theme groups them, so a viewer toggles the whole layer at once.
+LANDCOVER_THEME = "landcover"
+LANDCOVER_TERRAIN_DIFFUSE_COLOR: tuple[float, float, float] = (0.76, 0.70, 0.50)
+LANDCOVER_ROAD_DIFFUSE_COLOR: tuple[float, float, float] = (0.55, 0.55, 0.55)
+LANDCOVER_WATER_DIFFUSE_COLOR: tuple[float, float, float] = (0.27, 0.51, 0.71)
+LANDCOVER_PLANT_DIFFUSE_COLOR: tuple[float, float, float] = (0.45, 0.70, 0.30)
+LANDCOVER_BRIDGE_DIFFUSE_COLOR: tuple[float, float, float] = (0.62, 0.60, 0.56)
+LANDCOVER_GENERIC_DIFFUSE_COLOR: tuple[float, float, float] = (0.70, 0.70, 0.72)
 
 
 def collect_surface_target_ids(building: Any) -> list[str]:
@@ -159,26 +202,10 @@ def append_energy_label_appearance(
     if not targets_by_letter:
         return
 
-    appearance_cls = resolve_class(APPEARANCE)
-    material_cls = resolve_class(X3D_MATERIAL)
-    surface_data_inner = _surface_data_property_type(appearance_cls)
-
     materials = [
-        surface_data_inner(
-            x3_dmaterial=material_cls(
-                diffuse_color=list(label_to_rgb(letter)),
-                target=targets,
-            )
-        )
-        for letter, targets in _sorted_letters(targets_by_letter)
+        (label_to_rgb(letter), targets) for letter, targets in _sorted_letters(targets_by_letter)
     ]
-
-    appearance = appearance_cls(
-        id=f"appearance_{ENERGY_LABEL_THEME}",
-        theme=ENERGY_LABEL_THEME,
-        surface_data_member=materials,
-    )
-    city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
+    _append_multi_material_appearance(city_model, theme=ENERGY_LABEL_THEME, materials=materials)
 
 
 def append_solar_panel_appearance(city_model: Any) -> None:
@@ -243,6 +270,7 @@ def append_vegetation_appearance(
         theme=VEGETATION_THEME,
         diffuse_color=VEGETATION_DIFFUSE_COLOR,
         targets=targets,
+        transparency=VEGETATION_TRANSPARENCY,
     )
 
 
@@ -272,23 +300,47 @@ def append_building_highlight_appearance(
         materials.append((surroundings_color, surrounding_surface_ids))
     if target_surface_ids:
         materials.append((target_color, target_surface_ids))
-    if not materials:
-        return
-
-    appearance_cls = resolve_class(APPEARANCE)
-    material_cls = resolve_class(X3D_MATERIAL)
-    surface_data_inner = _surface_data_property_type(appearance_cls)
-
-    surface_data = [
-        surface_data_inner(x3_dmaterial=material_cls(diffuse_color=list(color), target=targets))
-        for color, targets in materials
-    ]
-    appearance = appearance_cls(
-        id=f"appearance_{BUILDING_HIGHLIGHT_THEME}",
-        theme=BUILDING_HIGHLIGHT_THEME,
-        surface_data_member=surface_data,
+    _append_multi_material_appearance(
+        city_model, theme=BUILDING_HIGHLIGHT_THEME, materials=materials
     )
-    city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
+
+
+def append_landcover_appearance(city_model: Any) -> None:
+    """Attach one ``app:Appearance`` painting the 3DBV ground by feature class.
+
+    Walks the assembled model once and buckets each landcover feature's
+    ``gml:MultiSurface`` container id by its CityGML class, then emits one
+    ``app:X3DMaterial`` per class present (terrain, road, water, plant cover,
+    bridge, and the generic fallback) under a single ``"landcover"`` theme so a
+    viewer toggles the whole ground layer together. The color propagates from
+    each container to its member polygons per the CityGML 2.0 Appearance model,
+    so polygons are not targeted individually (see
+    :func:`collect_surface_target_ids`).
+
+    A no-op when the model holds no landcover features.
+    """
+    targets_by_class = _collect_landcover_targets(city_model)
+    materials = [
+        (color, targets_by_class[feature_cls])
+        for feature_cls, color in _LANDCOVER_PALETTE
+        if targets_by_class.get(feature_cls)
+    ]
+    _append_multi_material_appearance(city_model, theme=LANDCOVER_THEME, materials=materials)
+
+
+def count_landcover_members(city_model: Any) -> int:
+    """Return how many 3DBV landcover features the model holds.
+
+    Counts every instance of a landcover palette class in the assembled model,
+    so the pipeline's done-line stays in step with the taxonomy without
+    re-listing the feature classes (the membership comes from
+    :data:`~citygml_energy.city_builder.landcover_class.LANDCOVER_FEATURE_QNAMES`,
+    resolved into the palette). One ``iter_instances`` walk, O(model), like the
+    painters; landcover features are top-level ``core:cityObjectMember``
+    features, so their own member surfaces are never miscounted.
+    """
+    root = getattr(city_model, "xsd", city_model)
+    return sum(1 for inst in iter_instances(root) if isinstance(inst, _LANDCOVER_CLASSES))
 
 
 # ---------------------------------------------------------------------------
@@ -333,37 +385,117 @@ def _append_uniform_appearance(
     theme: str,
     diffuse_color: tuple[float, float, float],
     targets: list[str],
+    transparency: float | None = None,
 ) -> None:
     """Append an ``app:Appearance`` with one ``app:X3DMaterial`` painting *targets* in *diffuse_color*.
 
-    Used by the solar-collector and vegetation painters: both want exactly one color
-    over one set of targets, distinguished only by theme. The
-    energy-label painter does its own multi-material construction (one
-    material per averaged EPC letter) and does not route through this
-    helper.
+    Used by the solar-collector and vegetation painters: both want exactly one
+    color over one set of targets, distinguished only by theme (and, for
+    vegetation, an optional *transparency*). The multi-color painters
+    (energy-label, building-highlight, landcover) route through
+    :func:`_append_multi_material_appearance` instead.
 
     A no-op when *targets* is empty so the GML stays free of empty
     Appearances on models that have no features of the relevant kind.
     """
     if not targets:
         return
+    _append_multi_material_appearance(
+        city_model,
+        theme=theme,
+        materials=[(diffuse_color, targets)],
+        transparency=transparency,
+    )
+
+
+def _append_multi_material_appearance(
+    city_model: Any,
+    *,
+    theme: str,
+    materials: list[tuple[tuple[float, float, float], list[str]]],
+    transparency: float | None = None,
+) -> None:
+    """Append one ``app:Appearance`` with one ``app:X3DMaterial`` per (color, targets) pair.
+
+    Shared by every painter that puts several disjoint target sets in different
+    colors under a single theme (energy-label, building-highlight, landcover)
+    and, with a single pair, by the uniform solar/vegetation painter. The
+    optional *transparency* (0.0 opaque to 1.0 fully transparent) applies to
+    every material in the appearance.
+
+    A no-op when *materials* is empty, so the GML stays free of empty
+    Appearances on models that have no features of the relevant kind.
+    """
+    if not materials:
+        return
 
     appearance_cls = resolve_class(APPEARANCE)
     material_cls = resolve_class(X3D_MATERIAL)
     surface_data_inner = _surface_data_property_type(appearance_cls)
 
-    material = surface_data_inner(
-        x3_dmaterial=material_cls(
-            diffuse_color=list(diffuse_color),
-            target=targets,
+    surface_data = [
+        surface_data_inner(
+            x3_dmaterial=material_cls(
+                diffuse_color=list(color),
+                transparency=transparency,
+                target=targets,
+            )
         )
-    )
+        for color, targets in materials
+    ]
     appearance = appearance_cls(
         id=f"appearance_{theme}",
         theme=theme,
-        surface_data_member=[material],
+        surface_data_member=surface_data,
     )
     city_model.xsd.appearance_member.append(AppearanceMember(appearance=appearance))
+
+
+# 3DBV-derived feature qname -> diffuse color. The membership and paint order of
+# the landcover layer live once in landcover_class.LANDCOVER_FEATURE_QNAMES; this
+# map only attaches a color to each qname, so a new taxonomy row needs a color
+# here and nothing else (test_city_landcover guards that every qname has one).
+_LANDCOVER_COLOR_BY_QNAME: dict[str, tuple[float, float, float]] = {
+    LAND_USE: LANDCOVER_TERRAIN_DIFFUSE_COLOR,
+    ROAD: LANDCOVER_ROAD_DIFFUSE_COLOR,
+    WATER_BODY: LANDCOVER_WATER_DIFFUSE_COLOR,
+    PLANT_COVER: LANDCOVER_PLANT_DIFFUSE_COLOR,
+    BRIDGE: LANDCOVER_BRIDGE_DIFFUSE_COLOR,
+    GENERIC_CITY_OBJECT: LANDCOVER_GENERIC_DIFFUSE_COLOR,
+}
+
+# (binding class, diffuse color) in paint order, derived from the taxonomy so the
+# palette can never enumerate a different class set than the classifier emits.
+# resolve_class maps each qname to its xsdata binding class (the same classes the
+# landcover builder constructs).
+_LANDCOVER_PALETTE: tuple[tuple[type, tuple[float, float, float]], ...] = tuple(
+    (resolve_class(qname), _LANDCOVER_COLOR_BY_QNAME[qname]) for qname in LANDCOVER_FEATURE_QNAMES
+)
+_LANDCOVER_CLASSES: tuple[type, ...] = tuple(cls for cls, _ in _LANDCOVER_PALETTE)
+
+
+def _collect_landcover_targets(city_model: Any) -> dict[type, list[str]]:
+    """Bucket every landcover feature's MultiSurface container id by its class.
+
+    One walk of the assembled model: for each instance of a palette class,
+    descend into its subtree for ``gml:MultiSurface`` container ids (the
+    ``lod1MultiSurface`` of the themed features and the ``lod1Geometry``
+    MultiSurface of the generic fallback). One walk rather than one per class
+    keeps this O(model), like the solar/vegetation collectors. Building and
+    tree surfaces are skipped because their feature is not a palette class.
+    """
+    root = getattr(city_model, "xsd", city_model)
+    buckets: dict[type, list[str]] = {cls: [] for cls in _LANDCOVER_CLASSES}
+    for feat in iter_instances(root):
+        for feature_cls in _LANDCOVER_CLASSES:
+            if isinstance(feat, feature_cls):
+                buckets[feature_cls].extend(
+                    f"#{sub.id}"
+                    for sub in iter_instances(feat)
+                    if isinstance(sub, MultiSurface) and sub.id
+                )
+                break
+    return buckets
 
 
 def _resolve_surface_targets(
