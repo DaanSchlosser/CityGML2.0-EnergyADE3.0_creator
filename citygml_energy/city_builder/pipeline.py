@@ -640,6 +640,27 @@ def _clip_geom_to_bbox(
     return geom
 
 
+def _address_model_name(config: CityBuildConfig) -> str | None:
+    """Resolve the CityModel ``gml:name``, defaulting an address build to its query.
+
+    An explicit ``city_model.name`` always wins. When it is absent and the
+    build is address-driven, the name falls back to the address query and the
+    square's size, so several extracts in one gemeente are self-describing and
+    distinct rather than all titled after the gemeente. The CLI clears the name
+    on an ``--address`` / ``--extent`` override so the title tracks the actual
+    build. A gemeente build with no name stays unnamed, as before.
+    """
+    if config.city_model_name is not None:
+        return config.city_model_name
+    source = config.address_source
+    if source is None:
+        return None
+    # Collapse runs of whitespace so a stray double space in the typed address
+    # does not show in the title; the query is otherwise carried verbatim.
+    query = " ".join(source.query.split())
+    return f"Address extract: {query} ({source.extent_m:g} m)"
+
+
 def _assemble_city_model(
     *,
     config: CityBuildConfig,
@@ -667,7 +688,7 @@ def _assemble_city_model(
     """
     model = CityModel(
         gml_description=config.city_model_description,
-        gml_name=config.city_model_name,
+        gml_name=_address_model_name(config),
     )
     # Optional file-banner comment (copyright / provenance / read-me),
     # emitted on write between the XML declaration and the root element.

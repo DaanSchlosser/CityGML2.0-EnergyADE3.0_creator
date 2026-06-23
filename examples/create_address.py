@@ -35,7 +35,7 @@ On-demand tree generation:
 
 A profile may add a ``vegetation.generate`` block so LoD3 trees are
 reconstructed by CFTree on demand when the merged file is missing
-(``inputs/address/leiden_250.json`` is the generate-enabled profile;
+(``inputs/address/annie-romeinsingel-72-152-leiden_400m.json`` is the generate-enabled profile;
 the default ``leiden_example.json`` has no vegetation block). CFTree runs
 as a subprocess in its own environment, configured by ``CFTREE_REPO`` /
 ``CFTREE_RUNNER`` / ``CFTREE_PYTHON`` in ``.env`` (see ``.env.example``);
@@ -44,7 +44,7 @@ address profile also sets ``vegetation.geometry_only`` so trees carry
 CFTree geometry only and the build skips the BGT register cross-reference
 (and its PDOK round-trip)::
 
-    python examples/create_address.py --profile inputs/address/leiden_250.json
+    python examples/create_address.py --profile inputs/address/annie-romeinsingel-72-152-leiden_400m.json
 """
 
 from __future__ import annotations
@@ -134,13 +134,30 @@ def main(argv: list[str] | None = None) -> int:
         address_source = dataclasses.replace(address_source, extent_m=args.extent)
     config = dataclasses.replace(config, address_source=address_source)
 
+    # An ad-hoc address or size override re-derives the names so each run is
+    # self-describing and distinct: the output file and the on-demand tree file
+    # are named for the address and the square's size rather than overwriting
+    # the profile's defaults, and the dataset title is cleared so it falls back
+    # to the address (the pipeline builds the default from the query, see
+    # _address_model_name). One profile therefore serves every address without
+    # one run clobbering another run's output or trees.
+    overridden = args.address is not None or args.extent is not None
+    if overridden:
+        stem = f"{_slugify(address_source.query)}_{address_source.extent_m:g}m"
+        config = dataclasses.replace(config, city_model_name=None)
+        config = dataclasses.replace(
+            config, output_path=config.output_path.with_name(f"{stem}.gml")
+        )
+        veg = config.vegetation_source
+        if veg is not None:
+            config = dataclasses.replace(
+                config,
+                vegetation_source=dataclasses.replace(
+                    veg, path=veg.path.with_name(f"{stem}.city.json")
+                ),
+            )
     if args.output is not None:
         config = dataclasses.replace(config, output_path=args.output.resolve())
-    elif args.address is not None:
-        # A custom address should not overwrite the profile's default output;
-        # derive a per-address filename next to it.
-        derived = config.output_path.with_name(f"address_{_slugify(args.address)}.gml")
-        config = dataclasses.replace(config, output_path=derived)
 
     try:
         model = build_city_model(config)

@@ -400,6 +400,10 @@ data-source-to-XSD mapping and design rationale live in
 
 ### 4.5 Address-driven extract
 
+<div align="center">
+  <img src="docs/img/address-pipeline_output.png" alt="Address extract output: a square cut-out of a Dutch neighbourhood with the queried buildings highlighted light yellow-orange against white surroundings, LoD3 trees, and semantic landcover (roads, water, plant cover) clipped to the same square" width="600">
+</div>
+
 The city-scale pipeline can take its extent from a free-text Dutch
 address instead of a municipality. Give it an address and it builds a
 square extract centred on the building(s) the address covers, painting
@@ -410,7 +414,14 @@ so the subject of the extract reads at a glance against its context.
 python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
 ```
 
-The extract is a clean cut-out of the square. A building that straddles the
+Each ad-hoc run names itself after the address. The output file becomes
+`<address-slug>_<size>m.gml` in the profile's output folder, and the dataset
+title inside the GML becomes `Address extract: <address> (<size> m)`, so several
+squares in one town do not clash and each file states what it holds. Pass
+`--output` to set the file yourself, or `city_model.name` in the profile to fix
+the title.
+
+The extract is a clean cut-out of the square (see [ADR-0004](docs/adr/0004-viewport-aois-clip-to-box.md)). A building that straddles the
 edge is cut at the box and the exposed cross-section is capped, so the
 solid stays closed; a building wholly outside is dropped; and the draped
 landcover surfaces are clipped to the same square. A cut building's geometry
@@ -446,7 +457,7 @@ it is missing, instead of skipping trees:
 
 ```jsonc
 "vegetation": {
-  "path": "../vegetation/leiden_250.city.json",
+  "path": "../vegetation/annie-romeinsingel-72-152-leiden_400m.city.json",
   "geometry_only": true,
   "generate": { "ahn_version": 5, "n_cores": 8, "buffer_m": 20 }
 }
@@ -469,8 +480,11 @@ cross-reference, and runs CFTree with `--geometry-only` for a several-
 times-faster reconstruction; it is the address extract's default.
 Generation soft-fails to a treeless build when CFTree is unavailable,
 matching the other optional inputs.
-[inputs/address/leiden_250.json](inputs/address/leiden_250.json) is the
-generate-enabled address profile.
+[inputs/address/annie-romeinsingel-72-152-leiden_400m.json](inputs/address/annie-romeinsingel-72-152-leiden_400m.json)
+is the generate-enabled address profile. Running it with
+`--address "<other address>"` derives a fresh output file and tree file from
+that address, so one profile serves several squares without clobbering each
+other.
 
 ### 4.7 Semantic landcover
 

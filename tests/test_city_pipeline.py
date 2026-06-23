@@ -330,6 +330,31 @@ def test_pipeline_emits_no_landcover_without_landcover_block(
     )
 
 
+def test_address_model_name_defaults_to_the_query_and_size(tmp_path: Path) -> None:
+    # An address build with no explicit city_model.name titles itself after the
+    # address and the square's size, so several extracts in one gemeente are
+    # self-describing and distinct. An explicit name still wins; a gemeente
+    # build with no name stays unnamed.
+    import dataclasses
+
+    from citygml_energy.city_builder.config import AddressSource
+
+    cfg = _config(tmp_path)
+    addr = AddressSource(query="Annie Romeinsingel 72-152 Leiden", extent_m=250.0)
+
+    named = dataclasses.replace(cfg, address_source=addr, city_model_name="Custom title")
+    assert pipeline_module._address_model_name(named) == "Custom title"
+
+    derived = dataclasses.replace(cfg, address_source=addr, city_model_name=None)
+    assert (
+        pipeline_module._address_model_name(derived)
+        == "Address extract: Annie Romeinsingel 72-152 Leiden (250 m)"
+    )
+
+    plain = dataclasses.replace(cfg, address_source=None, city_model_name=None)
+    assert pipeline_module._address_model_name(plain) is None
+
+
 def test_pipeline_omits_units_when_addresses_disabled(tmp_path: Path, mocked_pipeline) -> None:
     config = _config(tmp_path, with_labels=False)
     config = CityBuildConfig(

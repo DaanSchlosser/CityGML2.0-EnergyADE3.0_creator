@@ -7,9 +7,9 @@ Profiles for the city-scale pipeline's address extent ([`examples/create_address
 | File | Address | Extent | Vegetation |
 |---|---|---|---|
 | `leiden_example.json` | Annie Romeinsingel 72-152, Leiden | 500 m square | none |
-| `leiden_250.json` | Annie Romeinsingel 72-152, Leiden | 250 m square | on-demand CFTree (AHN5, geometry-only) |
+| `annie-romeinsingel-72-152-leiden_400m.json` | Annie Romeinsingel 72-152, Leiden | 400 m square | on-demand CFTree (AHN5, geometry-only) |
 
-`leiden_example.json` is the default profile. `leiden_250.json` adds a `vegetation.generate` block, so LoD3 trees are reconstructed on demand by CFTree when the merged file is missing (see [§4.6 of the root README](../../README.md#46-on-demand-tree-generation)); it points at [`../vegetation/leiden_250.city.json`](../vegetation/leiden_250.city.json), which is checked in, so a normal run reuses it without launching CFTree.
+`leiden_example.json` is the default profile. `annie-romeinsingel-72-152-leiden_400m.json` adds a `vegetation.generate` block, so LoD3 trees are reconstructed on demand by CFTree when the merged file is missing (see [§4.6 of the root README](../../README.md#46-on-demand-tree-generation)); it points at [`../vegetation/annie-romeinsingel-72-152-leiden_400m.city.json`](../vegetation/annie-romeinsingel-72-152-leiden_400m.city.json), which is checked in, so a normal run reuses it without launching CFTree. Running it with `--address "<other address>"` derives a fresh output file and tree file from that address, so one profile serves several squares (the slug is the address, lower-cased with non-letters turned to hyphens, plus the square size). Unlike `leiden_example.json` (which builds LoD0, LoD1, and LoD2), this 400 m profile builds LoD2 only and enables the knob-less `landcover` block, so the 3D Basisvoorziening semantic ground is emitted alongside the buildings.
 
 ## The `address` block
 
