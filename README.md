@@ -308,8 +308,11 @@ subsequent runs read from cache instead of refetching.
 }
 ```
 
-Optional `solar_panels`, `vegetation`, and `cbs_postcode6` blocks enable
-the corresponding inputs. Instead of `bbox`, a `boundary` block pointing
+Optional `solar_panels`, `vegetation`, `terrain`, and `cbs_postcode6`
+blocks enable the corresponding inputs. A `terrain` block adds the
+semantic ground (roads, water, land use, vegetation) from the 3D
+Basisvoorziening ([§4.7](#47-semantic-terrain)).
+Instead of `bbox`, a `boundary` block pointing
 at a GeoJSON polygon clips to a (possibly concave) area of interest, and
 `ep_online_api_key_file` points at a file holding the EP-Online key as an
 alternative to the `.env` variable. Instead of `municipality` (+ `bbox` or
@@ -353,6 +356,10 @@ configs live in [inputs/cities/](inputs/cities/).
 - When `vegetation` is configured: one `veg:SolitaryVegetationObject`
   per CFTree mesh with LoD3 geometry and CFTree / BGT / BOR
   morphometrics.
+- When `terrain` is configured: the semantic ground for the build extent
+  from the 3D Basisvoorziening, as `luse:LandUse` / `tran:Road` /
+  `wtr:WaterBody` / `veg:PlantCover` / `brid:Bridge` /
+  `gen:GenericCityObject` features ([§4.7](#47-semantic-terrain)).
 - When `include_energy_labels` is enabled: a single
   `app:Appearance` colouring every building's surfaces by the averaged
   EPC label of its BuildingUnits (EU energy-label palette; buildings
@@ -402,6 +409,14 @@ so the subject of the extract reads at a glance against its context.
 ```powershell
 python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
 ```
+
+The extract is a clean cut-out of the square. A building that straddles the
+edge is cut at the box and the exposed cross-section is capped, so the
+solid stays closed; a building wholly outside is dropped; and the draped
+terrain surfaces are clipped to the same square. A cut building's geometry
+no longer matches its 3DBAG area and volume attributes, the accepted trade
+for a visualisation extract. Trees stay clipped by trunk position, so a
+crown near the edge can overhang the line by its radius.
 
 The address may be a single house, a house-number range, or several
 streets, and it tolerates the loose formatting of a typical listing
@@ -457,6 +472,42 @@ matching the other optional inputs.
 [inputs/address/leiden_250.json](inputs/address/leiden_250.json) is the
 generate-enabled address profile.
 
+### 4.7 Semantic terrain
+
+A `terrain` block adds the ground around the buildings as classified,
+draped surfaces. It is a knob-less opt-in:
+
+```jsonc
+"terrain": {}
+```
+
+The build queries PDOK's 3D Basisvoorziening OGC API for the CityJSON
+product `basisbestand_gebouwen_terreinen`. That `/items` endpoint is a
+download index, so the build bbox-queries it for the area of interest,
+keeps the most recent vintage that covers it (the newest tiling is a 2 km
+RD-coordinate grid, roughly a 37 MB zip per sheet), and downloads plus
+unzips the covering sheet(s). The CityJSON is parsed and clipped to the
+area of interest, and each ground object becomes its idiomatic CityGML 2.0
+feature: 3DBV `LandUse` to `luse:LandUse`, `Road` to `tran:Road`,
+`WaterBody` to `wtr:WaterBody`, `PlantCover` to `veg:PlantCover`, `Bridge`
+to `brid:Bridge`, and anything else to `gen:GenericCityObject`. The 3DBV
+buildings are skipped, since the 3DBAG path ([§4.1](#41-buildings))
+already supplies richer ones. Each surface keeps its draped `lod1MultiSurface`
+geometry, so the ground sits at real NAP heights, and the BGT
+classification (`bgt_type`, `bgt_functie`, `bgt_fysiekvoorkomen`,
+`3df_class`) rides into the open `class` / `function` / `usage`
+`gml:CodeType` slots with a codeSpace naming the vocabulary. Each feature
+widens the model envelope by its bounding box only, so the coordinate sink
+does not swell by every surface vertex.
+
+The PDOK endpoints are public, so unlike the on-demand tree generation the
+terrain step needs nothing in `.env`, and the data is plain CityJSON, so it
+needs no extra geospatial dependency. A PDOK outage, an area outside
+coverage, or a corrupt sheet soft-fails to a terrainless build, matching
+the other optional inputs. The newest 3D Basisvoorziening vintage is 2022,
+which differs from the AHN5 the trees use; that is immaterial for a ground
+backdrop.
+
 ---
 
 ## 5. Repository layout
@@ -487,14 +538,16 @@ citygml_energy/                Core package
     ├── address_query.py, address_extent.py    Free-text address → parsed query → centred extent + target Panden
     ├── cftree_runner.py, _env.py    On-demand CFTree subprocess runner (WSL / native) and shared .env loader
     ├── config.py, http.py, boundary.py, pdok_wfs.py     Config, cached HTTP, AOI loader, WFS paginator
-    ├── cityjson_parse.py, cityjson_trees_parse.py       CityJSON tile parsers
+    ├── cityjson_parse.py, cityjson_trees_parse.py, cityjson_landcover_parse.py    CityJSON tile parsers
     ├── address_key.py, address_match.py                 VBO ↔ EP-online address join
     ├── epc_score.py, energy_resources.py, appearance.py EPC palette, regime-aware Energy, app:Appearance
     ├── solar_panels.py, vegetation.py, tree_matching.py    Optional input loaders + nearest-neighbour join
+    ├── terrain.py              Optional 3D Basisvoorziening → luse / tran / wtr / veg / brid landcover
+    ├── box_clip.py             Cut the scene to the AOI box: cap building solids, clip landcover surfaces
     ├── postcode6.py            CBS Postcode6 → nrg3:UrbanFunctionArea
     ├── _helpers.py             Shared helpers (type coercion, cache keys, gml:id sanitisation)
-    ├── builders/               Per-feature builders (building, address, epc, vegetation)
-    └── fetchers/               One module per remote source (BAG, 3DBAG, EP-online, Locatieserver, BGT, Emmen BOR, CBS, PDOK)
+    ├── builders/               Per-feature builders (building, address, epc, vegetation, landcover)
+    └── fetchers/               One module per remote source (BAG, 3DBAG, EP-online, Locatieserver, BGT, Emmen BOR, CBS, 3D Basisvoorziening, PDOK)
 
 examples/
 ├── create_building.py          Per-building CLI + library entry point
@@ -670,14 +723,14 @@ it, all offline:
 Or run the steps directly:
 
 ```powershell
-# Pull the published image (or `docker build -t citygml2.0-energyade3.0-beta8-creator:1.0.0 .` to build it)
-docker pull ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0
+# Pull the published image (or `docker build -t citygml2.0-energyade3.0-beta8-creator:1.1.0 .` to build it)
+docker pull ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.1.0
 
 # Regenerate the offline per-building document into ./out (no network needed)
-docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0
+docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.1.0
 
 # Validate the result against the bundled XSDs, still offline
-docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0 `
+docker run --rm -v "${PWD}/out:/app/generated" ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.1.0 `
   python tools/validate_xsd.py generated/NL-single-family-house.gml
 ```
 
@@ -687,7 +740,7 @@ EP-Online key. Mount your inputs and `.env`, then call `create_city.py`:
 ```powershell
 docker run --rm --env-file .env `
   -v "${PWD}/inputs:/app/inputs" -v "${PWD}/generated:/app/generated" `
-  ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0 `
+  ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.1.0 `
   python examples/create_city.py --input inputs/cities/emmer-compascuum_small-area_no-energy-labels.json
 ```
 
@@ -696,7 +749,7 @@ even if the base image or wheels later change, archive the built image as a file
 alongside the Zenodo code release:
 
 ```powershell
-docker save ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.0.0 | gzip > citygml2.0-energyade3.0-beta8-creator-1.0.0-image.tar.gz
+docker save ghcr.io/daanschlosser/citygml2.0-energyade3.0-beta8-creator:1.1.0 | gzip > citygml2.0-energyade3.0-beta8-creator-1.1.0-image.tar.gz
 ```
 
 ---

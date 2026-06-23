@@ -45,6 +45,7 @@ All `codeSpace` URLs are pinned in [`citygml_energy/namespaces.py`](../citygml_e
 | 10 | Gemeente Emmen `bor_groen_bomen_beschermd` | 11 fields | 11 | `veg:species` + `core:externalReference` + `gen:*Attribute` siblings (BOR enrichment, only used in Emmen runs) |
 | 11 | Boundary polygon (`.geojson`) | geometry + metadata | geometry | (clips the output to a concave AOI) |
 | 12 | CBS Postcode6 WFS (`postcode6:postcode6`) | 132 properties + polygon geometry | 5 + geometry | `nrg3:UrbanFunctionArea` (one per postcode) with polygon, area, two `nrg3:Energy` resources (`type=actual`, carrier `naturalGas` / `electricity`), two `gen:intAttribute` (`dwellingCount` / `vacantDwellingCount`), `core:externalReference`, `nrg3:Metadata`, and `grp:groupMember` xlinks to constituent buildings |
+| 13 | PDOK 3D Basisvoorziening `basisbestand_gebouwen_terreinen` CityJSON | per-object `type` + BGT classification (`3df_class`, `bgt_*`) + LoD1.2 `MultiSurface` | `type` + `3df_class` + `bgt_functie` / `bgt_type` / `bgt_fysiekvoorkomen` + `bronhouder` / `bgt_status` + geometry | `luse:LandUse` / `tran:Road` / `wtr:WaterBody` / `veg:PlantCover` / `brid:Bridge` / `gen:GenericCityObject` + `app:Appearance` (theme `landcover`) |
 
 ---
 
@@ -903,6 +904,43 @@ The pipeline does not multiply CBS's per-dwelling average by `aantalWoningen` to
 
 ---
 
+## 13. PDOK 3D Basisvoorziening `basisbestand_gebouwen_terreinen`: semantic landcover
+
+The optional `terrain` config block (a knob-less opt-in: a present block enables it, an absent one skips it) adds the Dutch ground as classified, draped surfaces from PDOK's 3D Basisvoorziening (3DBV). The OGC API `/items` endpoint is a download index rather than a feature stream: each feature is a map-sheet polygon carrying a `download_link`, a `startdatum` vintage, and a `bladnr` sheet id. The fetcher keeps the latest-vintage sheet(s) covering the AOI (the 2 km RD-grid tiling, about 37 MB per zipped tile), downloads and unzips each to its CityJSON, parses it with the standard library, and keeps every object whose footprint overlaps the AOI. The endpoint is public, so the path reads no `.env` key and needs no numpy or GeoTIFF stack, and it soft-fails to a terrainless build on any outage, out-of-coverage AOI, or unparseable tile (a magic-valid archive whose member is not a usable CityJSON document is skipped and evicted from the disk cache so the next run re-fetches).
+
+One 3DBV ground object becomes one CityGML feature. The keep-or-drop test, the type-to-feature mapping, and the label extraction are decided once, in [`landcover_class.classify_landcover`](../citygml_energy/city_builder/landcover_class.py), from the object's CityObject `type` together with its `3df_class` tag. The two can disagree: 3DBV files some building geometry under the `LandUse` type tagged `3df_class` `Building`, so judging "is this a building?" from the type alone leaks vertical building shells into the ground.
+
+| 3DBV CityObject | Kept? | CityGML 2.0 feature | `gml:id` prefix |
+|---|---|---|---|
+| `Building` / `BuildingPart` | dropped | (3DBAG supplies the buildings, § 5) | |
+| any type tagged `3df_class=Building` | dropped | (a building filed under another type) | |
+| `LandUse` (terrain) | kept | `luse:LandUse` | `landuse` |
+| `Road` | kept | `tran:Road` | `road` |
+| `WaterBody` | kept | `wtr:WaterBody` | `water` |
+| `PlantCover` | kept | `veg:PlantCover` | `plantcover` |
+| `Bridge` | kept | `brid:Bridge` | `bridge` |
+| any other type (`OtherConstruction`, and so on) | kept | `gen:GenericCityObject` | `landobject` |
+
+The type-to-feature membership and paint order live in one ordered registry (`landcover_class._LANDCOVER_TAXONOMY`, exposed as `LANDCOVER_FEATURE_QNAMES`); the appearance palette and the pipeline's landcover count both derive their class set from it, so adding a ground class is one registry row.
+
+### 13a. Geometry
+
+Each kept object's draped LoD 1.2 `MultiSurface` is decoded through the shared [`cityjson_parse.iter_object_polygons`](../citygml_energy/city_builder/cityjson_parse.py) (the same decoder the 3DBAG building path uses) and attached as `lod1MultiSurface`, except the generic fallback: `gen:lod1Geometry` is an open `gml:GeometryPropertyType`, so it re-wraps the same `MultiSurface`. A rectangular viewport (the address extract or an explicit `bbox`) hard-clips each surface to the AOI box so the ground shares the buildings' edge; a whole-gemeente build keeps each overlapping object whole. Both layers read the one `BuildExtent.clip_to_box` flag, so they cannot disagree at the boundary. The clip is a draped-backdrop tolerance, not analysis-grade: a building cut at the box keeps its original 3DBAG `bdgVolume` / area / height attributes, which then describe the uncut geometry, so a clipped extract is visual context rather than a measurement dataset.
+
+### 13b. Classification and provenance
+
+The BGT classification rides into open `gml:CodeType` slots, each `@codeSpace` naming its vocabulary (codelists are open string vocabularies, not enumerations: [`namespaces`](../citygml_energy/namespaces.py)):
+
+| 3DBV attribute | CityGML element | codeSpace |
+|---|---|---|
+| `3df_class` | `<feature>:class` | `CS_3DBV_CLASS` (the coarse 3DBV class list) |
+| `bgt_functie` / `bgt_type` | `<feature>:function` | `CS_IMGEO_BGT` (the IMGeo BGT object handbook) |
+| `bgt_fysiekvoorkomen` | `<feature>:usage` | `CS_IMGEO_BGT` |
+
+The source object's ULID lands in a `core:externalReference` (the raw-handle `name` branch, since a ULID is not a dereferenceable URL) under the 3DBV information system, and `bronhouder` / `bgt_status` ride along as `gen:stringAttribute` provenance. Each value is cleaned (empty or whitespace-only becomes absent) by the shared `landcover_class.clean_label`. The ground reads as a basemap through the `landcover` appearance theme (Appendix A).
+
+---
+
 ## Appendix A: Computed (not fetched) values
 
 A small number of output fields are not read from any source; they are computed inside the pipeline:
@@ -913,7 +951,9 @@ A small number of output fields are not read from any source; they are computed 
 | `core:cityObjectMember` container wiring | dispatch by runtime type handled by `CityModel.add`. |
 | `app:Appearance` theme `"energyLabel"` | averaged EPC letter of each building's VBOs → EU palette RGB (`epc_score.label_to_rgb`). Targets the outermost surface aggregate of each building: the LoD0 footprint `gml:MultiSurface`, the LoD1 `gml:CompositeSurface` shell, and each LoD2 thematic surface's `gml:MultiSurface` (see [`appearance.collect_surface_target_ids`](../citygml_energy/city_builder/appearance.py)). Member polygons are not targeted: an appearance on an aggregate or composite geometry is valid for all of its member surfaces per the CityGML 2.0 Appearance model, so the colour propagates to the polygons from the container target (matching the Alderaan reference, whose targets list only containers). Buildings without any matched label render grey. |
 | `app:Appearance` theme `"solarPanels"` | constant `(0.03, 0.05, 0.15)` deep blue targeting the `gml:MultiSurface` container of every `nrg3:GenericSolarCollector` (the colour propagates to its member polygons per the CityGML 2.0 Appearance model). (Theme name retained for source-data continuity; the emitted XSD type is technology-agnostic: see §7.) |
-| `app:Appearance` theme `"vegetation"` | constant `(0.15, 0.55, 0.15)` foliage green targeting the `gml:MultiSurface` container of every `veg:SolitaryVegetationObject` (the colour propagates to its member polygons per the CityGML 2.0 Appearance model). |
+| `app:Appearance` theme `"vegetation"` | constant `(0.15, 0.55, 0.15)` foliage green, `transparency` `0.3` (lightly see-through so a canopy does not fully occlude what is behind it), targeting the `gml:MultiSurface` container of every `veg:SolitaryVegetationObject` (the colour propagates to its member polygons per the CityGML 2.0 Appearance model). |
+| `app:Appearance` theme `"landcover"` | a natural map palette, one `app:X3DMaterial` per 3DBV ground class present (terrain `(0.76, 0.70, 0.50)`, road `(0.55, 0.55, 0.55)`, water `(0.27, 0.51, 0.71)`, plant cover `(0.45, 0.70, 0.30)`, bridge `(0.62, 0.60, 0.56)`, generic `(0.70, 0.70, 0.72)`), each targeting the `gml:MultiSurface` container of its features (§ 13). The colour map keys on the same `LANDCOVER_FEATURE_QNAMES` registry the classifier uses, so the palette can never enumerate a different class set than the classifier emits. |
+| `app:Appearance` theme `"buildingHighlight"` | on an address extract only: target Panden in `(0.98, 0.78, 0.42)` light yellow-orange and their surroundings in `(1.0, 1.0, 1.0)` white, so the subject of the query reads at a glance against its context (`painters.HighlightPainter`). Two `app:X3DMaterial` entries under one theme. The gemeente family uses the `energyLabel` theme instead. |
 | `nrg3:CityObjectRelation` with `type="installedOn"` | the solar panel's 2D max-overlap with a specific LoD2 `bldg:RoofSurface` (xlink only, no geometry). |
 | `nrg3:CityObjectRelation` with `type="serving"` | the sole `nrg3:BuildingUnit` on a single-VBO Pand (xlink only); omitted on multi-VBO Pands, where the served set is unknowable from the aerial source. |
 | `nrg3:bdgBdrySurfTotalSurfaceArea` / `Inclination` / `Azimuth` on every LoD2 BoundarySurface | computed from the polygon geometry by `_attach_planar_surface_ade_attributes`. |
@@ -952,8 +992,8 @@ This section exists so a future contributor does not re-propose a removed or rej
 | **Landelijk Register Monumentale Bomen** (Bomenstichting) | 0 entries in the Emmer-Compascuum AOI (expected: a typical village has no nationally-listed specimens). Also: the Bomenstichting is an NGO, not a government register, so out of scope. |
 | **Boomregister.nl** (Geodan / NEO / COBRA / WUR cooperative) | The only candidate with crown polygons + heights per tree nationwide. License-gated; no public API; redistribution prohibited. Incompatible with a publicly-reproducible pipeline. |
 | **AHN5 LAZ for NE Netherlands** | AHN5 skipped the NE (verified against `bladwijzer.gpkg`), so CFTree reconstructs from AHN6 (2025, the current input) or AHN4 (2020, CC-0 fallback). |
-| **BGT `vegetatieobject_vlak`** (hedges) | Would map to `veg:PlantCover`, not `veg:SolitaryVegetationObject`. Out of scope; separate PR because `veg:PlantCover` needs an `averageHeight` which BGT does not provide. |
-| **BGT `begroeidterreindeel`** | Vegetation *surfaces* (parks, forests as continuous areas). Maps to `veg:PlantCover`; same scope argument. |
+| **BGT `vegetatieobject_vlak`** (hedges) | Would map to `veg:PlantCover`, not `veg:SolitaryVegetationObject`. Redundant as a dedicated input now that the 3DBV terrain path (§ 13) already emits `veg:PlantCover` for the green ground, draped at LoD 1.2 with a real z that flat BGT polygons lack and for which BGT supplies no `averageHeight`. |
+| **BGT `begroeidterreindeel`** | Vegetation *surfaces* (parks, forests as continuous areas), also `veg:PlantCover`. Same reasoning: the 3DBV terrain path (§ 13) already supplies this green ground, so a separate BGT surface source would duplicate it. |
 | **Top10NL** tree points | Coarser than BGT, no additional attributes, already covered by the BGT cross-reference. |
 | **PDOK BAG `bag:nummeraanduiding`, `bag:openbareruimte`** | Server-side joined into each VBO response by PDOK, so fetching them separately would duplicate the same data. |
 | **PDOK BAG `bag:ligplaats`, `bag:standplaats`** | Boat moorings and caravan plots. Not buildings; cannot host the LoD0/1/2 geometries the pipeline emits. |

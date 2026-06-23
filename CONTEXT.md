@@ -134,6 +134,14 @@ _Avoid_: the bare `SolitaryVegetationObject` in prose without noting it is the t
 The `nrg3:GenericSolarCollector` feature the city pipeline emits from a solar-panel polygon detected in aerial imagery. Technology-agnostic on purpose: the aerial source carries no module-level metadata, so the array may be photovoltaic, solar-thermal, or hybrid, and the geometry carries no per-array consumer metadata. Every collector carries a `relatedTo[installedOn]` xlink to the `bldg:RoofSurface` polygon it intersects (always emitted, the topological anchor). A `serving` xlink is emitted only when the Pand has exactly one BuildingUnit, where the served set is fixed by elimination; for a zero-VBO or multi-VBO Pand the served set is genuinely unknown, so no `serving` xlink is emitted, unlike the per-building [Collective device](#device-scope) case where the served set is documented. The source polygons are legitimately "solar panels", because the RUG (University of Groningen) aerial-imagery dataset they come from annotates solar-panel footprints. Only the emitted GML feature is a solar collector.
 _Avoid_: `nrg3:PhotovoltaicCollector` or calling the emitted feature photovoltaic (the type is deliberately generic); calling the emitted GML feature a "solar panel" (that is the source polygon, not the feature).
 
+**Landcover**:
+The family of CityGML features the city pipeline emits from the 3D Basisvoorziening (3DBV) ground. Terrain becomes `luse:LandUse`, roads become `tran:Road`, water becomes `wtr:WaterBody`, vegetation becomes `veg:PlantCover`, bridges become `brid:Bridge`, and anything else becomes `gen:GenericCityObject`. One 3DBV ground object becomes one Landcover feature. The 3DBV building objects are not Landcover and are dropped, since 3DBAG already supplies the Buildings.
+_Avoid_: calling the whole family "terrain" (terrain is only the `luse:LandUse` member); using Landcover for a Building.
+
+**Landcover classification**:
+Reading one 3DBV ground object and deciding what it becomes, either dropped (a building, which 3DBAG supplies instead) or one Landcover feature carrying its coarse 3DBV class, its BGT function, and its physical appearance. The decision rests on the object's CityObject type together with its `3df_class` tag, because the two can disagree (a building can be filed under the `LandUse` type and marked only by `3df_class` Building).
+_Avoid_: judging whether an object is a building from its CityObject type alone.
+
 ### Registers and standards
 
 **EP-Online**:

@@ -4,7 +4,7 @@
     "query": "Annie Romeinsingel 72-152 Leiden",
     "extent_m": 250
   },
-  "lods": [0, 1, 2],
+  "lods": [2],
   "include_addresses": true,
   "include_energy_labels": true,
   "cache_dir": "../../.cache/citygml_energy_city",
@@ -13,7 +13,7 @@
   "srs_dimension": 3,
   "city_model": {
     "name": "Address extract, Leiden (250 m)",
-    "description": "Address-driven CityGML 2.0 extract with Energy ADE 3.0 over a 250 m square centred on the matched building(s). Buildings come from BAG and 3DBAG (LoD 0/1/2) with EP-Online energy labels; the address is resolved through PDOK Locatieserver and authoritative BAG. LoD3 tree reconstructions are produced on demand by CFTree from AHN5 LiDAR for this area and merged in as geometry only."
+    "description": "Address-driven CityGML 2.0 extract with Energy ADE 3.0 over a 250 m square centred on the matched building(s). Buildings come from BAG and 3DBAG at LoD 2 with EP-Online energy labels; the address is resolved through PDOK Locatieserver and authoritative BAG. LoD3 tree reconstructions are produced on demand by CFTree from AHN5 LiDAR for this area and merged in as geometry only."
   },
   "vegetation": {
     "path": "../vegetation/leiden_250.city.json",
@@ -23,5 +23,6 @@
       "n_cores": 8,
       "buffer_m": 20
     }
-  }
+  },
+  "terrain": {}
 }
