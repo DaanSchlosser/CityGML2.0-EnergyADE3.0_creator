@@ -659,6 +659,62 @@ def test_fetch_landcover_clip_to_box_cuts_only_for_a_viewport(
     assert whole_max_x == pytest.approx(40.0)
 
 
+def test_fetch_landcover_dedupes_objects_shared_across_sheets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A 3DBV object on a 2 km tile line is stored whole in *both* covering
+    # sheets under one object_id. When the AOI straddles that line the build
+    # fetches two sheets, so without a cross-sheet dedup fetch_landcover emits
+    # the boundary object twice: its gml:id (and every per-polygon gml:id
+    # derived from it) then collides and the document fails xs:ID uniqueness.
+    # Regression for the Lange gracht 400 m extract (6678 duplicate-id errors).
+    import citygml_energy.city_builder.landcover as landcover_mod
+
+    def _tile_with(object_ids: list[str]) -> bytes:
+        return _tile_bytes(
+            {
+                "type": "CityJSON",
+                "version": "2.0",
+                "transform": {"scale": [1.0, 1.0, 1.0], "translate": [0.0, 0.0, 0.0]},
+                "vertices": [[0, 0, 0], [10, 0, 0], [10, 10, 0], [0, 10, 0]],
+                "CityObjects": {
+                    oid: {
+                        "type": "Road",
+                        "attributes": {"bgt_functie": "rijbaan"},
+                        "geometry": [
+                            {"type": "MultiSurface", "lod": "1.2", "boundaries": [[[0, 1, 2, 3]]]}
+                        ],
+                    }
+                    for oid in object_ids
+                },
+            }
+        )
+
+    sheet_a = threedbv.LandcoverTileRef("a", 2022, "https://x/a.zip", 100)
+    sheet_b = threedbv.LandcoverTileRef("b", 2022, "https://x/b.zip", 100)
+    # SHARED sits on the tile line and is present in both sheets; A_ONLY / B_ONLY
+    # are each unique to their sheet.
+    tiles = {
+        "https://x/a.zip": _tile_with(["SHARED", "A_ONLY"]),
+        "https://x/b.zip": _tile_with(["SHARED", "B_ONLY"]),
+    }
+    session = _session(tmp_path)
+    monkeypatch.setattr(
+        landcover_mod, "discover_landcover_tiles", lambda *a, **k: [sheet_a, sheet_b]
+    )
+    monkeypatch.setattr(
+        landcover_mod, "fetch_tile_cityjson", lambda _s, ref: tiles[ref.download_link]
+    )
+
+    objects = fetch_landcover(session, source=LandcoverSource(), bbox=(0, 0, 10, 10))
+
+    assert objects is not None
+    ids = [o.object_id for o in objects]
+    # The boundary object survives once (first sheet wins); every id is unique.
+    assert sorted(ids) == ["A_ONLY", "B_ONLY", "SHARED"]
+    assert len(ids) == len(set(ids))
+
+
 def test_attach_landcover_counts_and_pushes_envelope_corners() -> None:
     sink: list[tuple[float, float, float]] = []
     objects = [

@@ -75,7 +75,9 @@ def fetch_landcover(
     latest-vintage sheet(s) covering the AOI are downloaded one at a time,
     parsed, and (when *clip_to_box*) clipped to *bbox*; processing a sheet
     before fetching the next keeps peak memory to a single ~170 MB CityJSON
-    document rather than all sheets at once.
+    document rather than all sheets at once. An object that appears in more than
+    one sheet (a feature on a 2 km tile line, when the AOI straddles it) is kept
+    once, by source ``object_id``, so its ``gml:id`` stays unique in the output.
 
     *clip_to_box* mirrors the building clip so the two layers share one rule: a
     rectangular viewport (the address extract, an explicit bbox) hard-clips each
@@ -98,6 +100,14 @@ def fetch_landcover(
         return None
 
     objects: list[ParsedLandcover] = []
+    # A 3DBV object on a 2 km tile line is stored *whole* in every sheet it
+    # touches under one object_id, so an AOI straddling a tile boundary fetches
+    # the same boundary object from each covering sheet. Emitting it twice
+    # collides its gml:id (and every per-polygon gml:id derived from it), which
+    # fails xs:ID document-uniqueness and invalidates the whole GML. The copies
+    # are byte-identical (the sheets are not clipped tilings of one object but
+    # full duplicates), so keeping the first occurrence is lossless.
+    seen_ids: set[str] = set()
     for ref in refs:
         raw = fetch_tile_cityjson(session, ref)
         if raw is None:
@@ -121,6 +131,11 @@ def fetch_landcover(
             )
             continue
         for parsed in parsed_objects:
+            if parsed.object_id in seen_ids:
+                # Already emitted from an earlier sheet; a tile-boundary
+                # duplicate. Skip so its gml:id stays unique in the document.
+                continue
+            seen_ids.add(parsed.object_id)
             if clip_to_box:
                 # Hard-clip each surface to the AOI box so a road or terrain
                 # polygon that merely overlaps the corner is cut at the boundary
