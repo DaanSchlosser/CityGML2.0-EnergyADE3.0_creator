@@ -34,6 +34,7 @@ from shapely.geometry import MultiPolygon, Polygon, box
 from citygml_energy.city_builder import _env as env_module
 from citygml_energy.city_builder.boundary import BoundarySource, load_boundary_polygon
 from citygml_energy.city_builder.cftree_runner import (
+    DockerRunner,
     NativeRunner,
     WslRunner,
     _aoi_fingerprint,
@@ -41,6 +42,7 @@ from citygml_energy.city_builder.cftree_runner import (
     _derive_case,
     _fmt_num,
     _is_safe_case,
+    _to_docker_mount,
     _to_wsl_path,
     _write_case_geojson,
     _write_manifest,
@@ -270,6 +272,60 @@ def test_native_runner_command_geometry_only() -> None:
     )
 
 
+def test_to_docker_mount_drive_uses_forward_slashes() -> None:
+    assert _to_docker_mount(Path("C:/Users/x/CFTree")) == "C:/Users/x/CFTree"
+    assert _to_docker_mount(Path(r"C:\Users\x\CFTree")) == "C:/Users/x/CFTree"
+
+
+def test_to_docker_mount_posix_is_noop() -> None:
+    assert _to_docker_mount(Path("/opt/CFTree")) == "/opt/CFTree"
+
+
+def test_to_docker_mount_unc_raises() -> None:
+    with pytest.raises(ValueError, match="UNC"):
+        _to_docker_mount(Path(r"\\server\share\CFTree"))
+
+
+def test_docker_runner_command() -> None:
+    runner = DockerRunner(repo=Path("C:/Users/x/CFTree"), image="cftree:local")
+    cmd = runner.command(case="leiden_250", ahn_version=5, n_cores=8, buffer_m=20.0)
+    assert cmd[:3] == ["docker", "run", "--rm"]
+    # The checkout is bind-mounted at /work and that is the working directory.
+    assert cmd[cmd.index("-v") + 1] == "C:/Users/x/CFTree:/work"
+    assert cmd[cmd.index("-w") + 1] == "/work"
+    assert "cftree:local" in cmd
+    # The CFTree invocation rides after the image, with the same flags as native.
+    tail = cmd[cmd.index("cftree:local") + 1 :]
+    assert tail == [
+        "python",
+        "main.py",
+        "--case",
+        "leiden_250",
+        "--ahn-version",
+        "5",
+        "--n-cores",
+        "8",
+        "--buffer",
+        "20",
+        "--overwrite",
+    ]
+    assert "--geometry-only" not in cmd
+    assert runner.cwd is None
+
+
+def test_docker_runner_command_threads_extra_args_before_image() -> None:
+    runner = DockerRunner(
+        repo=Path("C:/Users/x/CFTree"),
+        image="cftree:local",
+        extra_args=("--gpus", "all", "--shm-size", "1g"),
+    )
+    cmd = runner.command(case="c", ahn_version=6, n_cores=4, buffer_m=10.0, geometry_only=True)
+    # Extra args land after -w /work and before the image, exactly as docker expects.
+    assert "--gpus" in cmd and cmd[cmd.index("--gpus") + 1] == "all"
+    assert cmd.index("--gpus") < cmd.index("cftree:local")
+    assert cmd[-1] == "--geometry-only"
+
+
 # ---------------------------------------------------------------------------
 # resolve_runner
 # ---------------------------------------------------------------------------
@@ -333,6 +389,28 @@ def test_resolve_runner_wsl_unreachable_repo_is_none(monkeypatch, tmp_path) -> N
         raise ValueError("UNC path is not supported by the WSL runner")
 
     monkeypatch.setattr(runner_mod, "_to_wsl_path", _raise)
+    assert resolve_runner() is None
+
+
+def test_resolve_runner_docker(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
+    monkeypatch.setenv("CFTREE_RUNNER", "docker")
+    monkeypatch.setenv("CFTREE_IMAGE", "cftree:local")
+    monkeypatch.setenv("CFTREE_DOCKER_ARGS", "--gpus all --shm-size 1g")
+    runner = resolve_runner()
+    assert isinstance(runner, DockerRunner)
+    assert runner.repo == tmp_path
+    assert runner.image == "cftree:local"
+    # CFTREE_DOCKER_ARGS is shell-split and threaded through verbatim.
+    assert runner.extra_args == ("--gpus", "all", "--shm-size", "1g")
+
+
+def test_resolve_runner_docker_without_image_is_none(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
+    monkeypatch.setenv("CFTREE_RUNNER", "docker")
+    monkeypatch.delenv("CFTREE_IMAGE", raising=False)
     assert resolve_runner() is None
 
 
@@ -607,6 +685,89 @@ def test_aoi_fingerprint_distinguishes_same_bbox_different_shape() -> None:
     l_shape = Polygon([(0, 0), (250, 0), (250, 100), (100, 100), (100, 250), (0, 250)])
     assert full.bounds == l_shape.bounds
     assert _aoi_fingerprint(full, spec) != _aoi_fingerprint(l_shape, spec)
+
+
+def test_aoi_fingerprint_omits_runner_when_none() -> None:
+    """WSL/native fingerprints carry no runner key, so old manifests still match."""
+    spec = VegetationGenerateSpec(ahn_version=5, n_cores=8, buffer_m=20.0)
+    assert "runner" not in _aoi_fingerprint(box(0, 0, 250, 250), spec)
+
+
+def test_aoi_fingerprint_includes_runner_id() -> None:
+    """A docker image tag is part of the identity, so a re-tag invalidates reuse."""
+    spec = VegetationGenerateSpec(ahn_version=5, n_cores=8, buffer_m=20.0)
+    aoi = box(0, 0, 250, 250)
+    a = _aoi_fingerprint(aoi, spec, runner_id="cftree:v1")
+    b = _aoi_fingerprint(aoi, spec, runner_id="cftree:v2")
+    assert a["runner"] == "cftree:v1"
+    assert a != b
+
+
+@dataclass
+class _FakeDockerRunner:
+    """A docker-like runner: carries an ``image`` so the fingerprint folds it in."""
+
+    repo: Path
+    image: str = "cftree:local"
+
+    @property
+    def cwd(self) -> Path | None:
+        return None
+
+    def command(
+        self,
+        *,
+        case: str,
+        ahn_version: int,
+        n_cores: int,
+        buffer_m: float,
+        geometry_only: bool = False,
+    ) -> list[str]:
+        cmd = ["docker", "run", self.image, case, str(ahn_version)]
+        if geometry_only:
+            cmd.append("--geometry-only")
+        return cmd
+
+
+def test_ensure_records_docker_image_in_manifest(tmp_path) -> None:
+    """A docker runner's image reference is recorded in the completion manifest."""
+    repo = tmp_path / "cftree"
+    repo.mkdir()
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    ok = ensure_tree_file(
+        _source(out),
+        box(0, 0, 250, 250),
+        run=_make_run(),
+        merge=_make_merge(out),
+        runner=_FakeDockerRunner(repo=repo),
+    )
+    assert ok is True
+    manifest = json.loads(
+        (repo / "data" / "leiden_250_AHN5" / ".cftree_manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["runner"] == "cftree:local"
+
+
+def test_ensure_regenerates_when_docker_image_changes(tmp_path) -> None:
+    """Tiles built by one image are not reused for a build pinned to another."""
+    repo = tmp_path / "cftree"
+    spec = VegetationGenerateSpec(ahn_version=5, n_cores=8, buffer_m=20.0)
+    aoi = box(0, 0, 250, 250)
+    _seed_tile(repo, "leiden_250_AHN5")
+    _write_manifest(
+        _data_dir(repo, "leiden_250_AHN5"), _aoi_fingerprint(aoi, spec, runner_id="cftree:old")
+    )
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    run_calls: list[list[str]] = []
+    ok = ensure_tree_file(
+        _source(out),
+        aoi,
+        run=_make_run(calls=run_calls),
+        merge=_make_merge(out),
+        runner=_FakeDockerRunner(repo=repo, image="cftree:new"),
+    )
+    assert ok is True
+    assert len(run_calls) == 1  # different image regenerates rather than reusing
 
 
 def test_ensure_caches_treeless_completed_run(tmp_path) -> None:

@@ -79,6 +79,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "CFTreeRunner",
+    "DockerRunner",
     "NativeRunner",
     "WslRunner",
     "ensure_tree_file",
@@ -238,6 +239,70 @@ class WslRunner:
         return ["wsl.exe", "bash", "-lc", inner]
 
 
+@dataclass(frozen=True, slots=True)
+class DockerRunner:
+    """Run CFTree inside a Linux container via ``docker run``.
+
+    The checkout is bind-mounted at ``/work`` and the container's working
+    directory is ``/work``, so CFTree resolves ``cases/``, ``data/``, and
+    ``resources/`` against the same files the creator's in-process merge later
+    reads on the host. The conda environment and the two compiled C++ binaries
+    are baked into the image, so a colleague installs no toolchain: the binaries
+    are found through the image's ``CFTREE_BIN`` even though the bind-mounted
+    source tree carries no ``build/`` outputs.
+
+    :attr:`extra_args` is split from ``CFTREE_DOCKER_ARGS`` and passed verbatim
+    to ``docker run`` before the image, for host-specific tuning such as
+    ``--gpus all`` (to enable the GPU morphometrics), ``--memory``, ``--cpus``,
+    or ``--shm-size``. The image reference itself is part of the reuse
+    fingerprint (see :func:`_aoi_fingerprint`), so re-tagging the image
+    regenerates rather than reusing tiles a different image produced.
+    """
+
+    repo: Path
+    image: str
+    extra_args: tuple[str, ...] = ()
+
+    @property
+    def cwd(self) -> Path | None:
+        return None
+
+    def command(
+        self,
+        *,
+        case: str,
+        ahn_version: int,
+        n_cores: int,
+        buffer_m: float,
+        geometry_only: bool = False,
+    ) -> list[str]:
+        cmd = [
+            "docker",
+            "run",
+            "--rm",
+            "-v",
+            f"{_to_docker_mount(self.repo)}:/work",
+            "-w",
+            "/work",
+            *self.extra_args,
+            self.image,
+            "python",
+            "main.py",
+            "--case",
+            case,
+            "--ahn-version",
+            str(ahn_version),
+            "--n-cores",
+            str(n_cores),
+            "--buffer",
+            _fmt_num(buffer_m),
+            "--overwrite",
+        ]
+        if geometry_only:
+            cmd.append("--geometry-only")
+        return cmd
+
+
 def resolve_runner() -> CFTreeRunner | None:
     """Build a :class:`CFTreeRunner` from the environment, or ``None``.
 
@@ -260,6 +325,21 @@ def resolve_runner() -> CFTreeRunner | None:
     kind = (os.environ.get("CFTREE_RUNNER") or ("wsl" if os.name == "nt" else "native")).strip()
     python = (os.environ.get("CFTREE_PYTHON") or "").strip()
 
+    if kind == "docker":
+        image = (os.environ.get("CFTREE_IMAGE") or "").strip()
+        if not image:
+            _LOG.warning(
+                "Tree generation with CFTREE_RUNNER=docker needs CFTREE_IMAGE (the CFTree image "
+                "reference, e.g. cftree:local or ghcr.io/<owner>/cftree:<tag>); skipping trees"
+            )
+            return None
+        try:
+            _to_docker_mount(repo)
+        except ValueError as exc:
+            _LOG.warning("%s; skipping trees", exc)
+            return None
+        extra = tuple(shlex.split(os.environ.get("CFTREE_DOCKER_ARGS") or ""))
+        return DockerRunner(repo=repo, image=image, extra_args=extra)
     if kind == "wsl":
         if not python:
             _LOG.warning(
@@ -352,7 +432,15 @@ def ensure_tree_file(
     _warn_if_large_aoi(aoi_geom)
 
     data_dir = _data_dir(runner.repo, case)
-    fingerprint = _aoi_fingerprint(aoi_geom, spec, geometry_only=source.geometry_only)
+    # The docker runner carries an image reference; fold it into the fingerprint
+    # so tiles built by one image are not reused for a build that asks for a
+    # different image (a re-tag can change the binaries or the GPU/CPU metric
+    # path). The WSL and native runners have no such attribute, so their
+    # fingerprint is unchanged and existing manifests still match.
+    runner_id = getattr(runner, "image", None)
+    fingerprint = _aoi_fingerprint(
+        aoi_geom, spec, geometry_only=source.geometry_only, runner_id=runner_id
+    )
     manifest = _read_manifest(data_dir)
     tiles = _existing_tiles(data_dir, tree_filename)
 
@@ -598,6 +686,7 @@ def _aoi_fingerprint(
     spec: VegetationGenerateSpec,
     *,
     geometry_only: bool = False,
+    runner_id: str | None = None,
 ) -> dict[str, Any]:
     """Identity of the reconstruction a case stands for: AOI + buffer + AHN + mode.
 
@@ -612,15 +701,24 @@ def _aoi_fingerprint(
     reused for a build that asked for the other, so flipping the flag
     regenerates rather than serving tiles with the wrong attribute
     completeness.
+
+    *runner_id* (the docker image reference, when the docker runner is used)
+    is folded in for the same reason: tiles a given image produced must not be
+    reused for a build pinned to a different image. It is omitted from the dict
+    when ``None`` (the WSL and native runners), so their fingerprints, and any
+    manifest already on disk, are byte-for-byte unchanged.
     """
     minx, miny, maxx, maxy = aoi_geom.bounds
-    return {
+    fingerprint: dict[str, Any] = {
         "bounds": [round(minx, 1), round(miny, 1), round(maxx, 1), round(maxy, 1)],
         "geometry": _geometry_digest(aoi_geom),
         "buffer_m": float(spec.buffer_m),
         "ahn_version": int(spec.ahn_version),
         "geometry_only": bool(geometry_only),
     }
+    if runner_id:
+        fingerprint["runner"] = str(runner_id)
+    return fingerprint
 
 
 def _read_manifest(data_dir: Path) -> dict[str, Any] | None:
@@ -752,6 +850,26 @@ def _to_wsl_path(path: Path) -> str:
         drive = win.drive[0].lower()
         tail = "/".join(win.parts[1:])
         return f"/mnt/{drive}/{tail}"
+    return str(path).replace("\\", "/")
+
+
+def _to_docker_mount(path: Path) -> str:
+    """Render *path* as a ``docker run -v`` source.
+
+    Docker accepts a Windows drive path written with forward slashes
+    (``C:/Users/...``), which avoids any backslash quoting in the argv. A UNC
+    path (``\\\\server\\share\\...``) has no bind-mount form, so it raises
+    :class:`ValueError` rather than emitting a spec docker cannot mount. On Linux
+    the POSIX path is returned unchanged, so the helper is a no-op there.
+    """
+    win = PureWindowsPath(path)
+    if win.drive.startswith("\\\\"):
+        raise ValueError(
+            f"UNC path {str(path)!r} is not supported by the docker runner; use a drive-letter "
+            f"checkout (e.g. C:\\...) or set CFTREE_RUNNER=native"
+        )
+    if len(win.drive) == 2 and win.drive.endswith(":"):
+        return win.as_posix()
     return str(path).replace("\\", "/")
 
 
