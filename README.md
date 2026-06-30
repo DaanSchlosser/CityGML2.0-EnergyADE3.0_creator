@@ -468,8 +468,14 @@ The build writes the AOI as a CFTree case, runs
 minutes to a couple of hours) as a subprocess, then merges the result
 into `path`. CFTree is a heavy, separately-installed pipeline, so the
 machine-specific launch details stay in the environment rather than the
-config: `CFTREE_REPO`, `CFTREE_RUNNER` (`wsl` or `native`), and
-`CFTREE_PYTHON` in `.env` (see [.env.example](.env.example)). The
+config: `CFTREE_REPO`, `CFTREE_RUNNER` (`docker`, `wsl`, or `native`),
+and the runner-specific `CFTREE_PYTHON` (wsl) or `CFTREE_IMAGE` plus
+`CFTREE_DOCKER_ARGS` (docker) in `.env` (see [.env.example](.env.example)).
+The docker runner is the recommended setup for a colleague: it bind-mounts
+the checkout into a prebuilt image, so it needs only Docker Desktop and a
+CFTree clone, with no manual WSL distro, conda env, or C++ build. Add
+`CFTREE_DOCKER_ARGS=--gpus all` to run CFTree's optional GPU morphometrics.
+See the CFTree README "Run with Docker" section. The
 build-intent knobs (`ahn_version`, `n_cores`, `buffer_m`, optional
 `timeout_min` and `case`) stay in the config so it remains shareable. A
 completion manifest records the AOI, buffer, AHN version, and
