@@ -284,10 +284,13 @@ def fetch_and_match_trees(
     run on demand for *aoi_geom* (the build AOI polygon) and merged into
     place first; see
     :func:`citygml_energy.city_builder.cftree_runner.ensure_tree_file`.
-    That step soft-fails to a treeless build, so the load below still
-    handles a missing file. The CFTree load then runs first (file I/O, no
-    network) so the BGT/BOR fetches are skipped entirely when the bbox or
-    boundary leaves zero trees.
+    A setup problem there (a bad ``CFTREE_*`` environment) raises
+    :class:`citygml_energy.errors.CityBuildError`; a runtime failure has
+    already been logged there as a treeless-build warning, so it
+    short-circuits to :data:`EMPTY_BUNDLE` without a second warning. The
+    CFTree load then runs first (file I/O, no network) so the BGT/BOR
+    fetches are skipped entirely when the bbox or boundary leaves zero
+    trees.
 
     BGT and BOR fetches run on a 2-thread pool: they are independent
     network calls keyed on the same bbox, so concurrency converts two
@@ -304,10 +307,14 @@ def fetch_and_match_trees(
     if source.generate is not None:
         from .cftree_runner import ensure_tree_file
 
-        # Return value intentionally unused: ensure_tree_file logs its own
-        # failures, and load_trees_in_bbox below already degrades a missing
-        # file to a treeless build, so there is nothing extra to branch on.
-        ensure_tree_file(source, aoi_geom)
+        # A CityBuildError from a misconfigured CFTREE_* environment is
+        # deliberately not caught: setup problems must fail the build. A
+        # runtime soft-fail (False) was already logged inside
+        # ensure_tree_file as "building without trees", so returning here
+        # avoids a second, unrelated-sounding warning from the loader that
+        # the vegetation source file does not exist.
+        if not ensure_tree_file(source, aoi_geom):
+            return EMPTY_BUNDLE
 
     _LOG.info("Loading CFTree vegetation: %s", source.path)
     trees = load_trees_in_bbox(source, bbox)

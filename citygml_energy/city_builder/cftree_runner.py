@@ -5,8 +5,8 @@ The city build reads merged CFTree CityJSON from a configured path (see
 that file is missing and the config carries a ``vegetation.generate``
 block, :func:`ensure_tree_file` produces it for the build AOI:
 
-1. Write the AOI polygon as ``cases/<case>/case_area.geojson`` in the
-   CFTree checkout (the input CFTree's ``main.py`` expects).
+1. Write the AOI polygon as ``cases/<case>/case_area.geojson`` under
+   the runner's CFTree root (the input CFTree's ``main.py`` expects).
 2. Run CFTree end-to-end for that case at the requested AHN version,
    unless a previous *complete* run for the *same* AOI is already on disk
    (recorded by a completion manifest, see below). When the source is
@@ -24,22 +24,38 @@ block, :func:`ensure_tree_file` produces it for the build AOI:
 CFTree is a heavy, separately-installed pipeline (CGAL, PDAL, compiled
 C++), so it cannot be imported in-process; it is always a subprocess.
 How that subprocess is launched is the one machine-specific decision,
-isolated behind the :class:`CFTreeRunner` seam. Two adapters keep it a
+isolated behind the :class:`CFTreeRunner` seam. Three adapters keep it a
 real seam rather than indirection:
 
+* :class:`DockerRunner` launches the CFTree image via ``docker run``
+  (the default on Windows). Without ``CFTREE_REPO`` it runs the source
+  baked into the image and bind-mounts only the ``cases/`` and ``data/``
+  directories of a creator-managed work root, so no CFTree checkout
+  exists on the host; setting ``CFTREE_REPO`` switches it to checkout
+  mode, mounting that checkout at ``/work`` (the development option).
 * :class:`WslRunner` launches the Linux ``cftree`` interpreter from
-  Windows via ``wsl.exe`` (the default on Windows), translating the
-  checkout path to ``/mnt/<drive>/...``.
+  Windows via ``wsl.exe``, translating the checkout path to
+  ``/mnt/<drive>/...``.
 * :class:`NativeRunner` launches the interpreter directly (Linux, or a
   native Windows conda env), the default off Windows.
 
 The machine details come from the environment, never the config, so a
 checked-in config stays free of absolute paths:
 
-* ``CFTREE_REPO``    the CFTree checkout (default: a sibling ``../CFTree``).
-* ``CFTREE_RUNNER``  ``wsl`` or ``native`` (default: ``wsl`` on Windows).
-* ``CFTREE_PYTHON``  the interpreter that runs CFTree (e.g.
-  ``/home/<user>/miniconda3/envs/cftree/bin/python`` under WSL).
+* ``CFTREE_RUNNER``      ``docker``, ``wsl``, or ``native``, parsed
+  case-insensitively (default: ``docker`` on Windows, ``native``
+  elsewhere).
+* ``CFTREE_IMAGE``       the CFTree image reference for the docker
+  runner; pulled automatically when absent locally.
+* ``CFTREE_WORKDIR``     the docker runner's work root holding
+  ``cases/`` and ``data/`` (default: ``.cache/cftree`` in this repo).
+* ``CFTREE_DOCKER_ARGS`` extra ``docker run`` arguments for host tuning.
+* ``CFTREE_REPO``        a CFTree checkout. Optional for the docker
+  runner, where setting it engages checkout mode; for wsl and native it
+  defaults to a sibling ``../CFTree``.
+* ``CFTREE_PYTHON``      the interpreter that runs CFTree (wsl and
+  native only, e.g. ``/home/<user>/miniconda3/envs/cftree/bin/python``
+  under WSL).
 
 Reuse safety: a previous run is reused only when a completion manifest
 (``data/<case>/.cftree_manifest.json``, written by this module after a
@@ -48,12 +64,22 @@ version, and geometry-only mode. A partial run left by a crash or Ctrl-C
 has no manifest and is regenerated rather than silently merged into an
 incomplete tree set; a changed AOI (or a flip of the geometry-only flag)
 under the same output path likewise regenerates instead of reusing stale
-or wrong-mode tiles.
+or wrong-mode tiles. Under the docker runner the image's resolved
+content digest, not its tag, joins the fingerprint, so rebuilding or
+re-pulling under the same tag also regenerates instead of silently
+reusing tiles a different image produced.
 
-Every failure mode degrades to a treeless build with a warning, matching
-the soft-fail contract of the other city fetchers: a missing CFTree
-checkout, an unset interpreter, a non-zero CFTree exit, a timeout, or a
-merge error returns ``False`` and the build proceeds without vegetation.
+Failures split into two classes. A setup problem raises
+:class:`citygml_energy.errors.CityBuildError` with the missing piece
+named, so a misconfigured machine fails fast instead of quietly building
+a treeless city: an unknown ``CFTREE_RUNNER``, a missing
+``CFTREE_IMAGE``, an unreachable docker daemon, an image that is absent
+and cannot be pulled, a missing or invalid checkout, an unset
+``CFTREE_PYTHON`` where one is required, or a UNC path. A runtime
+problem in a correctly-set-up run keeps the soft-fail contract of the
+other city fetchers: a non-zero CFTree exit, a timeout, a merge error,
+or an unwritable case geojson returns ``False`` with a warning and the
+build proceeds without vegetation.
 """
 
 from __future__ import annotations
@@ -62,14 +88,17 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shlex
 import subprocess
 import sys
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import TYPE_CHECKING, Any, Protocol
 
+from ..errors import CityBuildError
 from . import _env
 
 if TYPE_CHECKING:
@@ -106,9 +135,10 @@ _MANIFEST_FILENAME = ".cftree_manifest.json"
 # run that size costs hours and gigabytes.
 _AOI_WARN_AREA_M2: float = 4_000_000.0
 
-# subprocess.run-compatible callable, injected in tests so the long
-# CFTree run never actually launches. Named distinctly from CFTreeRunner
-# (the launch strategy) to keep the two roles apart.
+# subprocess.run-compatible callable, injected in tests so neither the
+# long CFTree run nor the short docker CLI probes actually launch. Named
+# distinctly from CFTreeRunner (the launch strategy) to keep the two
+# roles apart.
 RunCallable = Callable[..., Any]
 
 # tools.merge_cftree_tiles.merge_case-compatible callable, injected in
@@ -119,8 +149,9 @@ MergeCallable = Callable[..., int]
 class CFTreeRunner(Protocol):
     """How to launch CFTree for one case, isolated from the orchestration.
 
-    :attr:`repo` is the CFTree checkout as the *creator* sees it (a
-    Windows path under WSL), used for file operations. :attr:`cwd` is the
+    :attr:`repo` is the CFTree root as the *creator* sees it (a checkout,
+    or the docker runner's no-clone work root; a Windows path under
+    WSL), used for file operations. :attr:`cwd` is the
     working directory for the subprocess (``None`` when the command sets
     it itself, as the WSL ``cd`` does). :meth:`command` returns the argv
     to hand to :func:`subprocess.run`.
@@ -243,25 +274,41 @@ class WslRunner:
 class DockerRunner:
     """Run CFTree inside a Linux container via ``docker run``.
 
-    The checkout is bind-mounted at ``/work`` and the container's working
-    directory is ``/work``, so CFTree resolves ``cases/``, ``data/``, and
-    ``resources/`` against the same files the creator's in-process merge later
-    reads on the host. The conda environment and the two compiled C++ binaries
-    are baked into the image, so a colleague installs no toolchain: the binaries
-    are found through the image's ``CFTREE_BIN`` even though the bind-mounted
-    source tree carries no ``build/`` outputs.
+    Two mounting modes share this adapter. In no-clone mode
+    (:attr:`checkout` ``False``, the default) the container runs the
+    source baked into the image at ``/opt/cftree`` and only the
+    ``cases/`` and ``data/`` directories of a creator-managed work root
+    (:attr:`repo`, from ``CFTREE_WORKDIR``) are bind-mounted into it, so
+    no CFTree checkout exists on the host; ``resources/`` stays baked
+    because CFTree resolves it against the working directory, which
+    ``-w /opt/cftree`` pins to the image's source tree. In checkout mode
+    (:attr:`checkout` ``True``, when ``CFTREE_REPO`` is set) the checkout
+    is bind-mounted at ``/work`` and that is the working directory, so
+    local source edits take effect while the conda environment and the
+    two compiled C++ binaries still come baked from the image (found
+    through the image's ``CFTREE_BIN`` even though the mounted tree
+    carries no ``build/`` outputs).
 
-    :attr:`extra_args` is split from ``CFTREE_DOCKER_ARGS`` and passed verbatim
-    to ``docker run`` before the image, for host-specific tuning such as
-    ``--gpus all`` (to enable the GPU morphometrics), ``--memory``, ``--cpus``,
-    or ``--shm-size``. The image reference itself is part of the reuse
-    fingerprint (see :func:`_aoi_fingerprint`), so re-tagging the image
-    regenerates rather than reusing tiles a different image produced.
+    Every run gets a unique ``--name`` so a timed-out container can be
+    killed from the host instead of living on as an orphan (see
+    :func:`_kill_docker_container`).
+
+    :attr:`digest` is the image's resolved content identifier (its first
+    ``RepoDigests`` entry, or ``.Id`` for a locally-built image), used as
+    the runner identity in the reuse fingerprint (see
+    :func:`_aoi_fingerprint`), so rebuilding or re-pulling under the same
+    tag regenerates rather than reusing stale tiles. :attr:`extra_args`
+    is split from ``CFTREE_DOCKER_ARGS`` and passed verbatim to ``docker
+    run`` before the image, for host-specific tuning such as
+    ``--memory``, ``--cpus``, ``--shm-size``, or ``--gpus all`` (GPU
+    morphometrics; needs an NVIDIA runtime).
     """
 
     repo: Path
     image: str
+    digest: str = ""
     extra_args: tuple[str, ...] = ()
+    checkout: bool = False
 
     @property
     def cwd(self) -> Path | None:
@@ -276,14 +323,25 @@ class DockerRunner:
         buffer_m: float,
         geometry_only: bool = False,
     ) -> list[str]:
+        root = _to_docker_mount(self.repo)
+        if self.checkout:
+            mounts = ["-v", f"{root}:/work", "-w", "/work"]
+        else:
+            mounts = [
+                "-v",
+                f"{root}/cases:/opt/cftree/cases",
+                "-v",
+                f"{root}/data:/opt/cftree/data",
+                "-w",
+                "/opt/cftree",
+            ]
         cmd = [
             "docker",
             "run",
             "--rm",
-            "-v",
-            f"{_to_docker_mount(self.repo)}:/work",
-            "-w",
-            "/work",
+            "--name",
+            _container_name(case),
+            *mounts,
             *self.extra_args,
             self.image,
             "python",
@@ -303,60 +361,173 @@ class DockerRunner:
         return cmd
 
 
-def resolve_runner() -> CFTreeRunner | None:
-    """Build a :class:`CFTreeRunner` from the environment, or ``None``.
+def resolve_runner(*, run: RunCallable = subprocess.run) -> CFTreeRunner:
+    """Build a :class:`CFTreeRunner` from the environment.
 
-    Loads the repo-root ``.env`` first, then reads ``CFTREE_REPO`` /
-    ``CFTREE_RUNNER`` / ``CFTREE_PYTHON``. Unlike the config-local
-    EP-Online key, these are machine-level settings, so the ``.env`` is
-    discovered from the creator root (and ``CFTREE_REPO`` falls back to a
-    sibling ``../CFTree`` checkout), not from a config file's directory.
-    Returns ``None`` (with a warning naming the missing piece) when the
-    checkout cannot be found, the interpreter is unset, or the checkout is
-    not reachable from the chosen runner, so the caller soft-fails to a
-    treeless build instead of crashing.
+    Loads the repo-root ``.env`` first, then reads the ``CFTREE_*``
+    variables (the module docstring lists them all). Unlike the
+    config-local EP-Online key, these are machine-level settings, so the
+    ``.env`` is discovered from the creator root, not from a config
+    file's directory. ``CFTREE_RUNNER`` is parsed case-insensitively and
+    defaults to ``docker`` on Windows and ``native`` elsewhere.
+
+    The docker runner needs no checkout: without ``CFTREE_REPO`` it runs
+    the image's baked source against a creator-managed work root
+    (``CFTREE_WORKDIR``, default ``.cache/cftree`` in this repo), and an
+    explicit ``CFTREE_REPO`` switches it to checkout mode. Resolving it
+    also preflights docker (daemon reachable, image present or pulled)
+    and resolves the image to its content digest for the reuse
+    fingerprint. The wsl and native runners keep the sibling
+    ``../CFTree`` default for the checkout; the sibling never engages the
+    docker runner's checkout mode.
+
+    Any setup problem raises :class:`CityBuildError` naming the missing
+    piece, so a misconfigured machine fails fast instead of quietly
+    building a treeless city. *run* executes the docker CLI probes and is
+    injectable for tests.
     """
     _env.maybe_load_dotenv(_CREATOR_ROOT)
 
-    repo = _resolve_repo()
-    if repo is None:
-        return None
-
-    kind = (os.environ.get("CFTREE_RUNNER") or ("wsl" if os.name == "nt" else "native")).strip()
+    default_kind = "docker" if os.name == "nt" else "native"
+    kind = (os.environ.get("CFTREE_RUNNER") or default_kind).strip().lower()
     python = (os.environ.get("CFTREE_PYTHON") or "").strip()
 
     if kind == "docker":
-        image = (os.environ.get("CFTREE_IMAGE") or "").strip()
-        if not image:
-            _LOG.warning(
-                "Tree generation with CFTREE_RUNNER=docker needs CFTREE_IMAGE (the CFTree image "
-                "reference, e.g. cftree:local or ghcr.io/<owner>/cftree:<tag>); skipping trees"
-            )
-            return None
-        try:
-            _to_docker_mount(repo)
-        except ValueError as exc:
-            _LOG.warning("%s; skipping trees", exc)
-            return None
-        extra = tuple(shlex.split(os.environ.get("CFTREE_DOCKER_ARGS") or ""))
-        return DockerRunner(repo=repo, image=image, extra_args=extra)
+        return _resolve_docker_runner(run=run)
     if kind == "wsl":
+        repo = _resolve_checkout()
         if not python:
-            _LOG.warning(
-                "Tree generation needs CFTREE_PYTHON (the cftree env interpreter inside "
-                "WSL, e.g. /home/<user>/miniconda3/envs/cftree/bin/python); skipping trees"
+            raise CityBuildError(
+                "Tree generation with CFTREE_RUNNER=wsl needs CFTREE_PYTHON (the cftree env "
+                "interpreter inside WSL, e.g. /home/<user>/miniconda3/envs/cftree/bin/python)"
             )
-            return None
         try:
             _to_wsl_path(repo)
         except ValueError as exc:
-            _LOG.warning("%s; skipping trees", exc)
-            return None
+            raise CityBuildError(str(exc)) from exc
         return WslRunner(repo=repo, python=python)
     if kind == "native":
-        return NativeRunner(repo=repo, python=python or "python")
-    _LOG.warning("Unknown CFTREE_RUNNER=%r (expected 'wsl' or 'native'); skipping trees", kind)
-    return None
+        return NativeRunner(repo=_resolve_checkout(), python=python or "python")
+    raise CityBuildError(f"Unknown CFTREE_RUNNER={kind!r}: expected 'docker', 'wsl', or 'native'")
+
+
+def _resolve_docker_runner(*, run: RunCallable) -> DockerRunner:
+    """Preflight docker and build the runner, in no-clone or checkout mode."""
+    image = (os.environ.get("CFTREE_IMAGE") or "").strip()
+    if not image:
+        raise CityBuildError(
+            "Tree generation with CFTREE_RUNNER=docker needs CFTREE_IMAGE (the CFTree image "
+            "reference, e.g. ghcr.io/daanschlosser/cftree:latest)"
+        )
+    extra = tuple(shlex.split(os.environ.get("CFTREE_DOCKER_ARGS") or ""))
+    _check_docker_daemon(run)
+    digest = _resolve_image_digest(image, run)
+
+    raw_repo = (os.environ.get("CFTREE_REPO") or "").strip()
+    if raw_repo:
+        repo = Path(raw_repo)
+        if not repo.is_dir():
+            raise CityBuildError(f"CFTREE_REPO={raw_repo} is not a directory")
+        _docker_mountable_or_raise(repo)
+        return DockerRunner(repo=repo, image=image, digest=digest, extra_args=extra, checkout=True)
+
+    raw_work = (os.environ.get("CFTREE_WORKDIR") or "").strip()
+    work_root = Path(raw_work) if raw_work else _CREATOR_ROOT / ".cache" / "cftree"
+    _docker_mountable_or_raise(work_root)
+    try:
+        (work_root / "cases").mkdir(parents=True, exist_ok=True)
+        (work_root / "data").mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise CityBuildError(
+            f"Cannot create the CFTree work root {work_root} ({exc}); "
+            "set CFTREE_WORKDIR to a writable directory"
+        ) from exc
+    return DockerRunner(repo=work_root, image=image, digest=digest, extra_args=extra)
+
+
+def _docker_mountable_or_raise(path: Path) -> None:
+    """Reject a path ``docker run -v`` cannot mount (UNC) as a setup error."""
+    try:
+        _to_docker_mount(path)
+    except ValueError as exc:
+        raise CityBuildError(str(exc)) from exc
+
+
+def _check_docker_daemon(run: RunCallable) -> None:
+    """Raise :class:`CityBuildError` when the docker daemon is unreachable."""
+    try:
+        result = run(
+            ["docker", "version", "--format", "{{.Server.Version}}"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise CityBuildError(
+            f"Cannot run the docker CLI ({exc}); install Docker Desktop "
+            "or set CFTREE_RUNNER=wsl/native"
+        ) from exc
+    if getattr(result, "returncode", 1) != 0:
+        raise CityBuildError(
+            "The docker daemon is not reachable ('docker version' failed); "
+            "start Docker Desktop and retry"
+        )
+
+
+def _resolve_image_digest(image: str, run: RunCallable) -> str:
+    """Resolve *image* to a content identifier, pulling it when absent.
+
+    Prefers the first ``RepoDigests`` entry (stable across hosts for a
+    pulled image) and falls back to ``.Id`` for a locally-built image
+    that was never pushed. The digest, not the tag, becomes the runner
+    identity in the reuse fingerprint, so re-pulling or rebuilding under
+    the same tag regenerates instead of silently reusing stale tiles.
+    The automatic pull makes a first run on a fresh machine need no
+    manual ``docker pull``; a failed pull is a setup error.
+    """
+    digest = _inspect_image(image, run)
+    if digest is not None:
+        return digest
+    _LOG.info("CFTree image %s is not present locally; pulling it (one-time download) …", image)
+    try:
+        pull = run(["docker", "pull", image], check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise CityBuildError(f"'docker pull {image}' failed ({exc})") from exc
+    if getattr(pull, "returncode", 1) != 0:
+        raise CityBuildError(
+            f"CFTree image {image} is not available locally and 'docker pull' failed; "
+            "check CFTREE_IMAGE and the registry access"
+        )
+    digest = _inspect_image(image, run)
+    if digest is None:
+        raise CityBuildError(f"CFTree image {image} is still not inspectable after a pull")
+    return digest
+
+
+def _inspect_image(image: str, run: RunCallable) -> str | None:
+    """The image's content identifier, or ``None`` when it is absent."""
+    try:
+        result = run(
+            ["docker", "image", "inspect", image, "--format", "{{.Id}} {{json .RepoDigests}}"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if getattr(result, "returncode", 1) != 0:
+        return None
+    stdout = (getattr(result, "stdout", "") or "").strip()
+    image_id, _, digests_json = stdout.partition(" ")
+    try:
+        digests = json.loads(digests_json) if digests_json else None
+    except ValueError:
+        digests = None
+    if isinstance(digests, list) and digests:
+        return str(digests[0])
+    return image_id or None
 
 
 def ensure_tree_file(
@@ -371,9 +542,12 @@ def ensure_tree_file(
 
     Returns ``True`` when the file is present afterwards (already there,
     or freshly produced), ``False`` when nothing could be done. A
-    ``False`` is never fatal: the caller's loader treats a missing file
-    as a treeless build. ``True`` means the file exists, not that it
-    holds trees (an AOI with no trees yields a valid empty file).
+    ``False`` is never fatal: it covers runtime failures only, and the
+    caller treats it as a treeless build. A setup problem (a bad
+    ``CFTREE_*`` environment, see :func:`resolve_runner`) raises
+    :class:`CityBuildError` instead when no *runner* was injected.
+    ``True`` means the file exists, not that it holds trees (an AOI with
+    no trees yields a valid empty file).
 
     The work runs only when the file is missing *and* the config carries
     a ``generate`` spec. A previous *complete* run for the same AOI
@@ -388,12 +562,14 @@ def ensure_tree_file(
     a single writer: two concurrent builds targeting the same output path
     and AHN version share ``cases/<case>/`` and ``data/<case>/`` and would
     race, so do not run them in parallel. On timeout the direct child is
-    terminated; under the WSL runner the Linux-side CFTree process tree can
-    outlive that kill, so a timed-out run may need a manual check on the
-    WSL side.
+    terminated; the docker runner additionally kills its named container
+    best-effort, while under the WSL runner the Linux-side CFTree process
+    tree can outlive that kill, so a timed-out run may need a manual
+    check on the WSL side.
 
-    ``run`` (the CFTree subprocess) and ``merge`` (the in-process tile
-    merge) are injectable for tests.
+    ``run`` (the CFTree subprocess and, when the runner is resolved from
+    the environment, the docker CLI probes) and ``merge`` (the in-process
+    tile merge) are injectable for tests.
     """
     out = Path(source.path)
     spec = source.generate
@@ -406,9 +582,20 @@ def ensure_tree_file(
         _LOG.warning("Tree generation requested but no AOI geometry is available; skipping trees")
         return out.is_file()
 
-    runner = runner if runner is not None else resolve_runner()
-    if runner is None:
-        return out.is_file()
+    # The runner is resolved before the reuse check because the docker image
+    # digest is part of the reuse fingerprint: whether an existing output may
+    # be served cannot be decided without knowing which image would run. When
+    # an output file is already on disk, the setup error names it so the user
+    # knows the no-regeneration escape hatch.
+    try:
+        runner = runner if runner is not None else resolve_runner(run=run)
+    except CityBuildError as exc:
+        if out.is_file():
+            raise CityBuildError(
+                f"{exc} (an existing vegetation file {out} was found; remove the "
+                "vegetation generate block to build with it as-is)"
+            ) from exc
+        raise
 
     resolved = _resolve_merge()
     if resolved is None:
@@ -432,12 +619,14 @@ def ensure_tree_file(
     _warn_if_large_aoi(aoi_geom)
 
     data_dir = _data_dir(runner.repo, case)
-    # The docker runner carries an image reference; fold it into the fingerprint
-    # so tiles built by one image are not reused for a build that asks for a
-    # different image (a re-tag can change the binaries or the GPU/CPU metric
-    # path). The WSL and native runners have no such attribute, so their
+    # The docker runner carries the image's resolved content digest; fold it
+    # into the fingerprint so tiles built by one image are not reused for a
+    # build running a different one (a rebuild or re-pull under the same tag
+    # changes the digest, so it regenerates instead of reusing stale tiles).
+    # A docker-style runner constructed without the preflight falls back to
+    # its tag; the WSL and native runners have neither attribute, so their
     # fingerprint is unchanged and existing manifests still match.
-    runner_id = getattr(runner, "image", None)
+    runner_id = getattr(runner, "digest", None) or getattr(runner, "image", None)
     fingerprint = _aoi_fingerprint(
         aoi_geom, spec, geometry_only=source.geometry_only, runner_id=runner_id
     )
@@ -495,24 +684,25 @@ def ensure_tree_file(
 # ---------------------------------------------------------------------------
 
 
-def _resolve_repo() -> Path | None:
-    """Resolve the CFTree checkout from ``CFTREE_REPO`` or a sibling dir."""
+def _resolve_checkout() -> Path:
+    """Resolve the CFTree checkout from ``CFTREE_REPO`` or the sibling default.
+
+    Only the wsl and native runners come through here: the docker runner
+    engages a checkout exclusively via an explicit ``CFTREE_REPO`` (its
+    default is the no-clone work root, never the sibling).
+    """
     raw = (os.environ.get("CFTREE_REPO") or "").strip()
     if raw:
         repo = Path(raw)
         if repo.is_dir():
             return repo
-        _LOG.warning("CFTREE_REPO=%s is not a directory; skipping trees", raw)
-        return None
+        raise CityBuildError(f"CFTREE_REPO={raw} is not a directory")
     sibling = _CREATOR_ROOT.parent / "CFTree"
     if sibling.is_dir():
         return sibling
-    _LOG.warning(
-        "Tree generation needs the CFTree checkout: set CFTREE_REPO or place it at %s; "
-        "skipping trees",
-        sibling,
+    raise CityBuildError(
+        f"Tree generation needs the CFTree checkout: set CFTREE_REPO or place it at {sibling}"
     )
-    return None
 
 
 def _resolve_merge() -> tuple[MergeCallable, str] | None:
@@ -590,6 +780,7 @@ def _run_cftree(
     try:
         result = run(cmd, cwd=runner.cwd, check=False, timeout=timeout_s)
     except subprocess.TimeoutExpired:
+        _kill_docker_container(cmd, run)
         _LOG.error(
             "CFTree exceeded its %d-minute timeout for case %r; building without trees. "
             "Raise vegetation.generate.timeout_min for a larger AOI.",
@@ -602,16 +793,52 @@ def _run_cftree(
         return False
     code = getattr(result, "returncode", 1)
     if code != 0:
+        if cmd[:1] == ["docker"]:
+            hint = (
+                "Check the CFTree image (CFTREE_IMAGE), the docker daemon, and the "
+                "container log output above."
+            )
+        else:
+            hint = (
+                "Check that CFTREE_PYTHON points at a valid cftree env and the CFTree "
+                "install is intact."
+            )
         _LOG.error(
-            "CFTree exited with status %s for case %r; building without trees. Check that "
-            "CFTREE_PYTHON points at a valid cftree env and the CFTree install is intact. "
-            "Command: %s",
+            "CFTree exited with status %s for case %r; building without trees. %s Command: %s",
             code,
             case,
+            hint,
             " ".join(cmd),
         )
         return False
     return True
+
+
+def _container_name(case: str) -> str:
+    """A unique, docker-legal container name for one CFTree run.
+
+    The random suffix keeps two runs of the same case from colliding on
+    the name; the name itself exists so a timed-out container can be
+    killed from the host (see :func:`_kill_docker_container`).
+    """
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "-", case)
+    return f"cftree-{safe}-{uuid.uuid4().hex[:8]}"
+
+
+def _kill_docker_container(cmd: list[str], run: RunCallable) -> None:
+    """Best-effort kill of a timed-out ``docker run`` by its ``--name``.
+
+    A subprocess timeout kills only the docker CLI client; the container
+    keeps running server-side, so it must be killed by name or it lives
+    on as an orphan holding CPU, RAM, and the mounted work directories.
+    """
+    if cmd[:2] != ["docker", "run"] or "--name" not in cmd[:-1]:
+        return
+    name = cmd[cmd.index("--name") + 1]
+    try:
+        run(["docker", "kill", name], check=False, timeout=30)
+    except Exception:
+        _LOG.warning("Could not kill the timed-out CFTree container %r; remove it manually", name)
 
 
 def _merge_case(
@@ -702,9 +929,10 @@ def _aoi_fingerprint(
     regenerates rather than serving tiles with the wrong attribute
     completeness.
 
-    *runner_id* (the docker image reference, when the docker runner is used)
-    is folded in for the same reason: tiles a given image produced must not be
-    reused for a build pinned to a different image. It is omitted from the dict
+    *runner_id* (the docker image's content digest, or its tag when no digest
+    was resolved) is folded in for the same reason: tiles a given image
+    produced must not be reused for a build running a different image, even
+    one re-pulled or rebuilt under the same tag. It is omitted from the dict
     when ``None`` (the WSL and native runners), so their fingerprints, and any
     manifest already on disk, are byte-for-byte unchanged.
     """
@@ -789,12 +1017,12 @@ def _is_safe_case(case: str) -> bool:
 
 
 def _case_geojson_path(repo: Path, case: str) -> Path:
-    """Where a case's AOI GeoJSON lives inside the CFTree checkout."""
+    """Where a case's AOI GeoJSON lives under the runner's CFTree root."""
     return repo / "cases" / case / "case_area.geojson"
 
 
 def _data_dir(repo: Path, case: str) -> Path:
-    """Where a case's per-tile CFTree output lives inside the checkout."""
+    """Where a case's per-tile CFTree output lives under that root."""
     return repo / "data" / case
 
 
@@ -866,7 +1094,7 @@ def _to_docker_mount(path: Path) -> str:
     if win.drive.startswith("\\\\"):
         raise ValueError(
             f"UNC path {str(path)!r} is not supported by the docker runner; use a drive-letter "
-            f"checkout (e.g. C:\\...) or set CFTREE_RUNNER=native"
+            f"path (e.g. C:\\...) or set CFTREE_RUNNER=native"
         )
     if len(win.drive) == 2 and win.drive.endswith(":"):
         return win.as_posix()

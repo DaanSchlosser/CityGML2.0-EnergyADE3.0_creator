@@ -19,6 +19,7 @@ These tests never touch the network: every fixture is hand-built.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -779,7 +780,7 @@ def test_fetch_triggers_generation_when_spec_present(tmp_path: Path, monkeypatch
 
     def _spy(source: Any, aoi_geom: Any, **_kw: Any) -> bool:
         calls.append((source, aoi_geom))
-        return False  # nothing produced; load below degrades to a treeless build
+        return False  # nothing produced; the fetch short-circuits to a treeless build
 
     monkeypatch.setattr(cftree_runner, "ensure_tree_file", _spy)
 
@@ -819,6 +820,48 @@ def test_fetch_skips_generation_without_spec(tmp_path: Path, monkeypatch) -> Non
     )
     assert calls == []
     assert bundle is EMPTY_BUNDLE
+
+
+def test_fetch_failed_generation_skips_missing_file_warning(
+    tmp_path: Path, monkeypatch, caplog
+) -> None:
+    """A soft-failed generation must not add the misleading missing-file warning.
+
+    ensure_tree_file already logged why the run failed ("building without
+    trees"); a second warning that the vegetation source file does not exist
+    would read as an unrelated problem, so the loader must not run at all.
+    """
+    monkeypatch.setattr(cftree_runner, "ensure_tree_file", lambda *_a, **_k: False)
+    missing = tmp_path / "trees.city.json"
+    source = VegetationSource(path=missing, generate=VegetationGenerateSpec())
+    with caplog.at_level(logging.WARNING, logger="citygml_energy.city_builder.vegetation"):
+        bundle = fetch_and_match_trees(
+            None,
+            source=source,
+            bbox=(0, 0, 250, 250),
+            boundary_geom=None,
+            aoi_geom=box(0, 0, 250, 250),
+        )
+    assert bundle is EMPTY_BUNDLE
+    assert "does not exist" not in caplog.text
+
+
+def test_fetch_propagates_setup_error_from_generation(tmp_path: Path, monkeypatch) -> None:
+    """A CFTREE_* setup problem fails the build instead of degrading to no trees."""
+
+    def _boom(*_a: Any, **_k: Any) -> bool:
+        raise CityBuildError("CFTREE_IMAGE is missing")
+
+    monkeypatch.setattr(cftree_runner, "ensure_tree_file", _boom)
+    source = VegetationSource(path=tmp_path / "trees.city.json", generate=VegetationGenerateSpec())
+    with pytest.raises(CityBuildError, match="CFTREE_IMAGE"):
+        fetch_and_match_trees(
+            None,
+            source=source,
+            bbox=(0, 0, 250, 250),
+            boundary_geom=None,
+            aoi_geom=box(0, 0, 250, 250),
+        )
 
 
 # ---------------------------------------------------------------------------

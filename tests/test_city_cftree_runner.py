@@ -1,16 +1,18 @@
 """Tests for the on-demand CFTree generation seam (``cftree_runner.py``).
 
-Two concerns are covered without ever launching CFTree or merging real
-tiles:
+Two concerns are covered without ever launching CFTree, docker, or a
+real tile merge:
 
-* the runner adapters build the exact argv (WSL path translation, flags),
-  and :func:`resolve_runner` maps the environment to the right adapter
-  or to ``None``;
+* the runner adapters build the exact argv (WSL path translation, docker
+  mounts, flags), and :func:`resolve_runner` maps the environment to the
+  right adapter or raises :class:`CityBuildError` on a setup problem;
+  the docker preflight (daemon check, image inspect, auto-pull, digest
+  resolution) runs against an injected ``run`` callable.
 * :func:`ensure_tree_file` orchestrates write-case -> run -> merge, reuses
   a *complete* prior run via the AOI completion manifest, regenerates a
-  partial/stale one, and soft-fails to ``False`` on every error. The
-  CFTree subprocess (``run``) and the in-process merge (``merge``) are
-  both injected so neither side effect actually happens.
+  partial/stale one, and soft-fails to ``False`` on every runtime error.
+  The CFTree subprocess (``run``) and the in-process merge (``merge``)
+  are both injected so neither side effect actually happens.
 
 The producer/consumer contract of ``case_area.geojson`` is pinned with a
 real round-trip through the merge tool's boundary loader.
@@ -19,6 +21,7 @@ real round-trip through the merge tool's boundary loader.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,6 +35,7 @@ pytest.importorskip("shapely")
 from shapely.geometry import MultiPolygon, Polygon, box
 
 from citygml_energy.city_builder import _env as env_module
+from citygml_energy.city_builder import cftree_runner as runner_mod
 from citygml_energy.city_builder.boundary import BoundarySource, load_boundary_polygon
 from citygml_energy.city_builder.cftree_runner import (
     DockerRunner,
@@ -51,6 +55,7 @@ from citygml_energy.city_builder.cftree_runner import (
     resolve_runner,
 )
 from citygml_energy.city_builder.vegetation import VegetationGenerateSpec, VegetationSource
+from citygml_energy.errors import CityBuildError
 from tools.merge_cftree_tiles import TILE_FILENAME
 
 # ---------------------------------------------------------------------------
@@ -160,6 +165,70 @@ def _seed_tile(repo: Path, case: str) -> Path:
 def _no_dotenv(monkeypatch) -> None:
     """Stop ``resolve_runner`` re-reading a real .env over the test env."""
     monkeypatch.setattr(env_module, "maybe_load_dotenv", lambda *_a, **_k: None)
+
+
+def _clear_cftree_env(monkeypatch) -> None:
+    """Remove every CFTREE_* variable so a developer's real env never leaks in."""
+    for var in (
+        "CFTREE_REPO",
+        "CFTREE_RUNNER",
+        "CFTREE_PYTHON",
+        "CFTREE_IMAGE",
+        "CFTREE_DOCKER_ARGS",
+        "CFTREE_WORKDIR",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
+_REPO_DIGEST = "ghcr.io/x/cftree@sha256:aaaa"
+_IMAGE_ID = "sha256:bbbb"
+
+
+def _make_docker_probes(
+    *,
+    present: bool = True,
+    version_code: int = 0,
+    pull_code: int = 0,
+    repo_digest: str | None = _REPO_DIGEST,
+    calls: list[list[str]] | None = None,
+):
+    """A ``subprocess.run`` stand-in for the docker CLI preflight probes.
+
+    Answers ``docker version``, ``docker image inspect``, ``docker pull``,
+    and ``docker run`` so no test ever touches a real docker daemon. With
+    ``present=False`` the image only inspects successfully after a pull,
+    which is the colleague-first-run path.
+    """
+    state = {"pulled": False}
+
+    def _run(cmd: Any, **_kw: Any) -> SimpleNamespace:
+        argv = [str(c) for c in cmd]
+        if calls is not None:
+            calls.append(argv)
+        if argv[:2] == ["docker", "version"]:
+            return SimpleNamespace(returncode=version_code, stdout="27.0\n", stderr="")
+        if argv[:3] == ["docker", "image", "inspect"]:
+            if not present and not state["pulled"]:
+                return SimpleNamespace(returncode=1, stdout="", stderr="Error: No such image")
+            digests = json.dumps([repo_digest] if repo_digest else [])
+            return SimpleNamespace(returncode=0, stdout=f"{_IMAGE_ID} {digests}\n", stderr="")
+        if argv[:2] == ["docker", "pull"]:
+            state["pulled"] = pull_code == 0
+            return SimpleNamespace(returncode=pull_code)
+        if argv[:2] == ["docker", "run"]:
+            return SimpleNamespace(returncode=0)
+        raise AssertionError(f"unexpected command through the docker probe stub: {argv}")
+
+    return _run
+
+
+def _docker_env(monkeypatch, tmp_path: Path) -> Path:
+    """Point the env at the docker runner's no-clone mode; returns the work root."""
+    work = tmp_path / "work"
+    monkeypatch.setenv("CFTREE_RUNNER", "docker")
+    monkeypatch.setenv("CFTREE_IMAGE", "cftree:local")
+    monkeypatch.setenv("CFTREE_WORKDIR", str(work))
+    return work
 
 
 # ---------------------------------------------------------------------------
@@ -286,14 +355,19 @@ def test_to_docker_mount_unc_raises() -> None:
         _to_docker_mount(Path(r"\\server\share\CFTree"))
 
 
-def test_docker_runner_command() -> None:
-    runner = DockerRunner(repo=Path("C:/Users/x/CFTree"), image="cftree:local")
+def test_docker_runner_command_no_clone_mounts_work_dirs() -> None:
+    """The default (no-clone) mode mounts only cases/ and data/ of the work root."""
+    runner = DockerRunner(repo=Path("C:/Users/x/creator/.cache/cftree"), image="cftree:local")
     cmd = runner.command(case="leiden_250", ahn_version=5, n_cores=8, buffer_m=20.0)
     assert cmd[:3] == ["docker", "run", "--rm"]
-    # The checkout is bind-mounted at /work and that is the working directory.
-    assert cmd[cmd.index("-v") + 1] == "C:/Users/x/CFTree:/work"
-    assert cmd[cmd.index("-w") + 1] == "/work"
-    assert "cftree:local" in cmd
+    mounts = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "-v"]
+    assert mounts == [
+        "C:/Users/x/creator/.cache/cftree/cases:/opt/cftree/cases",
+        "C:/Users/x/creator/.cache/cftree/data:/opt/cftree/data",
+    ]
+    # The working directory is the image's baked source tree, so CFTree
+    # resolves resources/ from the image, not the host.
+    assert cmd[cmd.index("-w") + 1] == "/opt/cftree"
     # The CFTree invocation rides after the image, with the same flags as native.
     tail = cmd[cmd.index("cftree:local") + 1 :]
     assert tail == [
@@ -313,6 +387,28 @@ def test_docker_runner_command() -> None:
     assert runner.cwd is None
 
 
+def test_docker_runner_command_checkout_mode_mounts_repo_at_work() -> None:
+    """checkout=True keeps the single-mount behavior: the checkout at /work."""
+    runner = DockerRunner(repo=Path("C:/Users/x/CFTree"), image="cftree:local", checkout=True)
+    cmd = runner.command(case="leiden_250", ahn_version=5, n_cores=8, buffer_m=20.0)
+    assert cmd[cmd.index("-v") + 1] == "C:/Users/x/CFTree:/work"
+    assert cmd.count("-v") == 1
+    assert cmd[cmd.index("-w") + 1] == "/work"
+    tail = cmd[cmd.index("cftree:local") + 1 :]
+    assert tail[:4] == ["python", "main.py", "--case", "leiden_250"]
+
+
+def test_docker_runner_command_names_container_uniquely() -> None:
+    """Each run gets a unique --name so a timed-out container can be killed."""
+    runner = DockerRunner(repo=Path("C:/Users/x/CFTree"), image="cftree:local")
+    cmd_a = runner.command(case="leiden_250", ahn_version=5, n_cores=8, buffer_m=20.0)
+    cmd_b = runner.command(case="leiden_250", ahn_version=5, n_cores=8, buffer_m=20.0)
+    name_a = cmd_a[cmd_a.index("--name") + 1]
+    name_b = cmd_b[cmd_b.index("--name") + 1]
+    assert name_a.startswith("cftree-leiden_250-")
+    assert name_a != name_b
+
+
 def test_docker_runner_command_threads_extra_args_before_image() -> None:
     runner = DockerRunner(
         repo=Path("C:/Users/x/CFTree"),
@@ -320,7 +416,7 @@ def test_docker_runner_command_threads_extra_args_before_image() -> None:
         extra_args=("--gpus", "all", "--shm-size", "1g"),
     )
     cmd = runner.command(case="c", ahn_version=6, n_cores=4, buffer_m=10.0, geometry_only=True)
-    # Extra args land after -w /work and before the image, exactly as docker expects.
+    # Extra args land after the mounts and before the image, exactly as docker expects.
     assert "--gpus" in cmd and cmd[cmd.index("--gpus") + 1] == "all"
     assert cmd.index("--gpus") < cmd.index("cftree:local")
     assert cmd[-1] == "--geometry-only"
@@ -333,6 +429,7 @@ def test_docker_runner_command_threads_extra_args_before_image() -> None:
 
 def test_resolve_runner_wsl(monkeypatch, tmp_path) -> None:
     _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
     monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
     monkeypatch.setenv("CFTREE_RUNNER", "wsl")
     monkeypatch.setenv("CFTREE_PYTHON", "/home/u/envs/cftree/bin/python")
@@ -344,6 +441,7 @@ def test_resolve_runner_wsl(monkeypatch, tmp_path) -> None:
 
 def test_resolve_runner_native(monkeypatch, tmp_path) -> None:
     _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
     monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
     monkeypatch.setenv("CFTREE_RUNNER", "native")
     monkeypatch.setenv("CFTREE_PYTHON", "python3")
@@ -352,35 +450,86 @@ def test_resolve_runner_native(monkeypatch, tmp_path) -> None:
     assert runner.python == "python3"
 
 
-def test_resolve_runner_wsl_without_python_is_none(monkeypatch, tmp_path) -> None:
+def test_resolve_runner_kind_is_case_insensitive(monkeypatch, tmp_path) -> None:
     _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
+    monkeypatch.setenv("CFTREE_RUNNER", " Native ")
+    assert isinstance(resolve_runner(), NativeRunner)
+    monkeypatch.setenv("CFTREE_RUNNER", "WSL")
+    monkeypatch.setenv("CFTREE_PYTHON", "/home/u/envs/cftree/bin/python")
+    assert isinstance(resolve_runner(), WslRunner)
+
+
+def test_resolve_runner_default_is_docker_on_windows(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    monkeypatch.setattr(os, "name", "nt")
+    _docker_env(monkeypatch, tmp_path)
+    monkeypatch.delenv("CFTREE_RUNNER", raising=False)
+    runner = resolve_runner(run=_make_docker_probes())
+    assert isinstance(runner, DockerRunner)
+
+
+def test_resolve_runner_default_is_native_off_windows(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    monkeypatch.setattr(os, "name", "posix")
+    monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
+    runner = resolve_runner()
+    assert isinstance(runner, NativeRunner)
+    assert runner.python == "python"
+
+
+def test_resolve_runner_wsl_without_python_raises(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
     monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
     monkeypatch.setenv("CFTREE_RUNNER", "wsl")
-    monkeypatch.delenv("CFTREE_PYTHON", raising=False)
-    assert resolve_runner() is None
+    with pytest.raises(CityBuildError, match="CFTREE_PYTHON"):
+        resolve_runner()
 
 
-def test_resolve_runner_missing_repo_is_none(monkeypatch, tmp_path) -> None:
+def test_resolve_runner_missing_repo_raises(monkeypatch, tmp_path) -> None:
     _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
     monkeypatch.setenv("CFTREE_REPO", str(tmp_path / "does-not-exist"))
     monkeypatch.setenv("CFTREE_RUNNER", "native")
     monkeypatch.setenv("CFTREE_PYTHON", "python")
-    assert resolve_runner() is None
+    with pytest.raises(CityBuildError, match="not a directory"):
+        resolve_runner()
 
 
-def test_resolve_runner_unknown_kind_is_none(monkeypatch, tmp_path) -> None:
+def test_resolve_runner_sibling_default_for_native(monkeypatch, tmp_path) -> None:
+    """Without CFTREE_REPO the wsl/native checkout falls back to ../CFTree."""
     _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    creator = tmp_path / "creator"
+    sibling = tmp_path / "CFTree"
+    creator.mkdir()
+    sibling.mkdir()
+    monkeypatch.setattr(runner_mod, "_CREATOR_ROOT", creator)
+    monkeypatch.setenv("CFTREE_RUNNER", "native")
+    runner = resolve_runner()
+    assert isinstance(runner, NativeRunner)
+    assert runner.repo == sibling
+
+
+def test_resolve_runner_unknown_kind_raises_naming_all_runners(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
     monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
     monkeypatch.setenv("CFTREE_RUNNER", "podman")
-    monkeypatch.setenv("CFTREE_PYTHON", "python")
-    assert resolve_runner() is None
+    with pytest.raises(CityBuildError) as excinfo:
+        resolve_runner()
+    for name in ("docker", "wsl", "native"):
+        assert name in str(excinfo.value)
 
 
-def test_resolve_runner_wsl_unreachable_repo_is_none(monkeypatch, tmp_path) -> None:
-    """A repo the WSL runner cannot translate (e.g. UNC) soft-fails to None."""
-    import citygml_energy.city_builder.cftree_runner as runner_mod
-
+def test_resolve_runner_wsl_unreachable_repo_raises(monkeypatch, tmp_path) -> None:
+    """A repo the WSL runner cannot translate (e.g. UNC) is a setup error."""
     _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
     monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
     monkeypatch.setenv("CFTREE_RUNNER", "wsl")
     monkeypatch.setenv("CFTREE_PYTHON", "/home/u/envs/cftree/bin/python")
@@ -389,29 +538,129 @@ def test_resolve_runner_wsl_unreachable_repo_is_none(monkeypatch, tmp_path) -> N
         raise ValueError("UNC path is not supported by the WSL runner")
 
     monkeypatch.setattr(runner_mod, "_to_wsl_path", _raise)
-    assert resolve_runner() is None
+    with pytest.raises(CityBuildError, match="UNC"):
+        resolve_runner()
 
 
-def test_resolve_runner_docker(monkeypatch, tmp_path) -> None:
+# ---------------------------------------------------------------------------
+# resolve_runner: docker preflight
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_runner_docker_no_clone_is_default(monkeypatch, tmp_path) -> None:
+    """Without CFTREE_REPO the docker runner needs no checkout at all."""
     _no_dotenv(monkeypatch)
-    monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
+    _clear_cftree_env(monkeypatch)
+    work = _docker_env(monkeypatch, tmp_path)
+    monkeypatch.setenv("CFTREE_DOCKER_ARGS", "--shm-size 1g")
+    runner = resolve_runner(run=_make_docker_probes())
+    assert isinstance(runner, DockerRunner)
+    assert runner.checkout is False
+    assert runner.repo == work
+    assert runner.image == "cftree:local"
+    assert runner.digest == _REPO_DIGEST
+    # CFTREE_DOCKER_ARGS is shell-split and threaded through verbatim.
+    assert runner.extra_args == ("--shm-size", "1g")
+    # The two bind-mount sources exist before docker ever runs.
+    assert (work / "cases").is_dir()
+    assert (work / "data").is_dir()
+
+
+def test_resolve_runner_docker_default_work_root_is_creator_cache(monkeypatch, tmp_path) -> None:
+    """Without CFTREE_WORKDIR the work root is .cache/cftree in the creator repo."""
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    creator = tmp_path / "creator"
+    creator.mkdir()
+    # A sibling checkout exists, and must NOT engage the docker checkout mode.
+    (tmp_path / "CFTree").mkdir()
+    monkeypatch.setattr(runner_mod, "_CREATOR_ROOT", creator)
     monkeypatch.setenv("CFTREE_RUNNER", "docker")
     monkeypatch.setenv("CFTREE_IMAGE", "cftree:local")
-    monkeypatch.setenv("CFTREE_DOCKER_ARGS", "--gpus all --shm-size 1g")
-    runner = resolve_runner()
-    assert isinstance(runner, DockerRunner)
-    assert runner.repo == tmp_path
-    assert runner.image == "cftree:local"
-    # CFTREE_DOCKER_ARGS is shell-split and threaded through verbatim.
-    assert runner.extra_args == ("--gpus", "all", "--shm-size", "1g")
+    runner = resolve_runner(run=_make_docker_probes())
+    assert runner.checkout is False
+    assert runner.repo == creator / ".cache" / "cftree"
 
 
-def test_resolve_runner_docker_without_image_is_none(monkeypatch, tmp_path) -> None:
+def test_resolve_runner_docker_checkout_mode_with_repo(monkeypatch, tmp_path) -> None:
+    """An explicit CFTREE_REPO switches the docker runner to checkout mode."""
     _no_dotenv(monkeypatch)
-    monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
+    _clear_cftree_env(monkeypatch)
     monkeypatch.setenv("CFTREE_RUNNER", "docker")
-    monkeypatch.delenv("CFTREE_IMAGE", raising=False)
-    assert resolve_runner() is None
+    monkeypatch.setenv("CFTREE_IMAGE", "cftree:local")
+    monkeypatch.setenv("CFTREE_REPO", str(tmp_path))
+    runner = resolve_runner(run=_make_docker_probes())
+    assert isinstance(runner, DockerRunner)
+    assert runner.checkout is True
+    assert runner.repo == tmp_path
+    assert runner.digest == _REPO_DIGEST
+
+
+def test_resolve_runner_docker_without_image_raises(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    monkeypatch.setenv("CFTREE_RUNNER", "docker")
+    with pytest.raises(CityBuildError, match="CFTREE_IMAGE"):
+        resolve_runner(run=_make_docker_probes())
+
+
+def test_resolve_runner_docker_daemon_unreachable_raises(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    _docker_env(monkeypatch, tmp_path)
+    with pytest.raises(CityBuildError, match="daemon"):
+        resolve_runner(run=_make_docker_probes(version_code=1))
+
+
+def test_resolve_runner_docker_cli_missing_raises(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    _docker_env(monkeypatch, tmp_path)
+
+    def _run(_cmd: Any, **_kw: Any) -> SimpleNamespace:
+        raise OSError("docker not found")
+
+    with pytest.raises(CityBuildError, match="docker CLI"):
+        resolve_runner(run=_run)
+
+
+def test_resolve_runner_docker_pulls_absent_image(monkeypatch, tmp_path) -> None:
+    """A colleague's first run auto-pulls the image instead of failing."""
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    _docker_env(monkeypatch, tmp_path)
+    calls: list[list[str]] = []
+    runner = resolve_runner(run=_make_docker_probes(present=False, calls=calls))
+    assert isinstance(runner, DockerRunner)
+    assert runner.digest == _REPO_DIGEST
+    assert ["docker", "pull", "cftree:local"] in calls
+
+
+def test_resolve_runner_docker_pull_failure_raises(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    _docker_env(monkeypatch, tmp_path)
+    with pytest.raises(CityBuildError, match="docker pull"):
+        resolve_runner(run=_make_docker_probes(present=False, pull_code=1))
+
+
+def test_resolve_runner_docker_local_image_digest_falls_back_to_id(monkeypatch, tmp_path) -> None:
+    """A locally-built image has no RepoDigests; its .Id becomes the identity."""
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    _docker_env(monkeypatch, tmp_path)
+    runner = resolve_runner(run=_make_docker_probes(repo_digest=None))
+    assert runner.digest == _IMAGE_ID
+
+
+def test_resolve_runner_docker_unc_work_root_raises(monkeypatch, tmp_path) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    monkeypatch.setenv("CFTREE_RUNNER", "docker")
+    monkeypatch.setenv("CFTREE_IMAGE", "cftree:local")
+    monkeypatch.setenv("CFTREE_WORKDIR", r"\\server\share\cftree")
+    with pytest.raises(CityBuildError, match="UNC"):
+        resolve_runner(run=_make_docker_probes())
 
 
 # ---------------------------------------------------------------------------
@@ -705,10 +954,11 @@ def test_aoi_fingerprint_includes_runner_id() -> None:
 
 @dataclass
 class _FakeDockerRunner:
-    """A docker-like runner: carries an ``image`` so the fingerprint folds it in."""
+    """A docker-like runner: carries ``digest``/``image`` for the fingerprint."""
 
     repo: Path
     image: str = "cftree:local"
+    digest: str = ""
 
     @property
     def cwd(self) -> Path | None:
@@ -729,8 +979,27 @@ class _FakeDockerRunner:
         return cmd
 
 
-def test_ensure_records_docker_image_in_manifest(tmp_path) -> None:
-    """A docker runner's image reference is recorded in the completion manifest."""
+def test_ensure_records_docker_digest_in_manifest(tmp_path) -> None:
+    """A docker runner's resolved image digest is recorded in the manifest."""
+    repo = tmp_path / "cftree"
+    repo.mkdir()
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    ok = ensure_tree_file(
+        _source(out),
+        box(0, 0, 250, 250),
+        run=_make_run(),
+        merge=_make_merge(out),
+        runner=_FakeDockerRunner(repo=repo, digest="sha256:abc"),
+    )
+    assert ok is True
+    manifest = json.loads(
+        (repo / "data" / "leiden_250_AHN5" / ".cftree_manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["runner"] == "sha256:abc"
+
+
+def test_ensure_manifest_falls_back_to_image_without_digest(tmp_path) -> None:
+    """A docker-style runner without a resolved digest still pins its tag."""
     repo = tmp_path / "cftree"
     repo.mkdir()
     out = tmp_path / "veg" / "leiden_250.city.json"
@@ -748,14 +1017,14 @@ def test_ensure_records_docker_image_in_manifest(tmp_path) -> None:
     assert manifest["runner"] == "cftree:local"
 
 
-def test_ensure_regenerates_when_docker_image_changes(tmp_path) -> None:
-    """Tiles built by one image are not reused for a build pinned to another."""
+def test_ensure_regenerates_when_docker_digest_changes(tmp_path) -> None:
+    """Tiles built by one image are not reused after a re-pull under the same tag."""
     repo = tmp_path / "cftree"
     spec = VegetationGenerateSpec(ahn_version=5, n_cores=8, buffer_m=20.0)
     aoi = box(0, 0, 250, 250)
     _seed_tile(repo, "leiden_250_AHN5")
     _write_manifest(
-        _data_dir(repo, "leiden_250_AHN5"), _aoi_fingerprint(aoi, spec, runner_id="cftree:old")
+        _data_dir(repo, "leiden_250_AHN5"), _aoi_fingerprint(aoi, spec, runner_id="sha256:old")
     )
     out = tmp_path / "veg" / "leiden_250.city.json"
     run_calls: list[list[str]] = []
@@ -764,10 +1033,10 @@ def test_ensure_regenerates_when_docker_image_changes(tmp_path) -> None:
         aoi,
         run=_make_run(calls=run_calls),
         merge=_make_merge(out),
-        runner=_FakeDockerRunner(repo=repo, image="cftree:new"),
+        runner=_FakeDockerRunner(repo=repo, digest="sha256:new"),
     )
     assert ok is True
-    assert len(run_calls) == 1  # different image regenerates rather than reusing
+    assert len(run_calls) == 1  # a different digest regenerates rather than reusing
 
 
 def test_ensure_caches_treeless_completed_run(tmp_path) -> None:
@@ -936,6 +1205,90 @@ def test_ensure_soft_fails_when_cftree_times_out(tmp_path) -> None:
     assert not out.exists()
     # timeout_min=1 reaches run() as 60 seconds (proves the plumbing, not just the branch).
     assert seen["timeout"] == 60
+
+
+def test_ensure_kills_named_docker_container_on_timeout(tmp_path) -> None:
+    """A timed-out docker run is killed by its --name so no orphan keeps running."""
+    work = tmp_path / "work"
+    work.mkdir()
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    calls: list[list[str]] = []
+
+    def _run(cmd: Any, cwd: Any = None, check: bool = False, timeout: Any = None) -> Any:
+        argv = [str(c) for c in cmd]
+        calls.append(argv)
+        if argv[:2] == ["docker", "run"]:
+            raise subprocess.TimeoutExpired(argv, timeout)
+        return SimpleNamespace(returncode=0)
+
+    ok = ensure_tree_file(
+        _source(out, timeout_min=1),
+        box(0, 0, 250, 250),
+        run=_run,
+        merge=_make_merge(out),
+        runner=DockerRunner(repo=work, image="cftree:local"),
+    )
+    assert ok is False
+    run_cmd = calls[0]
+    name = run_cmd[run_cmd.index("--name") + 1]
+    assert ["docker", "kill", name] in calls
+
+
+def test_ensure_resolves_docker_runner_from_env_with_injected_probes(tmp_path, monkeypatch) -> None:
+    """With no injected runner, the env resolves to no-clone docker end-to-end.
+
+    The same injected ``run`` serves the preflight probes and the CFTree
+    launch, so nothing touches a real docker daemon; the case geojson and
+    manifest land under the work root and the manifest pins the digest.
+    """
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    work = _docker_env(monkeypatch, tmp_path)
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    calls: list[list[str]] = []
+    ok = ensure_tree_file(
+        _source(out),
+        box(0, 0, 250, 250),
+        run=_make_docker_probes(calls=calls),
+        merge=_make_merge(out),
+    )
+    assert ok is True
+    assert (work / "cases" / "leiden_250_AHN5" / "case_area.geojson").is_file()
+    manifest = json.loads(
+        (work / "data" / "leiden_250_AHN5" / ".cftree_manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["runner"] == _REPO_DIGEST
+    docker_runs = [c for c in calls if c[:2] == ["docker", "run"]]
+    assert len(docker_runs) == 1
+    assert docker_runs[0][docker_runs[0].index("-w") + 1] == "/opt/cftree"
+
+
+def test_ensure_setup_error_names_existing_output_file(tmp_path, monkeypatch) -> None:
+    """A setup error with a reusable file on disk points at the escape hatch.
+
+    The runner env is validated before the reuse check (the image digest
+    is part of the reuse fingerprint), so a broken env fails even when a
+    previous output could be served; the error must then name the file
+    and the way to build with it as-is.
+    """
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    monkeypatch.setenv("CFTREE_RUNNER", "docker")  # CFTREE_IMAGE missing: setup error
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    out.parent.mkdir(parents=True)
+    out.write_text("{}", encoding="utf-8")
+    with pytest.raises(CityBuildError, match="existing vegetation file"):
+        ensure_tree_file(_source(out), box(0, 0, 250, 250), run=_make_docker_probes())
+
+
+def test_ensure_setup_error_without_output_file_has_no_hint(tmp_path, monkeypatch) -> None:
+    _no_dotenv(monkeypatch)
+    _clear_cftree_env(monkeypatch)
+    monkeypatch.setenv("CFTREE_RUNNER", "docker")
+    out = tmp_path / "veg" / "leiden_250.city.json"
+    with pytest.raises(CityBuildError) as excinfo:
+        ensure_tree_file(_source(out), box(0, 0, 250, 250), run=_make_docker_probes())
+    assert "existing vegetation file" not in str(excinfo.value)
 
 
 def test_ensure_soft_fails_when_merge_raises(tmp_path) -> None:
