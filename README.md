@@ -414,12 +414,19 @@ so the subject of the extract reads at a glance against its context.
 python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
 ```
 
+[docs/address-pipeline.md](docs/address-pipeline.md) is the step-by-step
+setup and troubleshooting guide for this pipeline, written for a machine
+that starts with nothing installed.
+
 Each ad-hoc run names itself after the address. The output file becomes
 `<address-slug>_<size>m.gml` in the profile's output folder, and the dataset
 title inside the GML becomes `Address extract: <address> (<size> m)`, so several
 squares in one town do not clash and each file states what it holds. Pass
 `--output` to set the file yourself, or `city_model.name` in the profile to fix
-the title.
+the title. Two more flags cover the common first-run hurdles:
+`--no-energy-labels` skips the EP-Online step for one run, so no API key
+is needed to try the pipeline, and `--refresh` re-downloads instead of
+serving the never-expiring HTTP cache (each run logs the cache's age).
 
 The extract is a clean cut-out of the square (see [ADR-0004](docs/adr/0004-viewport-aois-clip-to-box.md)). A building that straddles the
 edge is cut at the box and the exposed cross-section is capped, so the
@@ -468,24 +475,43 @@ The build writes the AOI as a CFTree case, runs
 minutes to a couple of hours) as a subprocess, then merges the result
 into `path`. CFTree is a heavy, separately-installed pipeline, so the
 machine-specific launch details stay in the environment rather than the
-config: `CFTREE_REPO`, `CFTREE_RUNNER` (`docker`, `wsl`, or `native`),
-and the runner-specific `CFTREE_PYTHON` (wsl) or `CFTREE_IMAGE` plus
-`CFTREE_DOCKER_ARGS` (docker) in `.env` (see [.env.example](.env.example)).
-The docker runner is the recommended setup for a colleague: it bind-mounts
-the checkout into a prebuilt image, so it needs only Docker Desktop and a
-CFTree clone, with no manual WSL distro, conda env, or C++ build. Add
-`CFTREE_DOCKER_ARGS=--gpus all` to run CFTree's optional GPU morphometrics.
-See the CFTree README "Run with Docker" section. The
-build-intent knobs (`ahn_version`, `n_cores`, `buffer_m`, optional
+config, in `.env` (see [.env.example](.env.example)). The recommended
+setup is the docker runner, the default on Windows. It needs Docker
+Desktop and one `.env` line, and it downloads everything else on first
+use:
+
+```ini
+CFTREE_IMAGE=ghcr.io/daanschlosser/cftree:latest
+```
+
+The image is prebuilt and published by CFTree's CI, with the conda
+environment and the two compiled C++ binaries baked in, so there is no
+WSL distro, conda env, C++ build, or even CFTree clone to set up. The
+container runs the source baked into the image and keeps its `cases/`
+and `data/` work directories under `.cache/cftree` in this repo
+(`CFTREE_WORKDIR` relocates them). Developers who want local CFTree
+edits to take effect set `CFTREE_REPO` to a checkout, which the docker
+runner then mounts instead, or use the `wsl` / `native` runners with
+`CFTREE_PYTHON` (see [.env.example](.env.example) for all variants).
+`CFTREE_DOCKER_ARGS` passes host tuning to `docker run`; on a machine
+with an NVIDIA container runtime, `--gpus all` enables CFTree's GPU
+morphometrics.
+
+The build-intent knobs (`ahn_version`, `n_cores`, `buffer_m`, optional
 `timeout_min` and `case`) stay in the config so it remains shareable. A
-completion manifest records the AOI, buffer, AHN version, and
-geometry-only mode of a clean run, so an interrupted run or a changed AOI
-regenerates rather than reusing stale tiles. Setting `geometry_only`
+completion manifest records the AOI, buffer, AHN version, geometry-only
+mode, and (for docker) the image's content digest of a clean run, so an
+interrupted run, a changed AOI, or a re-pulled image regenerates rather
+than reusing stale tiles. Setting `geometry_only`
 emits trees with CFTree geometry only, skips the BGT / BOR register
 cross-reference, and runs CFTree with `--geometry-only` for a several-
 times-faster reconstruction; it is the address extract's default.
-Generation soft-fails to a treeless build when CFTree is unavailable,
-matching the other optional inputs.
+A broken tree setup (an unreachable docker daemon, an image that cannot
+be pulled, a missing checkout for the wsl / native runners) fails the
+build with a message naming the missing piece, so a misconfigured
+machine cannot quietly produce a treeless extract; a failure at runtime
+(a CFTree crash or timeout) still degrades to a treeless build with a
+warning, matching the other optional inputs.
 [inputs/address/annie-romeinsingel-72-152-leiden_400m.json](inputs/address/annie-romeinsingel-72-152-leiden_400m.json)
 is the generate-enabled address profile. Running it with
 `--address "<other address>"` derives a fresh output file and tree file from
@@ -557,7 +583,7 @@ citygml_energy/                Core package
     ├── pand_executor.py        Per-Pand build executor (sequential or pool)
     ├── extent.py, painters.py  Build-extent seam (gemeente / address) and building-painter seam (energy-label / highlight)
     ├── address_query.py, address_extent.py    Free-text address → parsed query → centred extent + target Panden
-    ├── cftree_runner.py, _env.py    On-demand CFTree subprocess runner (WSL / native) and shared .env loader
+    ├── cftree_runner.py, _env.py    On-demand CFTree subprocess runner (docker / WSL / native) and shared .env loader
     ├── config.py, http.py, boundary.py, pdok_wfs.py     Config, cached HTTP, AOI loader, WFS paginator
     ├── cityjson_parse.py, cityjson_trees_parse.py, cityjson_landcover_parse.py    CityJSON tile parsers
     ├── address_key.py, address_match.py                 VBO ↔ EP-Online address join

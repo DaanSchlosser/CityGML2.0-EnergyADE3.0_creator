@@ -20,7 +20,9 @@ Profiles for the city-scale pipeline's address extent ([`examples/create_address
 | `target_color` | no | `[0.98, 0.78, 0.42]` | RGB in `[0, 1]` for the matched buildings (light yellow-orange). |
 | `surroundings_color` | no | `[1.0, 1.0, 1.0]` | RGB in `[0, 1]` for everything around them (white). |
 
-The `address` block is mutually exclusive with `bbox` and `boundary`, and makes `municipality` optional (the gemeente is derived from the geocode). The `--address`, `--extent`, and `--output` command-line flags override the profile, so one profile serves any address.
+The `address` block is mutually exclusive with `bbox` and `boundary`, and makes `municipality` optional (the gemeente is derived from the geocode). The `--address`, `--extent`, and `--output` command-line flags override the profile, so one profile serves any address; overridden values pass through the same validation as the profile file.
+
+Both profiles request EP-Online energy labels (`include_energy_labels: true`), which needs an API key in `.env`. Pass `--no-energy-labels` to run them without one, and `--refresh` to re-download instead of serving the HTTP cache. [docs/address-pipeline.md](../../docs/address-pipeline.md) is the full setup guide, including the Docker-based tree generation.
 
 ## Path conventions
 
