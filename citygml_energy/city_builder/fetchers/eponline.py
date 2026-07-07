@@ -47,6 +47,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Literal
 
+from ...errors import CityBuildError
 from ..address_key import (
     AddressKey,
     normalise_letter,
@@ -325,23 +326,80 @@ def fetch_energy_labels(
     """
     zip_bytes = session.cached_bytes("ep_online_bundle")
     if zip_bytes is None:
-        # DownloadInfo is intentionally NOT cached: the download URL rotates
-        # with each vintage publication. Caching it would serve stale URLs
-        # indefinitely.
+        zip_bytes = _download_bundle(session, api_key)
+    return _parse_csv_from_zip(zip_bytes, wanted_ids=wanted_ids, wanted_keys=wanted_keys)
+
+
+# Appended to every user-addressable EP-online failure so the keyless /
+# offline escape hatch is always one message away.
+_EP_ONLINE_ESCAPE_HATCH = (
+    "to build without energy labels, set include_energy_labels to false "
+    "in the profile or pass --no-energy-labels"
+)
+
+
+def _download_bundle(session: CachedSession, api_key: str) -> bytes:
+    """Resolve the current bundle URL via DownloadInfo and download the ZIP.
+
+    User-addressable failures (a rejected key, no connectivity, a
+    DownloadInfo response without a ``downloadUrl``) are raised as
+    :class:`CityBuildError` naming what to check and the escape hatch,
+    instead of surfacing a raw requests traceback halfway into a build.
+    """
+    import requests as _requests
+
+    # DownloadInfo is intentionally NOT cached: the download URL rotates
+    # with each vintage publication. Caching it would serve stale URLs
+    # indefinitely.
+    try:
         meta_raw = session.get_bytes(
             DOWNLOAD_INFO_URL,
             headers={"Authorization": api_key},
         )
-        meta = json.loads(meta_raw.decode("utf-8"))
-        download_url = meta.get("downloadUrl") or meta.get("DownloadUrl")
-        if not download_url:
-            raise ValueError("EP-online DownloadInfo response is missing downloadUrl")
+    except _requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else None
+        if status in (401, 403):
+            raise CityBuildError(
+                f"EP-online rejected the API key (HTTP {status}); check that the "
+                f"configured key is valid and not expired, or {_EP_ONLINE_ESCAPE_HATCH}"
+            ) from exc
+        raise CityBuildError(
+            f"EP-online DownloadInfo request failed ({exc}); check connectivity "
+            f"to public.ep-online.nl and retry, or {_EP_ONLINE_ESCAPE_HATCH}"
+        ) from exc
+    except (_requests.RequestException, OSError) as exc:
+        raise CityBuildError(
+            f"could not reach EP-online ({exc}); check your network connection "
+            f"and retry, or {_EP_ONLINE_ESCAPE_HATCH}"
+        ) from exc
 
-        zip_bytes = session.get_bytes(
+    try:
+        meta = json.loads(meta_raw.decode("utf-8"))
+    except ValueError as exc:
+        raise CityBuildError(
+            f"EP-online DownloadInfo returned a non-JSON body ({exc}); the service "
+            f"may be down, so retry later, or {_EP_ONLINE_ESCAPE_HATCH}"
+        ) from exc
+    download_url = (
+        meta.get("downloadUrl") or meta.get("DownloadUrl") if isinstance(meta, dict) else None
+    )
+    if not download_url:
+        raise CityBuildError(
+            f"EP-online DownloadInfo response is missing downloadUrl; the key may "
+            f"lack download rights, so check it on ep-online.nl, or "
+            f"{_EP_ONLINE_ESCAPE_HATCH}"
+        )
+
+    try:
+        return session.get_bytes(
             str(download_url),
             cache_key="ep_online_bundle",
         )
-    return _parse_csv_from_zip(zip_bytes, wanted_ids=wanted_ids, wanted_keys=wanted_keys)
+    except (_requests.RequestException, OSError) as exc:
+        raise CityBuildError(
+            f"EP-online bundle download failed ({exc}); check connectivity and "
+            f"retry, or {_EP_ONLINE_ESCAPE_HATCH}"
+        ) from exc
 
 
 def parse_csv(

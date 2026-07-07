@@ -10,6 +10,7 @@ centred square-extent maths.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -416,6 +417,48 @@ def test_resolve_numbered_query_skips_numberless_vbo(monkeypatch, tmp_path) -> N
         _session(tmp_path), "Annie Romeinsingel 72-152 Leiden", extent_m=500.0
     )
     assert res.target_pand_ids == frozenset({"pandB"})  # pandA's numberless VBO skipped
+
+
+def test_resolve_warns_when_query_names_no_place(monkeypatch, tmp_path, caplog) -> None:
+    """A place-less query proceeds on the geocoder's best hit, but the
+    chosen gemeente is named in a warning so a same-named street in the
+    wrong town is noticeable."""
+    monkeypatch.setattr(address_extent, "_best_hit", lambda *a, **k: _hit((1000.0, 2000.0)))
+    vbos = [
+        make_vbo(
+            identificatie="v",
+            pand_identificatie="pandA",
+            huisnummer=72,
+            street="Annie Romeinsingel",
+            point=(1000.0, 2000.0),
+        ),
+    ]
+    monkeypatch.setattr(address_extent, "fetch_verblijfsobjecten", lambda *a, **k: vbos)
+
+    with caplog.at_level(logging.WARNING, logger="citygml_energy.city_builder.address_extent"):
+        resolve_address_extent(_session(tmp_path), "Annie Romeinsingel 72", extent_m=500.0)
+
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("names no place" in m and "Leiden" in m for m in messages)
+
+
+def test_resolve_does_not_warn_when_place_is_given(monkeypatch, tmp_path, caplog) -> None:
+    monkeypatch.setattr(address_extent, "_best_hit", lambda *a, **k: _hit((1000.0, 2000.0)))
+    vbos = [
+        make_vbo(
+            identificatie="v",
+            pand_identificatie="pandA",
+            huisnummer=72,
+            street="Annie Romeinsingel",
+            point=(1000.0, 2000.0),
+        ),
+    ]
+    monkeypatch.setattr(address_extent, "fetch_verblijfsobjecten", lambda *a, **k: vbos)
+
+    with caplog.at_level(logging.WARNING, logger="citygml_energy.city_builder.address_extent"):
+        resolve_address_extent(_session(tmp_path), "Annie Romeinsingel 72 Leiden", extent_m=500.0)
+
+    assert not any("names no place" in r.getMessage() for r in caplog.records)
 
 
 def test_resolve_falls_back_to_anchor_when_no_vbo_geometry(monkeypatch, tmp_path) -> None:

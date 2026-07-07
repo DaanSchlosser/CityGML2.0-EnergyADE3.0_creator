@@ -76,15 +76,20 @@ def build_city_model(
     config: CityBuildConfig,
     *,
     session: CachedSession | None = None,
+    refresh: bool = False,
 ) -> CityModel:
     """Build a :class:`CityModel` from *config*.
 
     When *session* is omitted a fresh :class:`CachedSession` rooted at
-    ``config.cache_dir`` is used. Tests inject a pre-built session (or
-    one with ``use_cache=False``) to control HTTP behaviour.
+    ``config.cache_dir`` is used; *refresh* then makes that session skip
+    cache reads while still writing fresh entries (the CLI's
+    ``--refresh``). A caller that injects its own *session* controls the
+    refresh behaviour there, so *refresh* is ignored in that case. Tests
+    inject a pre-built session (or one with ``use_cache=False``) to
+    control HTTP behaviour.
     """
     if session is None:
-        session = CachedSession(cache_dir=config.cache_dir)
+        session = CachedSession(cache_dir=config.cache_dir, refresh=refresh)
 
     # One seam decides the geography of the run: the fetch bbox, the
     # geometry the 3DBAG query is clipped to, the BAG municipality
@@ -263,6 +268,14 @@ def build_city_model(
         postcode_count,
         landcover_count,
     )
+    if building_count == 0:
+        _LOG.warning(
+            "0 buildings in the assembled model: either no BAG pand in the "
+            "extent carries 3DBAG geometry (very new construction, or an "
+            "extent outside the built-up area), or the bbox / boundary / "
+            "address clip dropped every building. Verify that the address or "
+            "extent covers the intended area."
+        )
     return model
 
 
@@ -467,7 +480,10 @@ def _maybe_fetch_energy_labels(
     wanted = wanted_label_filter(vbos)
 
     wanted_digest = _wanted_sets_digest(wanted)
-    cache_path = _filtered_labels_cache_path(session, wanted_digest)
+    # A refresh run must not serve the derived pickle either: it is keyed
+    # on the old ZIP's stat, and hitting it here would skip the bundle
+    # re-download the refresh asked for.
+    cache_path = None if session.refresh else _filtered_labels_cache_path(session, wanted_digest)
     if cache_path is not None and cache_path.exists():
         labels = _try_load_filtered_labels(cache_path)
         if labels is not None:

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import date
 
+import pytest
+
 from citygml_energy.city_builder.fetchers.eponline import EnergyLabel, parse_csv
 
 _CSV_HEADER = (
@@ -618,3 +620,92 @@ def test_cached_bytes_warm_hit_logs_the_entry_age(tmp_path, caplog, monkeypatch)
         "'ep_online_bundle'" in message and "dated" in message and "delete" in message
         for message in messages
     )
+
+
+# ---------------------------------------------------------------------------
+# Cold-cache download failures surface as CityBuildError with a way out
+# ---------------------------------------------------------------------------
+
+
+def _cold_session_with_transport(tmp_path, monkeypatch, transport) -> object:
+    """A no-cache session (so the bundle download path runs) whose
+    ``requests.Session`` stand-in is *transport*. Retries are collapsed to
+    one attempt with zero backoff so failure tests stay fast."""
+    from citygml_energy.city_builder.http import CachedSession
+
+    session = CachedSession(
+        cache_dir=tmp_path / "cache",
+        use_cache=False,
+        max_retries=1,
+        backoff_seconds=0.0,
+    )
+    monkeypatch.setattr(session, "_session", transport)
+    return session
+
+
+def _status_transport(status: int) -> object:
+    import requests
+
+    class _FakeResponse:
+        status_code = status
+        content = b""
+
+        def raise_for_status(self) -> None:
+            raise requests.HTTPError(f"{status} Client Error", response=self)
+
+    class _FakeSession:
+        def request(self, *args: object, **kwargs: object) -> _FakeResponse:
+            return _FakeResponse()
+
+    return _FakeSession()
+
+
+def test_fetch_wraps_a_rejected_api_key_as_city_build_error(tmp_path, monkeypatch) -> None:
+    from citygml_energy.city_builder.config import CityBuildError
+    from citygml_energy.city_builder.fetchers.eponline import fetch_energy_labels
+
+    session = _cold_session_with_transport(tmp_path, monkeypatch, _status_transport(401))
+    with pytest.raises(CityBuildError, match="rejected the API key") as excinfo:
+        fetch_energy_labels(session, api_key="bad-key")
+    message = str(excinfo.value)
+    assert "--no-energy-labels" in message
+    assert "include_energy_labels" in message
+
+
+def test_fetch_wraps_a_network_failure_as_city_build_error(tmp_path, monkeypatch) -> None:
+    import requests
+
+    from citygml_energy.city_builder.config import CityBuildError
+    from citygml_energy.city_builder.fetchers.eponline import fetch_energy_labels
+
+    class _DownTransport:
+        def request(self, *args: object, **kwargs: object) -> object:
+            raise requests.ConnectionError("connection refused")
+
+    session = _cold_session_with_transport(tmp_path, monkeypatch, _DownTransport())
+    with pytest.raises(CityBuildError, match="could not reach EP-online") as excinfo:
+        fetch_energy_labels(session, api_key="any-key")
+    message = str(excinfo.value)
+    assert "network" in message
+    assert "--no-energy-labels" in message
+
+
+def test_fetch_wraps_a_missing_download_url_as_city_build_error(tmp_path, monkeypatch) -> None:
+    from citygml_energy.city_builder.config import CityBuildError
+    from citygml_energy.city_builder.fetchers.eponline import fetch_energy_labels
+
+    class _MetaOnlyResponse:
+        status_code = 200
+        content = b"{}"
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _MetaOnlyTransport:
+        def request(self, *args: object, **kwargs: object) -> _MetaOnlyResponse:
+            return _MetaOnlyResponse()
+
+    session = _cold_session_with_transport(tmp_path, monkeypatch, _MetaOnlyTransport())
+    with pytest.raises(CityBuildError, match="missing downloadUrl") as excinfo:
+        fetch_energy_labels(session, api_key="any-key")
+    assert "--no-energy-labels" in str(excinfo.value)

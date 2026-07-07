@@ -140,6 +140,76 @@ def test_fetch_tile_cityjson_decompresses_gzipped_payload(
     assert result["type"] == "CityJSON"
 
 
+def _caching_session(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    payload: bytes,
+) -> CachedSession:
+    """Like :func:`_make_session` but with the disk cache enabled."""
+    session = CachedSession(cache_dir=tmp_path / "cache", use_cache=True)
+
+    class _FakeResponse:
+        def __init__(self, body: bytes):
+            self.status_code = 200
+            self._body = body
+
+        @property
+        def content(self) -> bytes:
+            return self._body
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _FakeSession:
+        headers: ClassVar[dict[str, str]] = {}
+
+        def request(self, method: str, url: str, **kwargs: Any) -> _FakeResponse:
+            return _FakeResponse(payload)
+
+    monkeypatch.setattr(session, "_session", _FakeSession())
+    return session
+
+
+def test_fetch_tile_cityjson_self_heals_a_poisoned_cache_entry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cached body with a gzip magic but truncated payload (cached before
+    the validate sniff existed) is evicted and refetched once instead of
+    crashing every later run."""
+    payload = gzip.compress(json.dumps(_MINIMAL_CITYJSON).encode("utf-8"))
+    session = _caching_session(tmp_path, monkeypatch, payload)
+    tile = Tile(
+        tile_id="9/200/300",
+        download_url="https://example.invalid/tile.json.gz",
+        bbox=(0.0, 0.0, 1000.0, 1000.0),
+    )
+    poisoned = session._cache_path("GET", tile.download_url, None, "3dbag_9_200_300")
+    assert poisoned is not None
+    poisoned.write_bytes(b"\x1f\x8btruncated-not-really-gzip")
+
+    result = fetch_tile_cityjson(session, tile)
+    assert result["type"] == "CityJSON"
+    assert poisoned.read_bytes() == payload  # entry healed on disk
+
+
+def test_fetch_tile_cityjson_keeps_an_html_error_page_uncached(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An HTTP-200 body that is neither gzip nor JSON must raise without
+    being memoised (a cached maintenance page used to poison every run)."""
+    session = _caching_session(tmp_path, monkeypatch, b"<html>maintenance</html>")
+    tile = Tile(
+        tile_id="9/200/300",
+        download_url="https://example.invalid/tile.json.gz",
+        bbox=(0.0, 0.0, 1000.0, 1000.0),
+    )
+    with pytest.raises(ValueError, match="neither gzip nor JSON"):
+        fetch_tile_cityjson(session, tile)
+    assert not list((tmp_path / "cache").glob("*.bin"))
+
+
 # ---------------------------------------------------------------------------
 # Cache-key shape
 # ---------------------------------------------------------------------------

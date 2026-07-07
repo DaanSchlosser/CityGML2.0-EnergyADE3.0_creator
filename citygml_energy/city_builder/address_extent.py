@@ -272,6 +272,14 @@ def resolve_address_extent(
         woonplaats = woonplaats or hit.woonplaatsnaam
     if not anchor_points:
         raise AddressResolutionError(f"could not geocode any anchor for {raw_query!r}")
+    if not query.place:
+        _LOG.warning(
+            "Address query %r names no place; the geocoder's best hit in "
+            "gemeente %s was taken. Add a place name (woonplaats or gemeente) "
+            "to the query to disambiguate same-named streets elsewhere.",
+            raw_query,
+            municipality or woonplaats or "unknown",
+        )
 
     # A range normally anchors both endpoints, so their span sets the seed
     # extent. When only one endpoint of a *true* range geocoded (the other house

@@ -349,6 +349,20 @@ def load_city_config(path: PathLike) -> CityBuildConfig:
     machines.
     """
     source_path = Path(path).resolve()
+    data = load_city_config_data(source_path)
+    return _validate(data, source=str(source_path), source_path=source_path)
+
+
+def load_city_config_data(path: PathLike) -> dict[str, Any]:
+    """Read a city-build JSON file into its raw dict, without validating.
+
+    The address CLI folds its command-line overrides into this dict and
+    then validates the merged document with :func:`validate_city_config`,
+    so an override receives exactly the errors a hand-edited profile
+    would. Raises :class:`CityBuildError` for a missing file, malformed
+    JSON, or a non-object document.
+    """
+    source_path = Path(path).resolve()
     try:
         raw_text = source_path.read_text(encoding="utf-8-sig")
     except FileNotFoundError as exc:
@@ -361,7 +375,21 @@ def load_city_config(path: PathLike) -> CityBuildConfig:
             f"Invalid JSON in {source_path} at line {exc.lineno}, column {exc.colno}: {exc.msg}"
         ) from exc
 
-    return _validate(data, source=str(source_path), source_path=source_path)
+    if not isinstance(data, dict):
+        raise CityBuildError(f"{source_path}: top-level JSON value must be an object")
+    return data
+
+
+def validate_city_config(data: Any, *, source_path: PathLike) -> CityBuildConfig:
+    """Validate an already-loaded city-build document.
+
+    *source_path* anchors error messages and relative-path resolution
+    exactly as :func:`load_city_config` does, so a dict loaded through
+    :func:`load_city_config_data` and modified in memory validates
+    identically to the file it came from.
+    """
+    resolved = Path(source_path).resolve()
+    return _validate(data, source=str(resolved), source_path=resolved)
 
 
 def _validate(data: Any, *, source: str, source_path: Path) -> CityBuildConfig:

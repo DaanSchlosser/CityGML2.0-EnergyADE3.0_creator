@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import pickle
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -196,13 +197,63 @@ def _try_save_tile_index(cache_path: Path, tiles: list[Tile]) -> None:
 
 def fetch_tile_cityjson(session: CachedSession, tile: Tile) -> dict[str, Any]:
     """Download one 3DBAG tile and return the parsed CityJSON dict."""
-    raw = session.get_bytes(
+    raw = _fetch_tile_bytes(session, tile)
+    _raw, tile_data = _decode_tile(session, tile, raw)
+    return tile_data
+
+
+def _tile_cache_key(tile: Tile) -> str:
+    """Cache key for a tile body; slashes in the id break filenames."""
+    return f"3dbag_{tile.tile_id.replace('/', '_')}"
+
+
+def _fetch_tile_bytes(session: CachedSession, tile: Tile) -> bytes:
+    """GET one tile body through the cache, keeping error pages off disk."""
+    return session.get_bytes(
         tile.download_url,
-        cache_key=f"3dbag_{tile.tile_id.replace('/', '_')}",
+        cache_key=_tile_cache_key(tile),
+        validate=_validate_tile_body,
     )
-    decoded = _decompress_if_gzipped(raw)
+
+
+def _validate_tile_body(body: bytes) -> None:
+    """Raise when *body* is neither gzip nor JSON, keeping error pages uncached.
+
+    3DBAG serves tiles as gzipped CityJSON (magic ``1f 8b``) or plain
+    JSON; an HTML maintenance page is neither and must never be memoised,
+    or every later run would crash on the same cached garbage.
+    """
+    if body[:2] == b"\x1f\x8b":
+        return
+    if body.lstrip()[:1] == b"{":
+        return
+    snippet = body[:160].decode("utf-8", "replace").strip()
+    raise ValueError(f"3DBAG tile returned neither gzip nor JSON: {snippet!r}")
+
+
+def _decode_tile(session: CachedSession, tile: Tile, raw: bytes) -> tuple[bytes, dict[str, Any]]:
+    """Decode *raw* to CityJSON, self-healing an undecodable cache entry.
+
+    Returns ``(body, parsed)`` where *body* is the bytes that decoded
+    (usually *raw*, or the refetched replacement). The pre-cache sniff in
+    :func:`_validate_tile_body` only checks the magic bytes, so a cached
+    body can still turn out truncated or otherwise undecodable; that
+    entry is evicted and refetched once instead of being re-served on
+    every later run. A second failure propagates.
+    """
     # :func:`loads_json` uses orjson when available, else stdlib json.
-    return cast("dict[str, Any]", loads_json(decoded))
+    try:
+        return raw, cast("dict[str, Any]", loads_json(_decompress_if_gzipped(raw)))
+    except (ValueError, EOFError, OSError, zlib.error) as exc:
+        cache_key = _tile_cache_key(tile)
+        session.evict(cache_key)
+        _LOG.warning(
+            "3DBAG tile %s body is undecodable (%s); evicting the cache entry and refetching",
+            tile.tile_id,
+            exc,
+        )
+        raw = _fetch_tile_bytes(session, tile)
+        return raw, cast("dict[str, Any]", loads_json(_decompress_if_gzipped(raw)))
 
 
 def fetch_buildings_for_outline(
@@ -253,31 +304,32 @@ def _tile_parsed_buildings(session: CachedSession, tile: Tile) -> list[ParsedBui
     The on-disk cache is keyed by the tile's raw-ZIP content hash so any
     upstream change (new 3DBAG vintage, a republished tile) invalidates
     the parsed-tile pickle automatically. A corrupt pickle falls through
-    to re-parse without failing the run.
+    to re-parse without failing the run, and an undecodable cached body
+    self-heals via :func:`_decode_tile` (which may refetch, so the pickle
+    is keyed on the bytes that actually decoded).
     """
-    raw = session.get_bytes(
-        tile.download_url,
-        cache_key=f"3dbag_{tile.tile_id.replace('/', '_')}",
-    )
-    content_digest = hashlib.sha256(raw).hexdigest()[:24]
-    cache_path: Path | None = None
+    raw = _fetch_tile_bytes(session, tile)
     if session.use_cache:
-        safe_id = tile.tile_id.replace("/", "_")
-        cache_path = (
-            session.cache_dir
-            / f"3dbag_parsed_{safe_id}.{content_digest}.{_PARSED_TILE_SCHEMA_VERSION}.pkl"
-        )
-        cached = _try_load_parsed_tile(cache_path)
+        cached = _try_load_parsed_tile(_parsed_tile_cache_path(session, tile, raw))
         if cached is not None:
             return cached
 
-    decoded = _decompress_if_gzipped(raw)
-    tile_data = cast("dict[str, Any]", loads_json(decoded))
+    raw, tile_data = _decode_tile(session, tile, raw)
     parsed = parse_buildings(tile_data)
 
-    if cache_path is not None:
-        _try_save_parsed_tile(cache_path, parsed)
+    if session.use_cache:
+        _try_save_parsed_tile(_parsed_tile_cache_path(session, tile, raw), parsed)
     return parsed
+
+
+def _parsed_tile_cache_path(session: CachedSession, tile: Tile, raw: bytes) -> Path:
+    """On-disk pickle path for a tile's parsed output, keyed by content."""
+    safe_id = tile.tile_id.replace("/", "_")
+    content_digest = hashlib.sha256(raw).hexdigest()[:24]
+    return (
+        session.cache_dir
+        / f"3dbag_parsed_{safe_id}.{content_digest}.{_PARSED_TILE_SCHEMA_VERSION}.pkl"
+    )
 
 
 def _try_load_parsed_tile(cache_path: Path) -> list[ParsedBuilding] | None:

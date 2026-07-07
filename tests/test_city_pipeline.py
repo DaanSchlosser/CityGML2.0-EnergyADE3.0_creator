@@ -355,6 +355,63 @@ def test_address_model_name_defaults_to_the_query_and_size(tmp_path: Path) -> No
     assert pipeline_module._address_model_name(plain) is None
 
 
+def test_pipeline_warns_when_zero_buildings_assembled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mocked_pipeline,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An extract that assembles no buildings still exits cleanly, but a
+    WARNING names the likely causes instead of only an INFO count line."""
+    import logging
+
+    monkeypatch.setattr(
+        bag_fetchers,
+        "fetch_panden",
+        lambda session, *, bbox, cbs_code=None: [],
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_fetch_parsed_buildings",
+        lambda session, *, clip_geom, bbox: [],
+    )
+    config = _config(tmp_path, with_labels=False)
+    with caplog.at_level(logging.WARNING, logger="citygml_energy.city_builder.pipeline"):
+        model = build_city_model(config)
+    assert not any(m.building is not None for m in model.xsd.city_object_member)
+    assert any("0 buildings" in r.getMessage() for r in caplog.records)
+
+
+def test_pipeline_does_not_warn_when_buildings_are_present(
+    tmp_path: Path,
+    mocked_pipeline,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="citygml_energy.city_builder.pipeline"):
+        build_city_model(_config(tmp_path, with_labels=False))
+    assert not any("0 buildings" in r.getMessage() for r in caplog.records)
+
+
+def test_build_city_model_wires_refresh_into_the_session(
+    tmp_path: Path,
+    mocked_pipeline,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The CLI's --refresh reaches the default-constructed CachedSession."""
+    captured: dict[str, object] = {}
+
+    class _SpySession(pipeline_module.CachedSession):
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+            super().__init__(**kwargs)
+
+    monkeypatch.setattr(pipeline_module, "CachedSession", _SpySession)
+    build_city_model(_config(tmp_path, with_labels=False), refresh=True)
+    assert captured.get("refresh") is True
+
+
 def test_pipeline_omits_units_when_addresses_disabled(tmp_path: Path, mocked_pipeline) -> None:
     config = _config(tmp_path, with_labels=False)
     config = CityBuildConfig(

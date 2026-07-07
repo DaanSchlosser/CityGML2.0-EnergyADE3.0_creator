@@ -36,8 +36,33 @@ Public API:
 
 from __future__ import annotations
 
-from .config import CityBuildConfig, CityBuildError, load_city_config
-from .pipeline import build_city_gml_file, build_city_model
+# Modules the optional [city] extras provide. Only these turn into the
+# friendly install hint below; any other missing module is a real bug
+# and must keep its original traceback.
+_CITY_EXTRA_MODULES = frozenset({"requests", "shapely", "flatgeobuf"})
+
+try:
+    from .config import (
+        CityBuildConfig,
+        CityBuildError,
+        load_city_config,
+        load_city_config_data,
+        validate_city_config,
+    )
+    from .pipeline import build_city_gml_file, build_city_model
+except ModuleNotFoundError as exc:
+    # Both import chains reach modules that import the [city] extras at
+    # module scope (config pulls in solar_panels -> builders ->
+    # address_match -> fetchers.bag, which imports requests), so a base
+    # install used to die here with a bare ModuleNotFoundError before the
+    # construction-time hint in ``http.py`` could ever fire.
+    if exc.name not in _CITY_EXTRA_MODULES:
+        raise
+    raise ModuleNotFoundError(
+        f"The city_builder workflow requires the optional 'city' extras "
+        f"(missing {exc.name!r}). Install with: pip install -e .[city]",
+        name=exc.name,
+    ) from exc
 
 __all__ = [
     "CityBuildConfig",
@@ -45,4 +70,6 @@ __all__ = [
     "build_city_gml_file",
     "build_city_model",
     "load_city_config",
+    "load_city_config_data",
+    "validate_city_config",
 ]

@@ -73,12 +73,16 @@ class CachedSession:
     ``use_cache=False`` to bypass; useful for tests that monkeypatch
     the underlying session.
 
+    ``refresh=True`` bypasses cache *reads* for the whole session while
+    still writing fresh entries, so one run can force re-downloads (the
+    CLI's ``--refresh``) without discarding the cache for later runs.
+
     **Mutability model.** ``CachedSession`` is a service object, not a
     value object. The configured fields (``cache_dir``, ``use_cache``,
-    ``timeout``, ``max_retries``, ``backoff_seconds``) are effectively
-    immutable after construction -- nothing in this module writes to
-    them -- while ``_session`` is populated lazily on first network use
-    and is deliberately monkey-patchable by tests (see
+    ``timeout``, ``max_retries``, ``backoff_seconds``, ``refresh``) are
+    effectively immutable after construction -- nothing in this module
+    writes to them -- while ``_session`` is populated lazily on first
+    network use and is deliberately monkey-patchable by tests (see
     ``tests/test_city_bgt.py`` for the pattern). ``@dataclass`` gives
     us a free ``__init__`` / ``__repr__`` for the config fields; it is
     **not** ``frozen`` because patching ``_session`` is part of the
@@ -90,10 +94,45 @@ class CachedSession:
     timeout: float = DEFAULT_TIMEOUT
     max_retries: int = DEFAULT_MAX_RETRIES
     backoff_seconds: float = DEFAULT_BACKOFF
+    refresh: bool = False
     _session: requests.Session | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self._log_cache_vintage()
+
+    def _log_cache_vintage(self) -> None:
+        """One INFO line at construction showing how stale the cache is.
+
+        Cache entries never expire, so without this a months-old vintage
+        would silently drive every run. Quiet when the cache is empty or
+        caching is off; a filesystem hiccup while scanning is ignored
+        (the log is informational, never load-bearing).
+        """
+        if not self.use_cache:
+            return
+        try:
+            mtimes = [p.stat().st_mtime for p in self.cache_dir.iterdir() if p.is_file()]
+        except OSError:
+            return
+        if not mtimes:
+            return
+        oldest = time.strftime("%Y-%m-%d", time.localtime(min(mtimes)))
+        if self.refresh:
+            _LOGGER.info(
+                "HTTP cache at %s holds %d file(s), oldest dated %s; "
+                "--refresh is active, so cache reads are bypassed and entries are rewritten",
+                self.cache_dir,
+                len(mtimes),
+                oldest,
+            )
+        else:
+            _LOGGER.info(
+                "HTTP cache at %s holds %d file(s), oldest dated %s; pass --refresh to re-download",
+                self.cache_dir,
+                len(mtimes),
+                oldest,
+            )
 
     @property
     def session(self) -> requests.Session:
@@ -172,13 +211,15 @@ class CachedSession:
         download URL rotates per vintage while the cache key is fixed)
         skip the URL-discovery round-trip entirely on a warm cache,
         which also removes the API-key and network requirement from
-        fully cached runs. Respects ``use_cache=False`` by reporting
-        cold.
+        fully cached runs. Respects ``use_cache=False`` and
+        ``refresh=True`` by reporting cold.
 
         Fixed-key entries never expire, so a hit logs the entry's date
         and age; without that a months-old vintage would be served with
         no signal at all.
         """
+        if self.refresh:
+            return None
         cache_path = self._cache_path("GET", "", None, cache_key)
         if cache_path is not None and cache_path.exists():
             mtime = cache_path.stat().st_mtime
@@ -218,11 +259,56 @@ class CachedSession:
         cache_key: str | None = None,
         validate: Callable[[bytes], None] | None = None,
     ) -> Any:
-        """GET *url* and parse the response as JSON."""
-        raw = self.get_bytes(
-            url, params=params, headers=headers, cache_key=cache_key, validate=validate
+        """GET *url* and parse the response as JSON.
+
+        A fresh body must parse before it is cached: an HTTP-200 error
+        page (HTML maintenance notice, truncated payload) raises here
+        and never lands on disk. A cached body that fails to parse
+        (written before this guard existed, or corrupted afterwards) is
+        evicted and refetched once, so one poisoned entry cannot crash
+        every later run; a second failure propagates. The caller's
+        *validate* hook still runs first on fresh bodies, and the parse
+        below doubles as the return value, so no body is parsed twice.
+        """
+        parsed_fresh: list[Any] = []
+
+        def _parse_before_cache(body: bytes) -> None:
+            if validate is not None:
+                validate(body)
+            parsed_fresh.append(loads_json(body))
+
+        raw = self._request(
+            "GET",
+            url,
+            params=params,
+            headers=headers,
+            cache_key=cache_key,
+            validate=_parse_before_cache,
         )
-        return loads_json(raw)
+        if parsed_fresh:
+            return parsed_fresh[-1]
+        # An empty ``parsed_fresh`` means the body came from the cache.
+        try:
+            return loads_json(raw)
+        except ValueError as exc:
+            if cache_key is None:  # pragma: no cover, cache hits imply a key
+                raise
+            _LOGGER.warning(
+                "Cached body for %r no longer parses as JSON (%s); "
+                "evicting the entry and refetching once",
+                cache_key,
+                exc,
+            )
+            self.evict(cache_key)
+            raw = self._request(
+                "GET",
+                url,
+                params=params,
+                headers=headers,
+                cache_key=cache_key,
+                validate=_parse_before_cache,
+            )
+            return parsed_fresh[-1] if parsed_fresh else loads_json(raw)
 
     # ------------------------------------------------------------------
     # Internals
@@ -239,7 +325,7 @@ class CachedSession:
         validate: Callable[[bytes], None] | None = None,
     ) -> bytes:
         cache_path = self._cache_path(method, url, params, cache_key)
-        if cache_path is not None and cache_path.exists():
+        if cache_path is not None and not self.refresh and cache_path.exists():
             return cache_path.read_bytes()
 
         # Only retry on transient network-layer failures. Broader catches
