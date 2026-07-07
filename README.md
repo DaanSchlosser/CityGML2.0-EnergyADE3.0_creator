@@ -406,9 +406,9 @@ data-source-to-XSD mapping and design rationale live in
 
 The city-scale pipeline can take its extent from a free-text Dutch
 address instead of a municipality. Give it an address and it builds a
-square extract centred on the building(s) the address covers, painting
+square extract centred on the building(s) the address covers, colouring
 those buildings a light yellow-orange and everything around them white,
-so the subject of the extract reads at a glance against its context.
+so the subject of the extract stands out from its context.
 
 ```powershell
 python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
@@ -423,17 +423,17 @@ Each ad-hoc run names itself after the address. The output file becomes
 title inside the GML becomes `Address extract: <address> (<size> m)`, so several
 squares in one town do not clash and each file states what it holds. Pass
 `--output` to set the file yourself, or `city_model.name` in the profile to fix
-the title. Two more flags cover the common first-run hurdles:
-`--no-energy-labels` skips the EP-Online step for one run, so no API key
-is needed to try the pipeline, and `--refresh` re-downloads instead of
-serving the never-expiring HTTP cache (each run logs the cache's age).
+the title. Two more flags help on a first run: `--no-energy-labels`
+skips the EP-Online step, so no API key is needed to try the pipeline,
+and `--refresh` re-downloads instead of reading the never-expiring HTTP
+cache (each run logs the cache's age).
 
 The extract is a clean cut-out of the square (see [ADR-0004](docs/adr/0004-viewport-aois-clip-to-box.md)). A building that straddles the
 edge is cut at the box and the exposed cross-section is capped, so the
 solid stays closed; a building wholly outside is dropped; and the draped
 landcover surfaces are clipped to the same square. A cut building's geometry
-no longer matches its 3DBAG area and volume attributes, the accepted trade
-for a visualisation extract. Trees stay clipped by trunk position, so a
+no longer matches its 3DBAG area and volume attributes, an accepted
+trade-off for a visualisation extract. Trees stay clipped by trunk position, so a
 crown near the edge can overhang the line by its radius.
 
 The address may be a single house, a house-number range, or several
@@ -471,7 +471,7 @@ it is missing, instead of skipping trees:
 ```
 
 The build writes the AOI as a CFTree case, runs
-[CFTree](https://github.com/NoahAlting/CFTree) for it (CGAL plus PDAL,
+[CFTree](https://github.com/DaanSchlosser/CFTree) for it (CGAL plus PDAL,
 minutes to a couple of hours) as a subprocess, then merges the result
 into `path`. CFTree is a heavy, separately-installed pipeline, so the
 machine-specific launch details stay in the environment rather than the
@@ -484,8 +484,9 @@ use:
 CFTREE_IMAGE=ghcr.io/daanschlosser/cftree:latest
 ```
 
-The image is prebuilt and published by CFTree's CI, with the conda
-environment and the two compiled C++ binaries baked in, so there is no
+The image is prebuilt and published by the CI of the linked CFTree fork
+(the pipeline itself is [Noah Alting's](https://github.com/NoahAlting/CFTree)),
+with the conda environment and the two compiled C++ binaries baked in, so there is no
 WSL distro, conda env, C++ build, or even CFTree clone to set up. The
 container runs the source baked into the image and keeps its `cases/`
 and `data/` work directories under `.cache/cftree` in this repo
@@ -497,7 +498,7 @@ runner then mounts instead, or use the `wsl` / `native` runners with
 with an NVIDIA container runtime, `--gpus all` enables CFTree's GPU
 morphometrics.
 
-The build-intent knobs (`ahn_version`, `n_cores`, `buffer_m`, optional
+The build-intent settings (`ahn_version`, `n_cores`, `buffer_m`, optional
 `timeout_min` and `case`) stay in the config so it remains shareable. A
 completion manifest records the AOI, buffer, AHN version, geometry-only
 mode, and (for docker) the image's content digest of a clean run, so an
@@ -515,13 +516,13 @@ warning, matching the other optional inputs.
 [inputs/address/annie-romeinsingel-72-152-leiden_400m.json](inputs/address/annie-romeinsingel-72-152-leiden_400m.json)
 is the generate-enabled address profile. Running it with
 `--address "<other address>"` derives a fresh output file and tree file from
-that address, so one profile serves several squares without clobbering each
-other.
+that address, so one profile serves several squares without one run
+overwriting another's results.
 
 ### 4.7 Semantic landcover
 
 A `landcover` block adds the ground around the buildings as classified,
-draped surfaces. It is a knob-less opt-in:
+draped surfaces. It is an opt-in with no further settings:
 
 ```jsonc
 "landcover": {}
@@ -541,10 +542,10 @@ buildings are skipped, since the 3DBAG path ([§4.1](#41-quick-start))
 already supplies richer ones. Each surface keeps its draped `lod1MultiSurface`
 geometry, so the ground sits at real NAP heights, and the BGT
 classification (`bgt_type`, `bgt_functie`, `bgt_fysiekvoorkomen`,
-`3df_class`) rides into the open `class` / `function` / `usage`
+`3df_class`) is stored in the open `class` / `function` / `usage`
 `gml:CodeType` slots with a codeSpace naming the vocabulary. Each feature
 widens the model envelope by its bounding box only, so the coordinate sink
-does not swell by every surface vertex.
+does not grow by every surface vertex.
 
 The PDOK endpoints are public, so unlike the on-demand tree generation the
 landcover step needs nothing in `.env`, and the data is plain CityJSON, so it

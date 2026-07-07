@@ -1,7 +1,7 @@
 """CLI entry point for the address-driven CityGML builder.
 
 Give it a Dutch address and it builds a square extract centred on the
-building(s) the address covers, painting those buildings a light
+building(s) the address covers, colouring those buildings a light
 yellow-orange and everything around them white::
 
     python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
@@ -41,9 +41,12 @@ A profile may add a ``vegetation.generate`` block so LoD3 trees are
 reconstructed by CFTree on demand when the merged file is missing
 (``inputs/address/annie-romeinsingel-72-152-leiden_400m.json`` is the generate-enabled profile;
 the default ``leiden_example.json`` has no vegetation block). CFTree runs
-as a subprocess in its own environment, configured by ``CFTREE_REPO`` /
-``CFTREE_RUNNER`` / ``CFTREE_PYTHON`` in ``.env`` (see ``.env.example``);
-generation soft-fails to a treeless build when CFTree is unavailable. The
+as a subprocess in its own environment, configured by the ``CFTREE_*``
+variables in ``.env`` (see ``.env.example``); the docker runner is the
+default on Windows and needs only ``CFTREE_IMAGE``. A setup problem (a
+missing image, an unreachable docker daemon) fails the build with the
+missing piece named; a runtime failure in a correctly-set-up CFTree run
+soft-fails to a treeless build. The
 address profile also sets ``vegetation.geometry_only`` so trees carry
 CFTree geometry only and the build skips the BGT register cross-reference
 (and its PDOK round-trip)::
@@ -153,9 +156,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _apply_cli_overrides(data: dict[str, Any], args: argparse.Namespace) -> None:
-    """Fold the command-line overrides into the raw profile dict.
+    """Merge the command-line overrides into the raw profile dict.
 
-    Overrides land on the dict *before* validation so every value passes
+    Overrides are applied to the dict *before* validation so every value passes
     through the same checks a hand-edited profile would (an out-of-range
     ``--extent`` gets the normal ``address.extent_m`` error instead of
     silently bypassing the bound).
@@ -187,7 +190,7 @@ def _apply_derived_names(data: dict[str, Any], address: dict[str, Any]) -> None:
     the profile's defaults, and the dataset title is cleared so it falls back
     to the address (the pipeline builds the default from the query, see
     ``_address_model_name``). One profile therefore serves every address
-    without one run clobbering another run's output or trees. Malformed
+    without one run overwriting another run's output or trees. Malformed
     profile values skip the rename and are reported by validation instead.
     """
     query = address.get("query")
