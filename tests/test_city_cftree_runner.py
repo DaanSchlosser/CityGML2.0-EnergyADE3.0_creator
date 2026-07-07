@@ -462,13 +462,16 @@ def test_resolve_runner_kind_is_case_insensitive(monkeypatch, tmp_path) -> None:
 
 
 def test_resolve_runner_default_is_docker_on_windows(monkeypatch, tmp_path) -> None:
+    # Only the dispatch is exercised: with os.name patched to "nt" on a
+    # POSIX host, pathlib dispatches Path() to WindowsPath, whose joins
+    # raise NotImplementedError, so the real docker resolver cannot run.
     _no_dotenv(monkeypatch)
     _clear_cftree_env(monkeypatch)
     monkeypatch.setattr(os, "name", "nt")
-    _docker_env(monkeypatch, tmp_path)
     monkeypatch.delenv("CFTREE_RUNNER", raising=False)
-    runner = resolve_runner(run=_make_docker_probes())
-    assert isinstance(runner, DockerRunner)
+    sentinel = DockerRunner(repo=tmp_path, image="ghcr.io/example/cftree:latest")
+    monkeypatch.setattr(runner_mod, "_resolve_docker_runner", lambda *, run: sentinel)
+    assert resolve_runner() is sentinel
 
 
 def test_resolve_runner_default_is_native_off_windows(monkeypatch, tmp_path) -> None:
