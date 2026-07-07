@@ -198,7 +198,9 @@ def test_request_exception_prints_one_line_naming_the_host(
 
     def boom(config: Any, *, refresh: bool = False) -> None:
         exc = requests.ConnectionError("connection reset")
-        exc.request = SimpleNamespace(url="https://service.pdok.nl/lv/bag/wfs/v2_0?service=WFS")
+        exc.request = requests.Request(
+            method="GET", url="https://service.pdok.nl/lv/bag/wfs/v2_0?service=WFS"
+        )
         raise exc
 
     monkeypatch.setattr(create_address, "build_city_model", boom)
