@@ -5,8 +5,8 @@ abstract: >-
   A Python toolkit that generates CityGML 2.0 files extended with Energy ADE
   3.0 (beta 8) from flat JSON input plus STEP or CityJSON geometry. It runs a
   per-building pipeline and a city-scale pipeline that both emit the same wire
-  format, developed for building renovation passports within the RenoDAT
-  project at Delft University of Technology.
+  format, developed for the author's MSc thesis on building renovation
+  passports, within the RenoDAT project at Delft University of Technology.
 type: software
 authors:
   - family-names: Schlosser
@@ -38,3 +38,17 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.20612453
     description: "Archived v1.0.0 release on Zenodo"
+# The MSc thesis this toolkit was developed for. The thesis in turn cites
+# this repository through the concept DOI above.
+references:
+  - type: thesis
+    title: "Investigation on the data model requirements for Building Renovation Passports"
+    authors:
+      - family-names: Schlosser
+        given-names: Daan
+    thesis-type: "Master's thesis"
+    institution:
+      name: "Delft University of Technology"
+    department: "MSc Geomatics"
+    year: 2026
+    url: "https://resolver.tudelft.nl/uuid:fe05529d-fe1c-49e4-8d98-1a0acb2bfa93"

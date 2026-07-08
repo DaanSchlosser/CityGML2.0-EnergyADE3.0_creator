@@ -11,6 +11,12 @@ point is an easier authoring path: you describe the model in JSON and
 attach STEP or CityJSON geometry, and the toolkit assembles and
 serialises the Energy ADE GML so you never write the XML by hand.
 
+This repository is my own work, the software I developed for my MSc
+thesis *Investigation on the data model requirements for Building
+Renovation Passports* (MSc Geomatics, Delft University of Technology,
+2026). The thesis is openly available in the
+[TU Delft repository](https://resolver.tudelft.nl/uuid:fe05529d-fe1c-49e4-8d98-1a0acb2bfa93).
+
 <div align="center">
   <img src="docs/img/city-scale_EPC-coloring_and_solar-panels_trees.png" alt="City-scale CityGML 2.0 + Energy ADE 3.0 output: a Dutch neighbourhood with buildings coloured by energy label, roof-mounted solar collectors, and LoD3 trees" width="820">
   <br>
@@ -844,3 +850,8 @@ v1.0.0: [10.5281/zenodo.20612453](https://doi.org/10.5281/zenodo.20612453)). The
 every archived version is listed on the
 [Releases](https://github.com/DaanSchlosser/CityGML2.0-EnergyADE3.0_creator/releases)
 page.
+
+This toolkit is the implementation of the MSc thesis *Investigation on the
+data model requirements for Building Renovation Passports*
+([TU Delft repository](https://resolver.tudelft.nl/uuid:fe05529d-fe1c-49e4-8d98-1a0acb2bfa93));
+cite the thesis for the research and this repository for the software.
