@@ -93,7 +93,7 @@ Tree generation runs [CFTree](https://github.com/DaanSchlosser/CFTree), Noah Alt
    uv run python examples/create_address.py --profile inputs/address/annie-romeinsingel-72-152-leiden_400m.json --no-energy-labels
    ```
 
-The first run pulls the image (a one-time download, about 1 GB unpacked), downloads the AHN LiDAR for the area, and reconstructs the trees; for the 400 m example this takes a few minutes. The reconstruction is cached (see below), so rerunning the same area is fast. CFTree's working files live under `.cache/cftree` in this repo; set `CFTREE_WORKDIR` in `.env` to relocate them.
+The first run pulls the image (a one-time download, about 0.8 GB unpacked), downloads the AHN LiDAR for the area, and reconstructs the trees; for the 400 m example this takes a few minutes. The reconstruction is cached (see below), so rerunning the same area is fast. CFTree's working files live under `.cache/cftree` in this repo; set `CFTREE_WORKDIR` in `.env` to relocate them.
 
 The docker runner is the default on Windows. On Linux or macOS, set `CFTREE_RUNNER=docker` in `.env` to opt in; the other runners (`wsl`, `native`) run CFTree from a local checkout and exist for CFTree development, see [.env.example](../.env.example).
 
