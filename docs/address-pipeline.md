@@ -35,26 +35,26 @@ python -m pip install -e ".[dev,city,city-fast]"
 Then run an address. `--no-energy-labels` skips the EP-Online step so no API key is needed yet:
 
 ```powershell
-uv run python examples/create_address.py --address "Langegracht 76 Leiden" --no-energy-labels
+uv run python examples/create_address.py --address "Julianalaan 134 Delft" --no-energy-labels
 ```
 
 (Drop the `uv run` prefix in an activated venv; that holds for every command below.)
 
-The run resolves the address through PDOK Locatieserver and the BAG, downloads the covering 3DBAG tiles, and writes `generated/langegracht-76-leiden_500m.gml`. The first run downloads tens to hundreds of megabytes depending on the extent; later runs read the same downloads from the cache in `.cache/citygml_energy_city`.
+The run resolves the address through PDOK Locatieserver and the BAG, downloads the covering 3DBAG tiles, and writes `generated/julianalaan-134-delft_500m.gml`. The first run downloads tens to hundreds of megabytes depending on the extent; later runs read the same downloads from the cache in `.cache/citygml_energy_city`.
 
 ### Checking the result
 
-The run ends with a line such as `Wrote <n> city objects to generated/langegracht-76-leiden_500m.gml`. Open that file in a CityGML viewer (for example the KITModelViewer) to see the square extract with the queried buildings in light yellow-orange against white surroundings. To check the file against the CityGML and Energy ADE schemas, run:
+The run ends with a line such as `Wrote <n> city objects to generated/julianalaan-134-delft_500m.gml`. Open that file in a CityGML viewer (for example the KITModelViewer) to see the square extract with the queried buildings in light yellow-orange against white surroundings. To check the file against the CityGML and Energy ADE schemas, run:
 
 ```powershell
-uv run python tools/validate_xsd.py generated/langegracht-76-leiden_500m.gml
+uv run python tools/validate_xsd.py generated/julianalaan-134-delft_500m.gml
 ```
 
 ### Addresses and flags
 
-The address may be a single house (`"Langegracht 76 Leiden"`), a house-number range (`"Annie Romeinsingel 72-152 Leiden"`), or several streets (`"Etta Palmstraat en Joke Smitstraat z.n. Leiden"`). Include the place name; without one, the query logs a warning and uses the geocoder's best match, which may be a same-named street in another town.
+The address may be a single house (`"Julianalaan 134 Delft"`), a house-number range (`"Annie Romeinsingel 72-152 Leiden"`), or several streets (`"Etta Palmstraat en Joke Smitstraat z.n. Leiden"`). Include the place name; without one, the query logs a warning and uses the geocoder's best match, which may be a same-named street in another town.
 
-Settings other than the address come from a profile JSON, default [inputs/address/leiden_example.json](../inputs/address/leiden_example.json). Useful flags on top of it:
+Settings other than the address come from a profile JSON, default [inputs/address/delft_example.json](../inputs/address/delft_example.json). Useful flags on top of it:
 
 - `--extent 250` sets the square's side length in metres (50 to 5000; the example profile sets 500).
 - `--output path\to\file.gml` names the output file yourself; otherwise it derives from the address and extent.

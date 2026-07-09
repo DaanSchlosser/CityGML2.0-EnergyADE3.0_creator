@@ -417,7 +417,7 @@ those buildings a light yellow-orange and everything around them white,
 so the subject of the extract stands out from its context.
 
 ```powershell
-python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
+python examples/create_address.py --address "Julianalaan 134 Delft"
 ```
 
 [docs/address-pipeline.md](docs/address-pipeline.md) is the step-by-step
@@ -456,7 +456,7 @@ This is an extent mode of the city-scale pipeline, not a third pipeline
 3DBAG, and EP-Online fetch and the same output shape, and only the extent
 resolution and the building colouring differ. Settings other than the
 address come from a profile JSON (`--profile`, default
-[inputs/address/leiden_example.json](inputs/address/leiden_example.json)),
+[inputs/address/delft_example.json](inputs/address/delft_example.json)),
 whose `address` block carries the `query`, the square `extent_m` side
 length, and the optional `target_color` / `surroundings_color`. The
 `address` block is mutually exclusive with `bbox` and `boundary`, and
@@ -621,6 +621,7 @@ tools/
 ├── audit_extra.py                  Audit generated GML: non-positive quantities, out-of-range angles, ADE hooks
 ├── audit_silent_bugs.py            Audit for silent data-loss bugs
 ├── bench.py                        Benchmarking utilities
+├── gml_to_rhino.py                 Export generated GML to a Rhino 8 .3dm (thematic layers + appearance colours)
 └── schemas/xml.xsd                 W3C xml.xsd for offline validation
 
 inputs/                         See inputs/README.md
@@ -678,6 +679,65 @@ schema. The generated GML is XSD-valid either way; the swap only touches
 your own viewer install, not this repo. The one-time procedure (plus the
 symptoms it fixes) is in
 [docs/kitmodelviewer.md](docs/kitmodelviewer.md).
+
+### 6.1 Editing the output in Rhino (`.3dm` export)
+
+The KITModelViewer is for viewing. To edit the geometry in Rhino 8,
+[tools/gml_to_rhino.py](tools/gml_to_rhino.py) converts a generated GML into a
+native Rhino `.3dm` that keeps the thematic structure and appearance colours a
+plain STL export throws away.
+
+You need a generated `.gml` first. Build one with the address pipeline (§4.5,
+walkthrough in [docs/address-pipeline.md](docs/address-pipeline.md)) or one of
+the per-building examples (§4.1). Then install the optional `rhino` extra
+(rhino3dm plus shapely) and convert the file:
+
+```bash
+uv sync --extra rhino
+uv run python tools/gml_to_rhino.py generated/julianalaan-134-delft_500m.gml
+```
+
+The converter writes `generated/julianalaan-134-delft_500m.3dm` next to the
+input and prints the object, Brep, and group counts. Open that `.3dm` in
+Rhino 8. The rest of this section is what you find inside it.
+
+**Layers.** Each thematic type is its own nested layer, so buildings, landcover,
+and vegetation toggle independently:
+
+```
+Buildings::{WallSurface, RoofSurface, GroundSurface}
+LandCover::{LandUse, Road, WaterBody, Bridge, GenericCityObject}
+Vegetation::{Trees, PlantCover}
+```
+
+Every layer is always created, even when empty, so geometry you add by hand or
+import later reuses the same names and colours. Turn off `LandCover` and
+`Vegetation` to work on the buildings alone.
+
+**Selecting a building.** Each building's wall, roof, and ground faces go in one
+Rhino group, so a single click selects the whole building. Isolate it, then
+explode the group (or double-click) to reach an individual face. Building faces
+are clean planar Breps, one trimmed-plane surface per polygon oriented outward,
+so they push and pull, offset, and trim like any Rhino surface rather than a
+triangle mesh. A holed building polygon (rare) falls back to a mesh so no face
+is lost. Landcover and vegetation stay meshes, because they are context you look
+at rather than edit, which keeps the file small when a tile carries a few
+hundred thousand tree and landcover polygons.
+
+**Colours.** Every object takes its display colour from the `app:X3DMaterial`
+`diffuseColor` that targets it, so the energy-label highlight and the landcover
+and vegetation palettes carry over. An object with no appearance falls back to a
+per-type colour, and Energy ADE thermal-zone geometry is skipped because it
+duplicates the building envelope. If everything looks transparent in Rhino, that
+is the viewport display mode (Ghosted), not the file; switch to Shaded or
+Rendered.
+
+**Georeference.** Coordinates are RD New (EPSG:28992), translated to a local
+origin (the floored envelope lower corner, in metres) so Rhino stays numerically
+stable. The offset is written to the model base point
+(`Settings.ModelBasePoint`), so the RD New coordinates come back exactly when the
+edited model returns to a GIS or BIM context. The reader streams with lxml, so
+the multi-hundred-MB city files convert in bounded memory.
 
 ---
 
