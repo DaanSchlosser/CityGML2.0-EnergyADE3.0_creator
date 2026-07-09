@@ -4,7 +4,7 @@ Give it a Dutch address and it builds a square extract centred on the
 building(s) the address covers, colouring those buildings a light
 yellow-orange and everything around them white::
 
-    python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
+    python examples/create_address.py --address "Julianalaan 134 Delft"
 
 The address may be a single house, a range, or several streets, and it
 tolerates the loose formatting of a typical listing::
@@ -13,7 +13,7 @@ tolerates the loose formatting of a typical listing::
     --address "Etta Palmstraat en Joke Smitstraat z.n. Leiden"
 
 Settings other than the address come from a profile JSON (``--profile``,
-default ``inputs/address/leiden_example.json``): extent, LoDs, whether to
+default ``inputs/address/delft_example.json``): extent, LoDs, whether to
 include EP-Online energy labels, the highlight colours, and so on. The
 address, extent, and output path can be overridden on the command line so
 one profile serves any address; overrides are validated exactly like the
@@ -40,7 +40,7 @@ On-demand tree generation:
 A profile may add a ``vegetation.generate`` block so LoD3 trees are
 reconstructed by CFTree on demand when the merged file is missing
 (``inputs/address/annie-romeinsingel-72-152-leiden_400m.json`` is the generate-enabled profile;
-the default ``leiden_example.json`` has no vegetation block). CFTree runs
+the default ``delft_example.json`` has no vegetation block). CFTree runs
 as a subprocess in its own environment, configured by the ``CFTREE_*``
 variables in ``.env`` (see ``.env.example``); the docker runner is the
 default on Windows and needs only ``CFTREE_IMAGE``. A setup problem (a
@@ -84,7 +84,7 @@ except ImportError:  # pragma: no cover, the extras guard above fires first
         pass
 
 
-_DEFAULT_PROFILE = REPO_ROOT / "inputs" / "address" / "leiden_example.json"
+_DEFAULT_PROFILE = REPO_ROOT / "inputs" / "address" / "delft_example.json"
 
 
 def _configure_logging(verbosity: int) -> None:
@@ -112,7 +112,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--profile",
         type=Path,
         default=_DEFAULT_PROFILE,
-        help="Path to an address-build profile JSON (default: inputs/address/leiden_example.json).",
+        help="Path to an address-build profile JSON (default: inputs/address/delft_example.json).",
     )
     parser.add_argument(
         "--address",

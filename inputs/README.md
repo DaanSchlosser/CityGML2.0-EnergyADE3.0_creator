@@ -30,10 +30,10 @@ python examples/create_city.py
 
 Override either default with `--input <path-to-json>`.
 
-Address-driven extract (city pipeline; default profile [`address/leiden_example.json`](address/leiden_example.json)):
+Address-driven extract (city pipeline; default profile [`address/delft_example.json`](address/delft_example.json)):
 
 ```powershell
-python examples/create_address.py --address "Annie Romeinsingel 72-152 Leiden"
+python examples/create_address.py --address "Julianalaan 134 Delft"
 ```
 
 The profile is overridden with `--profile <path-to-json>` and the address with `--address`.

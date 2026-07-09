@@ -39,6 +39,13 @@ city = [
 city-fast = [
     "polars>=0.20",
 ]
+# Rhino export: convert generated GML to a native .3dm with thematic layers
+# and appearance colours (tools/gml_to_rhino.py). rhino3dm writes the file;
+# shapely triangulates the polygons (also in ``[city]``).
+rhino = [
+    "rhino3dm>=8.0",
+    "shapely>=2.0",
+]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
